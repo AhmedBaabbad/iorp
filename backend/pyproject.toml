@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[project]
+name = "iorp-backend"
+version = "0.1.0"
+description = "IORP FastAPI backend"
+requires-python = ">=3.10"
+dependencies = [
+    "alembic>=1.13,<2.0",
+    "email-validator>=2.1,<3.0",
+    "fastapi>=0.111,<1.0",
+    "passlib[bcrypt]>=1.7,<2.0",
+    "psycopg[binary]>=3.1,<4.0",
+    "pydantic>=2.7,<3.0",
+    "pydantic-settings>=2.2,<3.0",
+    "python-jose[cryptography]>=3.3,<4.0",
+    "sqlalchemy>=2.0,<3.0",
+    "uvicorn[standard]>=0.29,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.27,<1.0",
+    "pytest>=8.0,<9.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
