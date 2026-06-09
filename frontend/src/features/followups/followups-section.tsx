@@ -3,6 +3,7 @@
 import type { CSSProperties, FormEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { SectionShell } from "@/components/layout/section-shell";
 import { useAuth } from "@/features/auth";
 import { getErrorMessage } from "@/lib/errors";
 import { displayValue, formatDate } from "@/lib/utils";
@@ -24,32 +25,6 @@ type CustomerFollowUpsSectionProps = {
 };
 
 const styles: Record<string, CSSProperties> = {
-  section: {
-    background: "#ffffff",
-    border: "1px solid #d9dee7",
-    borderRadius: "8px",
-    boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
-    marginTop: "24px",
-    overflow: "hidden",
-  },
-  header: {
-    borderBottom: "1px solid #e4e7ec",
-    padding: "20px 24px",
-  },
-  title: {
-    fontSize: "22px",
-    margin: 0,
-  },
-  subtitle: {
-    color: "#52606d",
-    lineHeight: 1.5,
-    margin: "6px 0 0",
-  },
-  body: {
-    display: "grid",
-    gap: "20px",
-    padding: "24px",
-  },
   form: {
     display: "grid",
     gap: "16px",
@@ -164,15 +139,11 @@ export function CustomerFollowUpsSection({ customerId }: CustomerFollowUpsSectio
   }
 
   return (
-    <section style={styles.section} aria-labelledby="follow-ups-title">
-      <header style={styles.header}>
-        <h2 id="follow-ups-title" style={styles.title}>
-          Follow-ups
-        </h2>
-        <p style={styles.subtitle}>Create next actions and complete pending follow-ups.</p>
-      </header>
-
-      <div style={styles.body}>
+    <SectionShell
+      titleId="follow-ups-title"
+      title="Follow-ups"
+      subtitle="Create next actions and complete pending follow-ups."
+    >
         <form style={styles.form} onSubmit={handleSubmit}>
           <div style={styles.formGrid}>
             <label style={sharedStyles.field}>
@@ -289,8 +260,7 @@ export function CustomerFollowUpsSection({ customerId }: CustomerFollowUpsSectio
             ))}
           </div>
         ) : null}
-      </div>
-    </section>
+    </SectionShell>
   );
 }
 

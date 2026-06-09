@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, hash_password, verify_password
-from app.core.tenancy import TenantContext, ensure_same_organization
+from app.core.tenancy import TenantContext
 from app.foundation.api.schemas import (
     CurrentUserResponse,
     LoginRequest,
@@ -159,12 +159,14 @@ class FoundationService:
         user = self.users.get(data.user_id)
         if user is None:
             raise ValueError("User not found.")
-        ensure_same_organization(tenant, user.organization_id)
+        if tenant.organization_id != user.organization_id:
+            raise ValueError("Resource does not belong to the current organization.")
 
         role = self.roles.get(data.role_id)
         if role is None:
             raise ValueError("Role not found.")
-        ensure_same_organization(tenant, role.organization_id)
+        if tenant.organization_id != role.organization_id:
+            raise ValueError("Resource does not belong to the current organization.")
 
         return self.assign_role_to_user(data)
 

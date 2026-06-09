@@ -13,7 +13,7 @@ import { displayValue, formatDate } from "@/lib/utils";
 import { sharedStyles } from "@/styles/shared-styles";
 import type { CustomerDetail } from "@/types/customers";
 import { getCustomer } from "./customer-api";
-import { PageFrame } from "./customer-page-shell";
+import { PageFrame } from "@/components/layout/page-frame";
 
 const styles: Record<string, CSSProperties> = {
   detailGrid: {

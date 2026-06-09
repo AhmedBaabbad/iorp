@@ -8,6 +8,7 @@ import { ProtectedRoute, useAuth } from "@/features/auth";
 type PageFrameProps = {
   title: string;
   subtitle?: string;
+  section?: string;
   action?: ReactNode;
   children: ReactNode;
 };
@@ -63,7 +64,7 @@ const styles: Record<string, CSSProperties> = {
   },
 };
 
-export function PageFrame({ title, subtitle, action, children }: PageFrameProps) {
+export function PageFrame({ title, subtitle, section, action, children }: PageFrameProps) {
   const { logout } = useAuth();
   const router = useRouter();
 
@@ -83,7 +84,7 @@ export function PageFrame({ title, subtitle, action, children }: PageFrameProps)
           </div>
           <header style={styles.header}>
             <div>
-              <p style={styles.eyebrow}>Commercial</p>
+              <p style={styles.eyebrow}>{section ?? "Commercial"}</p>
               <h1 style={styles.title}>{title}</h1>
               {subtitle ? <p style={styles.subtitle}>{subtitle}</p> : null}
             </div>

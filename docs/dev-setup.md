@@ -59,6 +59,17 @@ Docs at `http://localhost:8000/docs`
 | Admin     | admin@iorp-dev.com     | Admin1234!  |
 | Sales Rep | sales@iorp-dev.com     | Sales1234!  |
 
+**Seed data created:**
+
+| Entity | Code / Number | Customer |
+|--------|--------------|---------|
+| Customers | CUST-001, CUST-002, CUST-003 | — |
+| Interaction + Follow-up | — | CUST-001 |
+| Sample | SAMP-001 (evaluated) | CUST-002 |
+| Sample Evaluation | accepted → proceed_to_quote | CUST-002 |
+| Quote | Q-2026-001 (issued, SAR 2,950.00) | CUST-002 |
+| Order | ORD-2026-001 (confirmed) | CUST-002 |
+
 ---
 
 ## 3. Frontend

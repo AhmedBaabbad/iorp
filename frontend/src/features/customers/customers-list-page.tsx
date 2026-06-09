@@ -9,7 +9,7 @@ import { displayValue } from "@/lib/utils";
 import { sharedStyles } from "@/styles/shared-styles";
 import type { CustomerListItem, PriorityLevel, RelationshipStage } from "@/types/customers";
 import { listCustomers } from "./customer-api";
-import { PageFrame } from "./customer-page-shell";
+import { PageFrame } from "@/components/layout/page-frame";
 
 const styles: Record<string, CSSProperties> = {
   panel: {

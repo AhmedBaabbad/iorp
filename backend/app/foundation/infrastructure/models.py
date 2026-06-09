@@ -6,12 +6,8 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
-from app.core.utils import utc_now
+from app.core.utils import enum_values, utc_now
 from app.foundation.domain.enums import OrganizationStatus, UserStatus
-
-
-def enum_values(enum_class: type[OrganizationStatus] | type[UserStatus]) -> list[str]:
-    return [item.value for item in enum_class]
 
 
 class Organization(Base):

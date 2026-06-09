@@ -3,6 +3,7 @@
 import type { CSSProperties, FormEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { SectionShell } from "@/components/layout/section-shell";
 import { getErrorMessage } from "@/lib/errors";
 import { displayValue, formatDate } from "@/lib/utils";
 import { sharedStyles } from "@/styles/shared-styles";
@@ -19,32 +20,6 @@ type CustomerInteractionsSectionProps = {
 };
 
 const styles: Record<string, CSSProperties> = {
-  section: {
-    background: "#ffffff",
-    border: "1px solid #d9dee7",
-    borderRadius: "8px",
-    boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
-    marginTop: "24px",
-    overflow: "hidden",
-  },
-  header: {
-    borderBottom: "1px solid #e4e7ec",
-    padding: "20px 24px",
-  },
-  title: {
-    fontSize: "22px",
-    margin: 0,
-  },
-  subtitle: {
-    color: "#52606d",
-    lineHeight: 1.5,
-    margin: "6px 0 0",
-  },
-  body: {
-    display: "grid",
-    gap: "20px",
-    padding: "24px",
-  },
   form: {
     display: "grid",
     gap: "16px",
@@ -132,15 +107,11 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
   }
 
   return (
-    <section style={styles.section} aria-labelledby="interactions-title">
-      <header style={styles.header}>
-        <h2 id="interactions-title" style={styles.title}>
-          Interactions
-        </h2>
-        <p style={styles.subtitle}>Record calls, visits, messages, and meetings.</p>
-      </header>
-
-      <div style={styles.body}>
+    <SectionShell
+      titleId="interactions-title"
+      title="Interactions"
+      subtitle="Record calls, visits, messages, and meetings."
+    >
         <form style={styles.form} onSubmit={handleSubmit}>
           <div style={styles.formGrid}>
             <label style={sharedStyles.field}>
@@ -263,7 +234,6 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
             ))}
           </div>
         ) : null}
-      </div>
-    </section>
+    </SectionShell>
   );
 }

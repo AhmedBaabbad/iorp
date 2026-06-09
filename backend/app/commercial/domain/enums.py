@@ -30,3 +30,39 @@ class FollowUpStatus(str, Enum):
     PENDING = "pending"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
+
+
+class SampleStatus(str, Enum):
+    REQUESTED = "requested"
+    IN_PREPARATION = "in_preparation"
+    DELIVERED = "delivered"
+    EVALUATED = "evaluated"
+    CANCELLED = "cancelled"
+
+
+class SampleEvaluationResultStatus(str, Enum):
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    NEEDS_MODIFICATION = "needs_modification"
+
+
+class SampleEvaluationNextAction(str, Enum):
+    PROCEED_TO_QUOTE = "proceed_to_quote"
+    REVISE_SAMPLE = "revise_sample"
+    CLOSE_REQUEST = "close_request"
+    FURTHER_REVIEW = "further_review"
+
+
+class QuoteStatus(str, Enum):
+    DRAFT = "draft"
+    ISSUED = "issued"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    EXPIRED = "expired"
+
+
+class CommercialOrderStatus(str, Enum):
+    DRAFT = "draft"
+    CONFIRMED = "confirmed"
+    CANCELLED = "cancelled"
+    CONVERTED_TO_PRODUCTION = "converted_to_production"

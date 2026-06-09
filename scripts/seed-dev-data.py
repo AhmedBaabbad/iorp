@@ -1,10 +1,11 @@
-"""Seed one organization, two users, roles, permissions, customers, and sample
-commercial data for local development.  Safe to run multiple times — skips if
-the dev-org already exists.
+"""Seed one organization, two users, roles, permissions, customers, and Slice 2
+commercial data (samples, evaluations, quotes, orders) for local development.
+Skips if the dev-org already exists — drop and re-create the database to re-seed.
 """
 
 import sys
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
@@ -12,13 +13,28 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 from app.core.db import SessionLocal
 from app.core.security import hash_password
 from app.commercial.domain.enums import (
+    CommercialOrderStatus,
     CustomerStatus,
     FollowUpStatus,
     InteractionType,
     PriorityLevel,
+    QuoteStatus,
     RelationshipStage,
+    SampleEvaluationNextAction,
+    SampleEvaluationResultStatus,
+    SampleStatus,
 )
-from app.commercial.infrastructure.models import Customer, CustomerInteraction, FollowUp
+from app.commercial.infrastructure.models import (
+    CommercialOrder,
+    CommercialOrderItem,
+    Customer,
+    CustomerInteraction,
+    FollowUp,
+    Quote,
+    QuoteItem,
+    Sample,
+    SampleEvaluation,
+)
 from app.foundation.domain.enums import OrganizationStatus, UserStatus
 from app.foundation.infrastructure.models import (
     Organization,
@@ -40,22 +56,28 @@ PERMISSIONS = [
     dict(code="commercial:interactions:write",   name="Write Interactions",   module_name="commercial", action_name="interactions:write"),
     dict(code="commercial:follow_ups:read",      name="Read Follow-ups",      module_name="commercial", action_name="follow_ups:read"),
     dict(code="commercial:follow_ups:write",     name="Write Follow-ups",     module_name="commercial", action_name="follow_ups:write"),
+    dict(code="commercial:samples:read",         name="Read Samples",         module_name="commercial", action_name="samples:read"),
+    dict(code="commercial:samples:write",        name="Write Samples",        module_name="commercial", action_name="samples:write"),
+    dict(code="commercial:quotes:read",          name="Read Quotes",          module_name="commercial", action_name="quotes:read"),
+    dict(code="commercial:quotes:write",         name="Write Quotes",         module_name="commercial", action_name="quotes:write"),
+    dict(code="commercial:orders:read",          name="Read Orders",          module_name="commercial", action_name="orders:read"),
+    dict(code="commercial:orders:write",         name="Write Orders",         module_name="commercial", action_name="orders:write"),
 ]
 
 ROLES = [
-    dict(name="Admin",    code="admin",    description="Full access to all modules."),
+    dict(name="Admin",     code="admin",     description="Full access to all modules."),
     dict(name="Sales Rep", code="sales_rep", description="Commercial module access."),
 ]
 
 USERS = [
-    dict(full_name="Dev Admin",    email="admin@iorp-dev.com",  password="Admin1234!", role_code="admin"),
-    dict(full_name="Sales Rep",    email="sales@iorp-dev.com",  password="Sales1234!", role_code="sales_rep"),
+    dict(full_name="Dev Admin", email="admin@iorp-dev.com", password="Admin1234!", role_code="admin"),
+    dict(full_name="Sales Rep", email="sales@iorp-dev.com", password="Sales1234!", role_code="sales_rep"),
 ]
 
 CUSTOMERS = [
-    dict(customer_code="CUST-001", name="TechCorp Industries",    sector="Technology",  city="Dubai",    country="UAE",   relationship_stage=RelationshipStage.LEAD,     priority_level=PriorityLevel.HIGH,   notes="Warm lead from referral."),
-    dict(customer_code="CUST-002", name="BuildCo Contracting",    sector="Construction", city="Abu Dhabi", country="UAE",  relationship_stage=RelationshipStage.PROSPECT, priority_level=PriorityLevel.MEDIUM, notes="Submitted a quote in May."),
-    dict(customer_code="CUST-003", name="RetailPlus Distribution", sector="Retail",      city="Sharjah",  country="UAE",  relationship_stage=RelationshipStage.CUSTOMER, priority_level=PriorityLevel.LOW,    notes="Existing account, low activity."),
+    dict(customer_code="CUST-001", name="TechCorp Industries",     sector="Technology",   city="Dubai",     country="UAE", relationship_stage=RelationshipStage.LEAD,     priority_level=PriorityLevel.HIGH,   notes="Warm lead from referral."),
+    dict(customer_code="CUST-002", name="BuildCo Contracting",     sector="Construction", city="Abu Dhabi", country="UAE", relationship_stage=RelationshipStage.CUSTOMER, priority_level=PriorityLevel.MEDIUM, notes="Submitted a quote in May."),
+    dict(customer_code="CUST-003", name="RetailPlus Distribution", sector="Retail",       city="Sharjah",   country="UAE", relationship_stage=RelationshipStage.CUSTOMER, priority_level=PriorityLevel.LOW,    notes="Existing account, low activity."),
 ]
 
 
@@ -184,6 +206,111 @@ def seed() -> None:
             notes="Include pricing for the enterprise tier.",
         )
         db.add(follow_up)
+        db.flush()
+
+        # ── Slice 2 seed data ─────────────────────────────────────────────────
+
+        # Sample SAMP-001 on CUST-002 (BuildCo Contracting)
+        sample = Sample(
+            customer_id=customers[1].id,
+            sample_code="SAMP-001",
+            product_type="Steel Rod",
+            requested_spec_json={"grade": "S235", "diameter_mm": 12},
+            quantity_requested=Decimal("500.00"),
+            unit="kg",
+            request_date=datetime.now(timezone.utc) - timedelta(days=7),
+            status=SampleStatus.EVALUATED,
+            notes="Customer requested for structural trial.",
+            created_by_user_id=admin_user.id,
+        )
+        db.add(sample)
+        db.flush()
+
+        # Sample evaluation on SAMP-001
+        evaluation = SampleEvaluation(
+            sample_id=sample.id,
+            evaluation_date=datetime.now(timezone.utc) - timedelta(days=3),
+            result_status=SampleEvaluationResultStatus.ACCEPTED,
+            comments="Meets structural grade requirements. Customer approved.",
+            next_action=SampleEvaluationNextAction.PROCEED_TO_QUOTE,
+            evaluated_by_user_id=admin_user.id,
+        )
+        db.add(evaluation)
+        db.flush()
+
+        # Quote Q-2026-001 on CUST-002, linked to SAMP-001
+        _subtotal = Decimal("3010.00")
+        _discount = Decimal("60.00")
+        _tax = Decimal("0.00")
+        _total = _subtotal - _discount + _tax
+        quote = Quote(
+            organization_id=org.id,
+            customer_id=customers[1].id,
+            sample_id=sample.id,
+            quote_number="Q-2026-001",
+            issue_date=datetime.now(timezone.utc) - timedelta(days=2),
+            valid_until=datetime.now(timezone.utc) + timedelta(days=28),
+            status=QuoteStatus.ISSUED,
+            currency="SAR",
+            subtotal_amount=_subtotal,
+            discount_amount=_discount,
+            tax_amount=_tax,
+            total_amount=_total,
+            notes="Based on approved sample SAMP-001.",
+            created_by_user_id=admin_user.id,
+            items=[
+                QuoteItem(
+                    line_no=1,
+                    product_type="Steel Rod",
+                    quantity=Decimal("500.00"),
+                    unit="kg",
+                    unit_price=Decimal("4.50"),
+                    line_total=Decimal("2250.00"),
+                ),
+                QuoteItem(
+                    line_no=2,
+                    product_type="Rebar",
+                    quantity=Decimal("200.00"),
+                    unit="kg",
+                    unit_price=Decimal("3.80"),
+                    line_total=Decimal("760.00"),
+                ),
+            ],
+        )
+        db.add(quote)
+        db.flush()
+
+        # Commercial order ORD-2026-001 on CUST-002, linked to Q-2026-001
+        order = CommercialOrder(
+            organization_id=org.id,
+            customer_id=customers[1].id,
+            quote_id=quote.id,
+            order_number="ORD-2026-001",
+            order_date=datetime.now(timezone.utc) - timedelta(days=1),
+            status=CommercialOrderStatus.CONFIRMED,
+            requested_delivery_date=datetime.now(timezone.utc) + timedelta(days=14),
+            notes="Confirmed based on Q-2026-001.",
+            created_by_user_id=admin_user.id,
+            items=[
+                CommercialOrderItem(
+                    line_no=1,
+                    product_type="Steel Rod",
+                    quantity=Decimal("500.00"),
+                    unit="kg",
+                    agreed_unit_price=Decimal("4.50"),
+                    line_total=Decimal("2250.00"),
+                ),
+                CommercialOrderItem(
+                    line_no=2,
+                    product_type="Rebar",
+                    quantity=Decimal("200.00"),
+                    unit="kg",
+                    agreed_unit_price=Decimal("3.80"),
+                    line_total=Decimal("760.00"),
+                ),
+            ],
+        )
+        db.add(order)
 
         db.commit()
 
@@ -203,6 +330,11 @@ def seed() -> None:
         print(f"  Customers    : {len(customers)}  ({', '.join(c['customer_code'] for c in CUSTOMERS)})")
         print(f"  Interactions : 1  (on {customers[0].customer_code})")
         print(f"  Follow-ups   : 1  (on {customers[0].customer_code}, due in 4 days)")
+        print()
+        print(f"  Samples      : 1  (SAMP-001 on CUST-002, status=evaluated)")
+        print(f"  Evaluations  : 1  (on SAMP-001, result=accepted, next=proceed_to_quote)")
+        print(f"  Quotes       : 1  (Q-2026-001 on CUST-002, status=issued, total=SAR {_total:,.2f})")
+        print(f"  Orders       : 1  (ORD-2026-001 on CUST-002, status=confirmed)")
 
     finally:
         db.close()

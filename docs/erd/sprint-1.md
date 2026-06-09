@@ -131,13 +131,18 @@ foundation_users         1──* commercial_follow_ups            (assigned_use
 
 ---
 
-## Planned tables (not yet implemented)
+## Sprint 2 tables
 
-| Table | Sprint |
-|-------|--------|
-| `commercial_samples` | Sprint 2 |
-| `commercial_sample_evaluations` | Sprint 2 |
-| `commercial_quotes` | Sprint 2 |
-| `commercial_orders` | Sprint 3 |
-| Production module tables | Future |
-| Quality module tables | Future |
+All commercial pipeline tables were implemented in Sprint 2. See [sprint-2.md](sprint-2.md)
+for the full column-level reference.
+
+| Table                              | Status       |
+|------------------------------------|--------------|
+| `commercial_samples`               | ✓ Sprint 2   |
+| `commercial_sample_evaluations`    | ✓ Sprint 2   |
+| `commercial_quotes`                | ✓ Sprint 2   |
+| `commercial_quote_items`           | ✓ Sprint 2   |
+| `commercial_orders`                | ✓ Sprint 2   |
+| `commercial_order_items`           | ✓ Sprint 2   |
+| Production module tables           | Future       |
+| Quality module tables              | Future       |

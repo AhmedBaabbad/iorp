@@ -13,7 +13,7 @@ import {
   toCustomerCreateRequest,
   type CustomerFormValues,
 } from "./customer-form";
-import { PageFrame } from "./customer-page-shell";
+import { PageFrame } from "@/components/layout/page-frame";
 
 const styles: Record<string, CSSProperties> = {
   panel: {

@@ -19,7 +19,7 @@ export type CustomerListItem = {
 export type CustomerDetail = CustomerListItem & {
   organization_id: string;
   opportunity_source: string | null;
-  estimated_consumption: string | number | null;
+  estimated_consumption: string | null;
   assigned_sales_user_id: string | null;
   notes: string | null;
   created_at: string;

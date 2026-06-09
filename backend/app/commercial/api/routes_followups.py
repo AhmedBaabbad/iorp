@@ -13,11 +13,14 @@ from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db
 
 
-router = APIRouter(prefix="/customers/{customer_id}/follow-ups", tags=["follow-ups"])
-global_router = APIRouter(tags=["follow-ups"])
+customer_router = APIRouter(
+    prefix="/customers/{customer_id}/follow-ups",
+    tags=["commercial-follow-ups"],
+)
+router = APIRouter(tags=["commercial-follow-ups"])
 
 
-@router.post(
+@customer_router.post(
     "",
     response_model=FollowUpRead,
     status_code=status.HTTP_201_CREATED,
@@ -39,7 +42,7 @@ def create_follow_up(
     return follow_up
 
 
-@global_router.get("/follow-ups", response_model=list[FollowUpRead])
+@router.get("/follow-ups", response_model=list[FollowUpRead])
 def list_follow_ups(
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
@@ -48,7 +51,7 @@ def list_follow_ups(
     return service.list_follow_ups(tenant)
 
 
-@router.get("", response_model=list[FollowUpRead])
+@customer_router.get("", response_model=list[FollowUpRead])
 def list_follow_ups_for_customer(
     customer_id: UUID,
     tenant: TenantContext = Depends(get_current_tenant),
@@ -61,7 +64,7 @@ def list_follow_ups_for_customer(
     return follow_ups
 
 
-@global_router.patch("/follow-ups/{follow_up_id}/complete", response_model=FollowUpRead)
+@router.patch("/follow-ups/{follow_up_id}/complete", response_model=FollowUpRead)
 def complete_follow_up(
     follow_up_id: UUID,
     payload: FollowUpComplete,
