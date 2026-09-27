@@ -1,0 +1,360 @@
+{
+  "user": {
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "locked": "Locked"
+    }
+  },
+  "qualityCheck": {
+    "status": {
+      "open": "Open",
+      "under_inspection": "Under Inspection",
+      "closed": "Closed"
+    },
+    "result": {
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "conditional_accept": "Conditional Accept",
+      "needs_reinspection": "Needs Re-inspection"
+    },
+    "checkType": {
+      "in_process_inspection": "In Process Inspection",
+      "finished_product_inspection": "Finished Product Inspection",
+      "sample_inspection": "Sample Inspection",
+      "reinspection": "Reinspection",
+      "issue_triggered": "Issue Triggered",
+      "general": "General"
+    }
+  },
+  "qualityRejection": {
+    "rejectionReason": {
+      "failed_quality_check": "Failed Quality Check",
+      "critical_defect": "Critical Defect",
+      "out_of_spec": "Out of Specification",
+      "dimension_failure": "Dimension Failure",
+      "surface_failure": "Surface Failure",
+      "packaging_failure": "Packaging Failure",
+      "labeling_issue": "Labeling Issue",
+      "other": "Other"
+    },
+    "disposition": {
+      "hold": "Hold",
+      "scrap": "Scrap",
+      "rework": "Rework",
+      "return_to_process": "Return to Process"
+    },
+    "dispositionStatus": {
+      "pending": "Pending",
+      "executed": "Executed"
+    }
+  },
+  "ncrReport": {
+    "status": {
+      "draft": "Draft",
+      "open": "Open",
+      "under_review": "Under Review",
+      "closed": "Closed"
+    },
+    "sourceType": {
+      "internal_production": "Internal Production",
+      "incoming_material": "Incoming Material",
+      "supplier": "Supplier",
+      "warehouse": "Warehouse",
+      "customer_return": "Customer Return",
+      "other": "Other"
+    },
+    "reportType": {
+      "material_non_conformance": "Material Non-Conformance",
+      "product_non_conformance": "Product Non-Conformance",
+      "process_non_conformance": "Process Non-Conformance",
+      "packaging_non_conformance": "Packaging Non-Conformance",
+      "documentation_non_conformance": "Documentation Non-Conformance",
+      "other": "Other"
+    }
+  },
+  "correctiveAction": {
+    "status": {
+      "open": "Open",
+      "in_progress": "In Progress",
+      "completed": "Completed",
+      "closed": "Closed"
+    },
+    "priority": {
+      "urgent": "Urgent",
+      "high": "High",
+      "normal": "Normal",
+      "low": "Low"
+    },
+    "actionType": {
+      "corrective": "Corrective",
+      "preventive": "Preventive",
+      "improvement": "Improvement",
+      "containment": "Containment"
+    },
+    "sourceType": {
+      "quality_rejection": "Quality Rejection",
+      "ncr_report": "NCR Report",
+      "quality_defect": "Quality Defect",
+      "ncr_item": "NCR Item",
+      "manual": "Manual"
+    }
+  },
+  "productionOrder": {
+    "status": {
+      "draft": "Draft",
+      "released": "Released",
+      "in_progress": "In Progress",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "priority": {
+      "urgent": "Urgent",
+      "normal": "Normal",
+      "low": "Low",
+      "high": "High"
+    }
+  },
+  "workCenter": {
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "under_maintenance": "Under Maintenance"
+    },
+    "centerType": {
+      "extrusion": "Extrusion",
+      "rewinding": "Rewinding",
+      "packing": "Packing",
+      "quality_station": "Quality Station",
+      "generic": "Generic"
+    }
+  },
+  "qualityDefect": {
+    "defectCategory": {
+      "dimension": "Dimension",
+      "thickness": "Thickness / Gauge",
+      "surface": "Surface Defect",
+      "color": "Color Deviation",
+      "strength": "Strength Failure",
+      "winding": "Winding Defect",
+      "weight": "Weight Out of Tolerance",
+      "packaging": "Packaging Defect",
+      "labeling": "Labeling Error",
+      "finish": "Finish / Texture",
+      "other": "Other"
+    },
+    "severity": {
+      "minor": "Minor",
+      "major": "Major",
+      "critical": "Critical"
+    }
+  },
+  "wasteRecord": {
+    "wasteCategory": {
+      "startup_loss": "Startup Loss",
+      "trim_loss": "Trim Loss",
+      "setup_loss": "Setup Loss",
+      "rejected_output": "Rejected Output",
+      "breakage": "Breakage",
+      "rewinding_loss": "Rewinding Loss",
+      "end_of_roll_loss": "End of Roll Loss",
+      "material_loss": "Material Loss",
+      "contamination_loss": "Contamination Loss",
+      "other": "Other"
+    }
+  },
+  "actionFollowUp": {
+    "status": {
+      "on_track": "On Track",
+      "delayed": "Delayed",
+      "blocked": "Blocked",
+      "completed": "Completed"
+    }
+  },
+  "closureVerification": {
+    "verificationResult": {
+      "effective": "Effective",
+      "partially_effective": "Partially Effective",
+      "not_effective": "Not Effective"
+    },
+    "closureStatus": {
+      "closed": "Closed",
+      "re_opened": "Re-opened"
+    }
+  },
+  "downtimeEvent": {
+    "status": {
+      "open": "Open",
+      "closed": "Closed"
+    },
+    "category": {
+      "machine": "Machine",
+      "material": "Material",
+      "manpower": "Manpower",
+      "quality": "Quality",
+      "utilities": "Utilities",
+      "setup": "Setup",
+      "other": "Other"
+    }
+  },
+  "shiftDefinition": {
+    "shiftType": {
+      "morning": "Morning",
+      "evening": "Evening",
+      "night": "Night",
+      "custom": "Custom"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    }
+  },
+  "shiftReport": {
+    "status": {
+      "draft": "Draft",
+      "submitted": "Submitted",
+      "approved": "Approved"
+    }
+  },
+  "productionOutput": {
+    "status": {
+      "recorded": "Recorded",
+      "verified": "Verified",
+      "posted": "Posted"
+    }
+  },
+  "workforceMember": {
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "suspended": "Suspended",
+      "terminated": "Terminated"
+    },
+    "employmentType": {
+      "employee": "Employee",
+      "contractor": "Contractor",
+      "temporary": "Temporary"
+    },
+    "workerType": {
+      "factory_manager": "Factory Manager",
+      "production_manager": "Production Manager",
+      "supervisor": "Shift Supervisor",
+      "operator": "Operator",
+      "technician": "Operations Technician",
+      "maintenance_technician": "Maintenance Technician",
+      "helper": "Helper",
+      "quality_inspector": "Quality Inspector",
+      "warehouse_staff": "Warehouse Staff",
+      "logistics_coordinator": "Logistics Coordinator",
+      "sales_manager": "Sales Manager",
+      "sales_rep": "Sales Representative",
+      "procurement_officer": "Procurement Officer",
+      "hr_officer": "HR Officer",
+      "accountant": "Accountant",
+      "safety_officer": "Safety Officer",
+      "admin_support": "Admin Support"
+    }
+  },
+  "customer": {
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "on_hold": "On Hold",
+      "archived": "Archived",
+      "blacklisted": "Blacklisted"
+    },
+    "relationshipStage": {
+      "lead": "Lead",
+      "contacted": "Contacted",
+      "qualified": "Qualified",
+      "prospect": "Prospect",
+      "negotiating": "Negotiating",
+      "trial_customer": "Trial Customer",
+      "active_customer": "Active Customer",
+      "repeat_customer": "Repeat Customer",
+      "strategic_customer": "Strategic Customer"
+    },
+    "priorityLevel": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "urgent": "Urgent"
+    }
+  },
+  "interaction": {
+    "interactionType": {
+      "call": "Phone Call",
+      "visit": "Site Visit",
+      "whatsapp": "WhatsApp",
+      "meeting": "Meeting",
+      "message": "Message",
+      "email": "Email",
+      "other": "Other"
+    },
+    "outcome": {
+      "positive": "Positive",
+      "neutral": "Neutral",
+      "negative": "Negative",
+      "pending": "Pending"
+    }
+  },
+  "followUp": {
+    "status": {
+      "pending": "Pending",
+      "in_progress": "In Progress",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "overdue": "Overdue"
+    },
+    "priority": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "urgent": "Urgent"
+    }
+  },
+  "sample": {
+    "status": {
+      "requested": "Requested",
+      "in_preparation": "In Preparation",
+      "delivered": "Delivered",
+      "evaluated": "Evaluated",
+      "cancelled": "Cancelled"
+    },
+    "decision": {
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "rejected": "Rejected"
+    }
+  },
+  "sampleEvaluation": {
+    "resultStatus": {
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "needs_modification": "Needs Modification"
+    },
+    "nextAction": {
+      "proceed_to_quote": "Proceed to Quote",
+      "revise_sample": "Revise Sample",
+      "close_request": "Close Request",
+      "further_review": "Further Review"
+    }
+  },
+  "quote": {
+    "status": {
+      "draft": "Draft",
+      "issued": "Issued",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "expired": "Expired"
+    }
+  },
+  "commercialOrder": {
+    "status": {
+      "draft": "Draft",
+      "confirmed": "Confirmed",
+      "converted_to_production": "Converted to Production",
+      "cancelled": "Cancelled"
+    }
+  }
+}

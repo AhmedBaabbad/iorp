@@ -1,0 +1,59 @@
+{
+  "pageTitle": "تهيئة النظام",
+  "subtitle": "إعداد النظام لأول مرة",
+  "languageSwitcher": "اللغة",
+  "steps": {
+    "protection": "حماية التهيئة",
+    "platformOwner": "مالك المنصة",
+    "organization": "المنظمة الأولى",
+    "orgAdmin": "مدير المنظمة",
+    "review": "المراجعة"
+  },
+  "fields": {
+    "bootstrapToken": "رمز التهيئة",
+    "fullName": "الاسم الكامل",
+    "email": "البريد الإلكتروني",
+    "phone": "الهاتف",
+    "password": "كلمة المرور",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "orgName": "اسم المنظمة",
+    "orgCode": "رمز المنظمة",
+    "orgCodeHint": "أحرف وأرقام وشرطات فقط — مثال: ACME. هذا معرّف قصير تختاره أنت لمنظمتك، وليس تلقائيًا.",
+    "industryType": "نوع النشاط",
+    "timezone": "المنطقة الزمنية",
+    "defaultLocale": "اللغة الافتراضية",
+    "orgLogo": "شعار المنظمة",
+    "acceptedFormats": "PNG وJPG وWebP — الحد الأقصى 2 ميجابايت",
+    "arabic": "العربية",
+    "english": "الإنجليزية"
+  },
+  "buttons": {
+    "next": "التالي",
+    "back": "السابق",
+    "completeSetup": "إكمال التهيئة",
+    "submitting": "جاري التهيئة..."
+  },
+  "success": {
+    "title": "تمت تهيئة النظام بنجاح!",
+    "message": "تم إنشاء المنصة والمنظمة الأولى ومدير المنظمة بنجاح.",
+    "goToLogin": "الانتقال إلى تسجيل الدخول"
+  },
+  "alreadyInitialized": {
+    "title": "تمت تهيئة النظام مسبقًا",
+    "message": "هذا النظام مهيأ بالفعل ولا يمكن تشغيل التهيئة مرة أخرى.",
+    "goToLogin": "الانتقال إلى تسجيل الدخول"
+  },
+  "errors": {
+    "setupFailed": "فشلت عملية التهيئة. راجع المعلومات وحاول مرة أخرى.",
+    "invalidBootstrapToken": "رمز التهيئة غير صحيح. يجب أن يطابق تمامًا قيمة IORP_BOOTSTRAP_TOKEN في ملف .env الخاص بالسيرفر الخلفي.",
+    "alreadyInitializedDuringSubmit": "تمت تهيئة النظام للتو من مكان آخر. أعد تحميل الصفحة للانتقال لتسجيل الدخول.",
+    "logoTooLarge": "يتجاوز حجم الشعار الحد الأقصى المسموح وهو 2 ميجابايت.",
+    "bootstrapTokenRequired": "رمز التهيئة مطلوب.",
+    "passwordTooShort": "يجب ألا تقل كلمة المرور عن {min} حرفًا.",
+    "passwordMismatch": "كلمة المرور وتأكيدها غير متطابقين.",
+    "passwordEqualsEmail": "لا يمكن أن تكون كلمة المرور مطابقة للبريد الإلكتروني.",
+    "invalidOrgCode": "يجب أن يحتوي رمز المنظمة على أحرف وأرقام وشرطات فقط.",
+    "invalidTimezone": "أدخل منطقة زمنية صحيحة بصيغة IANA، مثل Asia/Riyadh.",
+    "emailsMustDiffer": "يجب أن يختلف البريد الإلكتروني لمالك المنصة عن بريد مدير المنظمة."
+  }
+}

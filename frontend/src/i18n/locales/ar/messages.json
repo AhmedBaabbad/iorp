@@ -1,0 +1,81 @@
+{
+  "validation": {
+    "required": "هذا الحقل مطلوب",
+    "requiredField": "حقل {field} مطلوب",
+    "invalidEmail": "البريد الإلكتروني غير صالح",
+    "invalidValue": "القيمة المدخلة غير صحيحة",
+    "mustBePositive": "يجب أن تكون القيمة أكبر من صفر",
+    "mustBeGreaterThan": "يجب أن تكون القيمة أكبر من {min}",
+    "quantityConstraint": "الكمية المقبولة + الكمية المرفوضة يجب أن تساوي الكمية المفحوصة",
+    "rejectionNotesRequired": "مبررات الرفض مطلوبة وفق متطلبات الجودة",
+    "titleRequired": "العنوان مطلوب",
+    "descriptionRequired": "الوصف مطلوب",
+    "dueDateRequired": "تاريخ الاستحقاق مطلوب",
+    "ownerRequired": "يجب تحديد المسؤول عن الإجراء",
+    "selectionRequired": "يرجى الاختيار من القائمة",
+    "dateRequired": "التاريخ مطلوب",
+    "resultRequired": "يجب تحديد النتيجة قبل المتابعة",
+    "progressRequired": "ملاحظة التقدم مطلوبة",
+    "notesRequired": "الملاحظات مطلوبة",
+    "defectCountMin": "يجب أن يكون عدد العيوب أكبر من صفر",
+    "itemNameRequired": "اسم العنصر مطلوب",
+    "issueDescriptionRequired": "وصف المشكلة مطلوب"
+  },
+  "success": {
+    "created": "تم الإنشاء بنجاح",
+    "updated": "تم التحديث بنجاح",
+    "saved": "تم الحفظ بنجاح",
+    "deleted": "تم الحذف بنجاح",
+    "submitted": "تم الإرسال بنجاح",
+    "statusChanged": "تم تغيير الحالة بنجاح",
+    "actionCompleted": "تمت العملية بنجاح",
+    "inspectionStarted": "تم بدء الفحص",
+    "inspectionClosed": "تم إغلاق الفحص",
+    "downtimeEnded": "تم تسجيل نهاية التوقف",
+    "reportSubmitted": "تم إرسال التقرير",
+    "reportApproved": "تم اعتماد التقرير",
+    "dispositionExecuted": "تم تنفيذ القرار",
+    "ncrOpened": "تم فتح تقرير عدم المطابقة",
+    "ncrClosed": "تم إغلاق تقرير عدم المطابقة",
+    "actionStarted": "تم بدء الإجراء التصحيحي",
+    "actionClosed": "تم إغلاق الإجراء التصحيحي"
+  },
+  "error": {
+    "unexpected": "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.",
+    "fetchFailed": "تعذر جلب البيانات. يرجى تحديث الصفحة.",
+    "saveFailed": "تعذر حفظ البيانات. يرجى المحاولة مرة أخرى.",
+    "notFound": "العنصر المطلوب غير موجود.",
+    "forbidden": "لا تملك الصلاحية اللازمة لهذه العملية.",
+    "networkError": "تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.",
+    "timeout": "انتهت مهلة الطلب. يرجى المحاولة مرة أخرى.",
+    "conflict": "البيانات التي تحاول إنشاءها موجودة بالفعل.",
+    "validationFailed": "بعض الحقول تحتوي على أخطاء. يرجى المراجعة.",
+    "sessionExpired": "انتهت جلستك. يرجى تسجيل الدخول مجددًا.",
+    "tryAgain": "يرجى المحاولة مرة أخرى.",
+    "contactSupport": "إذا استمرت المشكلة، يرجى التواصل مع الدعم الفني."
+  },
+  "loading": {
+    "default": "جاري التحميل...",
+    "saving": "جاري الحفظ...",
+    "submitting": "جاري الإرسال...",
+    "deleting": "جاري الحذف...",
+    "fetching": "جاري استرداد البيانات..."
+  },
+  "empty": {
+    "default": "لا توجد بيانات متاحة",
+    "noResults": "لا توجد نتائج",
+    "noItems": "لا توجد عناصر بعد",
+    "noRecords": "لا توجد سجلات متاحة",
+    "addFirst": "ابدأ بإضافة عنصر جديد"
+  },
+  "status": {
+    "statusGuardClosed": "لا يمكن تنفيذ هذه العملية لأن السجل مغلق.",
+    "statusGuardCancelled": "لا يمكن تنفيذ هذه العملية على سجل ملغي."
+  },
+  "confirm": {
+    "deletePrompt": "هل أنت متأكد من حذف هذا العنصر؟",
+    "cannotUndo": "لا يمكن التراجع عن هذا الإجراء.",
+    "confirm": "تأكيد",
+    "cancel": "إلغاء"
+  }
+}

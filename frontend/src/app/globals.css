@@ -1,0 +1,211 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --page-bg: #f4f7fb;
+  --surface: #ffffff;
+  --surface-muted: #f1f5f9;
+  --surface-raised: #ffffff;
+  --text: #172033;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+  --border: #dfe7f1;
+  --border-strong: #cbd5e1;
+  --accent: #2563eb;
+  --accent-strong: #1d4ed8;
+  --accent-soft: #e8f0ff;
+  --success: #15803d;
+  --success-soft: #dcfce7;
+  --warning: #b45309;
+  --warning-soft: #fef3c7;
+  --danger: #be123c;
+  --danger-soft: #ffe4e6;
+  --purple: #7e22ce;
+  --purple-soft: #f3e8ff;
+  --teal: #0f766e;
+  --teal-soft: #ccfbf1;
+  --focus: #3b82f6;
+  --shadow-xs: 0 1px 3px rgba(15, 23, 42, .08);
+  --shadow-sm: 0 8px 24px rgba(15, 23, 42, .07);
+  --shadow-lg: 0 20px 55px rgba(15, 23, 42, .13);
+}
+
+:root[data-theme="dark"] {
+  --page-bg: #0b1120;
+  --surface: #111a2d;
+  --surface-muted: #172238;
+  --surface-raised: #152038;
+  --text: #edf4ff;
+  --text-muted: #a8b6cc;
+  --text-subtle: #718099;
+  --border: #283651;
+  --border-strong: #3a4b68;
+  --accent: #79a7ff;
+  --accent-strong: #a7c5ff;
+  --accent-soft: #172c52;
+  --success: #69d895;
+  --success-soft: #153b2a;
+  --warning: #f6bd60;
+  --warning-soft: #443119;
+  --danger: #fb8fa5;
+  --danger-soft: #4a1e2b;
+  --purple: #c69af5;
+  --purple-soft: #33234a;
+  --teal: #70d9ce;
+  --teal-soft: #173a3a;
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, .3);
+  --shadow-sm: 0 10px 30px rgba(0, 0, 0, .22);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, .35);
+}
+
+body {
+  margin: 0;
+  background: var(--page-bg);
+  color: var(--text);
+}
+
+input, textarea, select, button { color-scheme: inherit; }
+input, textarea, select { background-color: var(--surface); color: var(--text); }
+::placeholder { color: var(--text-subtle); }
+
+.iorp-shell {
+  min-height: 100vh;
+  background: var(--page-bg);
+}
+
+.iorp-sidebar {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 260px;
+  background: var(--surface);
+  border-inline-end: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 40;
+  transition: inset-inline-start 0.25s ease, width 0.2s ease;
+}
+
+.iorp-sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+}
+
+.iorp-sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.iorp-sidebar-nav::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+
+.iorp-content {
+  margin-inline-start: 260px;
+  min-height: 100vh;
+  transition: margin-inline-start 0.2s ease;
+}
+
+.iorp-content main {
+  background: var(--page-bg);
+}
+
+.iorp-hamburger {
+  display: none;
+}
+
+.iorp-backdrop {
+  display: none;
+}
+
+.iorp-nav-link {
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.iorp-nav-link:hover {
+  background: var(--surface-muted);
+}
+
+.iorp-icon-button:hover {
+  background: var(--surface-muted);
+}
+
+.iorp-kpi-card {
+  transition: box-shadow 0.2s ease;
+}
+
+.iorp-kpi-card:hover {
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
+}
+
+.iorp-quick-action:hover {
+  background: var(--surface-muted);
+  border-color: var(--border-strong);
+}
+
+@keyframes iorp-shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: 200px 0;
+  }
+}
+
+.iorp-skeleton {
+  background: linear-gradient(90deg, var(--surface-muted) 25%, var(--border) 37%, var(--surface-muted) 63%);
+  background-size: 400px 100%;
+  animation: iorp-shimmer 1.4s ease infinite;
+  border-radius: 8px;
+}
+
+@media (max-width: 1023px) {
+  .iorp-sidebar {
+    width: 76px;
+  }
+  .iorp-content {
+    margin-inline-start: 76px;
+  }
+  .iorp-nav-label,
+  .iorp-section-label,
+  .iorp-user-details,
+  .iorp-lang-label,
+  .iorp-brand-text {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .iorp-sidebar {
+    width: 264px;
+    inset-inline-start: -264px;
+  }
+  .iorp-sidebar.iorp-sidebar-open {
+    inset-inline-start: 0;
+  }
+  .iorp-content {
+    margin-inline-start: 0;
+  }
+  .iorp-nav-label,
+  .iorp-section-label,
+  .iorp-user-details,
+  .iorp-lang-label,
+  .iorp-brand-text {
+    display: unset;
+  }
+  .iorp-hamburger {
+    display: inline-flex;
+  }
+  .iorp-backdrop.iorp-backdrop-open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+    z-index: 39;
+  }
+  .iorp-content main {
+    padding: 18px 16px 32px !important;
+  }
+}

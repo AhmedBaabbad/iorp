@@ -58,7 +58,7 @@ def test_login_inactive_user(client, db, test_org):
         "/api/v1/auth/login",
         json={"email": "inactive@example.com", "password": "Test1234!"},
     )
-    assert resp.status_code == 401
+    assert resp.status_code == 403
 
 
 # ── /me ───────────────────────────────────────────────────────────────────────

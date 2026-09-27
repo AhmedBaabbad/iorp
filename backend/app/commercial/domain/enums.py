@@ -4,12 +4,21 @@ from enum import Enum
 class CustomerStatus(str, Enum):
     ACTIVE = "active"
     INACTIVE = "inactive"
+    ON_HOLD = "on_hold"
+    ARCHIVED = "archived"
+    BLACKLISTED = "blacklisted"
 
 
 class RelationshipStage(str, Enum):
     LEAD = "lead"
+    CONTACTED = "contacted"
+    QUALIFIED = "qualified"
     PROSPECT = "prospect"
-    CUSTOMER = "customer"
+    NEGOTIATING = "negotiating"
+    TRIAL_CUSTOMER = "trial_customer"
+    ACTIVE_CUSTOMER = "active_customer"
+    REPEAT_CUSTOMER = "repeat_customer"
+    STRATEGIC_CUSTOMER = "strategic_customer"
 
 
 class PriorityLevel(str, Enum):
@@ -28,8 +37,20 @@ class InteractionType(str, Enum):
 
 class FollowUpStatus(str, Enum):
     PENDING = "pending"
+    IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
+
+
+class FollowUpPriority(str, Enum):
+    """Dedicated priority scale for FollowUp -- intentionally NOT the shared
+    PriorityLevel used by Customer, so adding URGENT here can never leak
+    into customer_priority_level (they are separate Postgres enum types)."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    URGENT = "urgent"
 
 
 class SampleStatus(str, Enum):
@@ -38,6 +59,12 @@ class SampleStatus(str, Enum):
     DELIVERED = "delivered"
     EVALUATED = "evaluated"
     CANCELLED = "cancelled"
+
+
+class SampleDecision(str, Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
 
 
 class SampleEvaluationResultStatus(str, Enum):

@@ -4,15 +4,17 @@ from uuid import UUID
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.commercial.api.schemas import QuoteCreate, QuoteItemCreate, QuoteUpdate
+from app.commercial.api.schemas import QuoteCreate, QuoteDeletionImpact, QuoteItemCreate, QuoteUpdate
 from app.commercial.domain.enums import QuoteStatus
 from app.commercial.infrastructure.models import Quote, QuoteItem
 from app.commercial.infrastructure.repositories import (
+    CommercialOrderRepository,
     CustomerRepository,
     QuoteRepository,
     SampleRepository,
 )
 from app.core.tenancy import TenantContext
+from app.core.utils import utc_now
 
 
 class QuoteService:
@@ -21,6 +23,7 @@ class QuoteService:
         self.customers = CustomerRepository(db)
         self.samples = SampleRepository(db)
         self.quotes = QuoteRepository(db)
+        self.orders = CommercialOrderRepository(db)
 
     @staticmethod
     def _build_quote_items(items: list[QuoteItemCreate]) -> list[QuoteItem]:
@@ -49,6 +52,21 @@ class QuoteService:
             raise ValueError("Quote total cannot be negative.")
         return subtotal_amount, total_amount
 
+    def _generate_quote_number(self, tenant: TenantContext) -> str:
+        year = utc_now().year
+        highest_sequence = self.quotes.get_highest_quote_number_sequence(
+            tenant.organization_id,
+            year,
+        )
+        self.quotes.ensure_code_counter(tenant.organization_id, year, highest_sequence)
+
+        counter = self.quotes.get_code_counter_for_update(tenant.organization_id, year)
+        if counter is None:
+            raise ValueError("Quote number counter could not be initialized.")
+
+        counter.last_value += 1
+        return f"RFQ-{year}-{counter.last_value:04d}"
+
     def create_quote(
         self,
         tenant: TenantContext,
@@ -58,10 +76,6 @@ class QuoteService:
         customer = self.customers.get_by_id(tenant.organization_id, customer_id)
         if customer is None:
             return None
-
-        existing = self.quotes.get_by_number(tenant.organization_id, data.quote_number)
-        if existing is not None:
-            raise ValueError(f"Quote number '{data.quote_number}' already exists.")
 
         if data.sample_id is not None:
             sample = self.samples.get_by_id(tenant.organization_id, data.sample_id)
@@ -78,6 +92,7 @@ class QuoteService:
         quote = Quote(
             organization_id=tenant.organization_id,
             customer_id=customer.id,
+            quote_number=self._generate_quote_number(tenant),
             created_by_user_id=tenant.user_id,
             status=QuoteStatus.DRAFT,
             subtotal_amount=subtotal_amount,
@@ -112,6 +127,36 @@ class QuoteService:
     def get_quote(self, tenant: TenantContext, quote_id: UUID) -> Quote | None:
         return self.quotes.get_by_id(tenant.organization_id, quote_id)
 
+    def get_deletion_impact(
+        self,
+        tenant: TenantContext,
+        quote_id: UUID,
+    ) -> QuoteDeletionImpact | None:
+        quote = self.quotes.get_by_id(tenant.organization_id, quote_id)
+        if quote is None:
+            return None
+
+        orders = self.orders.count_by_quote(quote.id)
+        return QuoteDeletionImpact(
+            items=len(quote.items),
+            orders=orders,
+            is_blocked=orders > 0,
+        )
+
+    def delete_quote(self, tenant: TenantContext, quote_id: UUID) -> bool:
+        quote = self.quotes.get_by_id(tenant.organization_id, quote_id)
+        if quote is None:
+            return False
+
+        if self.orders.count_by_quote(quote.id) > 0:
+            raise ValueError(
+                "Cannot delete a quote that is referenced by orders. Remove the orders first.",
+            )
+
+        self.quotes.delete(quote)
+        self.db.commit()
+        return True
+
     def update_quote(
         self,
         tenant: TenantContext,
@@ -124,12 +169,6 @@ class QuoteService:
 
         payload = data.model_dump(exclude_unset=True)
         items_payload = payload.pop("items", None)
-
-        new_quote_number = payload.get("quote_number")
-        if new_quote_number is not None and new_quote_number != quote.quote_number:
-            existing = self.quotes.get_by_number(tenant.organization_id, new_quote_number)
-            if existing is not None and existing.id != quote.id:
-                raise ValueError(f"Quote number '{new_quote_number}' already exists.")
 
         if "sample_id" in payload and payload["sample_id"] is not None:
             sample = self.samples.get_by_id(tenant.organization_id, payload["sample_id"])

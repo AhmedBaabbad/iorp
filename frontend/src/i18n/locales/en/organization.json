@@ -1,0 +1,22 @@
+{
+  "profileTitle": "Organization Profile",
+  "profileSubtitle": "Manage organization information and branding",
+  "section": "Administration",
+  "loading": "Loading organization profile...",
+  "loadError": "Could not load the organization profile.",
+  "fields": { "name": "Organization Name", "code": "Organization Code", "industryType": "Industry Type", "timezone": "Timezone", "defaultLocale": "Default Language", "status": "Status", "logo": "Organization Logo", "createdAt": "Created At", "updatedAt": "Last Updated" },
+  "codeImmutable": "Organization code is permanent and cannot be changed",
+  "statusManagedByPlatform": "Organization status is managed by platform administration",
+  "uploadLogo": "Upload Logo", "replaceLogo": "Replace Logo", "removeLogo": "Remove Logo",
+  "confirmRemoveLogo": "Are you sure you want to remove the organization logo?",
+  "confirmRemoveButton": "Yes, Remove",
+  "logoUploaded": "Logo uploaded successfully", "logoReplaced": "Logo replaced successfully", "logoRemoved": "Logo removed successfully",
+  "logoRequirements": "PNG, JPG, WebP — Max 2 MB", "logoTooLarge": "Logo file exceeds the maximum size (2 MB)",
+  "logoInvalidType": "Unsupported file type. Allowed: PNG, JPG, WebP", "logoUploadError": "Logo operation failed. Please try again.",
+  "saveButton": "Save Changes", "saving": "Saving...", "updateSuccess": "Organization settings updated successfully", "updateError": "Failed to update settings. Please try again.",
+  "codeCannotChange": "Organization code cannot be changed", "invalidTimezone": "Invalid timezone", "invalidLocale": "Unsupported language",
+  "readOnlyNotice": "You do not have permission to edit organization settings", "brandingReadOnly": "You do not have permission to modify the organization logo",
+  "noLogo": "No logo", "logoSection": "Logo & Branding", "infoSection": "Organization Information",
+  "localeOptions": { "ar": "Arabic", "en": "English" },
+  "statuses": { "provisioning": "Provisioning", "active": "Active", "suspended": "Suspended", "inactive": "Inactive", "archived": "Archived" }
+}

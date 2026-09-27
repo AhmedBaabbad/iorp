@@ -7,8 +7,9 @@ from app.commercial.api.schemas import (
     CommercialOrderCreate,
     CommercialOrderItemCreate,
     CommercialOrderUpdate,
+    OrderDeletionImpact,
 )
-from app.commercial.domain.enums import CommercialOrderStatus, QuoteStatus
+from app.commercial.domain.enums import CommercialOrderStatus
 from app.commercial.infrastructure.models import CommercialOrder, CommercialOrderItem
 from app.commercial.infrastructure.repositories import (
     CommercialOrderRepository,
@@ -16,6 +17,7 @@ from app.commercial.infrastructure.repositories import (
     QuoteRepository,
 )
 from app.core.tenancy import TenantContext
+from app.core.utils import utc_now
 
 
 class OrderService:
@@ -44,6 +46,16 @@ class OrderService:
             for item in items
         ]
 
+    def _generate_order_number(self, tenant: TenantContext) -> str:
+        year = utc_now().year
+        highest_sequence = self.orders.get_highest_order_number_sequence(tenant.organization_id, year)
+        self.orders.ensure_code_counter(tenant.organization_id, year, highest_sequence)
+        counter = self.orders.get_code_counter_for_update(tenant.organization_id, year)
+        if counter is None:
+            raise ValueError("Order number counter could not be initialized.")
+        counter.last_value += 1
+        return f"RFS-{year}-{counter.last_value:04d}"
+
     def create_order(
         self,
         tenant: TenantContext,
@@ -54,20 +66,15 @@ class OrderService:
         if customer is None:
             return None
 
-        existing = self.orders.get_by_number(tenant.organization_id, data.order_number)
-        if existing is not None:
-            raise ValueError(f"Order number '{data.order_number}' already exists.")
-
         if data.quote_id is not None:
             quote = self.quotes.get_by_id(tenant.organization_id, data.quote_id)
             if quote is None or quote.customer_id != customer.id:
                 raise ValueError("Quote must belong to the target customer.")
-            if quote.status not in (QuoteStatus.ISSUED, QuoteStatus.ACCEPTED):
-                raise ValueError("Only an issued or accepted quote can be linked to an order.")
 
         order = CommercialOrder(
             organization_id=tenant.organization_id,
             customer_id=customer.id,
+            order_number=self._generate_order_number(tenant),
             created_by_user_id=tenant.user_id,
             status=CommercialOrderStatus.DRAFT,
             items=self._build_order_items(data.items),
@@ -113,18 +120,10 @@ class OrderService:
         payload = data.model_dump(exclude_unset=True)
         items_payload = payload.pop("items", None)
 
-        new_order_number = payload.get("order_number")
-        if new_order_number is not None and new_order_number != order.order_number:
-            existing = self.orders.get_by_number(tenant.organization_id, new_order_number)
-            if existing is not None and existing.id != order.id:
-                raise ValueError(f"Order number '{new_order_number}' already exists.")
-
         if "quote_id" in payload and payload["quote_id"] is not None:
             quote = self.quotes.get_by_id(tenant.organization_id, payload["quote_id"])
             if quote is None or quote.customer_id != order.customer_id:
                 raise ValueError("Quote must belong to the target customer.")
-            if quote.status not in (QuoteStatus.ISSUED, QuoteStatus.ACCEPTED):
-                raise ValueError("Only an issued or accepted quote can be linked to an order.")
 
         for field, value in payload.items():
             setattr(order, field, value)
@@ -141,3 +140,25 @@ class OrderService:
             raise ValueError("Order could not be saved due to invalid or duplicate data.") from exc
 
         return self.orders.get_by_id(tenant.organization_id, order.id)
+
+    def get_deletion_impact(
+        self,
+        tenant: TenantContext,
+        order_id: UUID,
+    ) -> OrderDeletionImpact | None:
+        order = self.orders.get_by_id(tenant.organization_id, order_id)
+        if order is None:
+            return None
+
+        return OrderDeletionImpact(
+            items=len(order.items),
+            is_blocked=False,
+        )
+
+    def delete_order(self, tenant: TenantContext, order_id: UUID) -> bool:
+        order = self.orders.get_by_id(tenant.organization_id, order_id)
+        if order is None:
+            return False
+        self.orders.delete(order)
+        self.db.commit()
+        return True

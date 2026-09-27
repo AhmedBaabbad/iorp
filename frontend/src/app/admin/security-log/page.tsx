@@ -1,0 +1,1 @@
+import {SeparatedLogPage} from "@/features/logs/SeparatedLogPages";export default function Page(){return <SeparatedLogPage scope="tenant" kind="security" namespace="tenantSecurity" permission="foundation:security_log:read"/>}

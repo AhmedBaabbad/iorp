@@ -1,0 +1,360 @@
+{
+  "user": {
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "locked": "مقفل"
+    }
+  },
+  "qualityCheck": {
+    "status": {
+      "open": "مفتوح",
+      "under_inspection": "قيد الفحص",
+      "closed": "مغلق"
+    },
+    "result": {
+      "accepted": "مقبول",
+      "rejected": "مرفوض",
+      "conditional_accept": "قبول مشروط",
+      "needs_reinspection": "يحتاج إعادة فحص"
+    },
+    "checkType": {
+      "in_process_inspection": "فحص أثناء الإنتاج",
+      "finished_product_inspection": "فحص المنتج النهائي",
+      "sample_inspection": "فحص العينة",
+      "reinspection": "إعادة فحص",
+      "issue_triggered": "بسبب مشكلة",
+      "general": "عام"
+    }
+  },
+  "qualityRejection": {
+    "rejectionReason": {
+      "failed_quality_check": "فشل فحص الجودة",
+      "critical_defect": "عيب حرج",
+      "out_of_spec": "خارج المواصفات",
+      "dimension_failure": "فشل الأبعاد",
+      "surface_failure": "فشل السطح",
+      "packaging_failure": "فشل التعبئة",
+      "labeling_issue": "مشكلة في التسمية",
+      "other": "أخرى"
+    },
+    "disposition": {
+      "hold": "تعليق",
+      "scrap": "إتلاف",
+      "rework": "إعادة تصنيع",
+      "return_to_process": "إعادة للعملية"
+    },
+    "dispositionStatus": {
+      "pending": "قيد التنفيذ",
+      "executed": "منفذ"
+    }
+  },
+  "ncrReport": {
+    "status": {
+      "draft": "مسودة",
+      "open": "مفتوح",
+      "under_review": "قيد المراجعة",
+      "closed": "مغلق"
+    },
+    "sourceType": {
+      "internal_production": "إنتاج داخلي",
+      "incoming_material": "مواد واردة",
+      "supplier": "مورد",
+      "warehouse": "مستودع",
+      "customer_return": "إرجاع من العميل",
+      "other": "أخرى"
+    },
+    "reportType": {
+      "material_non_conformance": "عدم مطابقة المواد",
+      "product_non_conformance": "عدم مطابقة المنتج",
+      "process_non_conformance": "عدم مطابقة العملية",
+      "packaging_non_conformance": "عدم مطابقة التعبئة",
+      "documentation_non_conformance": "عدم مطابقة التوثيق",
+      "other": "أخرى"
+    }
+  },
+  "correctiveAction": {
+    "status": {
+      "open": "مفتوح",
+      "in_progress": "قيد التنفيذ",
+      "completed": "مكتمل",
+      "closed": "مغلق"
+    },
+    "priority": {
+      "urgent": "عاجل",
+      "high": "مرتفع",
+      "normal": "عادي",
+      "low": "منخفض"
+    },
+    "actionType": {
+      "corrective": "تصحيحي",
+      "preventive": "وقائي",
+      "improvement": "تحسيني",
+      "containment": "احتوائي"
+    },
+    "sourceType": {
+      "quality_rejection": "حالة رفض جودة",
+      "ncr_report": "تقرير عدم مطابقة",
+      "quality_defect": "عيب جودة",
+      "ncr_item": "بند عدم مطابقة",
+      "manual": "يدوي"
+    }
+  },
+  "productionOrder": {
+    "status": {
+      "draft": "مسودة",
+      "released": "مُصدر",
+      "in_progress": "قيد التنفيذ",
+      "completed": "مكتمل",
+      "cancelled": "ملغي"
+    },
+    "priority": {
+      "urgent": "عاجل",
+      "normal": "عادي",
+      "low": "منخفض",
+      "high": "مرتفعة"
+    }
+  },
+  "workCenter": {
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "under_maintenance": "تحت الصيانة"
+    },
+    "centerType": {
+      "extrusion": "بثق",
+      "rewinding": "إعادة لف",
+      "packing": "تعبئة",
+      "quality_station": "محطة جودة",
+      "generic": "عام"
+    }
+  },
+  "qualityDefect": {
+    "defectCategory": {
+      "dimension": "أبعاد",
+      "thickness": "السماكة / القياس",
+      "surface": "عيب سطحي",
+      "color": "انحراف اللون",
+      "strength": "إخفاق في المتانة",
+      "winding": "عيب اللف",
+      "weight": "وزن خارج المعيار",
+      "packaging": "عيب التعبئة",
+      "labeling": "خطأ في التسمية",
+      "finish": "نعومة / الملمس",
+      "other": "أخرى"
+    },
+    "severity": {
+      "minor": "بسيط",
+      "major": "رئيسي",
+      "critical": "حرج"
+    }
+  },
+  "wasteRecord": {
+    "wasteCategory": {
+      "startup_loss": "خسارة التشغيل",
+      "trim_loss": "خسارة القص",
+      "setup_loss": "خسارة الإعداد",
+      "rejected_output": "مخرج مرفوض",
+      "breakage": "كسر",
+      "rewinding_loss": "خسارة إعادة اللف",
+      "end_of_roll_loss": "خسارة نهاية اللفة",
+      "material_loss": "خسارة المادة",
+      "contamination_loss": "خسارة التلوث",
+      "other": "أخرى"
+    }
+  },
+  "actionFollowUp": {
+    "status": {
+      "on_track": "في المسار",
+      "delayed": "متأخر",
+      "blocked": "محظور",
+      "completed": "مكتمل"
+    }
+  },
+  "closureVerification": {
+    "verificationResult": {
+      "effective": "فعّال",
+      "partially_effective": "فعّال جزئياً",
+      "not_effective": "غير فعّال"
+    },
+    "closureStatus": {
+      "closed": "مغلق",
+      "re_opened": "أُعيد فتحه"
+    }
+  },
+  "downtimeEvent": {
+    "status": {
+      "open": "مفتوح",
+      "closed": "مغلق"
+    },
+    "category": {
+      "machine": "آلة",
+      "material": "مواد",
+      "manpower": "عمالة",
+      "quality": "جودة",
+      "utilities": "مرافق",
+      "setup": "إعداد",
+      "other": "أخرى"
+    }
+  },
+  "shiftDefinition": {
+    "shiftType": {
+      "morning": "صباحي",
+      "evening": "مسائي",
+      "night": "ليلي",
+      "custom": "مخصص"
+    },
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط"
+    }
+  },
+  "shiftReport": {
+    "status": {
+      "draft": "مسودة",
+      "submitted": "مُرسل",
+      "approved": "معتمد"
+    }
+  },
+  "productionOutput": {
+    "status": {
+      "recorded": "مسجل",
+      "verified": "محقق",
+      "posted": "مرحل"
+    }
+  },
+  "workforceMember": {
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "suspended": "موقوف",
+      "terminated": "منتهية خدمته"
+    },
+    "employmentType": {
+      "employee": "موظف",
+      "contractor": "متعاقد",
+      "temporary": "مؤقت"
+    },
+    "workerType": {
+      "factory_manager": "مدير مصنع",
+      "production_manager": "مدير إنتاج",
+      "supervisor": "مشرف وردية",
+      "operator": "مشغّل",
+      "technician": "فني تشغيل",
+      "maintenance_technician": "فني صيانة",
+      "helper": "عامل مساعد",
+      "quality_inspector": "فاحص جودة",
+      "warehouse_staff": "موظف مستودع",
+      "logistics_coordinator": "منسق لوجستيات",
+      "sales_manager": "مدير مبيعات",
+      "sales_rep": "مندوب مبيعات",
+      "procurement_officer": "مسؤول مشتريات",
+      "hr_officer": "مسؤول موارد بشرية",
+      "accountant": "محاسب",
+      "safety_officer": "مسؤول السلامة",
+      "admin_support": "دعم إداري"
+    }
+  },
+  "customer": {
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "on_hold": "معلّق",
+      "archived": "مؤرشف",
+      "blacklisted": "محظور"
+    },
+    "relationshipStage": {
+      "lead": "عميل محتمل",
+      "contacted": "تم التواصل",
+      "qualified": "مؤهل",
+      "prospect": "قيد الترقب",
+      "negotiating": "قيد التفاوض",
+      "trial_customer": "عميل تجريبي",
+      "active_customer": "عميل نشط",
+      "repeat_customer": "عميل متكرر",
+      "strategic_customer": "عميل استراتيجي"
+    },
+    "priorityLevel": {
+      "low": "منخفض",
+      "medium": "متوسط",
+      "high": "مرتفع",
+      "urgent": "عاجل"
+    }
+  },
+  "interaction": {
+    "interactionType": {
+      "call": "مكالمة هاتفية",
+      "visit": "زيارة ميدانية",
+      "whatsapp": "واتساب",
+      "meeting": "اجتماع",
+      "message": "رسالة",
+      "email": "بريد إلكتروني",
+      "other": "أخرى"
+    },
+    "outcome": {
+      "positive": "إيجابي",
+      "neutral": "محايد",
+      "negative": "سلبي",
+      "pending": "قيد الانتظار"
+    }
+  },
+  "followUp": {
+    "status": {
+      "pending": "معلق",
+      "in_progress": "قيد التنفيذ",
+      "completed": "مكتمل",
+      "cancelled": "ملغي",
+      "overdue": "متأخر"
+    },
+    "priority": {
+      "low": "منخفض",
+      "medium": "متوسط",
+      "high": "مرتفع",
+      "urgent": "عاجل"
+    }
+  },
+  "sample": {
+    "status": {
+      "requested": "مطلوبة",
+      "in_preparation": "قيد التحضير",
+      "delivered": "تم التسليم",
+      "evaluated": "تم التقييم",
+      "cancelled": "ملغية"
+    },
+    "decision": {
+      "pending": "قيد الانتظار",
+      "accepted": "تم القبول",
+      "rejected": "تم الرفض"
+    }
+  },
+  "sampleEvaluation": {
+    "resultStatus": {
+      "accepted": "مقبول",
+      "rejected": "مرفوض",
+      "needs_modification": "يحتاج تعديل"
+    },
+    "nextAction": {
+      "proceed_to_quote": "المتابعة لعرض سعر",
+      "revise_sample": "مراجعة العينة",
+      "close_request": "إغلاق الطلب",
+      "further_review": "مراجعة إضافية"
+    }
+  },
+  "quote": {
+    "status": {
+      "draft": "مسودة",
+      "issued": "تم الإصدار",
+      "accepted": "مقبول",
+      "rejected": "مرفوض",
+      "expired": "منتهي الصلاحية"
+    }
+  },
+  "commercialOrder": {
+    "status": {
+      "draft": "مسودة",
+      "confirmed": "مؤكد",
+      "converted_to_production": "تم التحويل إلى الإنتاج",
+      "cancelled": "ملغي"
+    }
+  }
+}

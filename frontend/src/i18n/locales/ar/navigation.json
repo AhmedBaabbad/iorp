@@ -1,0 +1,64 @@
+{
+  "appName": "IORP",
+  "appSubtitle": "نظام العمليات الصناعية",
+  "dashboard": "لوحة التحكم",
+  "language": "اللغة",
+  "theme": {
+    "label": "المظهر",
+    "light": "فاتح",
+    "dark": "داكن",
+    "system": "تلقائي"
+  },
+  "sections": {
+    "iorp": "IORP",
+    "commercial": "التجاري",
+    "workforce": "القوى العاملة",
+    "production": "الإنتاج",
+    "quality": "الجودة",
+    "ncr": "عدم المطابقة",
+    "capa": "الإجراءات التصحيحية",
+    "administration": "الإدارة"
+  },
+  "links": {
+    "users": "المستخدمون",
+    "roles": "الأدوار",
+    "adminUsers": "إدارة المستخدمين",
+    "adminRoles": "الأدوار والصلاحيات",
+    "adminPermissions": "الصلاحيات",
+    "auditLog": "سجل التدقيق",
+    "securityLog": "السجل الأمني",
+    "activityLog": "سجل النشاطات",
+    "organizationSettings": "إعدادات المنظمة",
+    "customers": "العملاء",
+    "customerInteractions": "تفاعلات العملاء",
+    "followUps": "المتابعات",
+    "samples": "العينات",
+    "quotes": "عروض الأسعار",
+    "commercialOrders": "أوامر البيع",
+    "workforceMembers": "أعضاء الفريق",
+    "workCenters": "مراكز العمل",
+    "shifts": "الورديات",
+    "productionOrders": "أوامر الإنتاج",
+    "productionOrderItems": "بنود الأمر",
+    "shiftReports": "تقارير الوردية",
+    "productionOutputs": "المخرجات الإنتاجية",
+    "downtimeEvents": "أحداث التوقف",
+    "wasteRecords": "سجلات الهدر",
+    "qualityChecks": "فحوصات الجودة",
+    "qualityRejections": "حالات الرفض",
+    "ncrReports": "تقارير عدم المطابقة",
+    "correctiveActions": "الإجراءات التصحيحية",
+    "demands": "طلبات العملاء للإنتاج",
+    "planning": "تخطيط الإنتاج",
+    "shiftRosters": "فرق الورديات"
+  },
+  "userMenu": {
+    "changePassword": "تغيير كلمة المرور",
+    "profile": "الملف الشخصي",
+    "logout": "تسجيل الخروج"
+  },
+  "topBar": {
+    "notifications": "الإشعارات",
+    "settings": "الإعدادات"
+  }
+}

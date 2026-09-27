@@ -1,0 +1,88 @@
+{
+  "ncrReports": {
+    "listTitle": "تقارير عدم المطابقة",
+    "createTitle": "إنشاء تقرير عدم مطابقة",
+    "detailTitle": "تفاصيل تقرير عدم المطابقة",
+    "reportNumberAuto": "يُنشأ تلقائياً",
+    "sectionItems": "العناصر المتأثرة",
+    "fields": {
+      "reportNumber": "رقم التقرير",
+      "reportDate": "تاريخ التقرير",
+      "title": "عنوان التقرير",
+      "description": "وصف حالة عدم المطابقة",
+      "sourceType": "مصدر الحالة",
+      "reportType": "نوع التقرير",
+      "status": "الحالة",
+      "referenceCode": "رمز المرجع",
+      "qualityCheck": "فحص الجودة المرجعي",
+      "qualityRejection": "حالة الرفض المرجعية"
+    },
+    "subtitle": "إنشاء وتتبع تقارير عدم المطابقة عبر سلسلة الجودة.",
+    "listAria": "قائمة تقارير عدم المطابقة",
+    "filtersAria": "فلاتر تقارير عدم المطابقة",
+    "newButton": "تقرير عدم مطابقة جديد",
+    "createButton": "إنشاء تقرير عدم مطابقة",
+    "createFirst": "أنشئ أول تقرير عدم مطابقة أو عدّل الفلاتر.",
+    "loading": "جاري تحميل تقارير عدم المطابقة...",
+    "loadingDetail": "جاري تحميل تقرير عدم المطابقة...",
+    "loadError": "تعذر تحميل تقارير عدم المطابقة.",
+    "loadDetailError": "تعذر تحميل تقرير عدم المطابقة.",
+    "createError": "تعذر إنشاء تقرير عدم المطابقة.",
+    "updateStatusError": "تعذر تحديث حالة تقرير عدم المطابقة.",
+    "detailSubtitle": "مراجعة تفاصيل تقرير عدم المطابقة.",
+    "createSubtitle": "يُنشأ رقم التقرير تلقائياً. تبدأ الحالة كمسودة.",
+    "backToList": "العودة إلى تقارير عدم المطابقة",
+    "returnToList": "الرجوع إلى تقارير عدم المطابقة",
+    "notFoundDescription": "ربما تمت إزالة تقرير عدم المطابقة أو أصبح غير متاح.",
+    "descriptionSection": "الوصف",
+    "qualityChainSection": "سلسلة الجودة",
+    "closedMessage": "التقرير مغلق.",
+    "validation": {
+      "titleRequired": "العنوان مطلوب",
+      "descriptionRequired": "الوصف مطلوب"
+    },
+    "actions": {
+      "openReport": "فتح التقرير",
+      "opening": "جاري الفتح...",
+      "startReview": "بدء المراجعة",
+      "startingReview": "جاري البدء...",
+      "closeReport": "إغلاق التقرير",
+      "closing": "جاري الإغلاق..."
+    },
+    "items": {
+      "sectionTitle": "العناصر المتأثرة",
+      "sectionSubtitle": "عناصر السطور وتفاصيل المشكلة لهذا التقرير.",
+      "addButton": "إضافة عنصر",
+      "empty": "لم تتم إضافة عناصر لهذا التقرير بعد",
+      "loading": "جاري تحميل عناصر عدم المطابقة...",
+      "loadError": "تعذر تحميل عناصر عدم المطابقة.",
+      "createError": "تعذر إنشاء عنصر عدم المطابقة.",
+      "statusGuardMessage": "لا يمكن إضافة عناصر لتقرير مغلق",
+      "lineNoAuto": "يُعيّن تلقائياً",
+      "lineNoAutoSentence": "تُعيّن أرقام السطور تلقائياً.",
+      "showMore": "عرض المزيد",
+      "showLess": "عرض أقل",
+      "notesLabel": "ملاحظات: {value}",
+      "saveButton": "حفظ العنصر",
+      "saving": "جاري الحفظ...",
+      "itemReferencePlaceholder": "رقم الدفعة، رمز المادة، رمز المنتج...",
+      "unitPlaceholder": "كجم، قطعة، متر، رول",
+      "issueDescriptionPlaceholder": "صف ما هو غير مطابق في هذا العنصر...",
+      "validation": {
+        "itemNameRequired": "اسم العنصر مطلوب",
+        "issueDescriptionRequired": "وصف المشكلة مطلوب"
+      },
+      "fields": {
+        "lineNo": "رقم السطر",
+        "itemName": "اسم العنصر",
+        "itemReference": "رمز المرجع",
+        "quantityAffected": "الكمية المتأثرة",
+        "unit": "الوحدة",
+        "issueDescription": "وصف المشكلة",
+        "notes": "ملاحظات"
+      }
+    },
+    "empty": "لا توجد تقارير عدم مطابقة حتى الآن",
+    "notFound": "تقرير عدم المطابقة غير موجود"
+  }
+}

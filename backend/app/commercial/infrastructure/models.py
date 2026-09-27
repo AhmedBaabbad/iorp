@@ -2,18 +2,20 @@ from datetime import datetime
 from decimal import Decimal
 import uuid
 
-from sqlalchemy import JSON, DateTime, Enum as SqlEnum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, JSON, DateTime, Enum as SqlEnum, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.commercial.domain.enums import (
     CommercialOrderStatus,
     CustomerStatus,
+    FollowUpPriority,
     FollowUpStatus,
     InteractionType,
     PriorityLevel,
     QuoteStatus,
     RelationshipStage,
+    SampleDecision,
     SampleEvaluationNextAction,
     SampleEvaluationResultStatus,
     SampleStatus,
@@ -44,6 +46,10 @@ class Customer(Base):
     sector: Mapped[str | None] = mapped_column(String(120), nullable=True)
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
     country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # status is the operational record state; relationship_stage is business progression.
+    # Keep them independent and never derive one from the other.
     status: Mapped[CustomerStatus] = mapped_column(
         SqlEnum(CustomerStatus, name="customer_status", values_callable=enum_values),
         nullable=False,
@@ -61,12 +67,22 @@ class Customer(Base):
         nullable=False,
         default=PriorityLevel.MEDIUM,
     )
-    assigned_sales_user_id: Mapped[uuid.UUID | None] = mapped_column(
+    sales_owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("foundation_users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("foundation_users.id"),
         nullable=True,
         index=True,
     )
+    # Deprecated: superseded by sales_owner_user_id. Retained (renamed, not
+    # dropped) only so historical free-text values aren't lost.
+    sales_owner_name_legacy: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    key_influencer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -79,10 +95,88 @@ class Customer(Base):
         default=utc_now,
         onupdate=utc_now,
     )
+    interactions: Mapped[list["CustomerInteraction"]] = relationship(
+        cascade="all, delete-orphan",
+    )
+    follow_ups: Mapped[list["FollowUp"]] = relationship(
+        cascade="all, delete-orphan",
+    )
+
+
+class CustomerCodeCounter(Base):
+    __tablename__ = "commercial_customer_code_counters"
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("foundation_organizations.id"),
+        primary_key=True,
+    )
+    last_value: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )
+
+
+class SampleCodeCounter(Base):
+    __tablename__ = "commercial_sample_code_counters"
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("foundation_organizations.id"),
+        primary_key=True,
+    )
+    year: Mapped[int] = mapped_column(Integer, primary_key=True)
+    last_value: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )
+
+
+class QuoteCodeCounter(Base):
+    __tablename__ = "commercial_quote_code_counters"
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("foundation_organizations.id"),
+        primary_key=True,
+    )
+    year: Mapped[int] = mapped_column(Integer, primary_key=True)
+    last_value: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )
+
+
+class OrderCodeCounter(Base):
+    __tablename__ = "commercial_order_code_counters"
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("foundation_organizations.id"),
+        primary_key=True,
+    )
+    year: Mapped[int] = mapped_column(Integer, primary_key=True)
+    last_value: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )
 
 
 class Sample(Base):
     __tablename__ = "commercial_samples"
+    __table_args__ = (UniqueConstraint("customer_id", "sample_code", name="uq_commercial_samples_customer_code"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -98,13 +192,22 @@ class Sample(Base):
     sample_code: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     product_type: Mapped[str] = mapped_column(String(120), nullable=False)
     requested_spec_json: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)  # customer-facing commercial spec only
-    quantity_requested: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    is_sample_requested: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    requested_sample_quantity: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     unit: Mapped[str | None] = mapped_column(String(32), nullable=True)
     request_date: Mapped[datetime] = mapped_column(TZDateTime, nullable=False)
+    # sample_status tracks operational lifecycle
+    # sample_decision tracks the final commercial decision on the sample
+    # These are independent -- do not derive one from the other
     status: Mapped[SampleStatus] = mapped_column(
         SqlEnum(SampleStatus, name="sample_status", values_callable=enum_values),
         nullable=False,
         default=SampleStatus.REQUESTED,
+    )
+    sample_decision: Mapped[SampleDecision | None] = mapped_column(
+        SqlEnum(SampleDecision, name="sampledecision_enum", values_callable=enum_values),
+        nullable=True,
+        default=None,
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(
@@ -385,6 +488,9 @@ class CustomerInteraction(Base):
 
 class FollowUp(Base):
     __tablename__ = "commercial_follow_ups"
+    __table_args__ = (
+        Index("ix_commercial_follow_ups_status_due_date", "status", "due_date"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -399,26 +505,37 @@ class FollowUp(Base):
     )
     interaction_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("commercial_customer_interactions.id"),
+        ForeignKey("commercial_customer_interactions.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
-    assigned_user_id: Mapped[uuid.UUID] = mapped_column(
+    # Nullable despite being conceptually "required": ON DELETE SET NULL means
+    # a follow-up must survive its assignee's user account being deleted, which
+    # is incompatible with a NOT NULL constraint. Application code always sets
+    # this on create; it can only become NULL via a foundation_users deletion.
+    assigned_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("foundation_users.id"),
-        nullable=False,
+        ForeignKey("foundation_users.id", ondelete="SET NULL"),
+        nullable=True,
         index=True,
     )
-    due_date: Mapped[datetime] = mapped_column(TZDateTime, nullable=False)
-    priority: Mapped[PriorityLevel] = mapped_column(
-        SqlEnum(PriorityLevel, name="follow_up_priority", values_callable=enum_values),
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("foundation_users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    due_date: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, index=True)
+    priority: Mapped[FollowUpPriority] = mapped_column(
+        SqlEnum(FollowUpPriority, name="follow_up_priority", values_callable=enum_values),
         nullable=False,
-        default=PriorityLevel.MEDIUM,
+        default=FollowUpPriority.MEDIUM,
     )
     status: Mapped[FollowUpStatus] = mapped_column(
         SqlEnum(FollowUpStatus, name="follow_up_status", values_callable=enum_values),
         nullable=False,
         default=FollowUpStatus.PENDING,
+        index=True,
     )
     reason: Mapped[str] = mapped_column(String(255), nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -427,4 +544,10 @@ class FollowUp(Base):
         DateTime(timezone=True),
         nullable=False,
         default=utc_now,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
     )

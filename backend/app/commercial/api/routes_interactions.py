@@ -5,14 +5,15 @@ from sqlalchemy.orm import Session
 
 from app.commercial.api.schemas import CustomerInteractionCreate, CustomerInteractionRead
 from app.commercial.application.services import CustomerService
+from app.core.interfaces.authorization_policy import AuthorizationPolicy
 from app.core.tenancy import TenantContext
-from app.dependencies import get_current_tenant, get_db
+from app.dependencies import build_auth_context, get_authorization_policy, get_current_tenant, get_db, require_permission
 
 
 router = APIRouter(prefix="/customers/{customer_id}/interactions", tags=["customer-interactions"])
 
 
-@router.post("", response_model=CustomerInteractionRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=CustomerInteractionRead, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission("commercial:interactions:create"))])
 def create_interaction(
     customer_id: UUID,
     payload: CustomerInteractionCreate,
@@ -30,14 +31,16 @@ def create_interaction(
     return interaction
 
 
-@router.get("", response_model=list[CustomerInteractionRead])
+@router.get("", response_model=list[CustomerInteractionRead], dependencies=[Depends(require_permission("commercial:interactions:read"))])
 def list_interactions(
     customer_id: UUID,
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
+    policy: AuthorizationPolicy = Depends(get_authorization_policy),
 ) -> list[CustomerInteractionRead]:
     service = CustomerService(db)
-    interactions = service.list_interactions(tenant, customer_id)
+    ctx = build_auth_context(db, tenant, "commercial:interactions:read")
+    interactions = service.list_interactions(tenant, customer_id, policy=policy, auth_context=ctx)
     if interactions is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found.")
     return interactions

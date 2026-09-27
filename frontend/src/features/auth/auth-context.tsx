@@ -9,20 +9,50 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useLocale } from "next-intl";
 
-import { getCurrentUser, login as loginRequest } from "./auth-client";
+import { getCurrentUser, login as loginRequest, logoutSession } from "./auth-client";
 import { getStoredAccessToken, removeStoredAccessToken } from "@/lib/auth";
 import type { AuthState, CurrentUser, LoginRequest } from "@/types/auth";
+import { isLocale, LOCALE_COOKIE_NAME, type Locale } from "@/i18n/config";
 
 type AuthContextValue = AuthState & {
   login: (payload: LoginRequest) => Promise<CurrentUser>;
   logout: () => void;
   refreshCurrentUser: () => Promise<CurrentUser | null>;
+  permissions: string[];
+  roles: string[];
+  hasPermission: (code: string) => boolean;
+  usePermission: (code: string) => boolean;
+  useHasAnyPermission: (codes: string[]) => boolean;
 };
+
+export function hasPermission(permissions: string[], code: string): boolean {
+  return permissions.includes(code);
+}
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function resolveEffectiveLocale(user: CurrentUser, fallback: Locale): Locale {
+  if (isLocale(user.effective_locale)) return user.effective_locale;
+  if (isLocale(user.preferred_locale ?? undefined)) return user.preferred_locale as Locale;
+  if (isLocale(user.organization?.default_locale)) return user.organization.default_locale;
+  return fallback;
+}
+
+function applyEffectiveLocale(user: CurrentUser, fallback: Locale) {
+  if (typeof document === "undefined") return;
+  const storedLocale = document.cookie.split("; ").find((item) => item.startsWith(`${LOCALE_COOKIE_NAME}=`))?.split("=")[1];
+  const locale = isLocale(storedLocale) ? storedLocale : resolveEffectiveLocale(user, fallback);
+  document.documentElement.lang = locale;
+  document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
+  if (storedLocale !== locale) {
+    document.cookie = `${LOCALE_COOKIE_NAME}=${locale}; path=/; max-age=31536000; SameSite=Lax`;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const renderedLocale = useLocale() as Locale;
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       const currentUser = await getCurrentUser(storedToken);
+      applyEffectiveLocale(currentUser, renderedLocale);
       setToken(storedToken);
       setUser(currentUser);
       return currentUser;
@@ -51,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [renderedLocale]);
 
   useEffect(() => {
     void refreshCurrentUser();
@@ -60,14 +91,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (payload: LoginRequest) => {
     const response = await loginRequest(payload);
     const currentUser = await getCurrentUser(response.access_token);
+    applyEffectiveLocale(currentUser, renderedLocale);
 
     setToken(response.access_token);
     setUser(currentUser);
 
     return currentUser;
-  }, []);
+  }, [renderedLocale]);
 
   const logout = useCallback(() => {
+    void logoutSession().catch(() => undefined);
     removeStoredAccessToken();
     setToken(null);
     setUser(null);
@@ -79,9 +112,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
       isLoading,
       isAuthenticated: Boolean(token && user),
+      permissions: user?.permissions ?? [],
+      roles: user?.roles ?? [],
       login,
       logout,
       refreshCurrentUser,
+      hasPermission: (code: string) => hasPermission(user?.permissions ?? [], code),
+      usePermission: (code: string) => hasPermission(user?.permissions ?? [], code),
+      useHasAnyPermission: (codes: string[]) =>
+        codes.some((c) => hasPermission(user?.permissions ?? [], c)),
     }),
     [isLoading, login, logout, refreshCurrentUser, token, user],
   );

@@ -2,18 +2,34 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { CSSProperties, FormEvent } from "react";
-import { useState } from "react";
+import { useTranslations } from "next-intl";
+import type { CSSProperties } from "react";
+import { useEffect, useState } from "react";
 
-import { getErrorMessage } from "@/lib/errors";
+import { AccessDeniedMessage } from "@/components/AccessDeniedMessage";
+import { SuccessModal } from "@/components/ui/SuccessModal";
+import { useAuth, usePermission } from "@/features/auth";
+import { getEnumLabel } from "@/i18n/enum-helpers";
+import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { sharedStyles } from "@/styles/shared-styles";
-import { createCustomer } from "./customer-api";
+import type {
+  CustomerStatus,
+  EligibleSalesOwner,
+  PriorityLevel,
+  RelationshipStage,
+} from "@/types/customers";
+import { createCustomer, getEligibleSalesOwners } from "./customer-api";
 import {
   defaultCustomerFormValues,
   toCustomerCreateRequest,
   type CustomerFormValues,
 } from "./customer-form";
 import { PageFrame } from "@/components/layout/page-frame";
+
+function formatOwnerOption(owner: EligibleSalesOwner): string {
+  const roleName = owner.roles[0]?.name;
+  return roleName ? `${owner.full_name} — ${roleName}` : owner.full_name;
+}
 
 const styles: Record<string, CSSProperties> = {
   panel: {
@@ -47,13 +63,79 @@ const styles: Record<string, CSSProperties> = {
     fontSize: "13px",
     marginLeft: "auto",
   },
+  note: {
+    color: "#52606d",
+    fontSize: "13px",
+    margin: 0,
+  },
 };
+
+const customerStatusOptions: CustomerStatus[] = [
+  "active",
+  "inactive",
+  "on_hold",
+  "archived",
+  "blacklisted",
+];
+
+const relationshipStageOptions: RelationshipStage[] = [
+  "lead",
+  "contacted",
+  "qualified",
+  "prospect",
+  "negotiating",
+  "trial_customer",
+  "active_customer",
+  "repeat_customer",
+  "strategic_customer",
+];
+
+const priorityOptions: PriorityLevel[] = ["low", "medium", "high"];
 
 export function CustomerCreatePage() {
   const router = useRouter();
+  const t = useTranslations("commercial.customers");
+  const tEnums = useTranslations();
+  const common = useTranslations("common");
+  const messages = useTranslations("messages");
+  const { user } = useAuth();
+  const canAssignOwner = usePermission("commercial:customers:assign_owner");
+  const hasCustomerRead = usePermission("commercial:customers:read");
+  const hasCustomerUpdate = usePermission("commercial:customers:update");
+  const isEligibleOwner = hasCustomerRead && hasCustomerUpdate;
   const [values, setValues] = useState<CustomerFormValues>(defaultCustomerFormValues);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successRedirect, setSuccessRedirect] = useState<string | null>(null);
+  const [eligibleOwners, setEligibleOwners] = useState<EligibleSalesOwner[]>([]);
+  const [isLoadingOwners, setIsLoadingOwners] = useState(canAssignOwner);
+
+  useEffect(() => {
+    if (!canAssignOwner) {
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingOwners(true);
+    getEligibleSalesOwners()
+      .then((data) => {
+        if (!cancelled) {
+          setEligibleOwners(data);
+        }
+      })
+      .catch(() => {
+        // Per-field "no eligible owners" state handles this; no page error needed.
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingOwners(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canAssignOwner]);
 
   function updateField<TField extends keyof CustomerFormValues>(
     field: TField,
@@ -65,28 +147,40 @@ export function CustomerCreatePage() {
     }));
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: { preventDefault(): void }) {
     event.preventDefault();
     setError(null);
     setIsSubmitting(true);
 
     try {
-      const createdCustomer = await createCustomer(toCustomerCreateRequest(values));
-      router.replace(`/customers/${createdCustomer.id}`);
+      const createdCustomer = await createCustomer(toCustomerCreateRequest(values, canAssignOwner));
+      setSuccessRedirect(`/customers/${createdCustomer.id}`);
     } catch (caughtError) {
-      setError(getErrorMessage(caughtError, "Unable to create customer."));
+      setError(getApiErrorMessage(caughtError, messages));
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  if (!canAssignOwner && !isEligibleOwner) {
+    return <AccessDeniedMessage message={t("notEligibleToCreate")} />;
+  }
+
   return (
+    <>
+    {successRedirect ? (
+      <SuccessModal
+        message={t("createSuccess")}
+        okLabel={common("actions.ok")}
+        onOk={() => router.replace(successRedirect)}
+      />
+    ) : null}
     <PageFrame
-      title="Create customer"
-      subtitle="Add a baseline commercial customer record."
+      title={t("createTitle")}
+      subtitle={t("createSubtitle")}
       action={
         <Link href="/customers" style={sharedStyles.secondaryButton}>
-          Back to customers
+          {t("backToList")}
         </Link>
       }
     >
@@ -95,22 +189,7 @@ export function CustomerCreatePage() {
           <div style={styles.formGrid}>
             <label style={sharedStyles.field}>
               <span style={sharedStyles.label}>
-                Customer code
-                <span style={styles.required} aria-hidden="true"> *</span>
-              </span>
-              <input
-                style={sharedStyles.input}
-                value={values.customer_code}
-                onChange={(event) => updateField("customer_code", event.target.value)}
-                maxLength={64}
-                disabled={isSubmitting}
-                required
-              />
-            </label>
-
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>
-                Name
+                {t("fields.name")}
                 <span style={styles.required} aria-hidden="true"> *</span>
               </span>
               <input
@@ -124,7 +203,7 @@ export function CustomerCreatePage() {
             </label>
 
             <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>Sector</span>
+              <span style={sharedStyles.label}>{t("fields.sector")}</span>
               <input
                 style={sharedStyles.input}
                 value={values.sector}
@@ -135,7 +214,7 @@ export function CustomerCreatePage() {
             </label>
 
             <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>City</span>
+              <span style={sharedStyles.label}>{t("fields.city")}</span>
               <input
                 style={sharedStyles.input}
                 value={values.city}
@@ -146,7 +225,7 @@ export function CustomerCreatePage() {
             </label>
 
             <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>Country</span>
+              <span style={sharedStyles.label}>{t("fields.country")}</span>
               <input
                 style={sharedStyles.input}
                 value={values.country}
@@ -157,7 +236,30 @@ export function CustomerCreatePage() {
             </label>
 
             <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>Status</span>
+              <span style={sharedStyles.label}>{t("fields.phone")}</span>
+              <input
+                style={sharedStyles.input}
+                value={values.phone}
+                onChange={(event) => updateField("phone", event.target.value)}
+                maxLength={50}
+                disabled={isSubmitting}
+              />
+            </label>
+
+            <label style={sharedStyles.field}>
+              <span style={sharedStyles.label}>{t("fields.email")}</span>
+              <input
+                style={sharedStyles.input}
+                type="email"
+                value={values.email}
+                onChange={(event) => updateField("email", event.target.value)}
+                maxLength={255}
+                disabled={isSubmitting}
+              />
+            </label>
+
+            <label style={sharedStyles.field}>
+              <span style={sharedStyles.label}>{t("fields.status")}</span>
               <select
                 style={sharedStyles.input}
                 value={values.status}
@@ -166,13 +268,16 @@ export function CustomerCreatePage() {
                 }
                 disabled={isSubmitting}
               >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                {customerStatusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {getEnumLabel("customer", "status", status, tEnums)}
+                  </option>
+                ))}
               </select>
             </label>
 
             <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>Relationship stage</span>
+              <span style={sharedStyles.label}>{t("fields.relationshipStage")}</span>
               <select
                 style={sharedStyles.input}
                 value={values.relationship_stage}
@@ -184,14 +289,16 @@ export function CustomerCreatePage() {
                 }
                 disabled={isSubmitting}
               >
-                <option value="lead">Lead</option>
-                <option value="prospect">Prospect</option>
-                <option value="customer">Customer</option>
+                {relationshipStageOptions.map((stage) => (
+                  <option key={stage} value={stage}>
+                    {getEnumLabel("customer", "relationshipStage", stage, tEnums)}
+                  </option>
+                ))}
               </select>
             </label>
 
             <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>Priority</span>
+              <span style={sharedStyles.label}>{t("fields.priority")}</span>
               <select
                 style={sharedStyles.input}
                 value={values.priority_level}
@@ -203,14 +310,16 @@ export function CustomerCreatePage() {
                 }
                 disabled={isSubmitting}
               >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
+                {priorityOptions.map((priority) => (
+                  <option key={priority} value={priority}>
+                    {getEnumLabel("customer", "priorityLevel", priority, tEnums)}
+                  </option>
+                ))}
               </select>
             </label>
 
             <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>Opportunity source</span>
+              <span style={sharedStyles.label}>{t("fields.opportunitySource")}</span>
               <input
                 style={sharedStyles.input}
                 value={values.opportunity_source}
@@ -221,7 +330,7 @@ export function CustomerCreatePage() {
             </label>
 
             <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>Estimated consumption</span>
+              <span style={sharedStyles.label}>{t("fields.estimatedConsumption")}</span>
               <input
                 style={sharedStyles.input}
                 type="number"
@@ -232,10 +341,58 @@ export function CustomerCreatePage() {
                 disabled={isSubmitting}
               />
             </label>
+
+            {canAssignOwner ? (
+              <label style={sharedStyles.field}>
+                <span style={sharedStyles.label}>
+                  {t("fields.salesOwner")}
+                  <span style={styles.required} aria-hidden="true"> *</span>
+                </span>
+                {isLoadingOwners ? (
+                  <p style={styles.note}>{t("loadingEligibleUsers")}</p>
+                ) : eligibleOwners.length === 0 ? (
+                  <p style={styles.note}>{t("noEligibleOwners")}</p>
+                ) : (
+                  <select
+                    style={sharedStyles.input}
+                    value={values.sales_owner_user_id}
+                    onChange={(event) => updateField("sales_owner_user_id", event.target.value)}
+                    disabled={isSubmitting}
+                    required
+                  >
+                    <option value="">{t("selectSalesOwner")}</option>
+                    {eligibleOwners.map((owner) => (
+                      <option key={owner.id} value={owner.id}>
+                        {formatOwnerOption(owner)}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </label>
+            ) : isEligibleOwner ? (
+              <label style={sharedStyles.field}>
+                <span style={sharedStyles.label}>{t("fields.salesOwner")}</span>
+                <input style={sharedStyles.input} value={user?.full_name ?? ""} disabled readOnly />
+                <span style={styles.note}>{t("salesOwnerAutoAssigned")}</span>
+              </label>
+            ) : null}
+
+            <label style={sharedStyles.field}>
+              <span style={sharedStyles.label}>{t("fields.keyInfluencerName")}</span>
+              <input
+                style={sharedStyles.input}
+                value={values.key_influencer_name}
+                onChange={(event) => updateField("key_influencer_name", event.target.value)}
+                maxLength={255}
+                disabled={isSubmitting}
+              />
+            </label>
           </div>
 
+          <p style={styles.note}>{t("labels.statusVsStageNote")}</p>
+
           <label style={sharedStyles.field}>
-            <span style={sharedStyles.label}>Notes</span>
+            <span style={sharedStyles.label}>{t("fields.notes")}</span>
             <textarea
               style={{ ...sharedStyles.textarea, minHeight: "110px" }}
               value={values.notes}
@@ -252,15 +409,16 @@ export function CustomerCreatePage() {
 
           <div style={styles.actions}>
             <button style={sharedStyles.button} type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating…" : "Create customer"}
+              {isSubmitting ? `${common("actions.create")}...` : t("createButton")}
             </button>
             <Link href="/customers" style={sharedStyles.secondaryButton}>
-              Cancel
+              {common("actions.cancel")}
             </Link>
-            <span style={styles.requiredNote}>* Required</span>
+            <span style={styles.requiredNote}>* {common("labels.required")}</span>
           </div>
         </form>
       </section>
     </PageFrame>
+    </>
   );
 }

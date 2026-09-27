@@ -1,0 +1,1 @@
+import {SeparatedLogPage} from "@/features/logs/SeparatedLogPages";export default function Page(){return <SeparatedLogPage scope="platform" kind="activity" namespace="platformActivity" permission="platform:activity_log:read"/>}

@@ -1,0 +1,126 @@
+{
+  "correctiveActions": {
+    "listTitle": "Corrective Actions",
+    "createTitle": "Create Corrective Action",
+    "detailTitle": "Corrective Action Details",
+    "actionCodeAuto": "Auto-generated",
+    "sectionFollowUps": "Follow-ups",
+    "sectionClosure": "Closure & Verification",
+    "fields": {
+      "actionCode": "Action Code",
+      "title": "Action Title",
+      "description": "Action Description",
+      "actionType": "Action Type",
+      "priority": "Priority",
+      "status": "Status",
+      "dueDate": "Due Date",
+      "owner": "Owner",
+      "sourceType": "Source Type",
+      "sourceId": "Source ID",
+      "notes": "Notes"
+    },
+    "subtitle": "Track what will be done to correct, contain, prevent, or improve after quality events.",
+    "listAria": "Corrective actions list",
+    "filtersAria": "Corrective action filters",
+    "newButton": "New Corrective Action",
+    "createButton": "Create Corrective Action",
+    "createFirst": "Create the first corrective action, or adjust the filters.",
+    "loading": "Loading corrective actions...",
+    "loadingDetail": "Loading corrective action...",
+    "loadError": "Unable to load corrective actions.",
+    "loadDetailError": "Unable to load corrective action.",
+    "createError": "Unable to create corrective action.",
+    "updateStatusError": "Unable to update corrective action status.",
+    "detailSubtitle": "Review corrective action details.",
+    "createSubtitle": "Action code is auto-generated. Status starts open and moves by action buttons.",
+    "backToList": "Back to Corrective Actions",
+    "notFoundDescription": "The corrective action may have been removed or is unavailable.",
+    "descriptionSection": "Action Description",
+    "sourceSection": "Source Context",
+    "noSourceSelected": "No source selected",
+    "manualSource": "Manually created",
+    "closedMessage": "Corrective action is closed.",
+    "verificationBeforeClose": "Record closure verification below before closing when verification is required.",
+    "statusActions": {
+      "start": "Start Action",
+      "starting": "Starting...",
+      "complete": "Complete Action",
+      "completing": "Completing...",
+      "close": "Close Action",
+      "closing": "Closing..."
+    },
+    "validation": {
+      "titleRequired": "Action title is required",
+      "descriptionRequired": "Action description is required",
+      "dueDateRequired": "Due date is required",
+      "ownerRequired": "Action owner is required"
+    },
+    "sourceContext": {
+      "manual": "Created manually"
+    },
+    "actions": {
+      "startAction": "Start Action",
+      "completeAction": "Complete Action",
+      "closeAction": "Close Action"
+    },
+    "followUps": {
+      "sectionTitle": "Action Follow-ups",
+      "sectionSubtitle": "Record progress updates for this corrective action.",
+      "addButton": "Add Follow-up",
+      "empty": "No follow-ups have been added yet",
+      "loading": "Loading follow-ups...",
+      "loadError": "Unable to load action follow-ups.",
+      "createdBy": "Created by {userId}",
+      "showMore": "Show more",
+      "showLess": "Show less",
+      "nextStepLabel": "Next step: {value}",
+      "createError": "Unable to create follow-up.",
+      "saving": "Saving...",
+      "progressPlaceholder": "Describe progress made since last update...",
+      "nextStepPlaceholder": "What happens next?",
+      "validation": {
+        "dateRequired": "Date is required",
+        "progressRequired": "Progress update is required"
+      },
+      "statusGuardMessage": "Follow-ups cannot be added to a closed action",
+      "fields": {
+        "followUpDate": "Follow-up Date",
+        "status": "Status",
+        "progressNote": "Progress Note",
+        "nextStep": "Next Step"
+      }
+    },
+    "closure": {
+      "sectionTitle": "Closure & Effectiveness Verification",
+      "sectionShortTitle": "Closure Verification",
+      "sectionSubtitle": "Verify whether this corrective action resolved the issue.",
+      "loading": "Loading closure verification...",
+      "loadError": "Unable to load closure verification.",
+      "createError": "Unable to create closure verification.",
+      "empty": "No closure verification recorded yet.",
+      "noVerificationReady": "Complete at least one follow-up before recording closure",
+      "noVerificationOpen": "The action must be in progress or completed before closure can be recorded",
+      "alreadyClosed": "This action was closed without documented verification",
+      "notEffectiveBanner": "This action was not effective. Re-opening the action and creating a new corrective action to address the root cause is recommended.",
+      "closedWithoutVerification": "Action is closed without verification.",
+      "verifiedByCurrentUser": "Verified by current user",
+      "recordButton": "Record Closure Verification",
+      "saving": "Saving...",
+      "currentUser": "Current user",
+      "validation": {
+        "dateRequired": "Date is required",
+        "resultRequired": "Verification result is required",
+        "notesRequired": "Closure notes are required"
+      },
+      "fields": {
+        "verificationDate": "Verification Date",
+        "verificationResult": "Verification Result",
+        "closureStatus": "Closure Status",
+        "closureNotes": "Closure Notes",
+        "verifiedBy": "Verified By"
+      }
+    },
+    "empty": "No corrective actions yet",
+    "notFound": "Corrective action not found"
+  }
+}

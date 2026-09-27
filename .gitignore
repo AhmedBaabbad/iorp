@@ -7,9 +7,19 @@ __pycache__/
 venv/
 node_modules/
 .next/
+.next-*/
 dist/
 build/
 .env
 !.env.example
 backend/.env
 frontend/.env
+
+# Local runtime data and tool output
+*.log
+!docs/verification/**/*.log
+*.sqlite
+.tmp/
+backend/uploads/
+*.tsbuildinfo
+*.egg-info/

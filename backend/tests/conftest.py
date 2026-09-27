@@ -14,7 +14,11 @@ from sqlalchemy.pool import StaticPool
 # Import all model modules so Base.metadata knows every table before create_all.
 import app.commercial.infrastructure.models  # noqa: F401
 import app.foundation.infrastructure.models  # noqa: F401
+import app.production.infrastructure.models  # noqa: F401
+import app.quality.infrastructure.models  # noqa: F401
+import app.platform.infrastructure.models  # noqa: F401
 from app.core.db import Base
+from app.core.rate_limit import _attempts as _rate_limit_attempts
 from app.core.security import hash_password
 from app.dependencies import get_db
 from app.foundation.domain.enums import OrganizationStatus, UserStatus
@@ -23,6 +27,14 @@ from app.main import app
 
 
 # ── Database / session ────────────────────────────────────────────────────────
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    """Rate-limit counters are process-global; clear them so one test's login
+    attempts can't exhaust another test's quota."""
+    _rate_limit_attempts.clear()
+    yield
+
 
 @pytest.fixture
 def db():

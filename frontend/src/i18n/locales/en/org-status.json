@@ -1,0 +1,22 @@
+{
+  "suspended": {
+    "title": "Organization Temporarily Suspended",
+    "message": "Your organization has been temporarily suspended. All accounts are on hold until further notice.",
+    "action": "If you believe this is an error, contact the platform administrator."
+  },
+  "inactive": {
+    "title": "Organization Inactive",
+    "message": "Your organization is currently inactive. System access is unavailable at this time.",
+    "action": "Contact the platform administrator for reactivation."
+  },
+  "archived": {
+    "title": "Organization Archived",
+    "message": "Your organization has been archived. Data is preserved but access is no longer available.",
+    "action": "Contact the platform administrator if you need access to your data."
+  },
+  "tryLoginAgain": "Try Login Again",
+  "pageTitle": "Access Unavailable",
+  "contactAdmin": "Contact Administrator",
+  "statusUnknown": "Organization status is unknown. Please contact the platform administrator.",
+  "languageSwitcherLabel": "Language"
+}

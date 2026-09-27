@@ -1,12 +1,13 @@
 from datetime import datetime
 import uuid
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
-from app.core.utils import enum_values, utc_now
+from app.core.utils import TZDateTime, enum_values, utc_now
 from app.foundation.domain.enums import OrganizationStatus, UserStatus
 
 
@@ -29,8 +30,15 @@ class Organization(Base):
         nullable=False,
         default=OrganizationStatus.ACTIVE,
     )
+    status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status_changed_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("system_platform_accounts.id"), nullable=True
+    )
+    status_change_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     industry_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="UTC")
+    default_locale: Mapped[str] = mapped_column(String(10), nullable=False, default="ar")
+    logo_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -51,12 +59,21 @@ class Organization(Base):
         back_populates="organization",
         cascade="all, delete-orphan",
     )
+    permissions: Mapped[list["Permission"]] = relationship(
+        back_populates="organization",
+        cascade="all, delete-orphan",
+    )
 
 
 class User(Base):
     __tablename__ = "foundation_users"
     __table_args__ = (
-        UniqueConstraint("organization_id", "email", name="uq_foundation_users_org_email"),
+        UniqueConstraint("email", name="uq_foundation_users_email_global"),
+        Index("ix_foundation_users_email_lookup", "email"),
+        CheckConstraint(
+            "preferred_locale IS NULL OR preferred_locale IN ('ar', 'en')",
+            name="ck_foundation_users_preferred_locale",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -73,7 +90,20 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    preferred_locale: Mapped[str | None] = mapped_column(String(10), nullable=True, default=None)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    token_version: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+    is_organization_root: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        index=True,
+    )
     status: Mapped[UserStatus] = mapped_column(
         Enum(
             UserStatus,
@@ -84,6 +114,9 @@ class User(Base):
         default=UserStatus.ACTIVE,
     )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    failed_login_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    auto_locked_until: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True, default=None)
+    last_failed_login_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -100,7 +133,20 @@ class User(Base):
     user_roles: Mapped[list["UserRole"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
+        foreign_keys="UserRole.user_id",
     )
+
+    def to_safe_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "organization_id": self.organization_id,
+            "full_name": self.full_name,
+            "email": self.email,
+            "phone": self.phone,
+            "preferred_locale": self.preferred_locale,
+            "status": self.status,
+            "is_organization_root": self.is_organization_root,
+        }
 
 
 class Role(Base):
@@ -123,6 +169,9 @@ class Role(Base):
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     code: Mapped[str] = mapped_column(String(64), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_system: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    is_protected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    is_editable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -148,16 +197,28 @@ class Role(Base):
 
 class Permission(Base):
     __tablename__ = "foundation_permissions"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "code", name="uq_foundation_permissions_org_code"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
     )
-    code: Mapped[str] = mapped_column(String(120), nullable=False, unique=True)
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("foundation_organizations.id", ondelete="CASCADE", name="fk_foundation_permissions_organization"), nullable=False, index=True
+    )
+    code: Mapped[str] = mapped_column(String(120), nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
     module_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    resource_name: Mapped[str] = mapped_column(String(80), nullable=False)
     action_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
+
+    organization: Mapped[Organization] = relationship(back_populates="permissions")
 
     role_permissions: Mapped[list["RolePermission"]] = relationship(
         back_populates="permission",
@@ -169,6 +230,7 @@ class RolePermission(Base):
     __tablename__ = "foundation_role_permissions"
     __table_args__ = (
         UniqueConstraint("role_id", "permission_id", name="uq_foundation_role_permissions_pair"),
+        CheckConstraint("scope IN ('own', 'team', 'organization')", name="ck_foundation_role_permissions_scope"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -187,6 +249,12 @@ class RolePermission(Base):
         ForeignKey("foundation_permissions.id"),
         nullable=False,
         index=True,
+    )
+    scope: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="organization",
+        server_default="organization",
     )
 
     role: Mapped[Role] = relationship(back_populates="role_permissions")
@@ -216,6 +284,81 @@ class UserRole(Base):
         nullable=False,
         index=True,
     )
+    assigned_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("foundation_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    assigned_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
 
-    user: Mapped[User] = relationship(back_populates="user_roles")
+    user: Mapped[User] = relationship(back_populates="user_roles", foreign_keys=[user_id])
     role: Mapped[Role] = relationship(back_populates="user_roles")
+    assigner: Mapped[User | None] = relationship(foreign_keys=[assigned_by])
+
+
+class RoleAssignmentRemoval(Base):
+    __tablename__ = "foundation_role_assignment_removals"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    role_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    removed_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("foundation_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    removed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
+class TenantSecurityEvent(Base):
+    __tablename__ = "foundation_security_events"
+    __table_args__ = (
+        Index("ix_foundation_security_org_event", "organization_id", "event_type"),
+        Index("ix_foundation_security_org_created", "organization_id", "created_at"),
+        Index("ix_foundation_security_actor_id", "actor_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False, index=True)
+    event_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
+    actor_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    details: Mapped[dict | list | None] = mapped_column(JSON().with_variant(JSONB(), "postgresql"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
+
+
+class TenantActivityLog(Base):
+    __tablename__ = "foundation_activity_log"
+    __table_args__ = (
+        Index("ix_foundation_activity_org_entity", "organization_id", "entity_type"),
+        Index("ix_foundation_activity_org_created", "organization_id", "created_at"),
+        Index("ix_foundation_activity_actor_id", "actor_id"),
+        Index("ix_foundation_activity_action", "action"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(80), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    entity_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    entity_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
+    actor_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    details: Mapped[dict | list | None] = mapped_column(JSON().with_variant(JSONB(), "postgresql"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
+
+
+class TenantPasswordResetToken(Base):
+    __tablename__ = "foundation_password_reset_tokens"
+    __table_args__ = (
+        Index("ix_foundation_password_reset_user", "user_id"),
+        Index("ix_foundation_password_reset_expires", "expires_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id", ondelete="CASCADE"), nullable=False)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id", ondelete="CASCADE"), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)

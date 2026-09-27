@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.commercial.api.schemas import SampleEvaluationCreate, SampleEvaluationRead
 from app.commercial.application.sample_service import SampleService
 from app.core.tenancy import TenantContext
-from app.dependencies import get_current_tenant, get_db
+from app.dependencies import get_current_tenant, get_db, require_permission
 
 
 router = APIRouter(tags=["commercial-evaluations"])
@@ -16,6 +16,7 @@ router = APIRouter(tags=["commercial-evaluations"])
     "/samples/{sample_id}/evaluations",
     response_model=SampleEvaluationRead,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("commercial:evaluations:create"))],
 )
 def create_sample_evaluation(
     sample_id: UUID,
@@ -33,8 +34,7 @@ def create_sample_evaluation(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sample not found.")
     return evaluation
 
-
-@router.get("/samples/{sample_id}/evaluations", response_model=list[SampleEvaluationRead])
+@router.get("/samples/{sample_id}/evaluations", response_model=list[SampleEvaluationRead], dependencies=[Depends(require_permission("commercial:evaluations:read"))])
 def list_sample_evaluations(
     sample_id: UUID,
     tenant: TenantContext = Depends(get_current_tenant),
@@ -47,7 +47,7 @@ def list_sample_evaluations(
     return evaluations
 
 
-@router.get("/sample-evaluations/{evaluation_id}", response_model=SampleEvaluationRead)
+@router.get("/sample-evaluations/{evaluation_id}", response_model=SampleEvaluationRead, dependencies=[Depends(require_permission("commercial:evaluations:read"))])
 def get_sample_evaluation(
     evaluation_id: UUID,
     tenant: TenantContext = Depends(get_current_tenant),

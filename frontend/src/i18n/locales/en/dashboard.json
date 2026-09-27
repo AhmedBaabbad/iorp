@@ -1,0 +1,25 @@
+{
+  "executive": { "title": "Executive Overview Dashboard", "subtitle": "Operational overview across the system" },
+  "production": { "title": "Production Dashboard", "sections": { "activeOrders": "Active Production Orders", "openDowntime": "Open Downtime Events", "recentOutputs": "Recent Outputs" } },
+  "quality": { "title": "Quality Dashboard", "sections": { "openInspections": "Open Inspections", "pendingRejections": "Pending Rejections", "openNcrs": "Open NCR Reports" } },
+  "capa": { "title": "CAPA Dashboard", "sections": { "openActions": "Open Actions", "blockedFollowUps": "Blocked Follow-ups", "overdueActions": "Overdue Actions" } },
+  "attention": { "title": "Needs Attention", "empty": "Everything looks on track right now" },
+  "home": {
+    "title": "Dashboard", "subtitle": "A live view of your organization's operations", "welcome": "Welcome back, {name}", "today": "Today", "noData": "—", "viewDetails": "View details",
+    "hero": { "badge": "Operational command center", "lastUpdated": "Last updated", "refresh": "Refresh data", "refreshing": "Refreshing…" },
+    "error": { "title": "Dashboard data could not be loaded", "description": "Your previous data remains visible. Check the connection and try again.", "retry": "Try again" },
+    "sections": { "overviewEyebrow": "Live indicators", "overview": "Operational overview", "analyticsEyebrow": "Real data", "analytics": "Performance distribution", "priorityEyebrow": "Priority", "departmentsEyebrow": "Organization", "departments": "Departments at a glance" },
+    "kpi": { "customers": "Customers", "samples": "Samples", "workforce": "Team members", "systemUsers": "System users", "activeMembers": "Active workforce", "roles": "Roles", "qualityChecks": "Quality checks", "productionOrders": "Production orders", "followUpsDueToday": "Due today", "followUpsOverdue": "Overdue follow-ups", "followUpsUpcoming": "Upcoming (7 days)", "followUpsCompletedToday": "Completed today", "followUpsNeedingAssignment": "Needing assignment", "fromTotal": "from {total} total", "noData": "—" },
+    "charts": { "production": "Production orders by status", "quality": "Quality results", "workforce": "Workforce by status", "empty": "No data is available for this chart yet" },
+    "attention": { "title": "Needs attention", "empty": "No urgent items require action", "overdue": "Overdue commercial follow-ups", "unassigned": "Follow-ups awaiting assignment" },
+    "modules": {
+      "commercial": { "title": "Commercial", "description": "Customers, samples, quotations, orders and follow-ups" },
+      "production": { "title": "Production", "description": "Orders, outputs, downtime and operational status" },
+      "quality": { "title": "Quality", "description": "Inspections, rejections, NCR and corrective actions" },
+      "workforce": { "title": "Workforce", "description": "Members, active workforce and role distribution" },
+      "administration": { "title": "Administration", "description": "Users, roles, permissions and organization settings" }
+    },
+    "quickActions": { "eyebrow": "Create", "title": "Quick actions", "newCustomer": "New customer", "newSample": "New sample", "newMember": "New team member", "newUser": "New user", "newRole": "New role" },
+    "recentActivity": { "title": "Recent activity", "placeholder": "No recent activity is available" }
+  }
+}

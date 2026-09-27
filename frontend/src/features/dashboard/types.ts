@@ -1,0 +1,20 @@
+export type DashboardSummary = {
+  customers_count: number | null;
+  samples_count: number | null;
+  workforce_count: number | null;
+  workforce_active_count: number | null;
+  workforce_by_type: Record<string, number> | null;
+  workforce_by_status: Record<string, number> | null;
+  users_count: number | null;
+  roles_count: number | null;
+  quality_checks_count: number | null;
+  production_orders_count: number | null;
+  production_by_status: Record<string, number> | null;
+  quality_checks_by_result: Record<string, number> | null;
+  follow_ups_due_today: number | null;
+  follow_ups_overdue: number | null;
+  follow_ups_upcoming_7days: number | null;
+  follow_ups_completed_today: number | null;
+  follow_ups_needing_assignment: number | null;
+  last_updated_at: string | null;
+};

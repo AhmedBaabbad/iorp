@@ -4,7 +4,8 @@ from uuid import UUID
 
 @dataclass(frozen=True)
 class AuthenticatedUser:
-    id: UUID
+    user_id: UUID
     organization_id: UUID
     email: str
-    roles: tuple[str, ...] = ()
+    roles: frozenset[str] = frozenset()
+    permissions: frozenset[str] = frozenset()

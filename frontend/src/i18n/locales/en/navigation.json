@@ -1,0 +1,64 @@
+{
+  "appName": "IORP",
+  "appSubtitle": "Industrial Operations Platform",
+  "dashboard": "Dashboard",
+  "language": "Language",
+  "theme": {
+    "label": "Appearance",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "sections": {
+    "iorp": "IORP",
+    "commercial": "Commercial",
+    "workforce": "Workforce",
+    "production": "Production",
+    "quality": "Quality",
+    "ncr": "NCR",
+    "capa": "CAPA",
+    "administration": "Administration"
+  },
+  "links": {
+    "users": "Users",
+    "roles": "Roles",
+    "adminUsers": "User Management",
+    "adminRoles": "Roles & Permissions",
+    "adminPermissions": "Permissions",
+    "auditLog": "Audit Log",
+    "securityLog": "Security Log",
+    "activityLog": "Activity Log",
+    "organizationSettings": "Organization Settings",
+    "customers": "Customers",
+    "customerInteractions": "Customer Interactions",
+    "followUps": "Follow-ups",
+    "samples": "Samples",
+    "quotes": "Quotes",
+    "commercialOrders": "Commercial Orders",
+    "workforceMembers": "Team Members",
+    "workCenters": "Work Centers",
+    "shifts": "Shifts",
+    "productionOrders": "Production Orders",
+    "productionOrderItems": "Order Items",
+    "shiftReports": "Shift Reports",
+    "productionOutputs": "Production Outputs",
+    "downtimeEvents": "Downtime Events",
+    "wasteRecords": "Waste Records",
+    "qualityChecks": "Quality Checks",
+    "qualityRejections": "Quality Rejections",
+    "ncrReports": "NCR Reports",
+    "correctiveActions": "Corrective Actions",
+    "demands": "Customer Production Demands",
+    "planning": "Production Planning",
+    "shiftRosters": "Shift Rosters"
+  },
+  "userMenu": {
+    "changePassword": "Change Password",
+    "profile": "Profile",
+    "logout": "Sign out"
+  },
+  "topBar": {
+    "notifications": "Notifications",
+    "settings": "Settings"
+  }
+}

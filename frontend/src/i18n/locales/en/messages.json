@@ -1,0 +1,81 @@
+{
+  "validation": {
+    "required": "This field is required",
+    "requiredField": "{field} is required",
+    "invalidEmail": "Enter a valid email address",
+    "invalidValue": "The entered value is invalid",
+    "mustBePositive": "The value must be greater than zero",
+    "mustBeGreaterThan": "The value must be greater than {min}",
+    "quantityConstraint": "Accepted quantity + rejected quantity must equal inspected quantity",
+    "rejectionNotesRequired": "Rejection notes are required by quality requirements",
+    "titleRequired": "Title is required",
+    "descriptionRequired": "Description is required",
+    "dueDateRequired": "Due date is required",
+    "ownerRequired": "Action owner is required",
+    "selectionRequired": "Please select a value from the list",
+    "dateRequired": "Date is required",
+    "resultRequired": "Result is required before continuing",
+    "progressRequired": "Progress note is required",
+    "notesRequired": "Notes are required",
+    "defectCountMin": "Defect count must be greater than zero",
+    "itemNameRequired": "Item name is required",
+    "issueDescriptionRequired": "Issue description is required"
+  },
+  "success": {
+    "created": "Created successfully",
+    "updated": "Updated successfully",
+    "saved": "Saved successfully",
+    "deleted": "Deleted successfully",
+    "submitted": "Submitted successfully",
+    "statusChanged": "Status changed successfully",
+    "actionCompleted": "Action completed successfully",
+    "inspectionStarted": "Inspection started",
+    "inspectionClosed": "Inspection closed",
+    "downtimeEnded": "Downtime end recorded",
+    "reportSubmitted": "Report submitted",
+    "reportApproved": "Report approved",
+    "dispositionExecuted": "Disposition executed",
+    "ncrOpened": "NCR report opened",
+    "ncrClosed": "NCR report closed",
+    "actionStarted": "Corrective action started",
+    "actionClosed": "Corrective action closed"
+  },
+  "error": {
+    "unexpected": "An unexpected error occurred. Please try again.",
+    "fetchFailed": "Unable to load data. Please refresh the page.",
+    "saveFailed": "Unable to save data. Please try again.",
+    "notFound": "The requested item was not found.",
+    "forbidden": "You do not have permission to perform this action.",
+    "networkError": "Unable to connect to the server. Check your internet connection.",
+    "timeout": "The request timed out. Please try again.",
+    "conflict": "The data you are trying to create already exists.",
+    "validationFailed": "Some fields contain errors. Please review them.",
+    "sessionExpired": "Your session has expired. Please sign in again.",
+    "tryAgain": "Please try again.",
+    "contactSupport": "If the problem continues, contact technical support."
+  },
+  "loading": {
+    "default": "Loading...",
+    "saving": "Saving...",
+    "submitting": "Submitting...",
+    "deleting": "Deleting...",
+    "fetching": "Fetching data..."
+  },
+  "empty": {
+    "default": "No data available",
+    "noResults": "No results found",
+    "noItems": "No items yet",
+    "noRecords": "No records available",
+    "addFirst": "Start by adding a new item"
+  },
+  "status": {
+    "statusGuardClosed": "This action cannot be performed because the record is closed.",
+    "statusGuardCancelled": "This action cannot be performed on a cancelled record."
+  },
+  "confirm": {
+    "deletePrompt": "Are you sure you want to delete this item?",
+    "cannotUndo": "This action cannot be undone.",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  }
+}

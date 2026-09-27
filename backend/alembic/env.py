@@ -9,6 +9,11 @@ from app.core.config import settings
 from app.core.db import Base
 import app.commercial.infrastructure.models  # noqa: F401
 import app.foundation.infrastructure.models  # noqa: F401
+import app.production.infrastructure.models  # noqa: F401
+import app.quality.infrastructure.models  # noqa: F401
+import app.platform.infrastructure.models  # noqa: F401
+import app.core.security_models  # noqa: F401
+import app.workforce.infrastructure.models  # noqa: F401
 
 config = context.config
 
@@ -18,6 +23,12 @@ if config.config_file_name is not None:
 config.set_main_option("sqlalchemy.url", settings.database_url)
 
 target_metadata = Base.metadata
+
+
+def include_object(obj, name, type_, reflected, compare_to):
+    # This migration-owned historical archive deliberately has no live ORM/FKs.
+    # Autogenerate must never propose removing preserved legacy associations.
+    return not (type_ == "table" and name == "production_legacy_shift_centers")
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -41,6 +52,7 @@ def run_migrations_offline() -> None:
     context.configure(
         url=url,
         target_metadata=target_metadata,
+        include_object=include_object,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -64,7 +76,8 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, target_metadata=target_metadata,
+            include_object=include_object,
         )
 
         with context.begin_transaction():

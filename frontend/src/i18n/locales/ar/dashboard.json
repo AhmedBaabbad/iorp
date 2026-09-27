@@ -1,0 +1,25 @@
+{
+  "executive": { "title": "لوحة المتابعة التنفيذية", "subtitle": "نظرة تشغيلية عامة على النظام" },
+  "production": { "title": "لوحة الإنتاج", "sections": { "activeOrders": "أوامر الإنتاج النشطة", "openDowntime": "أحداث التوقف المفتوحة", "recentOutputs": "أحدث المخرجات" } },
+  "quality": { "title": "لوحة الجودة", "sections": { "openInspections": "الفحوصات المفتوحة", "pendingRejections": "حالات الرفض قيد التنفيذ", "openNcrs": "تقارير عدم المطابقة المفتوحة" } },
+  "capa": { "title": "لوحة الإجراءات التصحيحية", "sections": { "openActions": "الإجراءات المفتوحة", "blockedFollowUps": "المتابعات المتوقفة", "overdueActions": "الإجراءات المتأخرة" } },
+  "attention": { "title": "يحتاج إلى الانتباه", "empty": "تسير العمليات بصورة جيدة حاليًا" },
+  "home": {
+    "title": "لوحة التحكم", "subtitle": "عرض مباشر لعمليات منظمتك", "welcome": "مرحبًا بعودتك، {name}", "today": "اليوم", "noData": "—", "viewDetails": "عرض التفاصيل",
+    "hero": { "badge": "مركز القيادة التشغيلي", "lastUpdated": "آخر تحديث", "refresh": "تحديث البيانات", "refreshing": "جارٍ التحديث…" },
+    "error": { "title": "تعذر تحميل بيانات لوحة التحكم", "description": "ستبقى البيانات السابقة ظاهرة. تحقق من الاتصال ثم حاول مجددًا.", "retry": "إعادة المحاولة" },
+    "sections": { "overviewEyebrow": "مؤشرات مباشرة", "overview": "نظرة تشغيلية عامة", "analyticsEyebrow": "بيانات فعلية", "analytics": "توزيع الأداء", "priorityEyebrow": "الأولوية", "departmentsEyebrow": "المنظمة", "departments": "الأقسام في لمحة" },
+    "kpi": { "customers": "العملاء", "samples": "العينات", "workforce": "أعضاء الفريق", "systemUsers": "مستخدمو النظام", "activeMembers": "القوى العاملة النشطة", "roles": "الأدوار", "qualityChecks": "فحوصات الجودة", "productionOrders": "أوامر الإنتاج", "followUpsDueToday": "مستحقة اليوم", "followUpsOverdue": "متابعات متأخرة", "followUpsUpcoming": "قادمة خلال 7 أيام", "followUpsCompletedToday": "مكتملة اليوم", "followUpsNeedingAssignment": "تحتاج إلى إسناد", "fromTotal": "من أصل {total}", "noData": "—" },
+    "charts": { "production": "أوامر الإنتاج حسب الحالة", "quality": "نتائج فحوصات الجودة", "workforce": "القوى العاملة حسب الحالة", "empty": "لا تتوفر بيانات لهذا الرسم حتى الآن" },
+    "attention": { "title": "يحتاج إلى الانتباه", "empty": "لا توجد عناصر عاجلة تتطلب إجراءً", "overdue": "متابعات تجارية متأخرة", "unassigned": "متابعات تنتظر الإسناد" },
+    "modules": {
+      "commercial": { "title": "القسم التجاري", "description": "العملاء والعينات والعروض والطلبات والمتابعات" },
+      "production": { "title": "الإنتاج", "description": "الأوامر والمخرجات والتوقفات وحالة التشغيل" },
+      "quality": { "title": "الجودة", "description": "الفحوصات والرفض وعدم المطابقة والإجراءات التصحيحية" },
+      "workforce": { "title": "القوى العاملة", "description": "الأعضاء والقوى النشطة والتوزيع الوظيفي" },
+      "administration": { "title": "إدارة النظام", "description": "المستخدمون والأدوار والصلاحيات وإعدادات المنظمة" }
+    },
+    "quickActions": { "eyebrow": "إنشاء", "title": "إجراءات سريعة", "newCustomer": "عميل جديد", "newSample": "عينة جديدة", "newMember": "عضو فريق جديد", "newUser": "مستخدم جديد", "newRole": "دور جديد" },
+    "recentActivity": { "title": "النشاط الأخير", "placeholder": "لا يتوفر نشاط حديث" }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "ncrReports": {
+    "listTitle": "Non-Conformance Reports",
+    "createTitle": "Create Non-Conformance Report",
+    "detailTitle": "Non-Conformance Report Details",
+    "reportNumberAuto": "Auto-generated",
+    "sectionItems": "Affected Items",
+    "fields": {
+      "reportNumber": "Report Number",
+      "reportDate": "Report Date",
+      "title": "Report Title",
+      "description": "Non-Conformance Description",
+      "sourceType": "Source Type",
+      "reportType": "Report Type",
+      "status": "Status",
+      "referenceCode": "Reference Code",
+      "qualityCheck": "Reference Quality Check",
+      "qualityRejection": "Reference Quality Rejection"
+    },
+    "subtitle": "Raise and track non-conformance reports across the quality chain.",
+    "listAria": "NCR reports list",
+    "filtersAria": "NCR report filters",
+    "newButton": "New NCR Report",
+    "createButton": "Create NCR Report",
+    "createFirst": "Create the first NCR report, or adjust the filters.",
+    "loading": "Loading NCR reports...",
+    "loadingDetail": "Loading NCR report...",
+    "loadError": "Unable to load NCR reports.",
+    "loadDetailError": "Unable to load NCR report.",
+    "createError": "Unable to create NCR report.",
+    "updateStatusError": "Unable to update NCR report status.",
+    "detailSubtitle": "Review non-conformance report details.",
+    "createSubtitle": "Report number is auto-generated. Status starts as draft.",
+    "backToList": "Back to NCR Reports",
+    "returnToList": "Return to NCR Reports",
+    "notFoundDescription": "The NCR report may have been removed or is unavailable.",
+    "descriptionSection": "Description",
+    "qualityChainSection": "Quality Chain",
+    "closedMessage": "Report is closed.",
+    "validation": {
+      "titleRequired": "Title is required",
+      "descriptionRequired": "Description is required"
+    },
+    "actions": {
+      "openReport": "Open Report",
+      "opening": "Opening...",
+      "startReview": "Start Review",
+      "startingReview": "Starting...",
+      "closeReport": "Close Report",
+      "closing": "Closing..."
+    },
+    "items": {
+      "sectionTitle": "Affected Items",
+      "sectionSubtitle": "Line-level items and issue details for this non-conformance report.",
+      "addButton": "Add Item",
+      "empty": "No items have been added to this report yet",
+      "loading": "Loading NCR items...",
+      "loadError": "Unable to load NCR items.",
+      "createError": "Unable to create NCR item.",
+      "statusGuardMessage": "Items cannot be added to a closed report",
+      "lineNoAuto": "Auto-assigned",
+      "lineNoAutoSentence": "Line numbers are auto-assigned.",
+      "showMore": "Show more",
+      "showLess": "Show less",
+      "notesLabel": "Notes: {value}",
+      "saveButton": "Save Item",
+      "saving": "Saving...",
+      "itemReferencePlaceholder": "Batch #, material code, product code...",
+      "unitPlaceholder": "kg, pcs, m, roll",
+      "issueDescriptionPlaceholder": "Describe what is non-conforming about this item...",
+      "validation": {
+        "itemNameRequired": "Item name is required",
+        "issueDescriptionRequired": "Issue description is required"
+      },
+      "fields": {
+        "lineNo": "Line No",
+        "itemName": "Item Name",
+        "itemReference": "Item Reference",
+        "quantityAffected": "Quantity Affected",
+        "unit": "Unit",
+        "issueDescription": "Issue Description",
+        "notes": "Notes"
+      }
+    },
+    "empty": "No non-conformance reports yet",
+    "notFound": "Non-conformance report not found"
+  }
+}

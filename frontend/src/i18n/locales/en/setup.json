@@ -1,0 +1,59 @@
+{
+  "pageTitle": "System Setup",
+  "subtitle": "First-time system initialization",
+  "languageSwitcher": "Language",
+  "steps": {
+    "protection": "Setup Protection",
+    "platformOwner": "Platform Owner",
+    "organization": "First Organization",
+    "orgAdmin": "Organization Administrator",
+    "review": "Review"
+  },
+  "fields": {
+    "bootstrapToken": "Bootstrap Token",
+    "fullName": "Full Name",
+    "email": "Email",
+    "phone": "Phone",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "orgName": "Organization Name",
+    "orgCode": "Organization Code",
+    "orgCodeHint": "Letters, numbers, and hyphens only — example: ACME. This is a short identifier for your company, not auto-generated.",
+    "industryType": "Industry Type",
+    "timezone": "Timezone",
+    "defaultLocale": "Default Language",
+    "orgLogo": "Organization Logo",
+    "acceptedFormats": "PNG, JPG, WebP — Max 2 MB",
+    "arabic": "Arabic",
+    "english": "English"
+  },
+  "buttons": {
+    "next": "Next",
+    "back": "Back",
+    "completeSetup": "Complete Setup",
+    "submitting": "Setting up..."
+  },
+  "success": {
+    "title": "System Initialized Successfully!",
+    "message": "The platform, first organization, and organization administrator have been created.",
+    "goToLogin": "Go to Login"
+  },
+  "alreadyInitialized": {
+    "title": "System Already Initialized",
+    "message": "This system has already been set up. The setup cannot be run again.",
+    "goToLogin": "Go to Login"
+  },
+  "errors": {
+    "setupFailed": "Setup failed. Please review the information and try again.",
+    "invalidBootstrapToken": "Invalid bootstrap token. It must exactly match IORP_BOOTSTRAP_TOKEN in the backend's .env file.",
+    "alreadyInitializedDuringSubmit": "The system was just initialized by someone else. Refresh the page to go to login.",
+    "logoTooLarge": "Logo file exceeds the maximum size (2 MB).",
+    "bootstrapTokenRequired": "Bootstrap token is required.",
+    "passwordTooShort": "Password must be at least {min} characters.",
+    "passwordMismatch": "Password and confirmation do not match.",
+    "passwordEqualsEmail": "Password cannot be the same as the email address.",
+    "invalidOrgCode": "Organization code may only contain letters, numbers, and hyphens.",
+    "invalidTimezone": "Enter a valid IANA timezone, e.g. Asia/Riyadh.",
+    "emailsMustDiffer": "Platform root and organization administrator must use different emails."
+  }
+}
