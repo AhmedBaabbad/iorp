@@ -609,6 +609,7 @@
       "upcoming": "Upcoming",
       "current": "Current",
       "ended": "Ended"
-    }
+    },
+    "noMembers": "No members yet"
   }
 }

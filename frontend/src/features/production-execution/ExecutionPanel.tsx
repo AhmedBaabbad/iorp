@@ -47,21 +47,17 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
   const [selected, setSelected] = useState<RecordData | null>(null);
   const [closeDate, setCloseDate] = useState("");
   const [workerFilter, setWorkerFilter] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
   const [memberDraft, setMemberDraft] = useState<Member>(emptyDraft);
 
   const load = useCallback(async () => {
     if (!can("read")) { setLoading(false); return; }
     const query = new URLSearchParams();
     if (orderId) query.set("production_order_id", orderId);
-    if (workerFilter) query.set("workforce_member_id", workerFilter);
-    if (!orderId && from) query.set("date_from", from);
-    if (!orderId && to) query.set("date_to", to);
+    if (orderId && workerFilter) query.set("workforce_member_id", workerFilter);
     const data = await apiClient<RecordData[]>(`${base}${orderId ? "runs" : "shift-rosters"}?${query}`);
     setRows(data);
     setSelected(current => current ? data.find(row => row.id === current.id) ?? null : null);
-  }, [can, orderId, workerFilter, from, to]);
+  }, [can, orderId, workerFilter]);
 
   useEffect(() => {
     let active = true;
@@ -124,13 +120,13 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
     <p>{orderId ? t("runsHint") : t("rostersHint")}</p>
     {error && <p role="alert" style={styles.error}>{error}</p>}
     <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-      {workerSelect(workerFilter, setWorkerFilter, { optional: true, activeOnly: false })}
-      {!orderId && <><label>{t("from")}<input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label><label>{t("to")}<input type="date" value={to} onChange={e => setTo(e.target.value)} /></label></>}
+      {/* Rosters page shows only the create action; runs keep their worker filter. */}
+      {orderId && workerSelect(workerFilter, setWorkerFilter, { optional: true, activeOnly: false })}
       {can("create") && can("manage_members") && <button style={styles.button} disabled={busy} onClick={() => openForm()}>{t("create")}</button>}
     </div>
     {loading ? <p>{t("loading")}</p> : rows.length === 0 ? <p>{t("empty")}</p> : <div style={{ overflowX: "auto" }}><table style={{ width: "100%", textAlign: "start", borderSpacing: 12 }}>
       <thead><tr>{[t("columns.record"), t("columns.shift"), orderId ? t("columns.workCenter") : t("columns.lead"), t("columns.dateStart"), t("columns.end"), t("columns.status"), t("columns.team")].map(h => <th key={h}>{h}</th>)}</tr></thead>
-      <tbody>{rows.map(row => <tr key={row.id}><td><button style={styles.secondaryButton} onClick={() => { setSelected(row); setCloseDate(""); setMemberDraft(emptyDraft); }}>{row.name || row.id.slice(0, 8)}</button></td><td>{row.shift_name || "—"}</td><td>{orderId ? row.work_center_name : row.members.filter(m => m.is_shift_lead).map(m => m.workforce_name).join(", ") || "—"}</td><td>{row.run_date || row.effective_from}{row.started_at && <div>{formatInstant(row.started_at)}</div>}</td><td>{row.effective_to || (row.ended_at ? formatInstant(row.ended_at) : "—")}</td><td>{statusLabel(row)}</td><td>{row.team_count}</td></tr>)}</tbody>
+      <tbody>{rows.map(row => <tr key={row.id}><td><button style={styles.secondaryButton} onClick={() => { setSelected(row); setCloseDate(""); setMemberDraft(emptyDraft); }}>{row.name || row.id.slice(0, 8)}</button></td><td>{row.shift_name || "—"}</td><td>{orderId ? row.work_center_name : row.members.filter(m => m.is_shift_lead).map(m => m.workforce_name).join(", ") || "—"}</td><td>{row.run_date || row.effective_from}{row.started_at && <div>{formatInstant(row.started_at)}</div>}</td><td>{row.effective_to || (row.ended_at ? formatInstant(row.ended_at) : "—")}</td><td>{statusLabel(row)}</td><td>{orderId ? row.team_count : <TeamList members={row.members} empty={t("noMembers")} lead={t("leadMarker")} />}</td></tr>)}</tbody>
     </table></div>}
 
     {editing && <form onSubmit={async e => {
@@ -182,4 +178,9 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
       </div>}
     </section>}
   </section>;
+}
+
+function TeamList({ members, empty, lead }: { members: Member[]; empty: string; lead: string }) {
+  if (!members.length) return <span style={{ color: "#64748b" }}>{empty}</span>;
+  return <ul style={{ margin: 0, paddingInlineStart: 18 }}>{members.map(m => <li key={m.id ?? m.workforce_member_id}>{m.workforce_name ?? m.employee_code}{m.is_shift_lead && ` ${lead}`}</li>)}</ul>;
 }
