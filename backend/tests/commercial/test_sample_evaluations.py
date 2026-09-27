@@ -5,6 +5,7 @@ import pytest
 from app.core.security import hash_password
 from app.foundation.domain.enums import OrganizationStatus, UserStatus
 from app.foundation.infrastructure.models import Organization, User
+from tests.commercial.conftest import grant_commercial_role
 
 _BASE_CUSTOMER = {"customer_code": "CUST-EVAL-001", "name": "Evaluation Corp"}
 
@@ -23,10 +24,10 @@ _BASE_EVALUATION = {
 
 
 @pytest.fixture
-def customer_id(client, auth_headers):
+def customer_id(client, auth_headers, with_owner):
     resp = client.post(
         "/api/v1/commercial/customers",
-        json=_BASE_CUSTOMER,
+        json=with_owner(_BASE_CUSTOMER),
         headers=auth_headers,
     )
     assert resp.status_code == 201
@@ -167,6 +168,7 @@ def test_tenant_isolation(client, db, auth_headers, sample_id):
     )
     db.add(user_b)
     db.commit()
+    grant_commercial_role(db, org_b, user_b)
 
     login_resp = client.post(
         "/api/v1/auth/login",

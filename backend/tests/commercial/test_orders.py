@@ -1,3 +1,4 @@
+import re
 from copy import deepcopy
 from uuid import uuid4
 
@@ -6,6 +7,7 @@ import pytest
 from app.core.security import hash_password
 from app.foundation.domain.enums import OrganizationStatus, UserStatus
 from app.foundation.infrastructure.models import Organization, User
+from tests.commercial.conftest import grant_commercial_role
 
 _BASE_CUSTOMER = {"customer_code": "CUST-ORDER-001", "name": "Order Corp"}
 
@@ -24,10 +26,10 @@ _BASE_ORDER = {
 
 
 @pytest.fixture
-def customer_id(client, auth_headers):
+def customer_id(client, auth_headers, with_owner):
     resp = client.post(
         "/api/v1/commercial/customers",
-        json=_BASE_CUSTOMER,
+        json=with_owner(_BASE_CUSTOMER),
         headers=auth_headers,
     )
     assert resp.status_code == 201
@@ -49,7 +51,7 @@ def test_create_order_returns_201(client, auth_headers, customer_id):
     assert resp.status_code == 201
     data = resp.json()
     assert "id" in data
-    assert data["order_number"] == "ORD-001"
+    assert re.match(r"^RFS-\d{4}-\d{4}$", data["order_number"])  # server-generated; client value ignored
     assert data["status"] == "draft"
     assert len(data["items"]) == 1
 
@@ -88,7 +90,7 @@ def test_create_order_with_price_calculates_line_total(client, auth_headers, cus
     assert resp.json()["items"][0]["line_total"] == "500.00"
 
 
-def test_create_order_duplicate_number_returns_400(client, auth_headers, customer_id):
+def test_client_order_number_is_ignored_and_numbers_stay_unique(client, auth_headers, customer_id):
     first = client.post(
         f"/api/v1/commercial/customers/{customer_id}/orders",
         json=_order_payload(),
@@ -101,7 +103,8 @@ def test_create_order_duplicate_number_returns_400(client, auth_headers, custome
         json=_order_payload(),
         headers=auth_headers,
     )
-    assert resp.status_code == 400
+    assert resp.status_code == 201
+    assert resp.json()["order_number"] != first.json()["order_number"]
 
 
 def test_create_order_customer_not_found_returns_404(client, auth_headers):
@@ -125,7 +128,7 @@ def test_list_orders_returns_results(client, auth_headers, customer_id):
     assert resp.status_code == 200
     items = resp.json()
     assert len(items) == 1
-    assert items[0]["order_number"] == "ORD-001"
+    assert re.match(r"^RFS-\d{4}-\d{4}$", items[0]["order_number"])
     assert "items" not in items[0]
 
 
@@ -195,6 +198,7 @@ def test_tenant_isolation(client, db, auth_headers, customer_id):
     )
     db.add(user_b)
     db.commit()
+    grant_commercial_role(db, org_b, user_b)
 
     login_resp = client.post(
         "/api/v1/auth/login",

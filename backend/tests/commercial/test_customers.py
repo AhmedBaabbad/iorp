@@ -11,16 +11,17 @@ Covers:
 from app.core.security import hash_password
 from app.foundation.domain.enums import OrganizationStatus, UserStatus
 from app.foundation.infrastructure.models import Organization, User
+from tests.commercial.conftest import grant_commercial_role
 
 _BASE_CUSTOMER = {"name": "Test Corp"}
 
 
 # ── Create ────────────────────────────────────────────────────────────────────
 
-def test_create_customer(client, auth_headers):
+def test_create_customer(client, auth_headers, with_owner):
     resp = client.post(
         "/api/v1/commercial/customers",
-        json=_BASE_CUSTOMER,
+        json=with_owner(_BASE_CUSTOMER),
         headers=auth_headers,
     )
     assert resp.status_code == 201
@@ -46,8 +47,8 @@ def test_list_customers_empty(client, auth_headers):
     assert resp.json() == []
 
 
-def test_list_customers(client, auth_headers):
-    client.post("/api/v1/commercial/customers", json=_BASE_CUSTOMER, headers=auth_headers)
+def test_list_customers(client, auth_headers, with_owner):
+    client.post("/api/v1/commercial/customers", json=with_owner(_BASE_CUSTOMER), headers=auth_headers)
     resp = client.get("/api/v1/commercial/customers", headers=auth_headers)
     assert resp.status_code == 200
     items = resp.json()
@@ -57,21 +58,21 @@ def test_list_customers(client, auth_headers):
 
 # ── Validation ────────────────────────────────────────────────────────────────
 
-def test_customer_codes_are_generated_sequentially(client, auth_headers):
-    client.post("/api/v1/commercial/customers", json=_BASE_CUSTOMER, headers=auth_headers)
+def test_customer_codes_are_generated_sequentially(client, auth_headers, with_owner):
+    client.post("/api/v1/commercial/customers", json=with_owner(_BASE_CUSTOMER), headers=auth_headers)
     resp = client.post(
         "/api/v1/commercial/customers",
-        json={"name": "Second Corp"},
+        json=with_owner({"name": "Second Corp"}),
         headers=auth_headers,
     )
     assert resp.status_code == 201
     assert resp.json()["customer_code"] == "CUST-00002"
 
 
-def test_customer_code_not_reused_after_delete(client, auth_headers):
+def test_customer_code_not_reused_after_delete(client, auth_headers, with_owner):
     created = client.post(
         "/api/v1/commercial/customers",
-        json=_BASE_CUSTOMER,
+        json=with_owner(_BASE_CUSTOMER),
         headers=auth_headers,
     )
     assert created.status_code == 201
@@ -85,7 +86,7 @@ def test_customer_code_not_reused_after_delete(client, auth_headers):
 
     recreated = client.post(
         "/api/v1/commercial/customers",
-        json={"name": "Replacement Corp"},
+        json=with_owner({"name": "Replacement Corp"}),
         headers=auth_headers,
     )
     assert recreated.status_code == 201
@@ -94,12 +95,12 @@ def test_customer_code_not_reused_after_delete(client, auth_headers):
 
 # ── Tenant isolation ──────────────────────────────────────────────────────────
 
-def test_tenant_isolation(client, db, test_org, auth_headers):
+def test_tenant_isolation(client, db, test_org, auth_headers, with_owner):
     """Customers created by org A must not appear in org B's list."""
     # Org A creates a customer
     client.post(
         "/api/v1/commercial/customers",
-        json={"name": "Org A Customer"},
+        json=with_owner({"name": "Org A Customer"}),
         headers=auth_headers,
     )
 
@@ -123,6 +124,7 @@ def test_tenant_isolation(client, db, test_org, auth_headers):
     )
     db.add(user_b)
     db.commit()
+    grant_commercial_role(db, org_b, user_b)
 
     login_resp = client.post(
         "/api/v1/auth/login",

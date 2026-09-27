@@ -1,3 +1,4 @@
+import re
 from copy import deepcopy
 from uuid import uuid4
 
@@ -6,6 +7,7 @@ import pytest
 from app.core.security import hash_password
 from app.foundation.domain.enums import OrganizationStatus, UserStatus
 from app.foundation.infrastructure.models import Organization, User
+from tests.commercial.conftest import grant_commercial_role
 
 _BASE_CUSTOMER = {"customer_code": "CUST-QUOTE-001", "name": "Quote Corp"}
 
@@ -29,10 +31,10 @@ _BASE_QUOTE = {
 
 
 @pytest.fixture
-def customer_id(client, auth_headers):
+def customer_id(client, auth_headers, with_owner):
     resp = client.post(
         "/api/v1/commercial/customers",
-        json=_BASE_CUSTOMER,
+        json=with_owner(_BASE_CUSTOMER),
         headers=auth_headers,
     )
     assert resp.status_code == 201
@@ -54,7 +56,7 @@ def test_create_quote_returns_201(client, auth_headers, customer_id):
     assert resp.status_code == 201
     data = resp.json()
     assert "id" in data
-    assert data["quote_number"] == "Q-001"
+    assert re.match(r"^RFQ-\d{4}-\d{4}$", data["quote_number"])  # server-generated; client value ignored
     assert data["status"] == "draft"
     assert "subtotal_amount" in data
     assert "total_amount" in data
@@ -83,7 +85,7 @@ def test_create_quote_totals_calculated_correctly(client, auth_headers, customer
     assert data["total_amount"] == "500.00"
 
 
-def test_create_quote_duplicate_number_returns_400(client, auth_headers, customer_id):
+def test_client_quote_number_is_ignored_and_numbers_stay_unique(client, auth_headers, customer_id):
     first = client.post(
         f"/api/v1/commercial/customers/{customer_id}/quotes",
         json=_quote_payload(),
@@ -96,7 +98,8 @@ def test_create_quote_duplicate_number_returns_400(client, auth_headers, custome
         json=_quote_payload(),
         headers=auth_headers,
     )
-    assert resp.status_code == 400
+    assert resp.status_code == 201
+    assert resp.json()["quote_number"] != first.json()["quote_number"]
 
 
 def test_create_quote_customer_not_found_returns_404(client, auth_headers):
@@ -120,7 +123,7 @@ def test_list_quotes_returns_results(client, auth_headers, customer_id):
     assert resp.status_code == 200
     items = resp.json()
     assert len(items) == 1
-    assert items[0]["quote_number"] == "Q-001"
+    assert re.match(r"^RFQ-\d{4}-\d{4}$", items[0]["quote_number"])
     assert "items" not in items[0]
 
 
@@ -190,6 +193,7 @@ def test_tenant_isolation(client, db, auth_headers, customer_id):
     )
     db.add(user_b)
     db.commit()
+    grant_commercial_role(db, org_b, user_b)
 
     login_resp = client.post(
         "/api/v1/auth/login",
