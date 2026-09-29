@@ -511,12 +511,8 @@ class ProductionOrderService:
             return None
 
         payload = data.model_dump(exclude_unset=True)
-        if "status" in payload and payload["status"] != production_order.status:
-            if payload["status"] == ProductionOrderStatus.CANCELLED:
-                # Cancellation must release allocations; only the cancel operation does that atomically.
-                raise ValueError("Use the cancel action to cancel a production order.")
-            if production_order.status == ProductionOrderStatus.CANCELLED:
-                raise ValueError("A cancelled production order cannot be reopened.")
+        if production_order.status in (ProductionOrderStatus.CLOSED, ProductionOrderStatus.CANCELLED):
+            raise ValueError("A closed or cancelled production order cannot be edited.")
         if production_order.allocations:
             protected = {"planned_quantity", "unit", "product_type", "target_spec_json"}
             if protected.intersection(payload):
@@ -560,17 +556,24 @@ class ProductionOrderItemService:
     def _get_parent_order(self, tenant: TenantContext, production_order_id: UUID) -> ProductionOrder | None:
         return self.production_orders.get_by_id(tenant.organization_id, production_order_id)
 
+    def _get_writable_parent(self, tenant: TenantContext, production_order_id: UUID) -> ProductionOrder | None:
+        production_order = self._get_parent_order(tenant, production_order_id)
+        if production_order is not None and production_order.allocations:
+            # Planning orders derive their lines from allocations; edit the allocations instead.
+            raise ValueError("Lines of a planned production order follow its allocations; change the allocations instead.")
+        return production_order
+
     def create_item(
         self,
         tenant: TenantContext,
         production_order_id: UUID,
         data: ProductionOrderItemCreate,
     ) -> ProductionOrderItem | None:
-        production_order = self._get_parent_order(tenant, production_order_id)
+        production_order = self._get_writable_parent(tenant, production_order_id)
         if production_order is None:
             return None
-        if production_order.status == ProductionOrderStatus.CANCELLED:
-            raise ValueError("Cannot add items to a cancelled production order.")
+        if production_order.status in (ProductionOrderStatus.CANCELLED, ProductionOrderStatus.CLOSED):
+            raise ValueError("Cannot add items to a cancelled or closed production order.")
 
         line_no = data.line_no or self.items.next_line_no(tenant.organization_id, production_order.id)
         existing = self.items.get_by_line_no(tenant.organization_id, production_order.id, line_no)
@@ -622,11 +625,11 @@ class ProductionOrderItemService:
         item_id: UUID,
         data: ProductionOrderItemUpdate,
     ) -> ProductionOrderItem | None:
-        production_order = self._get_parent_order(tenant, production_order_id)
+        production_order = self._get_writable_parent(tenant, production_order_id)
         if production_order is None:
             return None
-        if production_order.status == ProductionOrderStatus.COMPLETED:
-            raise ValueError("Cannot update items for a completed production order.")
+        if production_order.status in (ProductionOrderStatus.COMPLETED, ProductionOrderStatus.CLOSED):
+            raise ValueError("Cannot update items for a completed or closed production order.")
 
         item = self.items.get_by_id(tenant.organization_id, production_order.id, item_id)
         if item is None:
@@ -657,7 +660,7 @@ class ProductionOrderItemService:
         production_order_id: UUID,
         item_id: UUID,
     ) -> bool | None:
-        production_order = self._get_parent_order(tenant, production_order_id)
+        production_order = self._get_writable_parent(tenant, production_order_id)
         if production_order is None:
             return None
         if production_order.status in {

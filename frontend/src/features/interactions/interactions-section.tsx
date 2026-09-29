@@ -171,7 +171,7 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
           <label style={sharedStyles.field}>
             <span style={sharedStyles.label}>
               {t("fields.interactionDate")}{" "}
-              <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+              <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
             </span>
             <input
               style={sharedStyles.input}
@@ -186,7 +186,7 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
           <label style={sharedStyles.field}>
             <span style={sharedStyles.label}>
               {t("fields.subject")}{" "}
-              <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+              <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
             </span>
             <input
               style={sharedStyles.input}

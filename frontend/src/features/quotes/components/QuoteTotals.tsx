@@ -15,8 +15,8 @@ type QuoteTotalsProps = {
 
 const styles: Record<string, CSSProperties> = {
   panel: {
-    background: "#ffffff",
-    border: "1px solid #d9dee7",
+    background: "var(--surface)",
+    border: "1px solid var(--border-strong)",
     borderRadius: "8px",
     display: "grid",
     gap: "10px",
@@ -31,7 +31,7 @@ const styles: Record<string, CSSProperties> = {
     gap: "16px",
   },
   totalRow: {
-    borderTop: "1px solid #e4e7ec",
+    borderTop: "1px solid var(--border)",
     fontWeight: 800,
     paddingTop: "12px",
   },

@@ -229,7 +229,7 @@ export function AdminUserDetail() {
                 {impact.dependencies.assigned_customers > 0 ? <p>{t("deactivation.assignedCustomers", { count: impact.dependencies.assigned_customers })}</p> : null}
                 {impact.dependencies.active_workforce_link ? <p>{t("deactivation.workforceLinked")} <Link href="/workforce">{t("deactivation.goToWorkforce")}</Link></p> : null}
                 {impact.can_deactivate ? (
-                  <div style={{ ...sharedStyles.state, background: "#dcfce7" }} role="status">
+                  <div style={{ ...sharedStyles.state, background: "var(--success-soft)" }} role="status">
                     {t("deactivation.nowCanDeactivate")}
                   </div>
                 ) : (
@@ -270,7 +270,7 @@ export function AdminUserDetail() {
               </>
             ) : null}
             {deactivationMessage ? (
-              <div style={{ ...sharedStyles.state, background: "#dcfce7" }} role="status">
+              <div style={{ ...sharedStyles.state, background: "var(--success-soft)" }} role="status">
                 {deactivationMessage}
               </div>
             ) : null}

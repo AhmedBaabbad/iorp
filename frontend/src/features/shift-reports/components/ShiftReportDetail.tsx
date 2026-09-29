@@ -46,16 +46,16 @@ const styles: Record<string, CSSProperties> = {
     display: "grid",
     gap: "1px",
     gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-    background: "#e4e7ec",
+    background: "var(--border)",
     borderRadius: "8px",
     overflow: "hidden",
   },
   detailItem: {
-    background: "#ffffff",
+    background: "var(--surface)",
     padding: "18px",
   },
   detailLabel: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "13px",
     fontWeight: 700,
     margin: "0 0 8px",
@@ -193,13 +193,13 @@ export function ShiftReportDetail() {
       }
     >
       {isLoading ? (
-        <div style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           {t("loadingDetail")}
         </div>
       ) : null}
 
       {!isLoading && isNotFound ? (
-        <section style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("notFound")}</h2>
           <p style={{ margin: "0 0 18px" }}>
             {t("notFoundDescription")}
@@ -264,7 +264,7 @@ export function ShiftReportDetail() {
             <DetailItem
               label={t("fields.workCenter")}
               value={
-                <Link href={`/work-centers/${report.work_center_id}`} style={{ color: "#1d4ed8" }}>
+                <Link href={`/work-centers/${report.work_center_id}`} style={{ color: "var(--accent-strong)" }}>
                   {workCenter ? `${workCenter.code} - ${workCenter.name}` : report.work_center_id}
                 </Link>
               }
@@ -272,7 +272,7 @@ export function ShiftReportDetail() {
             <DetailItem
               label={t("fields.shift")}
               value={
-                <Link href={`/shifts/${report.shift_definition_id}`} style={{ color: "#1d4ed8" }}>
+                <Link href={`/shifts/${report.shift_definition_id}`} style={{ color: "var(--accent-strong)" }}>
                   {shift ? `${shift.code} - ${shift.name}` : report.shift_definition_id}
                 </Link>
               }
@@ -283,7 +283,7 @@ export function ShiftReportDetail() {
                 report.production_order_id ? (
                   <Link
                     href={`/production-orders/${report.production_order_id}`}
-                    style={{ color: "#1d4ed8" }}
+                    style={{ color: "var(--accent-strong)" }}
                   >
                     {productionOrder
                       ? `${productionOrder.production_order_number} - ${productionOrder.product_type}`

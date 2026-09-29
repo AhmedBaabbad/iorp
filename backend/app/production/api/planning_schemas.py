@@ -3,19 +3,43 @@ from decimal import Decimal
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from app.production.domain.enums import ProductionOrderPriority
+from app.core.types import ISODatetime
 from app.production.api.schemas import ProductionOrderRead
-from typing import Any
+from typing import Any, Literal
 
 
 class PlanningOrderRead(ProductionOrderRead):
     allocations: list[dict[str, Any]] = Field(default_factory=list)
     # Sum of ACTIVE allocations; equals planned_quantity until the order is cancelled.
     active_allocated_quantity: Decimal = Decimal(0)
+    # Specification lines ordered width -> color -> thickness -> weight.
+    lines: list[dict[str, Any]] = Field(default_factory=list)
+    # Allocations can be added or changed only while the order is a draft.
+    editable: bool = False
+    # Status, actual dates, late flags and the actions this user may take now.
+    lifecycle: dict[str, Any] | None = None
 
 
 class AllocationInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     production_demand_item_id: UUID
+    allocated_quantity: Decimal = Field(gt=0, max_digits=15, decimal_places=3)
+
+
+class PlanningPreviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    allocations: list[AllocationInput] = Field(min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def unique_items(self):
+        ids = [a.production_demand_item_id for a in self.allocations]
+        if len(ids) != len(set(ids)):
+            raise ValueError("Duplicate demand item")
+        return self
+
+
+class AllocationQuantityUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     allocated_quantity: Decimal = Field(gt=0, max_digits=15, decimal_places=3)
 
 
@@ -44,3 +68,24 @@ class ReleaseRequest(BaseModel):
     """Reason is mandatory: a release changes planning history for other planners."""
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     reason: str = Field(min_length=1, max_length=500)
+
+
+class TransitionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    action: Literal["release", "return_to_draft", "start", "hold", "resume", "complete", "close", "cancel"]
+    reason: str | None = Field(default=None, max_length=500)
+    # The status_version the user saw; a newer one means someone else changed the status first.
+    expected_version: int | None = Field(default=None, ge=1)
+
+
+class StatusHistoryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    from_status: str
+    to_status: str
+    action: str
+    trigger: str
+    actor_user_id: UUID | None
+    actor_name: str | None = None
+    reason: str | None
+    created_at: ISODatetime

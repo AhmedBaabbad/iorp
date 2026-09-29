@@ -15,19 +15,19 @@ import { activateAdminUser, listAdminUsers, lockAdminUser, unlockAdminUser } fro
 import type { AdminUserListItem } from "../types";
 
 const styles: Record<string, CSSProperties> = {
-  panel: { background: "#ffffff", border: "1px solid #d9dee7", borderRadius: "8px" },
+  panel: { background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "8px" },
   tableWrap: { overflowX: "auto" },
   table: { width: "100%", borderCollapse: "collapse" },
-  th: { borderBottom: "1px solid #e4e7ec", color: "#52606d", fontSize: "13px", padding: "14px 16px", textAlign: "start" },
-  td: { borderBottom: "1px solid #eef1f5", padding: "14px 16px" },
+  th: { borderBottom: "1px solid var(--border)", color: "var(--text-muted)", fontSize: "13px", padding: "14px 16px", textAlign: "start" },
+  td: { borderBottom: "1px solid var(--border)", padding: "14px 16px" },
   actions: { display: "flex", flexWrap: "wrap", gap: "8px" },
-  badge: { background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "999px", color: "#1d4ed8", fontSize: "12px", padding: "2px 8px" },
-  rootBadge: { background: "#eef2ff", border: "1px solid #a5b4fc", borderRadius: "999px", color: "#4338ca", display: "inline-block", fontSize: "12px", fontWeight: 700, marginInlineStart: "8px", padding: "2px 8px" },
-  deleteButton: { ...sharedStyles.secondaryButton, borderColor: "#fecdd3", color: "#be123c", minHeight: "34px", padding: "6px 12px", fontSize: "13px" },
+  badge: { background: "var(--accent-soft)", border: "1px solid color-mix(in srgb, var(--accent) 35%, var(--surface))", borderRadius: "999px", color: "var(--accent-strong)", fontSize: "12px", padding: "2px 8px" },
+  rootBadge: { background: "var(--accent-soft)", border: "1px solid color-mix(in srgb, var(--accent) 35%, var(--surface))", borderRadius: "999px", color: "var(--accent-strong)", display: "inline-block", fontSize: "12px", fontWeight: 700, marginInlineStart: "8px", padding: "2px 8px" },
+  deleteButton: { ...sharedStyles.secondaryButton, borderColor: "color-mix(in srgb, var(--danger) 35%, var(--surface))", color: "var(--danger)", minHeight: "34px", padding: "6px 12px", fontSize: "13px" },
   backdrop: {
     position: "fixed",
     inset: 0,
-    background: "rgba(15, 23, 42, 0.55)",
+    background: "var(--overlay)",
     backdropFilter: "blur(2px)",
     display: "flex",
     alignItems: "center",
@@ -35,7 +35,7 @@ const styles: Record<string, CSSProperties> = {
     zIndex: 1000,
   },
   modal: {
-    background: "#ffffff",
+    background: "var(--surface)",
     borderRadius: "14px",
     boxShadow: "0 24px 64px rgba(15, 23, 42, 0.28), 0 4px 16px rgba(15, 23, 42, 0.12)",
     padding: "32px",
@@ -48,23 +48,23 @@ const styles: Record<string, CSSProperties> = {
     width: "48px",
     height: "48px",
     borderRadius: "50%",
-    background: "#fff1f2",
+    background: "var(--surface-muted)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontSize: "22px",
     margin: "0 auto",
   },
-  modalTitle: { fontSize: "18px", fontWeight: 700, color: "#0f172a", margin: 0, textAlign: "center" as const },
-  modalBody: { fontSize: "14px", color: "#475569", margin: 0, lineHeight: "1.7", textAlign: "center" as const },
-  modalWarning: { fontSize: "13px", fontWeight: 600, color: "#be123c", textAlign: "center" as const, margin: 0 },
+  modalTitle: { fontSize: "18px", fontWeight: 700, color: "var(--text)", margin: 0, textAlign: "center" as const },
+  modalBody: { fontSize: "14px", color: "var(--text-muted)", margin: 0, lineHeight: "1.7", textAlign: "center" as const },
+  modalWarning: { fontSize: "13px", fontWeight: 600, color: "var(--danger)", textAlign: "center" as const, margin: 0 },
   modalActions: { display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" as const },
   modalCancelButton: { ...sharedStyles.secondaryButton, minHeight: "40px", padding: "10px 24px", fontSize: "14px" },
   modalDeleteButton: {
-    background: "#be123c",
+    background: "var(--danger)",
     border: "none",
     borderRadius: "8px",
-    color: "#ffffff",
+    color: "var(--on-accent)",
     cursor: "pointer",
     fontSize: "14px",
     fontWeight: 600,
@@ -72,10 +72,10 @@ const styles: Record<string, CSSProperties> = {
     padding: "10px 24px",
   },
   success: {
-    background: "#dcfce7",
-    border: "1px solid #bbf7d0",
+    background: "var(--success-soft)",
+    border: "1px solid color-mix(in srgb, var(--success) 35%, var(--surface))",
     borderRadius: "6px",
-    color: "#166534",
+    color: "var(--success)",
     fontSize: "14px",
     padding: "12px 14px",
   },
@@ -116,9 +116,9 @@ export function AdminUsersList() {
   }
 
   function statusBadge(status: AdminUserListItem["status"]): CSSProperties {
-    if (status === "active") return { ...styles.badge, background: "#dcfce7", borderColor: "#86efac", color: "#166534" };
-    if (status === "locked") return { ...styles.badge, background: "#fee2e2", borderColor: "#fca5a5", color: "#b91c1c" };
-    return { ...styles.badge, background: "#f2f4f7", borderColor: "#d0d5dd", color: "#475467" };
+    if (status === "active") return { ...styles.badge, background: "var(--success-soft)", borderColor: "var(--success)", color: "var(--success)" };
+    if (status === "locked") return { ...styles.badge, background: "var(--danger-soft)", borderColor: "color-mix(in srgb, var(--danger) 35%, var(--surface))", color: "var(--danger)" };
+    return { ...styles.badge, background: "var(--surface-muted)", borderColor: "var(--border-strong)", color: "var(--text-muted)" };
   }
 
   useEffect(() => {
@@ -134,10 +134,10 @@ export function AdminUsersList() {
       subtitle={t("subtitle")}
       action={canWrite ? <Link href="/admin/users/new" style={sharedStyles.button}>{t("newButton")}</Link> : null}
     >
-      {isLoading ? <div style={{ ...sharedStyles.state, background: "#ffffff" }}>{t("loading")}</div> : null}
+      {isLoading ? <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>{t("loading")}</div> : null}
       {!isLoading && error ? <div style={sharedStyles.error} role="alert">{error}</div> : null}
       {!isLoading && !error && users.length === 0 ? (
-        <section style={{ ...sharedStyles.state, background: "#ffffff" }}>{t("empty")}</section>
+        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>{t("empty")}</section>
       ) : null}
       {!isLoading && !error && users.length > 0 ? (
         <section style={styles.panel}>

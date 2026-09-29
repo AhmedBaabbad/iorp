@@ -9,15 +9,15 @@ type SectionShellProps = {
 
 const styles: Record<string, CSSProperties> = {
   section: {
-    background: "#ffffff",
-    border: "1px solid #d9dee7",
+    background: "var(--surface)",
+    border: "1px solid var(--border-strong)",
     borderRadius: "8px",
     boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
     marginTop: "24px",
     overflow: "hidden",
   },
   header: {
-    borderBottom: "1px solid #e4e7ec",
+    borderBottom: "1px solid var(--border)",
     padding: "20px 24px",
   },
   title: {
@@ -25,7 +25,7 @@ const styles: Record<string, CSSProperties> = {
     margin: 0,
   },
   subtitle: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     lineHeight: 1.5,
     margin: "6px 0 0",
   },

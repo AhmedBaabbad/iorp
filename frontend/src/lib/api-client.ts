@@ -141,6 +141,11 @@ async function refreshAccessToken(isPlatform: boolean): Promise<string> {
   }
 }
 
+/** Renew the tenant access token now (used by the session guard for active users). */
+export function refreshSession(): Promise<string> {
+  return refreshAccessToken(false);
+}
+
 function redirectForInvalidSession(path: string, response: Response, sentToken: boolean): Promise<never> | null {
   if (response.status !== 401 || !sentToken || typeof window === "undefined" || path.includes("/login") || sessionRedirectInProgress) return null;
   sessionRedirectInProgress = true;

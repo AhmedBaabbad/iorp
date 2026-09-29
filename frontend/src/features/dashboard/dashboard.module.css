@@ -6,7 +6,7 @@
 .hero p, .heroActions span { margin: 0; color: var(--text-muted); font-size: 13px; }
 .heroBadge { display: inline-flex; padding: 6px 10px; border-radius: 999px; color: var(--accent-strong); background: var(--surface); border: 1px solid var(--border); font-size: 11px; font-weight: 800; }
 .heroActions { display: grid; justify-items: end; gap: 10px; }
-.heroActions button, .error button { border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer; color: white; background: var(--accent-strong); font: inherit; font-size: 13px; font-weight: 800; }
+.heroActions button, .error button { border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer; color: var(--on-accent); background: var(--accent-strong); font: inherit; font-size: 13px; font-weight: 800; }
 .heroActions button:disabled { opacity: .65; cursor: wait; }
 .error { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 20px; border: 1px solid var(--danger); border-radius: 14px; color: var(--danger); background: var(--danger-soft); }
 .error p { margin: 4px 0 0; font-size: 13px; }

@@ -23,16 +23,16 @@ const styles: Record<string, CSSProperties> = {
     display: "grid",
     gap: "1px",
     gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-    background: "#e4e7ec",
+    background: "var(--border)",
     borderRadius: "8px",
     overflow: "hidden",
   },
   detailItem: {
-    background: "#ffffff",
+    background: "var(--surface)",
     padding: "18px",
   },
   detailLabel: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "13px",
     fontWeight: 700,
     margin: "0 0 8px",
@@ -42,9 +42,9 @@ const styles: Record<string, CSSProperties> = {
     overflowWrap: "anywhere",
   },
   specBlock: {
-    background: "#111827",
+    background: "var(--text)",
     borderRadius: "8px",
-    color: "#f9fafb",
+    color: "var(--surface)",
     fontSize: "13px",
     margin: 0,
     overflowX: "auto",
@@ -129,11 +129,11 @@ export function SampleDetail({ sampleId }: SampleDetailProps) {
       }
     >
       {isLoading ? (
-        <div style={{ ...sharedStyles.state, background: "#ffffff" }}>{messages("loading.default")}</div>
+        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>{messages("loading.default")}</div>
       ) : null}
 
       {!isLoading && isNotFound ? (
-        <section style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("notFound")}</h2>
           <p style={{ margin: "0 0 18px" }}>{t("notFoundDescription")}</p>
           <Link href="/samples" style={sharedStyles.button}>
@@ -155,7 +155,7 @@ export function SampleDetail({ sampleId }: SampleDetailProps) {
             <DetailItem
               label={t("fields.customer")}
               value={
-                <Link href={`/customers/${sample.customer_id}`} style={{ color: "#1d4ed8" }}>
+                <Link href={`/customers/${sample.customer_id}`} style={{ color: "var(--accent-strong)" }}>
                   {customerName ?? sample.customer_id}
                 </Link>
               }

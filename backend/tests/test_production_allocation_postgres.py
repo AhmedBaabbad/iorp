@@ -23,6 +23,7 @@ from app.production.infrastructure.models import WorkCenter, ShiftDefinition, Pr
 from app.production.api.planning_schemas import PlanningOrderCreate
 from app.production.application.planning_order_service import PlanningOrderService
 from app.production.domain.compatibility import AllocationError
+from app.production.domain.order_lifecycle import TransitionError
 
 pytestmark = pytest.mark.skipif(os.environ.get("RUN_POSTGRES_TESTS") != "1", reason="Requires explicit isolated PostgreSQL verification")
 
@@ -64,7 +65,7 @@ def test_t12_t13_real_concurrent_allocation(pg):
             try:
                 order = PlanningOrderService(db, TenantContext(ids["user"], ids["org"])).create_order_from_planning(payload)
                 return 201, str(order.id)
-            except AllocationError as exc:
+            except (AllocationError, TransitionError) as exc:
                 return exc.status, exc.code
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(lambda _: allocate(), range(2)))
@@ -120,7 +121,7 @@ def test_prod_plan_003_t21_concurrent_remaining_quantity(pg):
             try:
                 PlanningOrderService(db, TenantContext(ids["user"], ids["org"])).create_order_from_planning(payload("400"))
                 return 201, None
-            except AllocationError as exc:
+            except (AllocationError, TransitionError) as exc:
                 return exc.status, exc.code
     results = sorted(_concurrently(allocate))
     assert results == [(201, None), (409, "ALLOCATION_QUANTITY_CONFLICT")]
@@ -130,7 +131,7 @@ def test_prod_plan_003_t21_concurrent_remaining_quantity(pg):
 
 
 def test_prod_plan_003_concurrent_cancel_releases_once(pg):
-    from app.production.application.allocation_service import AllocationLifecycleService
+    from app.production.application.order_status_service import OrderStatusService
     isolated, ids = pg
     with Session(isolated) as db:
         order = PlanningOrderService(db, TenantContext(ids["user"], ids["org"])).create_order_from_planning(PlanningOrderCreate(
@@ -139,9 +140,9 @@ def test_prod_plan_003_concurrent_cancel_releases_once(pg):
     def cancel():
         with Session(isolated) as db:
             try:
-                AllocationLifecycleService(db, TenantContext(ids["user"], ids["org"])).cancel_order(order_id, "race")
+                OrderStatusService(db, TenantContext(ids["user"], ids["org"])).transition(order_id, "cancel", can=lambda code: True, reason="race")
                 return 200
-            except AllocationError as exc:
+            except (AllocationError, TransitionError) as exc:
                 return exc.status
     assert sorted(_concurrently(cancel)) == [200, 409]
     with Session(isolated) as db:
@@ -178,13 +179,13 @@ def _order_for_race(isolated, ids):
 def _cancel_during(isolated, ids, order_id):
     """Start a real cancellation on another connection; wait until it is blocked on a lock or finished."""
     import time
-    from app.production.application.allocation_service import AllocationLifecycleService
+    from app.production.application.order_status_service import OrderStatusService
     def cancel():
         with Session(isolated) as db:
             try:
-                AllocationLifecycleService(db, TenantContext(ids["user"], ids["org"])).cancel_order(order_id, "race")
+                OrderStatusService(db, TenantContext(ids["user"], ids["org"])).transition(order_id, "cancel", can=lambda code: True, reason="race")
                 return "cancelled"
-            except AllocationError as exc:
+            except (AllocationError, TransitionError) as exc:
                 return exc.code
     pool = ThreadPoolExecutor(max_workers=1)
     future = pool.submit(cancel)
@@ -197,8 +198,11 @@ def _cancel_during(isolated, ids, order_id):
     return pool, future
 
 
-def test_prod_plan_003_status_patch_cannot_interleave_with_cancel(pg):
-    """A PATCH that has read the order must not overwrite a cancellation (review H-1)."""
+def test_prod_plan_003_order_edit_cannot_interleave_with_cancel(pg):
+    """An order edit that holds the row must not lose or corrupt a concurrent cancellation (review H-1).
+
+    Status itself can no longer be PATCHed; the edit still locks the row, so the cancel waits for it.
+    """
     from app.production.application.services import ProductionOrderService
     from app.production.api.schemas import ProductionOrderUpdate
     isolated, ids = pg
@@ -207,21 +211,20 @@ def test_prod_plan_003_status_patch_cannot_interleave_with_cancel(pg):
     race = {}
     with Session(isolated) as db:
         svc = ProductionOrderService(db)
-        for name in ("get_by_id", "get_by_id_for_update"):
-            original = getattr(svc.production_orders, name)
-            def read_then_race(org, oid, _original=original):
-                row = _original(org, oid)
-                race["pool"], race["future"] = _cancel_during(isolated, ids, oid)
-                return row
-            setattr(svc.production_orders, name, read_then_race)
-        svc.update_production_order(tenant, order_id, ProductionOrderUpdate(status="in_progress"))
+        original = svc.production_orders.get_by_id_for_update
+        def read_then_race(org, oid):
+            row = original(org, oid)
+            race["pool"], race["future"] = _cancel_during(isolated, ids, oid)
+            return row
+        svc.production_orders.get_by_id_for_update = read_then_race
+        svc.update_production_order(tenant, order_id, ProductionOrderUpdate(notes="edited while cancelling"))
     outcome = race["future"].result(timeout=20); race["pool"].shutdown()
     with Session(isolated) as db:
         order = db.get(ProductionOrder, order_id)
         statuses = [a.status for a in db.scalars(sa.select(ProductionAllocation))]
-    # The cancel waited for the PATCH, then refused because execution had started.
-    assert outcome == "ORDER_EXECUTION_STARTED"
-    assert order.status == "in_progress" and statuses == ["active"]
+    # The cancel waited for the edit, then went through on the fresh row.
+    assert outcome == "cancelled"
+    assert order.status == "cancelled" and order.notes == "edited while cancelling" and statuses == ["released"]
 
 
 def test_prod_plan_003_run_start_cannot_interleave_with_cancel(pg):
@@ -252,3 +255,58 @@ def test_prod_plan_003_run_start_cannot_interleave_with_cancel(pg):
         statuses = [a.status for a in db.scalars(sa.select(ProductionAllocation))]
     assert outcome == "ORDER_EXECUTION_STARTED"
     assert order.status != "cancelled" and statuses == ["active"]
+
+
+def test_order_lines_migration_backfills_and_guards_downgrade(pg):
+    isolated, ids = pg
+    path = Path(__file__).parents[1] / "alembic/versions/2026_09_29_0900_f6a1b2g9_order_spec_lines.py"
+    spec = importlib.util.spec_from_file_location("order_lines_migration", path)
+    migration = importlib.util.module_from_spec(spec); spec.loader.exec_module(migration)
+    with isolated.begin() as conn:
+        with Operations.context(MigrationContext.configure(conn)):
+            migration.downgrade()
+        conn.execute(sa.text("UPDATE production_demand_items SET target_spec_json = CAST(:s AS json)"), dict(s='{"width_mm": 20, "color": "red"}'))
+        second = uuid4()
+        conn.execute(sa.text("INSERT INTO production_demand_items (id, production_demand_id, line_no, product_type, required_quantity, unit, target_spec_json, created_at, updated_at) VALUES (:id,:d,2,'film',500,'kg',CAST(:s AS json),now(),now())"),
+                     dict(id=second, d=ids["demand"], s='{"width_mm": 10, "color": "red"}'))
+        order_id = uuid4()
+        conn.execute(sa.text("INSERT INTO production_orders (id, organization_id, production_order_number, work_center_id, product_type, planned_quantity, unit, priority, status, planned_start_date, planned_end_date, created_by_user_id, created_at, updated_at) VALUES (:id,:org,'PO-OLD',:wc,'film',300,'kg','normal','draft',CURRENT_DATE,CURRENT_DATE,:user,now(),now())"),
+                     dict(id=order_id, org=ids["org"], wc=ids["center"], user=ids["user"]))
+        for item, qty in ((ids["item"], 100), (second, 200)):
+            conn.execute(sa.text("INSERT INTO production_allocations (id, organization_id, production_order_id, production_demand_id, production_demand_item_id, allocated_quantity, unit, status, created_at, updated_at) VALUES (:id,:org,:po,:d,:i,:q,'kg','active',now(),now())"),
+                         dict(id=uuid4(), org=ids["org"], po=order_id, d=ids["demand"], i=item, q=qty))
+        with Operations.context(MigrationContext.configure(conn)):
+            migration.upgrade()
+        lines = conn.execute(sa.text("SELECT line_no, planned_quantity, target_spec_json->>'width_mm' FROM production_order_items WHERE production_order_id = :o ORDER BY line_no"), dict(o=order_id)).all()
+        assert lines == [(1, Decimal(200), "10"), (2, Decimal(100), "20")]
+        assert conn.execute(sa.text("SELECT count(*) FROM production_allocations WHERE production_order_item_id IS NULL")).scalar() == 0
+        # Released history may repeat a demand item in the same order once upgraded ...
+        conn.execute(sa.text("UPDATE production_allocations SET status='released', released_at=now() WHERE production_demand_item_id = :i"), dict(i=second))
+        conn.execute(sa.text("INSERT INTO production_allocations (id, organization_id, production_order_id, production_demand_id, production_demand_item_id, allocated_quantity, unit, status, created_at, updated_at) VALUES (:id,:org,:po,:d,:i,50,'kg','active',now(),now())"),
+                     dict(id=uuid4(), org=ids["org"], po=order_id, d=ids["demand"], i=second))
+        # ... but two ACTIVE rows for the same item and order are rejected.
+        with pytest.raises(sa.exc.IntegrityError), conn.begin_nested():
+            conn.execute(sa.text("INSERT INTO production_allocations (id, organization_id, production_order_id, production_demand_id, production_demand_item_id, allocated_quantity, unit, status, created_at, updated_at) VALUES (:id,:org,:po,:d,:i,1,'kg','active',now(),now())"),
+                         dict(id=uuid4(), org=ids["org"], po=order_id, d=ids["demand"], i=second))
+        # Downgrading would collapse that history, so it is refused.
+        with pytest.raises(RuntimeError), Operations.context(MigrationContext.configure(conn)):
+            migration.downgrade()
+
+
+def test_order_status_concurrent_transitions_apply_once(pg):
+    """Two users press the same button on the same version: one wins, the other is told to refresh."""
+    from app.production.application.order_status_service import OrderStatusService
+    isolated, ids = pg
+    order_id = _order_for_race(isolated, ids)
+    def release():
+        with Session(isolated) as db:
+            try:
+                OrderStatusService(db, TenantContext(ids["user"], ids["org"])).transition(order_id, "release", can=lambda code: True, expected_version=1)
+                return "released"
+            except TransitionError as exc:
+                return exc.code
+    assert sorted(_concurrently(release)) == ["ORDER_STATUS_CHANGED", "released"]
+    with Session(isolated) as db:
+        order = db.get(ProductionOrder, order_id)
+        history = db.scalar(sa.text("SELECT count(*) FROM production_order_status_history WHERE production_order_id = :o"), dict(o=order_id))
+    assert order.status == "released" and order.status_version == 2 and history == 1

@@ -1,3 +1,5 @@
+import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from app.production.api.routes_demands import router as demands_router
 from fastapi.responses import JSONResponse
@@ -55,10 +57,24 @@ from app.core.interfaces.activity_log import register_activity_logger
 from app.foundation.application.activity_log import TenantActivityLogger
 register_activity_logger(TenantActivityLogger())
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Date-based production order start is opt-in (PRODUCTION_AUTO_START_BY_DATE).
+    stop, task = asyncio.Event(), None
+    if settings.production_auto_start_by_date:
+        from app.production.application.order_scheduler import auto_start_loop
+        task = asyncio.create_task(auto_start_loop(stop))
+    yield
+    if task:
+        stop.set()
+        await task
+
+
 app = FastAPI(
     title=settings.app_name,
     version="0.1.0",
     debug=settings.debug,
+    lifespan=lifespan,
 )
 
 register_middleware(app)

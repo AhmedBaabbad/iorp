@@ -35,8 +35,8 @@ type ShiftReportReference = {
 
 const styles: Record<string, CSSProperties> = {
   panel: {
-    background: "#ffffff",
-    border: "1px solid #d9dee7",
+    background: "var(--surface)",
+    border: "1px solid var(--border-strong)",
     borderRadius: "8px",
     boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
     padding: "24px",
@@ -47,25 +47,25 @@ const styles: Record<string, CSSProperties> = {
     gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
   },
   label: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     display: "block",
     fontSize: "13px",
     marginBottom: "6px",
   },
   value: {
-    color: "#1f2933",
+    color: "var(--text)",
     fontWeight: 700,
     margin: 0,
   },
   section: {
-    borderTop: "1px solid #e4e7ec",
+    borderTop: "1px solid var(--border)",
     display: "grid",
     gap: "12px",
     marginTop: "24px",
     paddingTop: "20px",
   },
   link: {
-    color: "#1d4ed8",
+    color: "var(--accent-strong)",
     fontWeight: 700,
     textDecoration: "none",
   },
@@ -137,7 +137,7 @@ export function WasteRecordDetail({ wasteRecordId }: WasteRecordDetailProps) {
   if (isLoading) {
     return (
       <PageFrame section="Production" title="Waste Record" subtitle={messages("loading.default")}>
-        <div style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           {messages("loading.default")}
         </div>
       </PageFrame>

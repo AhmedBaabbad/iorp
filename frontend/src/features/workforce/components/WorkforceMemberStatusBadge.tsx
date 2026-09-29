@@ -16,10 +16,10 @@ const base: CSSProperties = {
 };
 
 const colors: Record<WorkforceMemberStatus, CSSProperties> = {
-  active: { background: "#dcfce7", color: "#166534" },
-  inactive: { background: "#f1f5f9", color: "#475569" },
-  suspended: { background: "#fef3c7", color: "#92400e" },
-  terminated: { background: "#fee2e2", color: "#991b1b" },
+  active: { background: "var(--success-soft)", color: "var(--success)" },
+  inactive: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  suspended: { background: "var(--warning-soft)", color: "var(--warning)" },
+  terminated: { background: "var(--danger-soft)", color: "var(--danger)" },
 };
 
 export function WorkforceMemberStatusBadge({ status }: { status: WorkforceMemberStatus }) {

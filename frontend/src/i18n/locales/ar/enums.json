@@ -103,9 +103,11 @@
   "productionOrder": {
     "status": {
       "draft": "مسودة",
-      "released": "مُصدر",
+      "released": "معتمد",
       "in_progress": "قيد التنفيذ",
+      "on_hold": "موقوف مؤقتاً",
       "completed": "مكتمل",
+      "closed": "مغلق",
       "cancelled": "ملغي"
     },
     "priority": {

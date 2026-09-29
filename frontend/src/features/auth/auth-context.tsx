@@ -13,6 +13,8 @@ import { useLocale } from "next-intl";
 
 import { getCurrentUser, login as loginRequest, logoutSession } from "./auth-client";
 import { getStoredAccessToken, removeStoredAccessToken } from "@/lib/auth";
+import { SessionGuard } from "./session-guard";
+import { markActivity } from "@/lib/session-policy";
 import type { AuthState, CurrentUser, LoginRequest } from "@/types/auth";
 import { isLocale, LOCALE_COOKIE_NAME, type Locale } from "@/i18n/config";
 
@@ -90,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (payload: LoginRequest) => {
     const response = await loginRequest(payload);
+    markActivity(); // a fresh idle window, so an old session's last activity cannot sign this one out
     const currentUser = await getCurrentUser(response.access_token);
     applyEffectiveLocale(currentUser, renderedLocale);
 
@@ -125,7 +128,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [isLoading, login, logout, refreshCurrentUser, token, user],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const clearSession = useCallback(() => { setToken(null); setUser(null); }, []);
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      {/* Signs out on inactivity or when the session ends, without waiting for a click. */}
+      {value.isAuthenticated && <SessionGuard onSignedOut={clearSession} />}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

@@ -1,20 +1,22 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { COLOR_SCHEME, STORAGE_KEY, isPreference, type Theme, type ThemePreference } from "./theme-config";
 
-export type ThemePreference = "light" | "dark" | "system";
+export type { Theme, ThemePreference } from "./theme-config";
 
 type ThemeContextValue = {
   preference: ThemePreference;
-  resolvedTheme: "light" | "dark";
+  resolvedTheme: Theme;
   setPreference: (preference: ThemePreference) => void;
 };
 
-const STORAGE_KEY = "iorp-theme";
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function resolveTheme(preference: ThemePreference): "light" | "dark" {
+function resolveTheme(preference: ThemePreference): Theme {
   if (preference !== "system") return preference;
+  // Auto honors the device: increased-contrast first, then dark or light.
+  if (window.matchMedia("(prefers-contrast: more)").matches) return "contrast";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
@@ -22,28 +24,27 @@ function applyTheme(preference: ThemePreference) {
   const resolved = resolveTheme(preference);
   document.documentElement.dataset.theme = resolved;
   document.documentElement.dataset.themePreference = preference;
-  document.documentElement.style.colorScheme = resolved;
+  document.documentElement.style.colorScheme = COLOR_SCHEME[resolved];
   return resolved;
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>("system");
-  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
+  const [resolvedTheme, setResolvedTheme] = useState<Theme>("light");
 
   useEffect(() => {
     const saved = window.localStorage.getItem(STORAGE_KEY);
-    const initial: ThemePreference = saved === "light" || saved === "dark" || saved === "system" ? saved : "system";
+    const initial: ThemePreference = isPreference(saved) ? saved : "system";
     setPreferenceState(initial);
     setResolvedTheme(applyTheme(initial));
   }, []);
 
   useEffect(() => {
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = () => {
-      if (preference === "system") setResolvedTheme(applyTheme("system"));
-    };
-    media.addEventListener("change", handleChange);
-    return () => media.removeEventListener("change", handleChange);
+    if (preference !== "system") return;
+    const queries = ["(prefers-color-scheme: dark)", "(prefers-contrast: more)"].map((q) => window.matchMedia(q));
+    const handleChange = () => setResolvedTheme(applyTheme("system"));
+    queries.forEach((q) => q.addEventListener("change", handleChange));
+    return () => queries.forEach((q) => q.removeEventListener("change", handleChange));
   }, [preference]);
 
   function setPreference(next: ThemePreference) {

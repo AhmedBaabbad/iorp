@@ -2,6 +2,7 @@ from decimal import Decimal
 from sqlalchemy import func, or_, select
 from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.core.utils import utc_now
+from app.production.application.order_lines import rebuild_lines
 from app.production.domain.compatibility import AllocationError
 from app.production.domain.enums import ProductionAllocationStatus, ProductionOrderStatus
 from app.production.infrastructure.demand_repository import ProductionDemandRepository
@@ -25,14 +26,18 @@ class OverAllocationError(AllocationError):
 
 
 class AllocationService:
-    def _sum_allocations(self, db, org_id, demand_item_id):
+    def _sum_allocations(self, db, org_id, demand_item_id, exclude_allocation_id=None):
         # Only ACTIVE allocations reserve demand quantity.
-        return db.scalar(select(func.coalesce(func.sum(ProductionAllocation.allocated_quantity), 0)).where(
+        query = select(func.coalesce(func.sum(ProductionAllocation.allocated_quantity), 0)).where(
             ProductionAllocation.organization_id == org_id,
             ProductionAllocation.production_demand_item_id == demand_item_id,
-            ProductionAllocation.status == ACTIVE)) or Decimal(0)
+            ProductionAllocation.status == ACTIVE)
+        if exclude_allocation_id is not None:
+            # A quantity change replaces the allocation's own reservation.
+            query = query.where(ProductionAllocation.id != exclude_allocation_id)
+        return db.scalar(query) or Decimal(0)
 
-    def validate_allocation(self, db, org_id, demand_item_id, requested_quantity):
+    def validate_allocation(self, db, org_id, demand_item_id, requested_quantity, exclude_allocation_id=None):
         # The caller holds the organization mutex. Lock the item as well, and keep
         # both locks through insertion and commit. Parent join enforces tenant scope.
         item = db.scalar(select(ProductionDemandItem).join(ProductionDemand).where(
@@ -42,7 +47,7 @@ class AllocationService:
             raise AllocationError("DEMAND_ITEM_NOT_FOUND", 404)
         if not requested_quantity.is_finite() or requested_quantity <= 0:
             raise AllocationError("INVALID_ALLOCATION_QUANTITY")
-        allocated = self._sum_allocations(db, org_id, item.id)
+        allocated = self._sum_allocations(db, org_id, item.id, exclude_allocation_id)
         if allocated + requested_quantity > item.required_quantity:
             raise OverAllocationError(item.id, item.required_quantity, allocated, requested_quantity)
         return item
@@ -91,9 +96,9 @@ class AllocationLifecycleService:
 
     def assert_releasable(self, order):
         status = ProductionOrderStatus(order.status)
-        if status == ProductionOrderStatus.COMPLETED:
+        if status in (ProductionOrderStatus.COMPLETED, ProductionOrderStatus.CLOSED):
             raise AllocationError("ORDER_COMPLETED", 409, order_status=status.value)
-        if status == ProductionOrderStatus.IN_PROGRESS:
+        if status in (ProductionOrderStatus.IN_PROGRESS, ProductionOrderStatus.ON_HOLD):
             raise AllocationError("ORDER_EXECUTION_STARTED", 409, order_status=status.value)
         evidence = self.execution_evidence(order.id)
         if evidence:
@@ -147,11 +152,11 @@ class AllocationLifecycleService:
                 raise AllocationError("LAST_ACTIVE_ALLOCATION", 409)
             now = utc_now()
             self._release(allocation, reason, now)
-            if not cancelled:
-                # Planned quantity of an open order always equals its ACTIVE allocations.
-                order.planned_quantity = sum((a.allocated_quantity for a in remaining), Decimal(0))
-                order.updated_at = now
             db.flush()
+            if not cancelled:
+                # Lines and planned quantity of an open order always follow its ACTIVE allocations.
+                db.refresh(order, ["allocations"])
+                rebuild_lines(db, order)
             self._sync_demands({allocation.production_demand_id})
             self._audit("production_allocation.released", "production_allocation", allocation.id, order.production_order_number,
                         production_order_id=order.id, production_demand_item_id=allocation.production_demand_item_id,
@@ -163,31 +168,19 @@ class AllocationLifecycleService:
             db.rollback()
             raise
 
-    def cancel_order(self, order_id, reason):
-        db = self.db
-        try:
-            ProductionDemandRepository(db).lock_organization(self.org_id)
-            order = self._lock_order(order_id)
-            if order.status == ProductionOrderStatus.CANCELLED:
-                raise AllocationError("ORDER_ALREADY_CANCELLED", 409)
-            self.assert_releasable(order)
-            now = utc_now()
-            released = self._active_allocations(order.id)
-            for allocation in released:
-                self._release(allocation, reason, now)
-            order.status = ProductionOrderStatus.CANCELLED
-            order.updated_at = now
-            db.flush()
-            self._sync_demands({a.production_demand_id for a in released})
-            self._audit("production_order.cancelled", "production_order", order.id, order.production_order_number,
-                        reason=reason, released_allocations=len(released))
-            db.commit()
-            db.expire_all()
-            return db.get(ProductionOrder, order.id)
-        except Exception:
-            db.rollback()
-            raise
+    def release_all_for_cancellation(self, order, reason):
+        """Release every ACTIVE allocation of a locked order being cancelled; the caller changes the status.
 
+        Order status is owned by OrderStatusService; this only returns the quantities to their demands.
+        """
+        self.assert_releasable(order)
+        now = utc_now()
+        released = self._active_allocations(order.id)
+        for allocation in released:
+            self._release(allocation, reason, now)
+        self.db.flush()
+        self._sync_demands({a.production_demand_id for a in released})
+        return released
 
 def demand_quantity_summary(demand):
     items = [dict(id=item.id, line_no=item.line_no, unit=item.unit, required_quantity=item.required_quantity,

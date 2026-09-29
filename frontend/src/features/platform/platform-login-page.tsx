@@ -16,8 +16,8 @@ const styles: Record<string, CSSProperties> = {
     minHeight: "100vh",
     display: "grid",
     placeItems: "center",
-    background: "#0b1220",
-    color: "#e5e9f0",
+    background: "var(--page-bg)",
+    color: "var(--text)",
     fontFamily:
       'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     padding: "24px",
@@ -25,8 +25,8 @@ const styles: Record<string, CSSProperties> = {
   panel: {
     width: "100%",
     maxWidth: "420px",
-    background: "#141c2e",
-    border: "1px solid #29344a",
+    background: "var(--surface)",
+    border: "1px solid var(--border)",
     borderRadius: "8px",
     boxShadow: "0 16px 40px rgba(0, 0, 0, 0.4)",
     padding: "32px",
@@ -34,7 +34,7 @@ const styles: Record<string, CSSProperties> = {
   header: { marginBottom: "28px" },
   eyebrow: {
     margin: "0 0 8px",
-    color: "#8b98b8",
+    color: "var(--text-muted)",
     fontSize: "13px",
     fontWeight: 700,
     letterSpacing: "0.04em",
@@ -43,13 +43,13 @@ const styles: Record<string, CSSProperties> = {
   title: { margin: 0, fontSize: "26px", lineHeight: 1.2 },
   form: { display: "grid", gap: "18px" },
   field: { display: "grid", gap: "8px" },
-  label: { fontSize: "14px", fontWeight: 600, color: "#c3cbdc" },
+  label: { fontSize: "14px", fontWeight: 600, color: "var(--text)" },
   input: {
     width: "100%",
     boxSizing: "border-box",
-    border: "1px solid #29344a",
-    background: "#0b1220",
-    color: "#e5e9f0",
+    border: "1px solid var(--border)",
+    background: "var(--page-bg)",
+    color: "var(--text)",
     borderRadius: "6px",
     font: "inherit",
     padding: "11px 12px",
@@ -57,8 +57,8 @@ const styles: Record<string, CSSProperties> = {
   button: {
     border: 0,
     borderRadius: "6px",
-    background: "#3b82f6",
-    color: "#ffffff",
+    background: "var(--accent)",
+    color: "var(--on-accent)",
     cursor: "pointer",
     font: "inherit",
     fontWeight: 700,
@@ -67,10 +67,10 @@ const styles: Record<string, CSSProperties> = {
     width: "100%",
   },
   error: {
-    background: "#3a1220",
-    border: "1px solid #6b2436",
+    background: "var(--danger-soft)",
+    border: "1px solid color-mix(in srgb, var(--danger) 35%, var(--surface))",
     borderRadius: "6px",
-    color: "#fca5a5",
+    color: "var(--danger)",
     fontSize: "14px",
     padding: "12px 14px",
   },
@@ -165,7 +165,7 @@ export function PlatformLoginPage() {
               required
             />
           </label>
-          <Link href="/platform/forgot-password" style={{ color: "#2563eb", fontWeight: 700, textDecoration: "none" }}>{resetT("forgotLink")}</Link>
+          <Link href="/platform/forgot-password" style={{ color: "var(--accent)", fontWeight: 700, textDecoration: "none" }}>{resetT("forgotLink")}</Link>
 
           <label style={styles.field}>
             <span style={styles.label}>{t("login.passwordLabel")}</span>

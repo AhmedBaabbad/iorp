@@ -60,7 +60,7 @@ export function AdminRolesList() {
       {error ? <div style={sharedStyles.error}>{error}</div> : null}
       {roles.length === 0 && !error ? <div style={sharedStyles.state}>{t("empty")}</div> : null}
       {roles.length > 0 ? (
-        <section style={{ background: "#ffffff", border: "1px solid #d9dee7", borderRadius: "8px", overflowX: "auto" }}>
+        <section style={{ background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "8px", overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
@@ -74,7 +74,7 @@ export function AdminRolesList() {
             <tbody>
               {roles.map((role) => (
                 <tr key={role.id}>
-                  <td style={{ padding: "14px" }}><Link href={`/admin/roles/${role.id}`}>{role.is_system && t.has(`systemRoleNames.${role.code}`) ? t(`systemRoleNames.${role.code}`) : role.name}</Link>{role.is_system ? <span style={{ marginInlineStart: 8, padding: "3px 7px", borderRadius: 10, background: "#e8eef8", fontSize: 12 }}>{t("systemBadge")}</span> : <span style={{ marginInlineStart: 8, padding: "3px 7px", borderRadius: 10, background: "#e9f7ef", fontSize: 12 }}>{t("customBadge")}</span>}{role.is_protected ? <span title={t("protectedHint")} style={{ marginInlineStart: 6 }}>🔒</span> : null}</td>
+                  <td style={{ padding: "14px" }}><Link href={`/admin/roles/${role.id}`}>{role.is_system && t.has(`systemRoleNames.${role.code}`) ? t(`systemRoleNames.${role.code}`) : role.name}</Link>{role.is_system ? <span style={{ marginInlineStart: 8, padding: "3px 7px", borderRadius: 10, background: "var(--accent-soft)", fontSize: 12 }}>{t("systemBadge")}</span> : <span style={{ marginInlineStart: 8, padding: "3px 7px", borderRadius: 10, background: "var(--surface-muted)", fontSize: 12 }}>{t("customBadge")}</span>}{role.is_protected ? <span title={t("protectedHint")} style={{ marginInlineStart: 6 }}>🔒</span> : null}</td>
                   <td style={{ padding: "14px" }}>{role.code}</td>
                   <td style={{ padding: "14px" }}>{role.permissions_count}</td>
                   <td style={{ padding: "14px" }}>{role.users_count}</td>

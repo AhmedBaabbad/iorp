@@ -33,16 +33,16 @@ const styles: Record<string, CSSProperties> = {
     display: "grid",
     gap: "1px",
     gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-    background: "#e4e7ec",
+    background: "var(--border)",
     borderRadius: "8px",
     overflow: "hidden",
   },
   detailItem: {
-    background: "#ffffff",
+    background: "var(--surface)",
     padding: "18px",
   },
   detailLabel: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "13px",
     fontWeight: 700,
     margin: "0 0 8px",
@@ -52,8 +52,8 @@ const styles: Record<string, CSSProperties> = {
     overflowWrap: "anywhere",
   },
   section: {
-    background: "#ffffff",
-    border: "1px solid #d9dee7",
+    background: "var(--surface)",
+    border: "1px solid var(--border-strong)",
     borderRadius: "8px",
     marginTop: "18px",
     padding: "18px",
@@ -69,8 +69,8 @@ const styles: Record<string, CSSProperties> = {
     marginBottom: "18px",
   },
   description: {
-    background: "#f8fafc",
-    border: "1px solid #e4e7ec",
+    background: "var(--surface-muted)",
+    border: "1px solid var(--border)",
     borderRadius: "6px",
     lineHeight: 1.55,
     margin: 0,
@@ -157,13 +157,13 @@ export function NcrReportDetail({ ncrReportId }: NcrReportDetailProps) {
       }
     >
       {isLoading ? (
-        <div style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           {t("loadingDetail")}
         </div>
       ) : null}
 
       {!isLoading && isNotFound ? (
-        <section style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>
             {t("notFound")}
           </h2>
@@ -256,7 +256,7 @@ export function NcrReportDetail({ ncrReportId }: NcrReportDetailProps) {
                   report.quality_check_id ? (
                     <Link
                       href={`/quality-checks/${report.quality_check_id}`}
-                      style={{ color: "#1d4ed8" }}
+                      style={{ color: "var(--accent-strong)" }}
                     >
                       {shortId(report.quality_check_id)}
                     </Link>
@@ -269,7 +269,7 @@ export function NcrReportDetail({ ncrReportId }: NcrReportDetailProps) {
                   report.quality_rejection_id ? (
                     <Link
                       href={`/quality-rejections/${report.quality_rejection_id}`}
-                      style={{ color: "#1d4ed8" }}
+                      style={{ color: "var(--accent-strong)" }}
                     >
                       {shortId(report.quality_rejection_id)}
                     </Link>

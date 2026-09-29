@@ -43,8 +43,8 @@ type FormValues = {
 
 const styles: Record<string, CSSProperties> = {
   panel: {
-    background: "#ffffff",
-    border: "1px solid #d9dee7",
+    background: "var(--surface)",
+    border: "1px solid var(--border-strong)",
     borderRadius: "8px",
     boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
   },
@@ -55,8 +55,8 @@ const styles: Record<string, CSSProperties> = {
     gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
   },
   actions: { display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center" },
-  required: { color: "#be123c", marginLeft: "2px" },
-  requiredNote: { color: "#52606d", fontSize: "13px", marginLeft: "auto" },
+  required: { color: "var(--danger)", marginLeft: "2px" },
+  requiredNote: { color: "var(--text-muted)", fontSize: "13px", marginLeft: "auto" },
 };
 
 const workerTypes: WorkerType[] = [
@@ -167,7 +167,7 @@ export function WorkforceMemberForm({ mode }: { mode: Mode }) {
   if (isLoading) {
     return (
       <PageFrame section="Workforce" title={t(mode === "create" ? "createTitle" : "editTitle")}>
-        <div style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           {messages("loading.default")}
         </div>
       </PageFrame>
@@ -177,7 +177,7 @@ export function WorkforceMemberForm({ mode }: { mode: Mode }) {
   if (isNotFound) {
     return (
       <PageFrame section="Workforce" title={t("notFound")}>
-        <section style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("notFound")}</h2>
           <p style={{ margin: "0 0 18px" }}>{t("notFoundDescription")}</p>
           <Link href="/workforce" style={sharedStyles.button}>{t("returnToList")}</Link>

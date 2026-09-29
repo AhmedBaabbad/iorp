@@ -112,7 +112,7 @@ export const sharedStyles: Record<string, CSSProperties> = {
   modalOverlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,0.35)",
+    background: "var(--overlay)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",

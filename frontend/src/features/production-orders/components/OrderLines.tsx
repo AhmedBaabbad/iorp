@@ -1,0 +1,93 @@
+"use client";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useTranslations } from "next-intl";
+import { usePermission } from "@/features/auth/permission-hooks";
+import { demandsApi, type Demand } from "@/features/production-demands/api";
+import { ArrangementTable, type ArrangedLine } from "@/features/production-demands/arrangement-table";
+import { lifecycleErrorCode } from "@/features/production-demands/planning-lifecycle";
+import { ReasonDialog } from "@/features/production-demands/reason-dialog";
+import { addOrderAllocation, changeAllocationQuantity } from "../api/production-orders-api";
+import type { ProductionOrderData } from "../types";
+import s from "@/features/production-demands/demands.module.css";
+
+type Allocation = ProductionOrderData["allocations"][number];
+const QUANTITY = /^\d+(\.\d{1,3})?$/;
+
+// Order lines grouped by specification; a draft order's allocations can be changed here.
+export function OrderLines({ order, onChanged }: { order: ProductionOrderData; onChanged?: () => void }) {
+  const t = useTranslations("production.allocation");
+  const d = useTranslations("production.demands");
+  const canAllocate = usePermission("production:planning:allocate");
+  const canRelease = usePermission("production:planning:release_allocation");
+  const editing = Boolean(order.editable && canAllocate);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [releasing, setReleasing] = useState<Allocation | null>(null);
+  const [candidates, setCandidates] = useState<Demand[]>([]);
+  const [addItem, setAddItem] = useState("");
+  const [addQuantity, setAddQuantity] = useState("");
+
+  const byId = useMemo(() => new Map(order.allocations.map(a => [a.id, a])), [order.allocations]);
+  const lines: ArrangedLine[] = (order.lines ?? []).map(line => ({
+    key: line.id, line_no: line.line_no, target_spec_json: line.target_spec_json, planned_quantity: line.planned_quantity, unit: line.unit,
+    allocations: line.allocation_ids.map(id => byId.get(id)).filter((a): a is Allocation => Boolean(a)).map(a => ({
+      key: a.id, customer_name: a.customer_name, demand_number: a.demand_number, demand_item_line_no: a.demand_item_line_no, allocated_quantity: a.allocated_quantity, status: a.status })),
+  }));
+
+  // Demand items that could join this order: same product and unit, remaining quantity, not already in it.
+  const inOrder = useMemo(() => new Set(order.allocations.filter(a => a.status === "active").map(a => a.production_demand_item_id)), [order.allocations]);
+  useEffect(() => {
+    if (!editing) return;
+    let active = true;
+    const query = new URLSearchParams({ view: "active", product_type: order.product_type, page_size: "100" }).toString();
+    demandsApi.list(query, true).then(page => { if (active) setCandidates(page.items); }).catch(() => { if (active) setCandidates([]); });
+    return () => { active = false; };
+  }, [editing, order.product_type, order.allocations]);
+  const options = candidates.flatMap(demand => demand.items
+    .filter(item => item.id && item.unit === order.unit && item.product_type === order.product_type && Number(item.remaining_quantity) > 0 && !inOrder.has(item.id))
+    .map(item => ({ id: item.id!, label: `${demand.customer.name} · ${demand.demand_number} · ${d("lineNo")} ${item.line_no} — ${t("remaining")}: ${item.remaining_quantity} ${item.unit}`, remaining: item.remaining_quantity ?? "" })));
+
+  async function run(action: () => Promise<unknown>) {
+    setBusy(true); setError("");
+    try { await action(); setDrafts({}); onChanged?.(); return true; }
+    catch (e) { setError(lifecycleErrorCode(e)); return false; }
+    finally { setBusy(false); }
+  }
+  async function add(event: FormEvent) {
+    event.preventDefault();
+    if (!addItem || !QUANTITY.test(addQuantity)) return;
+    if (await run(() => addOrderAllocation(order.id, addItem, addQuantity))) { setAddItem(""); setAddQuantity(""); }
+  }
+
+  if (!lines.length && !editing) return null;
+  return <section className={s.panel}><h2>{t("orderLines")}</h2>
+    <p className={s.muted}>{editing ? t("orderLinesEditHint") : t("arrangementHint")}</p>
+    {error && <p role="alert" className={s.error}>{t(`errors.${t.has(`errors.${error}`) ? error : "request_failed"}`)}</p>}
+    <ArrangementTable lines={lines} caption={t("orderLines")}
+      quantityCell={editing ? (a, line) => {
+        const value = drafts[a.key] ?? a.allocated_quantity;
+        const changed = value !== a.allocated_quantity;
+        return <span className={s.actions}>
+          <input aria-label={`${t("quantity")} ${a.demand_number} ${a.demand_item_line_no}`} type="number" min="0.001" step="0.001" value={value} disabled={busy}
+            onChange={e => setDrafts(old => ({ ...old, [a.key]: e.target.value }))} /> {line.unit}
+          {changed && <button type="button" className={`${s.button} ${s.primary}`} disabled={busy || !QUANTITY.test(value) || Number(value) <= 0}
+            onClick={() => run(() => changeAllocationQuantity(a.key, value))}>{t("saveQuantity")}</button>}
+        </span>;
+      } : undefined}
+      actionsCell={editing && canRelease ? a => <button type="button" className={s.button} disabled={busy} onClick={() => setReleasing(byId.get(a.key) ?? null)}>{t("removeFromOrder")}</button> : undefined} />
+    {editing && <form className={s.toolbar} onSubmit={add} aria-label={t("addDemand")} style={{ marginTop: 16 }}>
+      <label className={s.field}>{t("addDemand")}
+        <select value={addItem} disabled={busy} onChange={e => { setAddItem(e.target.value); setAddQuantity(options.find(o => o.id === e.target.value)?.remaining ?? ""); }}>
+          <option value="">{options.length ? t("selectDemandItem") : t("noCandidates")}</option>
+          {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+        </select>
+      </label>
+      <label className={s.field}>{t("quantity")}<input type="number" min="0.001" step="0.001" value={addQuantity} disabled={busy || !addItem} onChange={e => setAddQuantity(e.target.value)} /></label>
+      <button className={`${s.button} ${s.primary}`} disabled={busy || !addItem || !QUANTITY.test(addQuantity) || Number(addQuantity) <= 0}>{t("addToOrder")}</button>
+    </form>}
+    {releasing && <ReasonDialog title={t("releaseTitle", { order: order.production_order_number })} description={t("releaseHint")} confirmLabel={t("release")} busy={busy}
+      onClose={() => setReleasing(null)}
+      onConfirm={reason => run(() => demandsApi.releaseAllocation(releasing.id, reason)).then(() => setReleasing(null))} />}
+  </section>;
+}

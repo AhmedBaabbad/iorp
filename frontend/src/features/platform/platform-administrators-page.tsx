@@ -88,7 +88,7 @@ function PlatformAdministratorsContent() {
   return (
     <main style={styles.page}>
       <header style={{ maxWidth: 980, margin: "0 auto 24px", display: "flex", justifyContent: "space-between", gap: 16 }}>
-        <div><p style={styles.eyebrow}>{t("eyebrow")}</p><h1 style={styles.title}>{t("title")}</h1><p style={{ color: "#8b98b8" }}>{t("subtitle")}</p></div>
+        <div><p style={styles.eyebrow}>{t("eyebrow")}</p><h1 style={styles.title}>{t("title")}</h1><p style={{ color: "var(--text-subtle)" }}>{t("subtitle")}</p></div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}><LanguageSwitcher label={t("languageLabel")} /><Link href="/platform/dashboard" style={styles.secondaryButton}>{t("back")}</Link></div>
       </header>
       <section style={{ maxWidth: 980, margin: "0 auto" }}>
@@ -107,8 +107,8 @@ function PlatformAdministratorsContent() {
           {items === null ? <p style={{ padding: 20 }}>{t("loading")}</p> : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead><tr>{["name", "email", "role", "status", "lastLogin", "actions"].map((key) => <th key={key} style={{ padding: 12, textAlign: "start" }}>{t(`table.${key}`)}</th>)}</tr></thead>
-              <tbody>{items.map((item) => <tr key={item.id} style={{ borderTop: "1px solid #29344a" }}>
-                <td style={{ padding: 12 }}>{item.full_name}{item.is_bootstrap_root ? <div style={{ color: "#a5b4fc", fontSize: 12 }}>{t("bootstrapProtected")}</div> : null}</td>
+              <tbody>{items.map((item) => <tr key={item.id} style={{ borderTop: "1px solid var(--border-strong)" }}>
+                <td style={{ padding: 12 }}>{item.full_name}{item.is_bootstrap_root ? <div style={{ color: "var(--accent-strong)", fontSize: 12 }}>{t("bootstrapProtected")}</div> : null}</td>
                 <td style={{ padding: 12 }}>{item.email}</td>
                 <td style={{ padding: 12 }}><span style={{ ...(item.role === "root" ? styles.badgeRoot : styles.badgeAdmin) }}>{t(`roles.${item.role}`)}</span></td>
                 <td style={{ padding: 12 }}><span style={item.status === "active" ? styles.badgeActive : styles.badgeInactive}>{t(`statuses.${item.status}`)}</span></td>
@@ -119,7 +119,7 @@ function PlatformAdministratorsContent() {
           )}
         </div>
       </section>
-      {resetTarget && <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,.72)", padding: 20 }}><form onSubmit={submitReset} style={{ ...styles.panel, width: "min(460px, 100%)", padding: 24 }}><h2>{t("resetTitle", { name: resetTarget.full_name })}</h2><label style={styles.field}><span style={styles.label}>{t("fields.password")}</span><PasswordInput inputStyle={styles.input} minLength={12} value={password} onChange={(e) => setPassword(e.target.value)} required /></label><label style={styles.field}><span style={styles.label}>{t("fields.confirmPassword")}</span><PasswordInput inputStyle={styles.input} minLength={12} value={confirmation} onChange={(e) => setConfirmation(e.target.value)} required /></label><div style={{ display: "flex", gap: 8, marginTop: 16 }}><button style={styles.dangerButton} disabled={busy}>{t("actions.resetPassword")}</button><button type="button" style={styles.secondaryButton} onClick={() => setResetTarget(null)}>{t("cancel")}</button></div></form></div>}
+      {resetTarget && <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", background: "var(--overlay)", padding: 20 }}><form onSubmit={submitReset} style={{ ...styles.panel, width: "min(460px, 100%)", padding: 24 }}><h2>{t("resetTitle", { name: resetTarget.full_name })}</h2><label style={styles.field}><span style={styles.label}>{t("fields.password")}</span><PasswordInput inputStyle={styles.input} minLength={12} value={password} onChange={(e) => setPassword(e.target.value)} required /></label><label style={styles.field}><span style={styles.label}>{t("fields.confirmPassword")}</span><PasswordInput inputStyle={styles.input} minLength={12} value={confirmation} onChange={(e) => setConfirmation(e.target.value)} required /></label><div style={{ display: "flex", gap: 8, marginTop: 16 }}><button style={styles.dangerButton} disabled={busy}>{t("actions.resetPassword")}</button><button type="button" style={styles.secondaryButton} onClick={() => setResetTarget(null)}>{t("cancel")}</button></div></form></div>}
     </main>
   );
 }

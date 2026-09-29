@@ -38,6 +38,10 @@ class Settings(BaseSettings):
         alias="CORS_ORIGINS",
     )
     login_max_attempts: int = Field(default=5, alias="IORP_LOGIN_MAX_ATTEMPTS")
+    # Move released production orders to in_progress when their planned start date arrives.
+    # Off by default: orders past their start date are only flagged "late to start".
+    production_auto_start_by_date: bool = Field(default=False, alias="PRODUCTION_AUTO_START_BY_DATE")
+    production_auto_start_interval_minutes: int = Field(default=15, ge=1, le=1440, alias="PRODUCTION_AUTO_START_INTERVAL_MINUTES")
     login_lockout_minutes: int = Field(default=15, alias="IORP_LOGIN_LOCKOUT_MINUTES")
     login_rate_limit: int = Field(default=10, alias="IORP_LOGIN_RATE_LIMIT")
     platform_login_max_attempts: int = Field(default=3, alias="IORP_PLATFORM_LOGIN_MAX_ATTEMPTS")

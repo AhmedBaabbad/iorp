@@ -22,14 +22,14 @@ const empty: SetupPayload = {
 };
 
 const styles: Record<string, CSSProperties> = {
-  page: { minHeight: "100vh", padding: 24, background: "#f6f7f9" },
-  card: { background: "#fff", border: "1px solid #d9dee7", borderRadius: 10, padding: 32, maxWidth: 640, margin: "40px auto" },
+  page: { minHeight: "100vh", padding: 24, background: "var(--page-bg)" },
+  card: { background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: 10, padding: 32, maxWidth: 640, margin: "40px auto" },
   stepper: { display: "flex", gap: 8, marginBottom: 24 },
-  step: { flex: 1, borderRadius: 6, padding: "8px 4px", textAlign: "center", fontSize: 12, fontWeight: 700, background: "#eef1f4", color: "#7b8794" },
-  stepActive: { background: "#1f2933", color: "#ffffff" },
+  step: { flex: 1, borderRadius: 6, padding: "8px 4px", textAlign: "center", fontSize: 12, fontWeight: 700, background: "var(--surface-muted)", color: "var(--text-muted)" },
+  stepActive: { background: "var(--text)", color: "var(--surface)" },
   form: { display: "grid", gap: 16 },
   actions: { display: "flex", gap: 8 },
-  logoPreview: { width: 64, height: 64, objectFit: "cover", borderRadius: 8, border: "1px solid #d9dee7", marginTop: 8 },
+  logoPreview: { width: 64, height: 64, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border-strong)", marginTop: 8 },
   reviewRow: { margin: "4px 0" },
 };
 
@@ -179,7 +179,7 @@ export function SetupWizard() {
       ) : (
         <input style={sharedStyles.input} type={type} value={value} onChange={(e) => onChange(e.target.value)} required />
       )}
-      {hint && <small style={{ color: "#7b8794" }}>{hint}</small>}
+      {hint && <small style={{ color: "var(--text-muted)" }}>{hint}</small>}
     </label>
   );
 

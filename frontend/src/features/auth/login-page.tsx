@@ -12,14 +12,15 @@ import { ApiClientError } from "@/lib/api-client";
 import { sharedStyles } from "@/styles/shared-styles";
 import { useAuth } from "./auth-context";
 import { getBootstrapStatus } from "@/features/setup/setup-api";
+import { IDLE_TIMEOUT_MS } from "@/lib/session-policy";
 
 const styles: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
     display: "grid",
     placeItems: "center",
-    background: "#f6f7f9",
-    color: "#1f2933",
+    background: "var(--page-bg)",
+    color: "var(--text)",
     fontFamily:
       'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     padding: "24px",
@@ -27,8 +28,8 @@ const styles: Record<string, CSSProperties> = {
   panel: {
     width: "100%",
     maxWidth: "420px",
-    background: "#ffffff",
-    border: "1px solid #d9dee7",
+    background: "var(--surface)",
+    border: "1px solid var(--border-strong)",
     borderRadius: "8px",
     boxShadow: "0 16px 40px rgba(31, 41, 51, 0.08)",
     padding: "32px",
@@ -38,7 +39,7 @@ const styles: Record<string, CSSProperties> = {
   },
   eyebrow: {
     margin: "0 0 8px",
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "14px",
     fontWeight: 600,
   },
@@ -85,6 +86,7 @@ export function LoginPage() {
     if (account === "locked") setError(t("login.accountLocked"));
     if (account === "inactive") setError(t("login.accountInactive"));
     if (session === "expired") setError(t("login.sessionExpired"));
+    if (session === "idle") setError(t("login.sessionIdle", { minutes: Math.round(IDLE_TIMEOUT_MS / 60_000) }));
     if (session === "password_changed") setError(t("login.passwordChanged"));
     void getBootstrapStatus().then((status) => {
       if (!status.initialized) router.replace("/setup");
@@ -174,7 +176,7 @@ export function LoginPage() {
               required
             />
           </label>
-          <Link href="/forgot-password" style={{ color: "#2563eb", fontWeight: 700, textDecoration: "none" }}>{resetT("forgotLink")}</Link>
+          <Link href="/forgot-password" style={{ color: "var(--accent-strong)", fontWeight: 700, textDecoration: "none" }}>{resetT("forgotLink")}</Link>
 
           <label style={sharedStyles.field}>
             <span style={sharedStyles.label}>{t("login.passwordLabel")}</span>

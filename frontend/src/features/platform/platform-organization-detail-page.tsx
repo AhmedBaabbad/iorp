@@ -39,7 +39,7 @@ function initials(value: string) {
 }
 
 function identityColor(value: string) {
-  const colors = ["#2563eb", "#7c3aed", "#0891b2", "#059669", "#c2410c", "#be185d"];
+  const colors = ["#2563eb", "#7c3aed", "#0891b2", "#059669", "#c2410c", "#be185d"]; // theme-exempt: logo fallback palette, white initials read on each
   return colors[[...value].reduce((sum, character) => sum + character.charCodeAt(0), 0) % colors.length];
 }
 

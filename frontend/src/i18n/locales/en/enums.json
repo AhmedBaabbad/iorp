@@ -104,8 +104,10 @@
     "status": {
       "draft": "Draft",
       "released": "Released",
-      "in_progress": "In Progress",
+      "in_progress": "In progress",
+      "on_hold": "On hold",
       "completed": "Completed",
+      "closed": "Closed",
       "cancelled": "Cancelled"
     },
     "priority": {

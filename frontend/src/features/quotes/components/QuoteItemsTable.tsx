@@ -14,8 +14,8 @@ type QuoteItemsTableProps = {
 
 const styles: Record<string, CSSProperties> = {
   panel: {
-    background: "#ffffff",
-    border: "1px solid #d9dee7",
+    background: "var(--surface)",
+    border: "1px solid var(--border-strong)",
     borderRadius: "8px",
     overflow: "hidden",
   },
@@ -27,21 +27,21 @@ const styles: Record<string, CSSProperties> = {
     borderCollapse: "collapse",
   },
   th: {
-    borderBottom: "1px solid #e4e7ec",
-    color: "#52606d",
+    borderBottom: "1px solid var(--border)",
+    color: "var(--text-muted)",
     fontSize: "13px",
     padding: "14px 16px",
   },
   td: {
-    borderBottom: "1px solid #eef1f5",
+    borderBottom: "1px solid var(--border)",
     padding: "14px 16px",
     verticalAlign: "top",
   },
   spec: {
-    background: "#f9fafb",
-    border: "1px solid #e4e7ec",
+    background: "var(--surface-muted)",
+    border: "1px solid var(--border)",
     borderRadius: "6px",
-    color: "#1f2933",
+    color: "var(--text)",
     fontSize: "12px",
     margin: "8px 0 0",
     maxWidth: "420px",

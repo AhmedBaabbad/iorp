@@ -93,7 +93,7 @@ export function AdminUserRolesManager({ userId, userName, isOrganizationRoot, as
       <div className={css.rolesHeader}><h2>{t("rolesSection")}</h2>{canWrite && !isSelf && !isOrganizationRoot ? <button type="button" style={sharedStyles.button} onClick={() => void openAssignment()}>{t("assignRole")}</button> : null}</div>
       {isSelf ? <div role="note">{t("cannotModifyOwnRoles")}</div> : null}
       {isOrganizationRoot ? <div role="note">{t("rootRolesProtected")}</div> : null}
-      {success ? <div role="status" style={{ color: "#166534" }}>{success}</div> : null}
+      {success ? <div role="status" style={{ color: "var(--success)" }}>{success}</div> : null}
       {error ? <div role="alert" style={sharedStyles.error}>{error}</div> : null}
       {roles.length === 0 ? <span>{t("noAssignedRoles")}</span> : roles.map((role) => (
         <div key={role.id} className={css.roleItem}>

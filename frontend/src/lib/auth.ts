@@ -1,4 +1,4 @@
-const ACCESS_TOKEN_KEY = "iorp.access_token";
+export const ACCESS_TOKEN_KEY = "iorp.access_token";
 
 function canUseBrowserStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";

@@ -4,9 +4,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from app.dependencies import get_current_tenant, get_db, get_customer_lookup, require_permission
-from app.production.api.planning_schemas import PlanningOrderCreate, PlanningOrderRead, ReleaseRequest
+from app.production.api.planning_schemas import AllocationInput, AllocationQuantityUpdate, PlanningOrderCreate, PlanningOrderRead, PlanningPreviewRequest, ReleaseRequest
 from app.production.application.allocation_service import AllocationLifecycleService, demand_quantity_summary
-from app.production.application.planning_order_service import PlanningOrderService, order_response
+from app.production.api.order_views import permission_check, with_lifecycle
+from app.production.application.planning_order_service import PlanningOrderService
 from app.production.application.services import ProductionOrderService
 from app.production.domain.compatibility import AllocationError, DemandItemCompatibilityChecker
 
@@ -34,18 +35,47 @@ def compatibility_checker():
 @router.post("/planning/create-production-order", status_code=201, response_model=PlanningOrderRead,
     dependencies=[Depends(require_permission("production:planning:allocate")), Depends(require_permission("production:orders:create"))])
 def create(payload: PlanningOrderCreate, db=Depends(get_db), tenant=Depends(get_current_tenant),
-           customers=Depends(get_customer_lookup), checker=Depends(compatibility_checker)):
+           customers=Depends(get_customer_lookup), checker=Depends(compatibility_checker), can=Depends(permission_check)):
     order = PlanningOrderService(db, tenant, checker).create_order_from_planning(payload)
-    return order_response(order, db, tenant, customers)
+    return with_lifecycle(order, db, tenant, customers, can)
+
+
+@router.post("/planning/preview-production-order",
+    dependencies=[Depends(require_permission("production:planning:allocate"))])
+def preview(payload: PlanningPreviewRequest, db=Depends(get_db), tenant=Depends(get_current_tenant),
+            customers=Depends(get_customer_lookup), checker=Depends(compatibility_checker)):
+    """How the selected allocations would be arranged into order lines; writes nothing."""
+    result = PlanningOrderService(db, tenant, checker).preview(payload.allocations)
+    for line in result["lines"]:
+        for entry in line["allocations"]:
+            customer = customers.get_customer_summary(db, entry.pop("customer_id"), tenant.organization_id)
+            entry["customer_name"] = customer.customer_name if customer else None
+    return result
+
+
+@router.post("/orders/{order_id}/allocations", response_model=PlanningOrderRead,
+    dependencies=[Depends(require_permission("production:planning:allocate"))])
+def add_allocation(order_id: UUID, payload: AllocationInput, db=Depends(get_db), tenant=Depends(get_current_tenant),
+                   customers=Depends(get_customer_lookup), checker=Depends(compatibility_checker), can=Depends(permission_check)):
+    order = PlanningOrderService(db, tenant, checker).add_allocation(order_id, payload)
+    return with_lifecycle(order, db, tenant, customers, can)
+
+
+@router.patch("/allocations/{allocation_id}", response_model=PlanningOrderRead,
+    dependencies=[Depends(require_permission("production:planning:allocate"))])
+def change_allocation(allocation_id: UUID, payload: AllocationQuantityUpdate, db=Depends(get_db), tenant=Depends(get_current_tenant),
+                      customers=Depends(get_customer_lookup), can=Depends(permission_check)):
+    order = PlanningOrderService(db, tenant).change_allocation(allocation_id, payload.allocated_quantity)
+    return with_lifecycle(order, db, tenant, customers, can)
 
 
 @router.get("/orders/{order_id}", response_model=PlanningOrderRead,
     dependencies=[Depends(require_permission("production:production_orders:read"))])
-def detail(order_id: UUID, db=Depends(get_db), tenant=Depends(get_current_tenant), customers=Depends(get_customer_lookup)):
+def detail(order_id: UUID, db=Depends(get_db), tenant=Depends(get_current_tenant), customers=Depends(get_customer_lookup), can=Depends(permission_check)):
     order = ProductionOrderService(db).get_production_order(tenant, order_id)
     if order is None:
         raise AllocationError("PRODUCTION_ORDER_NOT_FOUND", 404)
-    return order_response(order, db, tenant, customers)
+    return with_lifecycle(order, db, tenant, customers, can)
 
 
 @router.post("/allocations/{allocation_id}/release",

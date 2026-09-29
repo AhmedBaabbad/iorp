@@ -76,7 +76,7 @@ export function AdminUserForm({ userId }: Props) {
       <form onSubmit={(e) => { e.preventDefault(); void submit(); }} style={{ display: "grid", gap: "16px", maxWidth: "520px" }}>
         {isOrganizationRoot ? <div style={sharedStyles.state} role="note">{t("rootFieldsReadOnly")}</div> : null}
         <label>{t("fields.fullName")}<input style={sharedStyles.input} value={fullName} onChange={(e) => setFullName(e.target.value)} disabled={isOrganizationRoot} required /></label>
-        <label>{t("fields.email")}<input style={sharedStyles.input} type="email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError(null); }} disabled={isOrganizationRoot} required />{emailError ? <span style={{ color: "#be123c", fontSize: "13px" }} role="alert">{emailError}</span> : <span style={{ color: "#52606d", fontSize: "13px" }}>{t("errors.emailGloballyUnique")}</span>}</label>
+        <label>{t("fields.email")}<input style={sharedStyles.input} type="email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError(null); }} disabled={isOrganizationRoot} required />{emailError ? <span style={{ color: "var(--danger)", fontSize: "13px" }} role="alert">{emailError}</span> : <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>{t("errors.emailGloballyUnique")}</span>}</label>
         <label>{t("fields.phone")}<input style={sharedStyles.input} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></label>
         {!isEdit ? <label>{t("fields.password")}<input style={sharedStyles.input} type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required /></label> : null}
         {!isEdit ? (

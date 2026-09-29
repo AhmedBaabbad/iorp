@@ -26,255 +26,257 @@ import type { FollowUpPriority, FollowUpStatus } from "@/types/followups";
 export type BadgeColor = { background: string; color: string };
 
 export const qualityCheckStatusColors: Record<QualityCheckStatus, BadgeColor> = {
-  open: { background: "#f3f4f6", color: "#4b5563" },
-  under_inspection: { background: "#fef3c7", color: "#92400e" },
-  closed: { background: "#dcfce7", color: "#166534" },
+  open: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  under_inspection: { background: "var(--warning-soft)", color: "var(--warning)" },
+  closed: { background: "var(--success-soft)", color: "var(--success)" },
 };
 
 export const qualityCheckResultColors: Record<QualityCheckResult | "pending", BadgeColor> = {
-  accepted: { background: "#dcfce7", color: "#166534" },
-  rejected: { background: "#fee2e2", color: "#991b1b" },
-  conditional_accept: { background: "#fef3c7", color: "#92400e" },
-  needs_reinspection: { background: "#ffedd5", color: "#9a3412" },
-  pending: { background: "#f3f4f6", color: "#4b5563" },
+  accepted: { background: "var(--success-soft)", color: "var(--success)" },
+  rejected: { background: "var(--danger-soft)", color: "var(--danger)" },
+  conditional_accept: { background: "var(--warning-soft)", color: "var(--warning)" },
+  needs_reinspection: { background: "var(--warning-soft)", color: "var(--warning)" },
+  pending: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 
 export const defectSeverityColors: Record<DefectSeverity, BadgeColor> = {
-  minor: { background: "#f3f4f6", color: "#4b5563" },
-  major: { background: "#ffedd5", color: "#9a3412" },
-  critical: { background: "#fee2e2", color: "#991b1b" },
+  minor: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  major: { background: "var(--warning-soft)", color: "var(--warning)" },
+  critical: { background: "var(--danger-soft)", color: "var(--danger)" },
 };
 
 export const defectCategoryColors: Record<DefectCategory, BadgeColor> = {
-  dimension: { background: "#dbeafe", color: "#1e40af" },
-  thickness: { background: "#dbeafe", color: "#1e40af" },
-  surface: { background: "#f3f4f6", color: "#4b5563" },
-  color: { background: "#ede9fe", color: "#5b21b6" },
-  strength: { background: "#ffedd5", color: "#9a3412" },
-  winding: { background: "#ffedd5", color: "#9a3412" },
-  weight: { background: "#fef9c3", color: "#854d0e" },
-  packaging: { background: "#ccfbf1", color: "#0f766e" },
-  labeling: { background: "#ccfbf1", color: "#0f766e" },
-  finish: { background: "#f3f4f6", color: "#4b5563" },
-  other: { background: "#f3f4f6", color: "#4b5563" },
+  dimension: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  thickness: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  surface: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  color: { background: "var(--accent-soft)", color: "var(--purple)" },
+  strength: { background: "var(--warning-soft)", color: "var(--warning)" },
+  winding: { background: "var(--warning-soft)", color: "var(--warning)" },
+  weight: { background: "var(--warning-soft)", color: "var(--warning)" },
+  packaging: { background: "var(--teal-soft)", color: "var(--teal)" },
+  labeling: { background: "var(--teal-soft)", color: "var(--teal)" },
+  finish: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  other: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 
 export const qualityRejectionDispositionColors: Record<Disposition, BadgeColor> = {
-  hold: { background: "#fef3c7", color: "#92400e" },
-  scrap: { background: "#fee2e2", color: "#991b1b" },
-  rework: { background: "#dbeafe", color: "#1e40af" },
-  return_to_process: { background: "#f3f4f6", color: "#4b5563" },
+  hold: { background: "var(--warning-soft)", color: "var(--warning)" },
+  scrap: { background: "var(--danger-soft)", color: "var(--danger)" },
+  rework: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  return_to_process: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 
 export const qualityRejectionDispositionStatusColors: Record<DispositionStatus, BadgeColor> = {
-  pending: { background: "#ffedd5", color: "#9a3412" },
-  executed: { background: "#dcfce7", color: "#166534" },
+  pending: { background: "var(--warning-soft)", color: "var(--warning)" },
+  executed: { background: "var(--success-soft)", color: "var(--success)" },
 };
 
 export const ncrStatusColors: Record<NCRStatus, BadgeColor> = {
-  draft: { background: "#f3f4f6", color: "#4b5563" },
-  open: { background: "#dbeafe", color: "#1e40af" },
-  under_review: { background: "#fef3c7", color: "#92400e" },
-  closed: { background: "#dcfce7", color: "#166534" },
+  draft: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  open: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  under_review: { background: "var(--warning-soft)", color: "var(--warning)" },
+  closed: { background: "var(--success-soft)", color: "var(--success)" },
 };
 
 export const ncrSourceTypeColors: Record<NCRSourceType, BadgeColor> = {
-  internal_production: { background: "#dbeafe", color: "#1e40af" },
-  incoming_material: { background: "#ede9fe", color: "#5b21b6" },
-  supplier: { background: "#fef3c7", color: "#92400e" },
-  warehouse: { background: "#ccfbf1", color: "#0f766e" },
-  customer_return: { background: "#fee2e2", color: "#991b1b" },
-  other: { background: "#f3f4f6", color: "#4b5563" },
+  internal_production: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  incoming_material: { background: "var(--accent-soft)", color: "var(--purple)" },
+  supplier: { background: "var(--warning-soft)", color: "var(--warning)" },
+  warehouse: { background: "var(--teal-soft)", color: "var(--teal)" },
+  customer_return: { background: "var(--danger-soft)", color: "var(--danger)" },
+  other: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 
 export const correctiveActionStatusColors: Record<CorrectiveActionStatus, BadgeColor> = {
-  open: { background: "#f3f4f6", color: "#4b5563" },
-  in_progress: { background: "#dbeafe", color: "#1e40af" },
-  completed: { background: "#dcfce7", color: "#166534" },
-  closed: { background: "#dcfce7", color: "#166534" },
+  open: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  in_progress: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  completed: { background: "var(--success-soft)", color: "var(--success)" },
+  closed: { background: "var(--success-soft)", color: "var(--success)" },
 };
 
 export const correctiveActionPriorityColors: Record<CorrectiveActionPriority, BadgeColor> = {
-  urgent: { background: "#fee2e2", color: "#991b1b" },
-  high: { background: "#ffedd5", color: "#9a3412" },
-  normal: { background: "#dbeafe", color: "#1e40af" },
-  low: { background: "#f3f4f6", color: "#4b5563" },
+  urgent: { background: "var(--danger-soft)", color: "var(--danger)" },
+  high: { background: "var(--warning-soft)", color: "var(--warning)" },
+  normal: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  low: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 
 export const correctiveActionTypeColors: Record<CorrectiveActionType, BadgeColor> = {
-  corrective: { background: "#fee2e2", color: "#991b1b" },
-  preventive: { background: "#dbeafe", color: "#1e40af" },
-  improvement: { background: "#ccfbf1", color: "#115e59" },
-  containment: { background: "#ffedd5", color: "#9a3412" },
+  corrective: { background: "var(--danger-soft)", color: "var(--danger)" },
+  preventive: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  improvement: { background: "var(--teal-soft)", color: "var(--teal)" },
+  containment: { background: "var(--warning-soft)", color: "var(--warning)" },
 };
 
 export const followUpStatusColors: Record<ActionFollowUpStatus, BadgeColor> = {
-  on_track: { background: "#dcfce7", color: "#166534" },
-  delayed: { background: "#ffedd5", color: "#9a3412" },
-  blocked: { background: "#fee2e2", color: "#991b1b" },
-  completed: { background: "#dcfce7", color: "#166534" },
+  on_track: { background: "var(--success-soft)", color: "var(--success)" },
+  delayed: { background: "var(--warning-soft)", color: "var(--warning)" },
+  blocked: { background: "var(--danger-soft)", color: "var(--danger)" },
+  completed: { background: "var(--success-soft)", color: "var(--success)" },
 };
 
 export const closureResultColors: Record<ClosureVerificationResult, BadgeColor> = {
-  effective: { background: "#dcfce7", color: "#166534" },
-  partially_effective: { background: "#fef3c7", color: "#92400e" },
-  not_effective: { background: "#fee2e2", color: "#991b1b" },
+  effective: { background: "var(--success-soft)", color: "var(--success)" },
+  partially_effective: { background: "var(--warning-soft)", color: "var(--warning)" },
+  not_effective: { background: "var(--danger-soft)", color: "var(--danger)" },
 };
 
 export const closureStatusColors: Record<ClosureStatus, BadgeColor> = {
-  closed: { background: "#dcfce7", color: "#166534" },
-  re_opened: { background: "#ffedd5", color: "#9a3412" },
+  closed: { background: "var(--success-soft)", color: "var(--success)" },
+  re_opened: { background: "var(--warning-soft)", color: "var(--warning)" },
 };
 
 export const productionOrderStatusColors: Record<ProductionOrderStatus, BadgeColor> = {
-  draft: { background: "#f3f4f6", color: "#4b5563" },
-  released: { background: "#dbeafe", color: "#1e40af" },
-  in_progress: { background: "#fef3c7", color: "#92400e" },
-  completed: { background: "#dcfce7", color: "#166534" },
-  cancelled: { background: "#fee2e2", color: "#991b1b" },
+  draft: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  released: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  in_progress: { background: "var(--teal-soft)", color: "var(--teal)" },
+  on_hold: { background: "var(--warning-soft)", color: "var(--warning)" },
+  completed: { background: "var(--success-soft)", color: "var(--success)" },
+  closed: { background: "var(--purple-soft)", color: "var(--purple)" },
+  cancelled: { background: "var(--danger-soft)", color: "var(--danger)" },
 };
 
 export const productionOrderPriorityColors: Record<ProductionOrderPriority, BadgeColor> = {
-  high: { background: "#fff7ed", color: "#9a3412" },
-  urgent: { background: "#fee2e2", color: "#991b1b" },
-  normal: { background: "#dbeafe", color: "#1e40af" },
-  low: { background: "#f3f4f6", color: "#4b5563" },
+  high: { background: "var(--warning-soft)", color: "var(--warning)" },
+  urgent: { background: "var(--danger-soft)", color: "var(--danger)" },
+  normal: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  low: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 
 export const workCenterStatusColors: Record<WorkCenterStatus, BadgeColor> = {
-  active: { background: "#dcfce7", color: "#166534" },
-  inactive: { background: "#f3f4f6", color: "#4b5563" },
-  under_maintenance: { background: "#fef3c7", color: "#92400e" },
+  active: { background: "var(--success-soft)", color: "var(--success)" },
+  inactive: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  under_maintenance: { background: "var(--warning-soft)", color: "var(--warning)" },
 };
 
 export const workCenterTypeColors: Record<WorkCenterType, BadgeColor> = {
-  extrusion: { background: "#eef2ff", color: "#3730a3" },
-  rewinding: { background: "#eef2ff", color: "#3730a3" },
-  packing: { background: "#eef2ff", color: "#3730a3" },
-  quality_station: { background: "#eef2ff", color: "#3730a3" },
-  generic: { background: "#eef2ff", color: "#3730a3" },
+  extrusion: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  rewinding: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  packing: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  quality_station: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  generic: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
 };
 
 export const downtimeStatusColors: Record<DowntimeStatus, BadgeColor> = {
-  open: { background: "#fee2e2", color: "#991b1b" },
-  closed: { background: "#f3f4f6", color: "#4b5563" },
+  open: { background: "var(--danger-soft)", color: "var(--danger)" },
+  closed: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 
 export const downtimeCategoryColors: Record<DowntimeCategory, BadgeColor> = {
-  machine: { background: "#fee2e2", color: "#991b1b" },
-  material: { background: "#ffedd5", color: "#9a3412" },
-  manpower: { background: "#fef9c3", color: "#854d0e" },
-  quality: { background: "#f3e8ff", color: "#6b21a8" },
-  utilities: { background: "#dbeafe", color: "#1e40af" },
-  setup: { background: "#ccfbf1", color: "#0f766e" },
-  other: { background: "#f3f4f6", color: "#4b5563" },
+  machine: { background: "var(--danger-soft)", color: "var(--danger)" },
+  material: { background: "var(--warning-soft)", color: "var(--warning)" },
+  manpower: { background: "var(--warning-soft)", color: "var(--warning)" },
+  quality: { background: "var(--purple-soft)", color: "var(--purple)" },
+  utilities: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  setup: { background: "var(--teal-soft)", color: "var(--teal)" },
+  other: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 
 export const shiftReportStatusColors: Record<ShiftReportStatus, BadgeColor> = {
-  draft: { background: "#f3f4f6", color: "#4b5563" },
-  submitted: { background: "#dbeafe", color: "#1e40af" },
-  approved: { background: "#dcfce7", color: "#166534" },
+  draft: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  submitted: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  approved: { background: "var(--success-soft)", color: "var(--success)" },
 };
 
 export const shiftTypeColors: Record<ShiftType, BadgeColor> = {
-  morning: { background: "#f3f4f6", color: "#4b5563" },
-  evening: { background: "#f3f4f6", color: "#4b5563" },
-  night: { background: "#f3f4f6", color: "#4b5563" },
-  custom: { background: "#f3f4f6", color: "#4b5563" },
+  morning: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  evening: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  night: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  custom: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 
 export const shiftStatusColors: Record<ShiftStatus, BadgeColor> = {
-  active: { background: "#dcfce7", color: "#166534" },
-  inactive: { background: "#f3f4f6", color: "#4b5563" },
+  active: { background: "var(--success-soft)", color: "var(--success)" },
+  inactive: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 
 export const productionOutputStatusColors: Record<ProductionOutputStatus, BadgeColor> = {
-  recorded: { background: "#f3f4f6", color: "#4b5563" },
-  verified: { background: "#dbeafe", color: "#1e40af" },
-  posted: { background: "#dcfce7", color: "#166534" },
+  recorded: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  verified: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  posted: { background: "var(--success-soft)", color: "var(--success)" },
 };
 
 export const wasteCategoryColors: Record<WasteCategory, BadgeColor> = {
-  startup_loss: { background: "#ffedd5", color: "#9a3412" },
-  trim_loss: { background: "#fef9c3", color: "#854d0e" },
-  setup_loss: { background: "#fef9c3", color: "#854d0e" },
-  rejected_output: { background: "#fee2e2", color: "#991b1b" },
-  breakage: { background: "#fee2e2", color: "#991b1b" },
-  rewinding_loss: { background: "#ffedd5", color: "#9a3412" },
-  end_of_roll_loss: { background: "#f3f4f6", color: "#4b5563" },
-  material_loss: { background: "#e7e5e4", color: "#44403c" },
-  contamination_loss: { background: "#f3e8ff", color: "#6b21a8" },
-  other: { background: "#f3f4f6", color: "#4b5563" },
+  startup_loss: { background: "var(--warning-soft)", color: "var(--warning)" },
+  trim_loss: { background: "var(--warning-soft)", color: "var(--warning)" },
+  setup_loss: { background: "var(--warning-soft)", color: "var(--warning)" },
+  rejected_output: { background: "var(--danger-soft)", color: "var(--danger)" },
+  breakage: { background: "var(--danger-soft)", color: "var(--danger)" },
+  rewinding_loss: { background: "var(--warning-soft)", color: "var(--warning)" },
+  end_of_roll_loss: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  material_loss: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  contamination_loss: { background: "var(--purple-soft)", color: "var(--purple)" },
+  other: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 
 export const customerStatusColors: Record<CustomerStatus, BadgeColor> = {
-  active: { background: "#dcfce7", color: "#166534" },
-  inactive: { background: "#f3f4f6", color: "#4b5563" },
-  on_hold: { background: "#fef3c7", color: "#92400e" },
-  archived: { background: "#f3f4f6", color: "#4b5563" },
-  blacklisted: { background: "#fee2e2", color: "#991b1b" },
+  active: { background: "var(--success-soft)", color: "var(--success)" },
+  inactive: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  on_hold: { background: "var(--warning-soft)", color: "var(--warning)" },
+  archived: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  blacklisted: { background: "var(--danger-soft)", color: "var(--danger)" },
 };
 
 export const customerRelationshipStageColors: Record<RelationshipStage, BadgeColor> = {
-  lead: { background: "#f3f4f6", color: "#4b5563" },
-  contacted: { background: "#dbeafe", color: "#1e40af" },
-  qualified: { background: "#dbeafe", color: "#1e40af" },
-  prospect: { background: "#dbeafe", color: "#1e40af" },
-  negotiating: { background: "#fef3c7", color: "#92400e" },
-  trial_customer: { background: "#ede9fe", color: "#5b21b6" },
-  active_customer: { background: "#dcfce7", color: "#166534" },
-  repeat_customer: { background: "#dcfce7", color: "#166534" },
-  strategic_customer: { background: "#ccfbf1", color: "#0f766e" },
+  lead: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  contacted: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  qualified: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  prospect: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  negotiating: { background: "var(--warning-soft)", color: "var(--warning)" },
+  trial_customer: { background: "var(--accent-soft)", color: "var(--purple)" },
+  active_customer: { background: "var(--success-soft)", color: "var(--success)" },
+  repeat_customer: { background: "var(--success-soft)", color: "var(--success)" },
+  strategic_customer: { background: "var(--teal-soft)", color: "var(--teal)" },
 };
 
 export const customerPriorityLevelColors: Record<PriorityLevel, BadgeColor> = {
-  low: { background: "#f3f4f6", color: "#4b5563" },
-  medium: { background: "#fef3c7", color: "#92400e" },
-  high: { background: "#fee2e2", color: "#991b1b" },
+  low: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  medium: { background: "var(--warning-soft)", color: "var(--warning)" },
+  high: { background: "var(--danger-soft)", color: "var(--danger)" },
 };
 
 export const sampleStatusColors: Record<SampleStatus, BadgeColor> = {
-  requested: { background: "#dbeafe", color: "#1e40af" },
-  in_preparation: { background: "#fef3c7", color: "#92400e" },
-  delivered: { background: "#dcfce7", color: "#166534" },
-  evaluated: { background: "#ede9fe", color: "#5b21b6" },
-  cancelled: { background: "#f3f4f6", color: "#4b5563" },
+  requested: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  in_preparation: { background: "var(--warning-soft)", color: "var(--warning)" },
+  delivered: { background: "var(--success-soft)", color: "var(--success)" },
+  evaluated: { background: "var(--accent-soft)", color: "var(--purple)" },
+  cancelled: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 
 export const sampleEvaluationResultStatusColors: Record<
   SampleEvaluationResultStatus,
   BadgeColor
 > = {
-  accepted: { background: "#dcfce7", color: "#166534" },
-  rejected: { background: "#fee2e2", color: "#991b1b" },
-  needs_modification: { background: "#fef3c7", color: "#92400e" },
+  accepted: { background: "var(--success-soft)", color: "var(--success)" },
+  rejected: { background: "var(--danger-soft)", color: "var(--danger)" },
+  needs_modification: { background: "var(--warning-soft)", color: "var(--warning)" },
 };
 
 export const quoteStatusColors: Record<QuoteStatus, BadgeColor> = {
-  draft: { background: "#f3f4f6", color: "#4b5563" },
-  issued: { background: "#dbeafe", color: "#1e40af" },
-  accepted: { background: "#dcfce7", color: "#166534" },
-  rejected: { background: "#fee2e2", color: "#991b1b" },
-  expired: { background: "#fef3c7", color: "#92400e" },
+  draft: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  issued: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  accepted: { background: "var(--success-soft)", color: "var(--success)" },
+  rejected: { background: "var(--danger-soft)", color: "var(--danger)" },
+  expired: { background: "var(--warning-soft)", color: "var(--warning)" },
 };
 
 export const commercialOrderStatusColors: Record<CommercialOrderStatus, BadgeColor> = {
-  draft: { background: "#f3f4f6", color: "#4b5563" },
-  confirmed: { background: "#dbeafe", color: "#1e40af" },
-  converted_to_production: { background: "#ede9fe", color: "#5b21b6" },
-  cancelled: { background: "#fee2e2", color: "#991b1b" },
+  draft: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  confirmed: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  converted_to_production: { background: "var(--accent-soft)", color: "var(--purple)" },
+  cancelled: { background: "var(--danger-soft)", color: "var(--danger)" },
 };
 
 export const commercialFollowUpStatusColors: Record<FollowUpStatus, BadgeColor> = {
-  pending: { background: "#fef3c7", color: "#92400e" },
-  in_progress: { background: "#dbeafe", color: "#1e40af" },
-  completed: { background: "#dcfce7", color: "#166534" },
-  cancelled: { background: "#f3f4f6", color: "#4b5563" },
+  pending: { background: "var(--warning-soft)", color: "var(--warning)" },
+  in_progress: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  completed: { background: "var(--success-soft)", color: "var(--success)" },
+  cancelled: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 
 export const commercialFollowUpPriorityColors: Record<FollowUpPriority, BadgeColor> = {
-  low: { background: "#f3f4f6", color: "#4b5563" },
-  medium: { background: "#dbeafe", color: "#1e40af" },
-  high: { background: "#ffedd5", color: "#9a3412" },
-  urgent: { background: "#fee2e2", color: "#991b1b" },
+  low: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  medium: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  high: { background: "var(--warning-soft)", color: "var(--warning)" },
+  urgent: { background: "var(--danger-soft)", color: "var(--danger)" },
 };

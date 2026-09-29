@@ -24,16 +24,16 @@ const styles: Record<string, CSSProperties> = {
     display: "grid",
     gap: "1px",
     gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-    background: "#e4e7ec",
+    background: "var(--border)",
     borderRadius: "8px",
     overflow: "hidden",
   },
   detailItem: {
-    background: "#ffffff",
+    background: "var(--surface)",
     padding: "18px",
   },
   detailLabel: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "13px",
     fontWeight: 700,
     margin: "0 0 8px",
@@ -49,14 +49,14 @@ const styles: Record<string, CSSProperties> = {
   overlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,0.45)",
+    background: "var(--overlay)",
     display: "grid",
     placeItems: "center",
     zIndex: 50,
     padding: "24px",
   },
   modal: {
-    background: "#ffffff",
+    background: "var(--surface)",
     borderRadius: "8px",
     padding: "28px 32px",
     width: "100%",
@@ -67,18 +67,18 @@ const styles: Record<string, CSSProperties> = {
     margin: "0 0 12px",
     fontSize: "18px",
     fontWeight: 700,
-    color: "#1f2933",
+    color: "var(--text)",
   },
   modalBody: {
     margin: "0 0 20px",
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "14px",
     lineHeight: 1.6,
   },
   impactList: {
     margin: "10px 0 0",
     padding: "12px 16px",
-    background: "#f6f7f9",
+    background: "var(--surface-muted)",
     borderRadius: "6px",
     listStyle: "none",
     display: "grid",
@@ -86,7 +86,7 @@ const styles: Record<string, CSSProperties> = {
   },
   impactItem: {
     fontSize: "13px",
-    color: "#3e4c59",
+    color: "var(--text-muted)",
   },
   modalActions: {
     display: "flex",
@@ -95,8 +95,8 @@ const styles: Record<string, CSSProperties> = {
   },
   deleteButton: {
     padding: "8px 18px",
-    background: "#c0392b",
-    color: "#ffffff",
+    background: "var(--danger)",
+    color: "var(--on-accent)",
     border: "none",
     borderRadius: "6px",
     fontWeight: 600,
@@ -105,8 +105,8 @@ const styles: Record<string, CSSProperties> = {
   },
   deleteButtonDisabled: {
     padding: "8px 18px",
-    background: "#e4e7ec",
-    color: "#9aa5b1",
+    background: "var(--surface-muted)",
+    color: "var(--text-subtle)",
     border: "none",
     borderRadius: "6px",
     fontWeight: 600,
@@ -314,11 +314,11 @@ export function CustomerDetailPage() {
       ) : null}
 
       {isLoading ? (
-        <div style={{ ...sharedStyles.state, background: "#ffffff" }}>{t("loadingDetail")}</div>
+        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>{t("loadingDetail")}</div>
       ) : null}
 
       {!isLoading && isNotFound ? (
-        <section style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("notFound")}</h2>
           <p style={{ margin: "0 0 18px" }}>{t("notFoundDescription")}</p>
           <Link href="/customers" style={sharedStyles.button}>

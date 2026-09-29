@@ -34,13 +34,13 @@ const styles: Record<string, CSSProperties> = {
   },
   lineBadge: {
     ...sharedStyles.badge,
-    background: "#eef2ff",
-    color: "#3730a3",
+    background: "var(--accent-soft)",
+    color: "var(--accent-strong)",
     textTransform: "none",
   },
   reference: {
     ...sharedStyles.meta,
-    background: "#f3f4f6",
+    background: "var(--surface-muted)",
     borderRadius: "999px",
     padding: "4px 8px",
   },
@@ -51,7 +51,7 @@ const styles: Record<string, CSSProperties> = {
   inlineButton: {
     background: "transparent",
     border: 0,
-    color: "#1d4ed8",
+    color: "var(--accent-strong)",
     cursor: "pointer",
     font: "inherit",
     padding: 0,

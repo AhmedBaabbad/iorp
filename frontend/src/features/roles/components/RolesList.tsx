@@ -14,61 +14,61 @@ import type { RoleListItem } from "../types";
 
 const styles: Record<string, CSSProperties> = {
   panel: {
-    background: "#ffffff",
-    border: "1px solid #d9dee7",
+    background: "var(--surface)",
+    border: "1px solid var(--border-strong)",
     borderRadius: "8px",
     boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
   },
   tableWrap: { overflowX: "auto" },
   table: { width: "100%", borderCollapse: "collapse" },
   th: {
-    borderBottom: "1px solid #e4e7ec",
-    color: "#52606d",
+    borderBottom: "1px solid var(--border)",
+    color: "var(--text-muted)",
     fontSize: "13px",
     padding: "14px 16px",
     textAlign: "start",
     whiteSpace: "nowrap",
   },
-  td: { borderBottom: "1px solid #eef1f5", padding: "14px 16px", verticalAlign: "middle" },
+  td: { borderBottom: "1px solid var(--border)", padding: "14px 16px", verticalAlign: "middle" },
   actions: { display: "flex", gap: "8px" },
   actionButton: { ...sharedStyles.secondaryButton, minHeight: "34px", padding: "6px 12px", fontSize: "13px" },
   deleteButton: {
     ...sharedStyles.secondaryButton,
-    borderColor: "#fecdd3",
-    color: "#be123c",
+    borderColor: "color-mix(in srgb, var(--danger) 35%, var(--surface))",
+    color: "var(--danger)",
     minHeight: "34px",
     padding: "6px 12px",
     fontSize: "13px",
   },
   success: {
-    background: "#dcfce7",
-    border: "1px solid #bbf7d0",
+    background: "var(--success-soft)",
+    border: "1px solid color-mix(in srgb, var(--success) 35%, var(--surface))",
     borderRadius: "6px",
-    color: "#166534",
+    color: "var(--success)",
     fontSize: "14px",
     padding: "12px 14px",
     marginBottom: "16px",
   },
   backdrop: {
-    position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)",
+    position: "fixed", inset: 0, background: "var(--overlay)",
     backdropFilter: "blur(2px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
   },
   modal: {
-    background: "#ffffff", borderRadius: "14px",
+    background: "var(--surface)", borderRadius: "14px",
     boxShadow: "0 24px 64px rgba(15, 23, 42, 0.28)",
     padding: "32px", maxWidth: "460px", width: "90%", display: "grid", gap: "20px",
   },
   modalIcon: {
-    width: "48px", height: "48px", borderRadius: "50%", background: "#fff1f2",
+    width: "48px", height: "48px", borderRadius: "50%", background: "var(--surface-muted)",
     display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px", margin: "0 auto",
   },
-  modalTitle: { fontSize: "18px", fontWeight: 700, color: "#0f172a", margin: 0, textAlign: "center" as const },
-  modalBody: { fontSize: "14px", color: "#475569", margin: 0, lineHeight: "1.7", textAlign: "center" as const },
-  modalWarning: { fontSize: "13px", fontWeight: 600, color: "#be123c", textAlign: "center" as const, margin: 0 },
+  modalTitle: { fontSize: "18px", fontWeight: 700, color: "var(--text)", margin: 0, textAlign: "center" as const },
+  modalBody: { fontSize: "14px", color: "var(--text-muted)", margin: 0, lineHeight: "1.7", textAlign: "center" as const },
+  modalWarning: { fontSize: "13px", fontWeight: 600, color: "var(--danger)", textAlign: "center" as const, margin: 0 },
   modalActions: { display: "flex", gap: "12px", justifyContent: "center" },
   modalCancelButton: { ...sharedStyles.secondaryButton, minHeight: "40px", padding: "10px 24px", fontSize: "14px" },
   modalDeleteButton: {
-    background: "#be123c", border: "none", borderRadius: "8px", color: "#ffffff",
+    background: "var(--danger)", border: "none", borderRadius: "8px", color: "var(--on-accent)",
     cursor: "pointer", fontSize: "14px", fontWeight: 600, minHeight: "40px", padding: "10px 24px",
   },
 };
@@ -162,7 +162,7 @@ export function RolesList() {
           </PermissionGuard>
         }
       >
-        {isLoading ? <div style={{ ...sharedStyles.state, background: "#ffffff" }}>{t("loading")}</div> : null}
+        {isLoading ? <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>{t("loading")}</div> : null}
 
         {!isLoading && successMessage ? (
           <div style={styles.success} role="status">{successMessage}</div>
@@ -178,7 +178,7 @@ export function RolesList() {
         ) : null}
 
         {!isLoading && !error && roles.length === 0 ? (
-          <section style={{ ...sharedStyles.state, background: "#ffffff" }}>
+          <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
             <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("empty")}</h2>
             <p style={{ margin: "0 0 18px" }}>{t("createFirst")}</p>
             <PermissionGuard code="foundation:roles:write">
@@ -205,11 +205,11 @@ export function RolesList() {
                   {roles.map((role) => (
                     <tr key={role.id}>
                       <td style={styles.td}>
-                        <Link href={`/roles/${role.id}`} style={{ color: "#1d4ed8", fontWeight: 700, textDecoration: "none" }}>
+                        <Link href={`/roles/${role.id}`} style={{ color: "var(--accent-strong)", fontWeight: 700, textDecoration: "none" }}>
                           {role.name}
                         </Link>
                       </td>
-                      <td style={styles.td}><code style={{ fontSize: "13px", background: "#f1f5f9", padding: "2px 6px", borderRadius: "4px" }}>{role.code}</code></td>
+                      <td style={styles.td}><code style={{ fontSize: "13px", background: "var(--surface-muted)", padding: "2px 6px", borderRadius: "4px" }}>{role.code}</code></td>
                       <td style={styles.td}>{role.description ?? "—"}</td>
                       <td style={styles.td}>{role.permission_count}</td>
                       <td style={styles.td}>{role.user_count}</td>

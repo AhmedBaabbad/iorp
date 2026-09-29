@@ -114,7 +114,7 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
 
   if (!can("read")) return null;
   const runStarted = Boolean(orderId && selected && selected.status !== "planned");
-  return <section style={{ padding: 24, background: "white", border: "1px solid #d9dee7", borderRadius: 8, marginTop: 20 }}>
+  return <section style={{ padding: 24, background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: 8, marginTop: 20 }}>
     <h2>{orderId ? t("runsTitle") : t("rostersTitle")}</h2>
     {!orderId && <Link href="/shifts">{t("shiftDefinitionsLink")}</Link>}
     <p>{orderId ? t("runsHint") : t("rostersHint")}</p>
@@ -153,7 +153,7 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
       <button style={styles.button} disabled={busy}>{t("save")}</button><button style={styles.secondaryButton} type="button" onClick={() => setEditing(false)}>{t("cancel")}</button>
     </form>}
 
-    {selected && <section style={{ borderTop: "1px solid #ddd", marginTop: 20, paddingTop: 16 }}>
+    {selected && <section style={{ borderTop: "1px solid var(--border-strong)", marginTop: 20, paddingTop: 16 }}>
       <h3>{selected.name || selected.id}</h3>
       <ul>{selected.members.map(m => <li key={m.id} style={{ marginBottom: 12 }}>{m.employee_code} — {m.workforce_name} · {m.role_code || m.role_note} {(m.is_lead || m.is_shift_lead) && t("leadMarker")}
         {orderId && m.started_at && <> · {formatInstant(m.started_at)} → {m.ended_at ? formatInstant(m.ended_at) : "…"}</>}
@@ -181,6 +181,6 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
 }
 
 function TeamList({ members, empty, lead }: { members: Member[]; empty: string; lead: string }) {
-  if (!members.length) return <span style={{ color: "#64748b" }}>{empty}</span>;
+  if (!members.length) return <span style={{ color: "var(--text-muted)" }}>{empty}</span>;
   return <ul style={{ margin: 0, paddingInlineStart: 18 }}>{members.map(m => <li key={m.id ?? m.workforce_member_id}>{m.workforce_name ?? m.employee_code}{m.is_shift_lead && ` ${lead}`}</li>)}</ul>;
 }

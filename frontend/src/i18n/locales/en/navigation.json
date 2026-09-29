@@ -7,7 +7,16 @@
     "label": "Appearance",
     "light": "Light",
     "dark": "Dark",
-    "system": "System"
+    "dim": "Dim",
+    "contrast": "High contrast",
+    "system": "Auto",
+    "hint": {
+      "light": "bright, for daytime offices",
+      "dark": "dark background, easy on the eyes",
+      "dim": "soft low-glare dark for night shifts",
+      "contrast": "strongest text and outlines, for bright halls and low vision",
+      "system": "follows your device settings"
+    }
   },
   "sections": {
     "iorp": "IORP",

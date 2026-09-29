@@ -105,21 +105,18 @@ def _create_item(client, auth_headers, production_order_id: str, **overrides):
     return resp
 
 
+# Status changes only through transitions; walk the lifecycle to reach the wanted status.
+_PATH_TO = {"released": ["release"], "in_progress": ["release", "start"], "completed": ["release", "start", "complete"], "cancelled": ["cancel"]}
+
+
 def _patch_order_status(client, auth_headers, production_order_id: str, status: str):
-    if status == "cancelled":
-        # Cancellation is a dedicated action because it releases allocations atomically.
+    for action in _PATH_TO[status]:
         resp = client.post(
-            f"/api/v1/production/production-orders/{production_order_id}/cancel",
-            json={"reason": "Test cancellation"},
+            f"/api/v1/production/production-orders/{production_order_id}/transitions",
+            json={"action": action, "reason": "Test"},
             headers=auth_headers,
         )
-    else:
-        resp = client.patch(
-            f"/api/v1/production/production-orders/{production_order_id}",
-            json={"status": status},
-            headers=auth_headers,
-        )
-    assert resp.status_code == 200, resp.text
+        assert resp.status_code == 200, resp.text
     return resp
 
 
@@ -143,7 +140,7 @@ def test_create_item_auto_line_no(client, auth_headers, production_order):
     assert resp.status_code == 201
     data = resp.json()
     assert data["line_no"] == 1
-    assert data["planned_quantity"] == "12.50"
+    assert data["planned_quantity"] == "12.500"  # same precision as allocations
 
 
 def test_create_item_explicit_line_no(client, auth_headers, production_order):
@@ -249,7 +246,7 @@ def test_update_item(client, auth_headers, production_order):
     )
 
     assert resp.status_code == 200
-    assert resp.json()["planned_quantity"] == "25.75"
+    assert resp.json()["planned_quantity"] == "25.750"
 
 
 def test_update_item_completed_order_rejected(client, auth_headers, production_order):

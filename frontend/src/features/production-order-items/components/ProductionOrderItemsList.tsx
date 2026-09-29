@@ -34,8 +34,8 @@ const styles: Record<string, CSSProperties> = {
   },
   specChip: {
     ...sharedStyles.badge,
-    background: "#eef2ff",
-    color: "#3730a3",
+    background: "var(--accent-soft)",
+    color: "var(--accent-strong)",
     textTransform: "none",
   },
 };

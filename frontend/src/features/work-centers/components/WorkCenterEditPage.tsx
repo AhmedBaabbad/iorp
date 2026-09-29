@@ -50,7 +50,7 @@ export function WorkCenterEditPage() {
 
   if (isLoading) {
     return (
-      <div style={{ ...sharedStyles.state, background: "#ffffff" }}>
+      <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
         {messages("loading.default")}
       </div>
     );
@@ -58,7 +58,7 @@ export function WorkCenterEditPage() {
 
   if (isNotFound) {
     return (
-      <section style={{ ...sharedStyles.state, background: "#ffffff" }}>
+      <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
         <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("notFound")}</h2>
         <p style={{ margin: "0 0 18px" }}>{t("notFoundDescription")}</p>
         <Link href="/work-centers" style={sharedStyles.button}>{t("returnToList")}</Link>

@@ -27,16 +27,16 @@ const styles: Record<string, CSSProperties> = {
     display: "grid",
     gap: "1px",
     gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-    background: "#e4e7ec",
+    background: "var(--border)",
     borderRadius: "8px",
     overflow: "hidden",
   },
   detailItem: {
-    background: "#ffffff",
+    background: "var(--surface)",
     padding: "18px",
   },
   detailLabel: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "13px",
     fontWeight: 700,
     margin: "0 0 8px",
@@ -142,11 +142,11 @@ export function QuoteDetail() {
       }
     >
       {isLoading ? (
-        <div style={{ ...sharedStyles.state, background: "#ffffff" }}>{messages("loading.default")}</div>
+        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>{messages("loading.default")}</div>
       ) : null}
 
       {!isLoading && isNotFound ? (
-        <section style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("notFound")}</h2>
           <p style={{ margin: "0 0 18px" }}>{t("notFoundDescription")}</p>
           <Link href="/quotes" style={sharedStyles.button}>
@@ -175,7 +175,7 @@ export function QuoteDetail() {
             <DetailItem
               label={t("fields.customer")}
               value={
-                <Link href={`/customers/${quote.customer_id}`} style={{ color: "#1d4ed8" }}>
+                <Link href={`/customers/${quote.customer_id}`} style={{ color: "var(--accent-strong)" }}>
                   {customerName ?? quote.customer_id}
                 </Link>
               }
@@ -184,7 +184,7 @@ export function QuoteDetail() {
               label={t("fields.sample")}
               value={
                 quote.sample_id ? (
-                  <Link href={`/samples/${quote.sample_id}`} style={{ color: "#1d4ed8" }}>
+                  <Link href={`/samples/${quote.sample_id}`} style={{ color: "var(--accent-strong)" }}>
                     {sampleCode ?? quote.sample_id}
                   </Link>
                 ) : null

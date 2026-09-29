@@ -105,7 +105,7 @@ export function SampleEvaluationForm({
       <div style={styles.formGrid}>
         <label style={sharedStyles.field}>
           <span style={sharedStyles.label}>
-            {t("fields.evaluationDate")} <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+            {t("fields.evaluationDate")} <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
           </span>
           <input
             style={sharedStyles.input}

@@ -58,7 +58,7 @@ export function CommercialOrderEditPage() {
   if (isLoading) {
     return (
       <PageFrame title={t("editTitle")} subtitle="">
-        <div style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           {messages("loading.default")}
         </div>
       </PageFrame>
@@ -68,7 +68,7 @@ export function CommercialOrderEditPage() {
   if (isNotFound) {
     return (
       <PageFrame title={t("editTitle")} subtitle="">
-        <section style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("notFound")}</h2>
           <p style={{ margin: 0 }}>{t("notFoundDescription")}</p>
         </section>

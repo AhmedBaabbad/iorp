@@ -50,12 +50,12 @@ export function AdminPermissionsList() {
       {!isLoading && !error && filtered.length === 0 ? <div style={sharedStyles.state}>{t("noPermissions")}</div> : null}
       <div style={{ display: "grid", gap: "16px" }}>
         {filtered.map((group) => (
-          <section key={group.module} style={{ background: "#ffffff", border: "1px solid #d9dee7", borderRadius: "8px", padding: "20px" }}>
+          <section key={group.module} style={{ background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "8px", padding: "20px" }}>
             <h2 style={{ margin: "0 0 12px", fontSize: "18px" }}>{locale === "ar" ? group.module_name_ar : group.module_name_en} ({group.permissions.length})</h2>
             <div style={{ display: "grid", gap: "8px" }}>
               {group.permissions.map((permission) => (
-                <div key={permission.code} style={{ border: "1px solid #e3e7ee", borderRadius: 6, padding: 12 }}>
-                  <code style={{ display: "inline-block", background: "#f3f5f8", padding: "4px 7px", borderRadius: 4 }}>{permission.code}</code>
+                <div key={permission.code} style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 12 }}>
+                  <code style={{ display: "inline-block", background: "var(--surface-muted)", padding: "4px 7px", borderRadius: 4 }}>{permission.code}</code>
                   <strong style={{ display: "block", marginTop: 8 }}>{locale === "ar" ? permission.name_ar : permission.name_en}</strong>
                   <span>{locale === "ar" ? permission.description_ar : permission.description_en}</span>
                 </div>

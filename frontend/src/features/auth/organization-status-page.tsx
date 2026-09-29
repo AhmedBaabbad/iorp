@@ -10,20 +10,20 @@ import { useAuth } from "./auth-context";
 type OrganizationStatus = "suspended" | "inactive" | "archived";
 
 const statusThemes: Record<OrganizationStatus, { color: string; background: string; border: string }> = {
-  suspended: { color: "#92400e", background: "#fffbeb", border: "#f59e0b" },
-  inactive: { color: "#b42318", background: "#fff1f2", border: "#ef4444" },
-  archived: { color: "#475467", background: "#f2f4f7", border: "#98a2b3" },
+  suspended: { color: "var(--warning)", background: "var(--warning-soft)", border: "var(--warning)" },
+  inactive: { color: "var(--danger)", background: "var(--surface-muted)", border: "var(--danger)" },
+  archived: { color: "var(--text-muted)", background: "var(--surface-muted)", border: "var(--border-strong)" },
 };
 
 const styles: Record<string, CSSProperties> = {
-  page: { alignItems: "center", background: "#f6f7f9", boxSizing: "border-box", color: "#1f2933", display: "flex", justifyContent: "center", minHeight: "100vh", padding: "24px" },
-  panel: { background: "#ffffff", border: "1px solid #d9dee7", borderRadius: "12px", boxShadow: "0 18px 50px rgba(31, 41, 51, 0.1)", boxSizing: "border-box", maxWidth: "560px", padding: "32px", textAlign: "center", width: "100%" },
+  page: { alignItems: "center", background: "var(--page-bg)", boxSizing: "border-box", color: "var(--text)", display: "flex", justifyContent: "center", minHeight: "100vh", padding: "24px" },
+  panel: { background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "12px", boxShadow: "0 18px 50px rgba(31, 41, 51, 0.1)", boxSizing: "border-box", maxWidth: "560px", padding: "32px", textAlign: "center", width: "100%" },
   icon: { alignItems: "center", border: "2px solid", borderRadius: "999px", display: "inline-flex", height: "76px", justifyContent: "center", marginBottom: "20px", width: "76px" },
-  eyebrow: { color: "#667085", fontSize: "14px", fontWeight: 700, margin: "0 0 8px" },
+  eyebrow: { color: "var(--text-muted)", fontSize: "14px", fontWeight: 700, margin: "0 0 8px" },
   title: { fontSize: "28px", lineHeight: 1.25, margin: "0 0 16px" },
-  message: { color: "#475467", lineHeight: 1.7, margin: "0 auto 22px", maxWidth: "460px" },
+  message: { color: "var(--text-muted)", lineHeight: 1.7, margin: "0 auto 22px", maxWidth: "460px" },
   action: { border: "1px solid", borderRadius: "8px", lineHeight: 1.6, margin: "0 0 24px", padding: "16px" },
-  button: { background: "#1f2933", border: 0, borderRadius: "7px", color: "#ffffff", cursor: "pointer", font: "inherit", fontWeight: 700, minHeight: "44px", padding: "10px 18px", width: "100%" },
+  button: { background: "var(--text)", border: 0, borderRadius: "7px", color: "var(--surface)", cursor: "pointer", font: "inherit", fontWeight: 700, minHeight: "44px", padding: "10px 18px", width: "100%" },
 };
 
 function StatusIcon({ status }: { status: OrganizationStatus }) {

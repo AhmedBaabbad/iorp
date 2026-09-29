@@ -21,8 +21,8 @@ import {
 
 const styles: Record<string, CSSProperties> = {
   panel: {
-    background: "#ffffff",
-    border: "1px solid #d9dee7",
+    background: "var(--surface)",
+    border: "1px solid var(--border-strong)",
     borderRadius: "8px",
     boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
   },
@@ -34,19 +34,19 @@ const styles: Record<string, CSSProperties> = {
     borderCollapse: "collapse",
   },
   th: {
-    borderBottom: "1px solid #e4e7ec",
-    color: "#52606d",
+    borderBottom: "1px solid var(--border)",
+    color: "var(--text-muted)",
     fontSize: "13px",
     padding: "14px 16px",
     textAlign: "left",
   },
   td: {
-    borderBottom: "1px solid #eef1f5",
+    borderBottom: "1px solid var(--border)",
     padding: "14px 16px",
     verticalAlign: "middle",
   },
   link: {
-    color: "#1d4ed8",
+    color: "var(--accent-strong)",
     fontWeight: 700,
     textDecoration: "none",
   },
@@ -64,24 +64,24 @@ const styles: Record<string, CSSProperties> = {
   },
   deleteButton: {
     ...sharedStyles.secondaryButton,
-    borderColor: "#fecdd3",
-    color: "#be123c",
+    borderColor: "color-mix(in srgb, var(--danger) 35%, var(--surface))",
+    color: "var(--danger)",
     fontSize: "13px",
     minHeight: "34px",
     padding: "6px 12px",
   },
   success: {
-    background: "#dcfce7",
-    border: "1px solid #bbf7d0",
+    background: "var(--success-soft)",
+    border: "1px solid color-mix(in srgb, var(--success) 35%, var(--surface))",
     borderRadius: "6px",
-    color: "#166534",
+    color: "var(--success)",
     fontSize: "14px",
     padding: "12px 14px",
   },
   backdrop: {
     position: "fixed",
     inset: 0,
-    background: "rgba(15, 23, 42, 0.55)",
+    background: "var(--overlay)",
     backdropFilter: "blur(2px)",
     display: "flex",
     alignItems: "center",
@@ -89,7 +89,7 @@ const styles: Record<string, CSSProperties> = {
     zIndex: 1000,
   },
   modal: {
-    background: "#ffffff",
+    background: "var(--surface)",
     borderRadius: "14px",
     boxShadow: "0 24px 64px rgba(15, 23, 42, 0.28), 0 4px 16px rgba(15, 23, 42, 0.12)",
     padding: "32px",
@@ -102,7 +102,7 @@ const styles: Record<string, CSSProperties> = {
     width: "48px",
     height: "48px",
     borderRadius: "50%",
-    background: "#fff1f2",
+    background: "var(--surface-muted)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -112,20 +112,20 @@ const styles: Record<string, CSSProperties> = {
   modalTitle: {
     fontSize: "18px",
     fontWeight: 700,
-    color: "#0f172a",
+    color: "var(--text)",
     margin: 0,
     textAlign: "center" as const,
   },
   modalBody: {
     fontSize: "14px",
-    color: "#475569",
+    color: "var(--text-muted)",
     margin: 0,
     lineHeight: "1.7",
     textAlign: "center" as const,
   },
   modalSummaryBox: {
-    background: "#f8fafc",
-    border: "1px solid #e4e7ec",
+    background: "var(--surface-muted)",
+    border: "1px solid var(--border)",
     borderRadius: "6px",
     padding: "12px 16px",
     display: "grid",
@@ -134,18 +134,18 @@ const styles: Record<string, CSSProperties> = {
   modalSummaryTitle: {
     fontSize: "13px",
     fontWeight: 700,
-    color: "#374151",
+    color: "var(--text-muted)",
     margin: "0 0 4px",
   },
   modalSummaryItem: {
     fontSize: "13px",
-    color: "#475569",
+    color: "var(--text-muted)",
     margin: 0,
   },
   modalWarning: {
     fontSize: "13px",
     fontWeight: 600,
-    color: "#be123c",
+    color: "var(--danger)",
     textAlign: "center" as const,
     margin: 0,
   },
@@ -162,10 +162,10 @@ const styles: Record<string, CSSProperties> = {
     fontSize: "14px",
   },
   modalDeleteButton: {
-    background: "#be123c",
+    background: "var(--danger)",
     border: "none",
     borderRadius: "8px",
-    color: "#ffffff",
+    color: "var(--on-accent)",
     cursor: "pointer",
     fontSize: "14px",
     fontWeight: 600,
@@ -358,7 +358,7 @@ export function WorkCentersList() {
         }
       >
         {isLoading ? (
-          <div style={{ ...sharedStyles.state, background: "#ffffff" }}>
+          <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
             {t("loading")}
           </div>
         ) : null}
@@ -381,7 +381,7 @@ export function WorkCentersList() {
         ) : null}
 
         {!isLoading && !error && workCenters.length === 0 ? (
-          <section style={{ ...sharedStyles.state, background: "#ffffff" }}>
+          <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
             <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("empty")}</h2>
             <p style={{ margin: "0 0 18px" }}>{t("createFirst")}</p>
             <Link href="/work-centers/new" style={sharedStyles.button}>

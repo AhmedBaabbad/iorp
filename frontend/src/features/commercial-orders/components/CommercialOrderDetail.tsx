@@ -24,7 +24,7 @@ const styles: Record<string, CSSProperties> = {
   backdrop: {
     position: "fixed",
     inset: 0,
-    background: "rgba(15, 23, 42, 0.55)",
+    background: "var(--overlay)",
     backdropFilter: "blur(2px)",
     display: "flex",
     alignItems: "center",
@@ -32,7 +32,7 @@ const styles: Record<string, CSSProperties> = {
     zIndex: 1000,
   },
   modal: {
-    background: "#ffffff",
+    background: "var(--surface)",
     borderRadius: "14px",
     boxShadow: "0 24px 64px rgba(15, 23, 42, 0.28), 0 4px 16px rgba(15, 23, 42, 0.12)",
     padding: "32px",
@@ -45,7 +45,7 @@ const styles: Record<string, CSSProperties> = {
     width: "48px",
     height: "48px",
     borderRadius: "50%",
-    background: "#fff1f2",
+    background: "var(--surface-muted)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -55,13 +55,13 @@ const styles: Record<string, CSSProperties> = {
   modalTitle: {
     fontSize: "18px",
     fontWeight: 700,
-    color: "#0f172a",
+    color: "var(--text)",
     margin: 0,
     textAlign: "center" as const,
   },
   modalBody: {
     fontSize: "14px",
-    color: "#475569",
+    color: "var(--text-muted)",
     margin: 0,
     lineHeight: "1.7",
     textAlign: "center" as const,
@@ -79,10 +79,10 @@ const styles: Record<string, CSSProperties> = {
     fontSize: "14px",
   },
   modalDeleteButton: {
-    background: "#be123c",
+    background: "var(--danger)",
     border: "none",
     borderRadius: "8px",
-    color: "#ffffff",
+    color: "var(--on-accent)",
     cursor: "pointer",
     fontSize: "14px",
     fontWeight: 600,
@@ -96,23 +96,23 @@ const styles: Record<string, CSSProperties> = {
   },
   deleteButton: {
     ...sharedStyles.secondaryButton,
-    borderColor: "#fecdd3",
-    color: "#be123c",
+    borderColor: "color-mix(in srgb, var(--danger) 35%, var(--surface))",
+    color: "var(--danger)",
   },
   detailGrid: {
     display: "grid",
     gap: "1px",
     gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-    background: "#e4e7ec",
+    background: "var(--border)",
     borderRadius: "8px",
     overflow: "hidden",
   },
   detailItem: {
-    background: "#ffffff",
+    background: "var(--surface)",
     padding: "18px",
   },
   detailLabel: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "13px",
     fontWeight: 700,
     margin: "0 0 8px",
@@ -296,11 +296,11 @@ export function CommercialOrderDetail() {
         }
       >
         {isLoading ? (
-          <div style={{ ...sharedStyles.state, background: "#ffffff" }}>{messages("loading.default")}</div>
+          <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>{messages("loading.default")}</div>
         ) : null}
 
         {!isLoading && isNotFound ? (
-          <section style={{ ...sharedStyles.state, background: "#ffffff" }}>
+          <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
             <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("notFound")}</h2>
             <p style={{ margin: "0 0 18px" }}>{t("notFoundDescription")}</p>
             <Link href="/commercial-orders" style={sharedStyles.button}>
@@ -318,7 +318,7 @@ export function CommercialOrderDetail() {
         {!isLoading && !error && !isNotFound && order ? (
           <div style={styles.sections}>
             {order.status === "converted_to_production" ? (
-              <div style={{ ...sharedStyles.state, background: "#ffffff" }}>
+              <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
                 {t("productionConvertedNotice")}
               </div>
             ) : null}
@@ -335,7 +335,7 @@ export function CommercialOrderDetail() {
               <DetailItem
                 label={t("fields.customer")}
                 value={
-                  <Link href={`/customers/${order.customer_id}`} style={{ color: "#1d4ed8" }}>
+                  <Link href={`/customers/${order.customer_id}`} style={{ color: "var(--accent-strong)" }}>
                     {customerName ?? order.customer_id}
                   </Link>
                 }
@@ -344,7 +344,7 @@ export function CommercialOrderDetail() {
                 label={t("fields.quote")}
                 value={
                   order.quote_id ? (
-                    <Link href={`/quotes/${order.quote_id}`} style={{ color: "#1d4ed8" }}>
+                    <Link href={`/quotes/${order.quote_id}`} style={{ color: "var(--accent-strong)" }}>
                       {quoteNumber ?? order.quote_id}
                     </Link>
                   ) : null
@@ -364,7 +364,7 @@ export function CommercialOrderDetail() {
 
             <OrderItemsTable items={order.items} currency={quoteCurrency} />
 
-            <section style={{ ...sharedStyles.state, background: "#ffffff" }}>
+            <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
               {order.quote_id
                 ? t("totalsInheritedNotice")
                 : t("noQuoteTotalsNotice")}

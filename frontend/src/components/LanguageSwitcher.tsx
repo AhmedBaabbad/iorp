@@ -21,15 +21,15 @@ const styles: Record<string, CSSProperties> = {
     marginBottom: "18px",
   },
   label: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "13px",
     fontWeight: 700,
   },
   button: {
     background: "transparent",
-    border: "1px solid #c8d0dc",
+    border: "1px solid var(--border-strong)",
     borderRadius: "6px",
-    color: "#1f2933",
+    color: "var(--text)",
     cursor: "pointer",
     font: "inherit",
     fontSize: "13px",
@@ -37,9 +37,9 @@ const styles: Record<string, CSSProperties> = {
     padding: "6px 10px",
   },
   activeButton: {
-    background: "#1f2933",
-    borderColor: "#1f2933",
-    color: "#ffffff",
+    background: "var(--text)",
+    borderColor: "var(--border-strong)",
+    color: "var(--surface)",
   },
 };
 

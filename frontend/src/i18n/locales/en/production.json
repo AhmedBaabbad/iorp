@@ -207,7 +207,59 @@
       }
     },
     "empty": "No production orders yet",
-    "notFound": "Production order not found"
+    "notFound": "Production order not found",
+    "lifecycle": {
+      "title": "Order status",
+      "startOverdue": "Late to start",
+      "finishOverdue": "Late to finish",
+      "actualStart": "Actual start",
+      "actualEnd": "Actual end",
+      "terminalHint": "This order is final: its status can no longer change.",
+      "historyTitle": "Status history",
+      "historyEmpty": "No status changes yet.",
+      "reason": "Reason",
+      "unknownUser": "Former user",
+      "triggers": {
+        "activity": "Automatic: first production activity",
+        "schedule": "Automatic: planned start date reached"
+      },
+      "actions": {
+        "release": "Release",
+        "return_to_draft": "Back to draft",
+        "start": "Start production",
+        "hold": "Put on hold",
+        "resume": "Resume",
+        "complete": "Complete",
+        "close": "Close order",
+        "cancel": "Cancel order"
+      },
+      "confirm": {
+        "hold": {
+          "title": "Put {order} on hold",
+          "text": "Production pauses until someone resumes it. Say why."
+        },
+        "cancel": {
+          "title": "Cancel {order}",
+          "text": "Only before production starts. Reserved quantities return to the planning queue. This cannot be undone."
+        },
+        "close": {
+          "title": "Close {order}",
+          "text": "Closing archives the order after its final review. It cannot be changed afterwards."
+        }
+      },
+      "errors": {
+        "TRANSITION_NOT_ALLOWED": "This action is not allowed in the order's current status. Refresh the page.",
+        "ORDER_STATUS_CHANGED": "Someone changed this order's status a moment ago. Refresh the page and try again.",
+        "REASON_REQUIRED": "Please give a reason.",
+        "ACTION_FORBIDDEN": "You do not have permission for this action.",
+        "ORDER_HAS_NO_QUANTITY": "An order without quantity cannot be released.",
+        "ORDER_HAS_NO_ACTIVE_ALLOCATIONS": "The order has no active demand allocations to release.",
+        "ORDER_EXECUTION_STARTED": "Production has already started on this order, so it cannot be cancelled.",
+        "ORDER_COMPLETED": "This order is completed; it cannot be cancelled.",
+        "forbidden": "You do not have permission for this action.",
+        "request_failed": "The request failed. Refresh and try again."
+      }
+    }
   },
   "shiftReports": {
     "listTitle": "Shift Reports",
@@ -489,7 +541,7 @@
     "create": "Create production order",
     "review": "Review new production order",
     "included": "Included demands",
-    "incompatible": "Items must have the same product, unit and specifications",
+    "incompatible": "Items must have the same product type and unit (different width, color, thickness or weight is fine)",
     "invalid": "Enter a positive quantity within the remaining amount, with at most three decimal places",
     "conflict": "Available quantities changed. Refresh and select the items again.",
     "error": "Could not create the order. Check the data and permissions, then retry.",
@@ -522,8 +574,6 @@
     "releaseSuccess": "Allocation released. The quantity is back in the planning queue.",
     "sources": "Allocation sources",
     "activeTotal": "Active allocated total",
-    "cancelOrder": "Cancel order and release allocations",
-    "cancelOrderHint": "Only possible before execution starts. Released quantities return to the planning queue.",
     "errors": {
       "ORDER_EXECUTION_STARTED": "Execution has started on this order, so its allocations are history and cannot be released.",
       "ORDER_COMPLETED": "This order is completed; its allocations cannot be released.",
@@ -533,12 +583,30 @@
       "ALLOCATION_NOT_FOUND": "Allocation not found.",
       "PRODUCTION_ORDER_NOT_FOUND": "Production order not found.",
       "forbidden": "You do not have permission for this action.",
-      "request_failed": "The request failed. Refresh and try again."
+      "request_failed": "The request failed. Refresh and try again.",
+      "ORDER_NOT_DRAFT": "Only draft orders can be changed. Released or started orders use release or cancel.",
+      "ALLOCATION_ALREADY_IN_ORDER": "This demand item is already in the order; change its quantity instead.",
+      "ALLOCATION_QUANTITY_CONFLICT": "The quantity exceeds what remains on the demand. Refresh and try a smaller quantity.",
+      "INCOMPATIBLE_DEMAND_ITEMS": "Only demand items with the same product type and unit can join this order.",
+      "DEMAND_NOT_PLANNABLE": "This demand is not ready for planning."
     },
     "releaseTitle": "Release allocation from {order}",
     "releaseHint": "The quantity returns to the demand and the planning queue. The allocation stays in history as Released.",
-    "cancelOrderTitle": "Cancel production order {order}",
-    "reason": "Reason"
+    "reason": "Reason",
+    "arrangement": "Production arrangement",
+    "arrangementHint": "Lines are ordered by width, then color, then thickness, then weight. Identical specifications share one line.",
+    "lineNo": "Line",
+    "lineQuantity": "Line quantity",
+    "lineCount": "{count, plural, one {# line} other {# lines}}",
+    "removeFromOrder": "Remove",
+    "orderLines": "Order lines",
+    "orderLinesEditHint": "Draft order: change a quantity, remove a demand, or add one. Lines rearrange automatically.",
+    "saveQuantity": "Save",
+    "addDemand": "Add a demand",
+    "selectDemandItem": "Select a demand item",
+    "noCandidates": "No matching demand items with remaining quantity",
+    "addToOrder": "Add to order",
+    "reasonOptional": "Note (optional)"
   },
   "execution": {
     "runsTitle": "Production Runs",

@@ -13,8 +13,8 @@ import type { FollowUpPriority, FollowUpStatus } from "@/types/followups";
 
 const overdueBadge: CSSProperties = {
   ...sharedStyles.badge,
-  background: "#fee2e2",
-  color: "#991b1b",
+  background: "var(--danger-soft)",
+  color: "var(--danger)",
 };
 
 export function FollowUpStatusBadge({

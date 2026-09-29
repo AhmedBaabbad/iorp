@@ -22,18 +22,18 @@ const SALES: WorkerType[] = ["sales_manager", "sales_rep"];
 
 function colorFor(workerType: WorkerType): CSSProperties {
   if (MANAGEMENT.includes(workerType)) {
-    return { background: "#dbeafe", color: "#1e40af" };
+    return { background: "var(--accent-soft)", color: "var(--accent-strong)" };
   }
   if (TECHNICAL.includes(workerType)) {
-    return { background: "#ccfbf1", color: "#0f766e" };
+    return { background: "var(--teal-soft)", color: "var(--teal)" };
   }
   if (QUALITY_SAFETY.includes(workerType)) {
-    return { background: "#f3e8ff", color: "#7e22ce" };
+    return { background: "var(--purple-soft)", color: "var(--purple)" };
   }
   if (SALES.includes(workerType)) {
-    return { background: "#dcfce7", color: "#166534" };
+    return { background: "var(--success-soft)", color: "var(--success)" };
   }
-  return { background: "#f1f5f9", color: "#475569" };
+  return { background: "var(--surface-muted)", color: "var(--text-muted)" };
 }
 
 export function WorkforceMemberTypeBadge({ workerType }: { workerType: WorkerType }) {

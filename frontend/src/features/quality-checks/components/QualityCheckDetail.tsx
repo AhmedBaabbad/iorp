@@ -49,16 +49,16 @@ const styles: Record<string, CSSProperties> = {
     display: "grid",
     gap: "1px",
     gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-    background: "#e4e7ec",
+    background: "var(--border)",
     borderRadius: "8px",
     overflow: "hidden",
   },
   detailItem: {
-    background: "#ffffff",
+    background: "var(--surface)",
     padding: "18px",
   },
   detailLabel: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "13px",
     fontWeight: 700,
     margin: "0 0 8px",
@@ -68,8 +68,8 @@ const styles: Record<string, CSSProperties> = {
     overflowWrap: "anywhere",
   },
   section: {
-    background: "#ffffff",
-    border: "1px solid #d9dee7",
+    background: "var(--surface)",
+    border: "1px solid var(--border-strong)",
     borderRadius: "8px",
     marginTop: "18px",
     padding: "18px",
@@ -232,13 +232,13 @@ export function QualityCheckDetail({ qualityCheckId }: QualityCheckDetailProps) 
       }
     >
       {isLoading ? (
-        <div style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           {t("loadingDetail")}
         </div>
       ) : null}
 
       {!isLoading && isNotFound ? (
-        <section style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>
             {t("notFound")}
           </h2>
@@ -353,7 +353,7 @@ export function QualityCheckDetail({ qualityCheckId }: QualityCheckDetailProps) 
                   check.production_order_id ? (
                     <Link
                       href={`/production-orders/${check.production_order_id}`}
-                      style={{ color: "#1d4ed8" }}
+                      style={{ color: "var(--accent-strong)" }}
                     >
                       {productionOrder
                         ? `${productionOrder.production_order_number} - ${productionOrder.product_type}`
@@ -378,7 +378,7 @@ export function QualityCheckDetail({ qualityCheckId }: QualityCheckDetailProps) 
                   check.production_output_id ? (
                     <Link
                       href={`/production-outputs/${check.production_output_id}`}
-                      style={{ color: "#1d4ed8" }}
+                      style={{ color: "var(--accent-strong)" }}
                     >
                       {productionOutput
                         ? `${fmt.date(productionOutput.output_date)} - ${fmt.quantity(productionOutput.quantity_produced, productionOutput.unit)}`
@@ -393,7 +393,7 @@ export function QualityCheckDetail({ qualityCheckId }: QualityCheckDetailProps) 
                   check.shift_report_id ? (
                     <Link
                       href={`/shift-reports/${check.shift_report_id}`}
-                      style={{ color: "#1d4ed8" }}
+                      style={{ color: "var(--accent-strong)" }}
                     >
                       {shiftReport
                         ? fmt.date(shiftReport.report_date)
@@ -436,6 +436,6 @@ function DetailItem({
 
 const checkTypeBadgeStyle: CSSProperties = {
   ...sharedStyles.badge,
-  background: "#eef2ff",
-  color: "#3730a3",
+  background: "var(--accent-soft)",
+  color: "var(--accent-strong)",
 };

@@ -7,9 +7,9 @@ import { sharedStyles } from "@/styles/shared-styles";
 import type { SampleDecision } from "../types";
 
 const sampleDecisionColors: Record<SampleDecision, { background: string; color: string }> = {
-  pending: { background: "#fef9c3", color: "#854d0e" },
-  accepted: { background: "#dcfce7", color: "#166534" },
-  rejected: { background: "#fee2e2", color: "#991b1b" },
+  pending: { background: "var(--warning-soft)", color: "var(--warning)" },
+  accepted: { background: "var(--success-soft)", color: "var(--success)" },
+  rejected: { background: "var(--danger-soft)", color: "var(--danger)" },
 };
 
 type SampleDecisionBadgeProps = {

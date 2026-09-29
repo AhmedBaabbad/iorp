@@ -75,7 +75,7 @@ export function AdminRolePermissionsManager({ roleId, readOnly = false }: { role
   }
 
   return (
-    <section style={{ background: "#ffffff", border: "1px solid #d9dee7", borderRadius: "8px", padding: "20px" }}>
+    <section style={{ background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "8px", padding: "20px" }}>
       <h2 style={{ margin: "0 0 16px", fontSize: "16px" }}>{t("permissionsTitle")}</h2>
       {error ? <div style={sharedStyles.error}>{error}</div> : null}
       <div style={{ display: "grid", gap: "18px" }}>
@@ -102,7 +102,7 @@ export function AdminRolePermissionsManager({ roleId, readOnly = false }: { role
                     {isAssigned ? (
                       permission.scopable ? (
                         <div style={{ marginInlineStart: "26px", display: "flex", alignItems: "center", gap: "8px" }}>
-                          <span style={{ fontSize: "12px", color: "#5b6472" }}>{ts("scopeLabel")}:</span>
+                          <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{ts("scopeLabel")}:</span>
                           <select
                             value={currentScope}
                             disabled={!editable}
@@ -117,7 +117,7 @@ export function AdminRolePermissionsManager({ roleId, readOnly = false }: { role
                           </select>
                         </div>
                       ) : (
-                        <span style={{ marginInlineStart: "26px", fontSize: "12px", color: "#8a93a3" }}>
+                        <span style={{ marginInlineStart: "26px", fontSize: "12px", color: "var(--text-subtle)" }}>
                           {ts("notSupported")}
                         </span>
                       )

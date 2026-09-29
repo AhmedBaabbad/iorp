@@ -13,17 +13,17 @@ import { assignPermissionToRole, getRole, listPermissions, removePermissionFromR
 import type { PermissionGroup, RoleDetail as RoleDetailType } from "../types";
 
 const styles: Record<string, CSSProperties> = {
-  card: { background: "#ffffff", border: "1px solid #d9dee7", borderRadius: "8px", padding: "28px", marginBottom: "24px" },
+  card: { background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "8px", padding: "28px", marginBottom: "24px" },
   field: { display: "grid", gap: "4px", marginBottom: "16px" },
-  label: { fontSize: "13px", fontWeight: 600, color: "#52606d" },
-  value: { fontSize: "15px", color: "#1f2933" },
-  groupTitle: { fontSize: "14px", fontWeight: 700, color: "#52606d", margin: "0 0 8px", textTransform: "uppercase" as const, letterSpacing: "0.05em" },
+  label: { fontSize: "13px", fontWeight: 600, color: "var(--text-muted)" },
+  value: { fontSize: "15px", color: "var(--text)" },
+  groupTitle: { fontSize: "14px", fontWeight: 700, color: "var(--text-muted)", margin: "0 0 8px", textTransform: "uppercase" as const, letterSpacing: "0.05em" },
   permBadge: {
     display: "inline-flex", alignItems: "center", gap: "4px",
-    background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "6px",
-    color: "#1d4ed8", fontSize: "12px", padding: "3px 8px", margin: "3px",
+    background: "var(--accent-soft)", border: "1px solid color-mix(in srgb, var(--accent) 35%, var(--surface))", borderRadius: "6px",
+    color: "var(--accent-strong)", fontSize: "12px", padding: "3px 8px", margin: "3px",
   },
-  removeBtn: { background: "none", border: "none", color: "#be123c", cursor: "pointer", fontWeight: 700, fontSize: "13px", padding: 0 },
+  removeBtn: { background: "none", border: "none", color: "var(--danger)", cursor: "pointer", fontWeight: 700, fontSize: "13px", padding: 0 },
   addRow: { display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" as const, marginTop: "12px" },
   actions: { display: "flex", gap: "12px", flexWrap: "wrap" as const },
 };
@@ -107,10 +107,10 @@ export function RoleDetailPage({ id }: { id: string }) {
 
   return (
     <PageFrame section="Administration" title={t("detailTitle")}>
-      {isLoading ? <div style={{ ...sharedStyles.state, background: "#ffffff" }}>{t("loadingDetail")}</div> : null}
+      {isLoading ? <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>{t("loadingDetail")}</div> : null}
       {!isLoading && error ? <div style={sharedStyles.error} role="alert">{error}</div> : null}
       {!isLoading && successMessage ? (
-        <div style={{ background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: "6px", color: "#166534", fontSize: "14px", padding: "12px 14px", marginBottom: "16px" }} role="status">
+        <div style={{ background: "var(--success-soft)", border: "1px solid color-mix(in srgb, var(--success) 35%, var(--surface))", borderRadius: "6px", color: "var(--success)", fontSize: "14px", padding: "12px 14px", marginBottom: "16px" }} role="status">
           {successMessage}
         </div>
       ) : null}
@@ -124,7 +124,7 @@ export function RoleDetailPage({ id }: { id: string }) {
             </div>
             <div style={styles.field}>
               <span style={styles.label}>{t("fields.code")}</span>
-              <code style={{ fontSize: "14px", background: "#f1f5f9", padding: "2px 8px", borderRadius: "4px" }}>{role.code}</code>
+              <code style={{ fontSize: "14px", background: "var(--surface-muted)", padding: "2px 8px", borderRadius: "4px" }}>{role.code}</code>
             </div>
             {role.description ? (
               <div style={styles.field}>
@@ -137,7 +137,7 @@ export function RoleDetailPage({ id }: { id: string }) {
           <div style={styles.card}>
             <h2 style={{ margin: "0 0 16px", fontSize: "16px" }}>{t("permissionsTitle")}</h2>
             {Object.keys(assignedByModule).length === 0 ? (
-              <p style={{ color: "#94a3b8", margin: "0 0 12px" }}>{pt("noPermissions")}</p>
+              <p style={{ color: "var(--text-subtle)", margin: "0 0 12px" }}>{pt("noPermissions")}</p>
             ) : (
               Object.entries(assignedByModule).map(([module, perms]) => (
                 <div key={module} style={{ marginBottom: "16px" }}>

@@ -10,7 +10,7 @@ import { sharedStyles } from "@/styles/shared-styles";
 const styles: Record<string, CSSProperties> = {
   card: {
     ...sharedStyles.state,
-    background: "#ffffff",
+    background: "var(--surface)",
     display: "grid",
     justifyItems: "center",
     gap: "10px",
@@ -21,14 +21,14 @@ const styles: Record<string, CSSProperties> = {
     width: "56px",
     height: "56px",
     borderRadius: "50%",
-    background: "#fff1f2",
+    background: "var(--surface-muted)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontSize: "26px",
   },
   message: {
-    color: "#1f2933",
+    color: "var(--text)",
     fontSize: "16px",
     fontWeight: 600,
     margin: 0,

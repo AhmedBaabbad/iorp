@@ -23,7 +23,7 @@ const styles: Record<string, CSSProperties> = {
     display: "flex",
     alignItems: "center",
     padding: "4px",
-    color: "#7b8794",
+    color: "var(--text-muted)",
   },
 };
 

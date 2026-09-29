@@ -17,10 +17,10 @@ import css from "./platform-dashboard-page.module.css";
 
 const STATUS_BAR_KEYS = ["active", "suspended", "inactive", "archived"] as const;
 const STATUS_COLOR: Record<(typeof STATUS_BAR_KEYS)[number], string> = {
-  active: "#55d99a",
-  suspended: "#f6bd53",
-  inactive: "#fb8998",
-  archived: "#9cabc1",
+  active: "var(--success)",
+  suspended: "var(--warning)",
+  inactive: "var(--danger)",
+  archived: "var(--text-subtle)",
 };
 
 function Icon({ children, size = 20 }: { children: ReactNode; size?: number }) {
@@ -47,7 +47,7 @@ function initials(name: string) {
 }
 
 function colorFor(name: string) {
-  const colors = ["#2563eb", "#7c3aed", "#0891b2", "#059669", "#c2410c", "#be185d"];
+  const colors = ["#2563eb", "#7c3aed", "#0891b2", "#059669", "#c2410c", "#be185d"]; // theme-exempt: logo fallback palette, white initials read on each
   return colors[[...name].reduce((sum, char) => sum + char.charCodeAt(0), 0) % colors.length];
 }
 

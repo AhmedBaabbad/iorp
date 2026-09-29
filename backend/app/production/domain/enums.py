@@ -67,11 +67,20 @@ class ShiftReportStatus(str, Enum):
 
 
 class ProductionOrderStatus(str, Enum):
+    # Changed only through domain.order_lifecycle / OrderStatusService.
     DRAFT = "draft"
     RELEASED = "released"
     IN_PROGRESS = "in_progress"
+    ON_HOLD = "on_hold"
     COMPLETED = "completed"
+    CLOSED = "closed"
     CANCELLED = "cancelled"
+
+
+class OrderTransitionTrigger(str, Enum):
+    MANUAL = "manual"      # a user pressed an action button
+    ACTIVITY = "activity"  # first recorded production activity (extension point)
+    SCHEDULE = "schedule"  # planned start date reached, when enabled
 
 
 class ProductionOrderPriority(str, Enum):

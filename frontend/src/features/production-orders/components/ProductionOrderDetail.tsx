@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { OrderAllocations } from "./OrderAllocations";
-import { ExecutionPanel } from "@/features/production-execution/ExecutionPanel";
+import { OrderLines } from "./OrderLines";
+import { OrderStatusPanel } from "./OrderStatusPanel";
+import { OrderStatusTimeline } from "./OrderStatusTimeline";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import type { CSSProperties, ReactNode } from "react";
@@ -33,16 +35,16 @@ const styles: Record<string, CSSProperties> = {
     display: "grid",
     gap: "1px",
     gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-    background: "#e4e7ec",
+    background: "var(--border)",
     borderRadius: "8px",
     overflow: "hidden",
   },
   detailItem: {
-    background: "#ffffff",
+    background: "var(--surface)",
     padding: "18px",
   },
   detailLabel: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "13px",
     fontWeight: 700,
     margin: "0 0 8px",
@@ -52,8 +54,8 @@ const styles: Record<string, CSSProperties> = {
     overflowWrap: "anywhere",
   },
   section: {
-    background: "#ffffff",
-    border: "1px solid #d9dee7",
+    background: "var(--surface)",
+    border: "1px solid var(--border-strong)",
     borderRadius: "8px",
     marginTop: "18px",
     padding: "18px",
@@ -63,8 +65,8 @@ const styles: Record<string, CSSProperties> = {
     margin: "0 0 12px",
   },
   codeBlock: {
-    background: "#f8fafc",
-    border: "1px solid #e4e7ec",
+    background: "var(--surface-muted)",
+    border: "1px solid var(--border)",
     borderRadius: "6px",
     margin: 0,
     overflowX: "auto",
@@ -154,13 +156,13 @@ export function ProductionOrderDetail() {
     >
       {created && <p role="status">{allocationText("success")}</p>}
       {isLoading ? (
-        <div style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           {t("loadingDetail")}
         </div>
       ) : null}
 
       {!isLoading && isNotFound ? (
-        <section style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>
             {t("notFound")}
           </h2>
@@ -201,7 +203,7 @@ export function ProductionOrderDetail() {
             <DetailItem
               label={t("fields.workCenter")}
               value={
-                <Link href={`/work-centers/${order.work_center_id}`} style={{ color: "#1d4ed8" }}>
+                <Link href={`/work-centers/${order.work_center_id}`} style={{ color: "var(--accent-strong)" }}>
                   {workCenter ? `${workCenter.code} - ${workCenter.name}` : order.work_center_id}
                 </Link>
               }
@@ -220,12 +222,17 @@ export function ProductionOrderDetail() {
             )}
           </section>
 
-          <OrderAllocations order={order} onChanged={() => setRevision((value) => value + 1)} />
-          <ExecutionPanel orderId={order.id} />
-          <ProductionOrderItemsList
-            productionOrderId={order.id}
-            productionOrderStatus={order.status}
-          />
+          <OrderStatusPanel order={order} onChanged={() => setRevision((value) => value + 1)} />
+          <OrderLines order={order} onChanged={() => setRevision((value) => value + 1)} />
+          <OrderAllocations order={order} />
+          {/* Planning orders show their lines above; manual items remain for orders without allocations. */}
+          {order.allocations.length === 0 && (
+            <ProductionOrderItemsList
+              productionOrderId={order.id}
+              productionOrderStatus={order.status}
+            />
+          )}
+          <OrderStatusTimeline orderId={order.id} revision={revision} />
         </>
       ) : null}
     </PageFrame>

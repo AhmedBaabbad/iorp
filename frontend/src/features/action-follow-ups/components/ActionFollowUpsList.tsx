@@ -37,7 +37,7 @@ const styles: Record<string, CSSProperties> = {
   inlineButton: {
     background: "transparent",
     border: 0,
-    color: "#1d4ed8",
+    color: "var(--accent-strong)",
     cursor: "pointer",
     font: "inherit",
     padding: 0,

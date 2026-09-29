@@ -42,7 +42,7 @@ const styles: Record<string, CSSProperties> = {
     gap: "12px",
   },
   inlineError: {
-    color: "#be123c",
+    color: "var(--danger)",
     fontSize: "13px",
     margin: 0,
   },
@@ -124,7 +124,7 @@ export function ActionFollowUpForm({
       <div style={styles.formGrid}>
         <label style={sharedStyles.field}>
           <span style={sharedStyles.label}>
-            {t("fields.followUpDate")} <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+            {t("fields.followUpDate")} <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
           </span>
           <input
             style={sharedStyles.input}
@@ -139,7 +139,7 @@ export function ActionFollowUpForm({
 
         <label style={sharedStyles.field}>
           <span style={sharedStyles.label}>
-            {t("fields.status")} <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+            {t("fields.status")} <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
           </span>
           <select
             style={sharedStyles.input}

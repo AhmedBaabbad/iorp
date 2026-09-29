@@ -11,9 +11,9 @@ import { API_BASE_URL, ApiClientError } from "@/lib/api-client";
 import { getOrganizationProfile, removeOrganizationLogo, updateOrganizationProfile, uploadOrganizationLogo, type OrganizationProfile } from "./organization-profile-api";
 
 const field: CSSProperties = { display: "grid", gap: 7 };
-const input: CSSProperties = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "11px 12px", background: "#fff" };
-const panel: CSSProperties = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 24, marginBottom: 18 };
-const badge: Record<string, CSSProperties> = { provisioning: { background: "#475569", color: "#fff" }, active: { background: "#166534", color: "#fff" }, suspended: { background: "#92400e", color: "#fff" }, inactive: { background: "#991b1b", color: "#fff" }, archived: { background: "#475569", color: "#cbd5e1" } };
+const input: CSSProperties = { border: "1px solid var(--border-strong)", borderRadius: 8, padding: "11px 12px", background: "var(--surface)", color: "var(--text)" };
+const panel: CSSProperties = { background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 12, padding: 24, marginBottom: 18 };
+const badge: Record<string, CSSProperties> = { provisioning: { background: "var(--surface-muted)", color: "var(--text-muted)" }, active: { background: "var(--success)", color: "var(--on-accent)" }, suspended: { background: "var(--warning)", color: "var(--on-accent)" }, inactive: { background: "var(--danger)", color: "var(--on-accent)" }, archived: { background: "var(--surface-muted)", color: "var(--text-muted)" } };
 
 export function OrganizationProfilePage() {
   const t = useTranslations("organization"); const { token, hasPermission, refreshCurrentUser } = useAuth();
@@ -27,20 +27,20 @@ export function OrganizationProfilePage() {
   async function upload(file?: File) { if(!file) return; if(file.size > 2*1024*1024) return setError(t("logoTooLarge")); if(!["image/png","image/jpeg","image/webp"].includes(file.type)) return setError(t("logoInvalidType")); setBusy(true); try { const existed=profile?.has_logo; await uploadOrganizationLogo(file, token); await load(); await refreshCurrentUser(); setSuccess(t(existed ? "logoReplaced" : "logoUploaded")); } catch { setError(t("logoUploadError")); } finally { setBusy(false); } }
   async function remove() { if(!confirm(t("confirmRemoveLogo"))) return; setBusy(true); try { await removeOrganizationLogo(token); await load(); await refreshCurrentUser(); setSuccess(t("logoRemoved")); } catch { setError(t("logoUploadError")); } finally { setBusy(false); } }
   return <PageFrame title={t("profileTitle")} subtitle={t("profileSubtitle")} section={t("section")}>
-    {error && <div style={{ color: "#b91c1c", marginBottom: 12 }}>{error}</div>}{success && <div style={{ color: "#166534", marginBottom: 12 }}>{success}</div>}
+    {error && <div style={{ color: "var(--danger)", marginBottom: 12 }}>{error}</div>}{success && <div style={{ color: "var(--success)", marginBottom: 12 }}>{success}</div>}
     {!profile ? <p>{t("loading")}</p> : <>
       <section style={panel}><h2>{t("logoSection")}</h2><div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-        <div style={{ width: 120, height: 120, borderRadius: 18, background: "#e2e8f0", display: "grid", placeItems: "center", fontSize: 36, overflow: "hidden" }}>{logoSrc ? <>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={logoSrc} alt={profile.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} /></> : profile.name.slice(0,1).toUpperCase()}</div>
-        <div><p>{t("logoRequirements")}</p>{canBrand ? <><label style={{ ...input, display: "inline-block", cursor: "pointer" }}>{t(profile.has_logo ? "replaceLogo" : "uploadLogo")}<input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={e => upload(e.target.files?.[0])} /></label>{profile.has_logo && <button type="button" onClick={remove} style={{ ...input, marginInlineStart: 8, color: "#b91c1c" }}>{t("removeLogo")}</button>}</> : <p>{t("brandingReadOnly")}</p>}</div>
+        <div style={{ width: 120, height: 120, borderRadius: 18, background: "var(--border)", display: "grid", placeItems: "center", fontSize: 36, overflow: "hidden" }}>{logoSrc ? <>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={logoSrc} alt={profile.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} /></> : profile.name.slice(0,1).toUpperCase()}</div>
+        <div><p>{t("logoRequirements")}</p>{canBrand ? <><label style={{ ...input, display: "inline-block", cursor: "pointer" }}>{t(profile.has_logo ? "replaceLogo" : "uploadLogo")}<input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={e => upload(e.target.files?.[0])} /></label>{profile.has_logo && <button type="button" onClick={remove} style={{ ...input, marginInlineStart: 8, color: "var(--danger)" }}>{t("removeLogo")}</button>}</> : <p>{t("brandingReadOnly")}</p>}</div>
       </div></section>
       <form onSubmit={save} style={panel}><h2>{t("infoSection")}</h2>{!canUpdate && <p>{t("readOnlyNotice")}</p>}<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 16 }}>
         <label style={field}><span>{t("fields.name")}</span><input style={input} value={profile.name} onChange={e=>set("name",e.target.value)} disabled={!canUpdate} /></label>
-        <div style={field}><span>{t("fields.code")}</span><strong style={{ ...input, background: "#f1f5f9" }}>{profile.code}</strong><small>{t("codeImmutable")}</small></div>
+        <div style={field}><span>{t("fields.code")}</span><strong style={{ ...input, background: "var(--surface-muted)" }}>{profile.code}</strong><small>{t("codeImmutable")}</small></div>
         <label style={field}><span>{t("fields.industryType")}</span><input style={input} value={profile.industry_type ?? ""} onChange={e=>set("industry_type",e.target.value)} disabled={!canUpdate} /></label>
         <label style={field}><span>{t("fields.timezone")}</span><select style={input} value={profile.timezone} onChange={e=>set("timezone",e.target.value)} disabled={!canUpdate}>{TIMEZONES.map(z=><option key={z} value={z}>{timezoneLabel(z)}</option>)}</select></label>
         <label style={field}><span>{t("fields.defaultLocale")}</span><select style={input} value={profile.default_locale} onChange={e=>set("default_locale",e.target.value)} disabled={!canUpdate}><option value="ar">{t("localeOptions.ar")}</option><option value="en">{t("localeOptions.en")}</option></select></label>
         <div style={field}><span>{t("fields.status")}</span><span style={{ ...input, ...badge[profile.status] }}>{t(`statuses.${profile.status}`)}</span><small>{t("statusManagedByPlatform")}</small></div>
-      </div>{canUpdate && <button disabled={busy} style={{ ...input, marginTop: 20, background: "#1f2937", color: "#fff" }}>{busy ? t("saving") : t("saveButton")}</button>}</form>
+      </div>{canUpdate && <button disabled={busy} style={{ ...input, marginTop: 20, background: "var(--text)", color: "var(--on-accent)" }}>{busy ? t("saving") : t("saveButton")}</button>}</form>
     </>}
   </PageFrame>;
 }

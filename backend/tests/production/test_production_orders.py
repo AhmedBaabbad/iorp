@@ -345,9 +345,16 @@ def test_update_status(client, auth_headers, work_center):
     create_resp = _create_order(client, auth_headers, work_center["id"])
     production_order_id = create_resp.json()["id"]
 
-    resp = client.patch(
+    # PATCH no longer changes status; the transitions endpoint does.
+    rejected = client.patch(
         f"/api/v1/production/production-orders/{production_order_id}",
         json={"status": "released"},
+        headers=auth_headers,
+    )
+    assert rejected.status_code == 422
+    resp = client.post(
+        f"/api/v1/production/production-orders/{production_order_id}/transitions",
+        json={"action": "release"},
         headers=auth_headers,
     )
 
@@ -358,7 +365,7 @@ def test_update_status(client, auth_headers, work_center):
 def test_update_not_found(client, auth_headers):
     resp = client.patch(
         f"/api/v1/production/production-orders/{ZERO_UUID}",
-        json={"status": "released"},
+        json={"notes": "missing"},
         headers=auth_headers,
     )
     assert resp.status_code == 404

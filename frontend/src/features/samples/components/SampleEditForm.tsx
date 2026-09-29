@@ -40,8 +40,8 @@ const sampleDecisionOptions: SampleDecision[] = ["pending", "accepted", "rejecte
 
 const styles: Record<string, CSSProperties> = {
   panel: {
-    background: "#ffffff",
-    border: "1px solid #d9dee7",
+    background: "var(--surface)",
+    border: "1px solid var(--border-strong)",
     borderRadius: "8px",
     boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
   },
@@ -62,19 +62,19 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
   },
   required: {
-    color: "#be123c",
+    color: "var(--danger)",
     marginLeft: "2px",
   },
   codeNote: {
-    background: "#f8fafc",
-    border: "1px solid #e2e8f0",
+    background: "var(--surface-muted)",
+    border: "1px solid var(--border)",
     borderRadius: "6px",
-    color: "#475569",
+    color: "var(--text-muted)",
     fontSize: "13px",
     padding: "10px 14px",
   },
   helper: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "13px",
     margin: 0,
   },
@@ -243,11 +243,11 @@ export function SampleEditForm() {
       }
     >
       {isLoading ? (
-        <div style={{ ...sharedStyles.state, background: "#ffffff" }}>{messages("loading.default")}</div>
+        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>{messages("loading.default")}</div>
       ) : null}
 
       {!isLoading && isNotFound ? (
-        <section style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("notFound")}</h2>
           <p style={{ margin: "0 0 18px" }}>{t("notFoundDescription")}</p>
           <Link href="/samples" style={sharedStyles.button}>

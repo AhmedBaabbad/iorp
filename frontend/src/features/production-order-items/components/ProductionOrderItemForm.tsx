@@ -39,7 +39,7 @@ const styles: Record<string, CSSProperties> = {
     width: "fit-content",
   },
   helper: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "13px",
     margin: 0,
   },
@@ -110,7 +110,7 @@ export function ProductionOrderItemForm({
       <div style={styles.formGrid}>
         <label style={sharedStyles.field}>
           <span style={sharedStyles.label}>
-            {t("fields.plannedQuantity")} <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+            {t("fields.plannedQuantity")} <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
           </span>
           <input
             style={sharedStyles.input}
@@ -126,7 +126,7 @@ export function ProductionOrderItemForm({
 
         <label style={sharedStyles.field}>
           <span style={sharedStyles.label}>
-            {t("fields.unit")} <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+            {t("fields.unit")} <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
           </span>
           <input
             style={sharedStyles.input}

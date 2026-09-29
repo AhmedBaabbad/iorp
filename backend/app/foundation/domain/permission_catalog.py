@@ -56,6 +56,9 @@ RESOURCE_NAMES = {
 
 ACTION_NAMES = {
     "start": ("Start", "بدء"),
+    "release": ("Release", "اعتماد"),
+    "hold": ("Hold or Resume", "إيقاف مؤقت أو استئناف"),
+    "close": ("Close", "إغلاق"),
     "pause": ("Pause", "إيقاف مؤقت لـ"),
     "cancel": ("Cancel", "إلغاء"),
     "release_allocation": ("Release Allocations in", "تحرير تخصيصات"),
@@ -128,7 +131,7 @@ PRODUCTION_PERMISSIONS = _resource_permissions("production", {
     ("work_centers", "production_orders", "shift_reports", "downtime_events", "waste_records", "shift_definitions", "production_outputs")
 })
 
-PRODUCTION_PERMISSIONS += _resource_permissions("production", {"demands": ("read", "create", "update", "delete"), "planning": ("read", "sequence", "allocate", "release_allocation"), "orders": ("create", "cancel")})
+PRODUCTION_PERMISSIONS += _resource_permissions("production", {"demands": ("read", "create", "update", "delete"), "planning": ("read", "sequence", "allocate", "release_allocation"), "orders": ("create", "cancel", "release", "start", "hold", "complete", "close")})
 
 PRODUCTION_PERMISSIONS += _resource_permissions("production", {"shifts": ("read", "create", "update", "delete"), "shift_rosters": ("read", "create", "update", "manage_members"), "runs": ("read", "create", "update", "start", "pause", "complete", "cancel", "manage_members")})
 

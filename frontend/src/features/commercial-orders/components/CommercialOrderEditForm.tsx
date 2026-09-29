@@ -40,8 +40,8 @@ type CommercialOrderItemFormValues = {
 
 const styles: Record<string, CSSProperties> = {
   panel: {
-    background: "#ffffff",
-    border: "1px solid #d9dee7",
+    background: "var(--surface)",
+    border: "1px solid var(--border-strong)",
     borderRadius: "8px",
     boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
   },
@@ -56,7 +56,7 @@ const styles: Record<string, CSSProperties> = {
     gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
   },
   itemPanel: {
-    border: "1px solid #e4e7ec",
+    border: "1px solid var(--border)",
     borderRadius: "8px",
     display: "grid",
     gap: "16px",
@@ -76,11 +76,11 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
   },
   required: {
-    color: "#be123c",
+    color: "var(--danger)",
     marginLeft: "2px",
   },
   requiredNote: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "13px",
     marginLeft: "auto",
   },

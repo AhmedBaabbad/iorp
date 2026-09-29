@@ -51,7 +51,7 @@ const styles: Record<string, CSSProperties> = {
     gap: "12px",
   },
   inlineError: {
-    color: "#be123c",
+    color: "var(--danger)",
     fontSize: "13px",
     margin: 0,
   },
@@ -59,16 +59,16 @@ const styles: Record<string, CSSProperties> = {
     display: "grid",
     gap: "1px",
     gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    background: "#e4e7ec",
+    background: "var(--border)",
     borderRadius: "8px",
     overflow: "hidden",
   },
   detailItem: {
-    background: "#ffffff",
+    background: "var(--surface)",
     padding: "18px",
   },
   detailLabel: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "13px",
     fontWeight: 700,
     margin: "0 0 8px",
@@ -78,8 +78,8 @@ const styles: Record<string, CSSProperties> = {
     overflowWrap: "anywhere",
   },
   notes: {
-    background: "#f8fafc",
-    border: "1px solid #e4e7ec",
+    background: "var(--surface-muted)",
+    border: "1px solid var(--border)",
     borderRadius: "6px",
     lineHeight: 1.55,
     margin: 0,
@@ -87,10 +87,10 @@ const styles: Record<string, CSSProperties> = {
     whiteSpace: "pre-wrap",
   },
   infoBanner: {
-    background: "#fffbeb",
-    border: "1px solid #fde68a",
+    background: "var(--warning-soft)",
+    border: "1px solid color-mix(in srgb, var(--warning) 35%, var(--surface))",
     borderRadius: "6px",
-    color: "#92400e",
+    color: "var(--warning)",
     lineHeight: 1.5,
     padding: "12px 14px",
   },
@@ -279,7 +279,7 @@ export function ClosureVerificationSection({
                 <div style={styles.formGrid}>
                   <label style={sharedStyles.field}>
                     <span style={sharedStyles.label}>
-                      {t("fields.verificationDate")} <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+                      {t("fields.verificationDate")} <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
                     </span>
                     <input
                       style={sharedStyles.input}
@@ -294,7 +294,7 @@ export function ClosureVerificationSection({
 
                   <label style={sharedStyles.field}>
                     <span style={sharedStyles.label}>
-                      {t("fields.verificationResult")} <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+                      {t("fields.verificationResult")} <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
                     </span>
                     <select
                       style={sharedStyles.input}
@@ -319,7 +319,7 @@ export function ClosureVerificationSection({
 
                   <label style={sharedStyles.field}>
                     <span style={sharedStyles.label}>
-                      {t("fields.closureStatus")} <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+                      {t("fields.closureStatus")} <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
                     </span>
                     <select
                       style={sharedStyles.input}

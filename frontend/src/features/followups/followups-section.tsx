@@ -69,7 +69,7 @@ const styles: Record<string, CSSProperties> = {
     marginTop: "12px",
   },
   note: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "13px",
     margin: 0,
   },
@@ -257,7 +257,7 @@ export function CustomerFollowUpsSection({
           <label style={sharedStyles.field}>
             <span style={sharedStyles.label}>
               {t("fields.dueDate")}{" "}
-              <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+              <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
             </span>
             <input
               style={sharedStyles.input}
@@ -290,7 +290,7 @@ export function CustomerFollowUpsSection({
           <label style={sharedStyles.field}>
             <span style={sharedStyles.label}>
               {t("fields.reason")}{" "}
-              <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+              <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
             </span>
             <input
               style={sharedStyles.input}
@@ -317,7 +317,7 @@ export function CustomerFollowUpsSection({
           <label style={sharedStyles.field}>
             <span style={sharedStyles.label}>
               {t("selectAssignee")}{" "}
-              <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+              <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
             </span>
             {isLoadingAssignees ? (
               <p style={styles.note}>{t("loadingAssignees")}</p>

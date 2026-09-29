@@ -195,12 +195,12 @@ def test_t16_t17_cancel_pre_execution_releases_all(env):
         fresh = env.get(d["id"])
         assert fresh["status"] == "ready_for_planning" and Decimal(fresh["total_active_allocated"]) == 0
         assert d["id"] in env.queue()
-    assert env.cancel(po["id"]).json()["detail"]["code"] == "ORDER_ALREADY_CANCELLED"
+    assert env.cancel(po["id"]).json()["detail"]["code"] == "TRANSITION_NOT_ALLOWED"  # cancelled is terminal
 
 
 def test_cancel_via_status_patch_is_rejected(env):
     d = env.demand(); po = env.order((item_id(d), "100"))
-    assert env.client.patch(f"{ROOT}/production-orders/{po['id']}", json={"status": "cancelled"}).status_code == 400
+    assert env.client.patch(f"{ROOT}/production-orders/{po['id']}", json={"status": "cancelled"}).status_code == 422
     assert env.get(d["id"])["status"] == "partially_planned"
 
 
@@ -217,8 +217,11 @@ def test_t18_t19_started_or_completed_orders_block_release(env, status, code):
     env.order((item_id(d), "100"))
     po = env.order((item_id(d), "200"), )
     env.set_order_status(po["id"], status)
-    for r in (env.release(po["allocations"][0]["id"]), env.cancel(po["id"])):
-        assert r.status_code == 409 and r.json()["detail"]["code"] == code
+    r = env.release(po["allocations"][0]["id"])
+    assert r.status_code == 409 and r.json()["detail"]["code"] == code
+    # The lifecycle does not offer cancel once production has started or finished.
+    r = env.cancel(po["id"])
+    assert r.status_code == 409 and r.json()["detail"]["code"] == "TRANSITION_NOT_ALLOWED"
     fresh = item(env.get(d["id"]))
     assert Decimal(fresh["active_allocated_quantity"]) == 300 and Decimal(fresh["released_allocated_quantity"]) == 0
 
@@ -359,7 +362,8 @@ def test_release_and_cancel_are_audited(env):
     multi = env.order((item_id(two, 0), "50"), (item_id(two, 1), "50"))
     env.release(multi["allocations"][0]["id"], "Wrong line")
     rows = {r.action: r for r in env.db.scalars(select(TenantActivityLog).where(TenantActivityLog.organization_id == env.org.id))}
-    cancelled, released = rows["production_order.cancelled"], rows["production_allocation.released"]
+    cancelled, released = rows["production_order.status_changed"], rows["production_allocation.released"]
     assert cancelled.actor_id == env.user.id and cancelled.details["reason"] == "Machine unavailable"
+    assert cancelled.details["action"] == "cancel" and cancelled.details["released_allocations"] == "1"
     assert released.actor_id == env.user.id and released.details["reason"] == "Wrong line"
     assert keep["id"] not in str(cancelled.details)

@@ -84,7 +84,7 @@ function initials(name: string) {
 }
 
 function colorFor(name: string) {
-  const colors = ["#2563eb", "#7c3aed", "#0891b2", "#059669", "#c2410c", "#be185d"];
+  const colors = ["#2563eb", "#7c3aed", "#0891b2", "#059669", "#c2410c", "#be185d"]; // theme-exempt: logo fallback palette, white initials read on each
   return colors[[...name].reduce((sum, char) => sum + char.charCodeAt(0), 0) % colors.length];
 }
 

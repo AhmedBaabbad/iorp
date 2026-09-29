@@ -34,4 +34,6 @@ class DemandItemCompatibilityChecker:
                 raise IncompatibleDemandItemsError("INCOMPATIBLE_SPECIFICATIONS")
 
     def _specs_compatible(self, spec_a, spec_b):
-        return spec_a == spec_b
+        # Differing specifications share one order as separate lines (see domain.arrangement).
+        # Subclass to restrict which specifications may be produced together.
+        return True

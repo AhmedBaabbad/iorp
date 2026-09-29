@@ -38,8 +38,8 @@ type FilterValues = {
 
 const styles: Record<string, CSSProperties> = {
   panel: {
-    background: "#ffffff",
-    border: "1px solid #d9dee7",
+    background: "var(--surface)",
+    border: "1px solid var(--border-strong)",
     borderRadius: "8px",
     boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
   },
@@ -57,19 +57,19 @@ const styles: Record<string, CSSProperties> = {
     borderCollapse: "collapse",
   },
   th: {
-    borderBottom: "1px solid #e4e7ec",
-    color: "#52606d",
+    borderBottom: "1px solid var(--border)",
+    color: "var(--text-muted)",
     fontSize: "13px",
     padding: "14px 16px",
     textAlign: "left",
   },
   td: {
-    borderBottom: "1px solid #eef1f5",
+    borderBottom: "1px solid var(--border)",
     padding: "14px 16px",
     verticalAlign: "middle",
   },
   link: {
-    color: "#1d4ed8",
+    color: "var(--accent-strong)",
     fontWeight: 700,
     textDecoration: "none",
   },
@@ -234,7 +234,7 @@ export function DowntimeEventsList() {
       </section>
 
       {isLoading ? (
-        <div style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           {messages("loading.default")}
         </div>
       ) : null}
@@ -255,7 +255,7 @@ export function DowntimeEventsList() {
       ) : null}
 
       {!isLoading && !error && events.length === 0 ? (
-        <section style={{ ...sharedStyles.state, background: "#ffffff" }}>
+        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>
             No downtime events found
           </h2>

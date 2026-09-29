@@ -47,7 +47,7 @@ const styles: Record<string, CSSProperties> = {
     gap: "12px",
   },
   inlineError: {
-    color: "#be123c",
+    color: "var(--danger)",
     fontSize: "13px",
     margin: 0,
   },
@@ -133,7 +133,7 @@ export function QualityDefectForm({
       <div style={styles.formGrid}>
         <label style={sharedStyles.field}>
           <span style={sharedStyles.label}>
-            {t("fields.defectDate")} <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+            {t("fields.defectDate")} <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
           </span>
           <input
             style={sharedStyles.input}
@@ -147,7 +147,7 @@ export function QualityDefectForm({
 
         <label style={sharedStyles.field}>
           <span style={sharedStyles.label}>
-            {t("fields.defectCategory")} <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+            {t("fields.defectCategory")} <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
           </span>
           <select
             style={sharedStyles.input}
@@ -174,7 +174,7 @@ export function QualityDefectForm({
 
         <label style={sharedStyles.field}>
           <span style={sharedStyles.label}>
-            {t("fields.severity")} <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+            {t("fields.severity")} <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
           </span>
           <select
             style={sharedStyles.input}
@@ -193,7 +193,7 @@ export function QualityDefectForm({
 
         <label style={sharedStyles.field}>
           <span style={sharedStyles.label}>
-            {t("fields.defectCount")} <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+            {t("fields.defectCount")} <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
           </span>
           <input
             style={sharedStyles.input}
@@ -231,7 +231,7 @@ export function QualityDefectForm({
 
       <label style={sharedStyles.field}>
         <span style={sharedStyles.label}>
-          {t("fields.description")} <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+          {t("fields.description")} <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
         </span>
         <textarea
           style={{ ...sharedStyles.textarea, minHeight: "100px" }}

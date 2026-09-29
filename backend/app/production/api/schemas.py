@@ -139,14 +139,14 @@ class ProductionOrderUpdate(BaseModel):
     planned_quantity: Decimal | None = Field(default=None, gt=0, max_digits=15, decimal_places=3)
     unit: str | None = Field(default=None, min_length=1, max_length=32)
     priority: ProductionOrderPriority | None = None
-    status: ProductionOrderStatus | None = None
+    # No status here: status changes only through POST /production-orders/{id}/transitions.
     planned_start_date: date | None = None
     planned_end_date: date | None = None
     notes: str | None = None
 
     @model_validator(mode="after")
     def reject_null_required_values(self):
-        for field in ("production_order_number", "work_center_id", "product_type", "planned_quantity", "unit", "priority", "status", "planned_start_date", "planned_end_date"):
+        for field in ("production_order_number", "work_center_id", "product_type", "planned_quantity", "unit", "priority", "planned_start_date", "planned_end_date"):
             if field in self.model_fields_set and getattr(self, field) is None:
                 raise ValueError(f"{field} cannot be null")
         return self

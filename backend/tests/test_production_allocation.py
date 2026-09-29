@@ -87,8 +87,9 @@ def test_t10_invalid_quantity(env, quantity):
     assert env.create(env.demand(), quantity).status_code == 400
 
 
-@pytest.mark.parametrize("change", [{"product_type": "other"}, {"unit": "m"}, {"target_spec_json": {"width": 99}}])
+@pytest.mark.parametrize("change", [{"product_type": "other"}, {"unit": "m"}])
 def test_t18_t20_incompatible(env, change):
+    """Product type and unit must match; differing specifications are covered in test_production_order_lines."""
     d = env.demand([deepcopy(ITEM), {**deepcopy(ITEM), **change}])
     r = env.create(d, allocations=[{"production_demand_item_id": i["id"], "allocated_quantity": "100"} for i in d["items"]])
     assert r.status_code == 400 and r.json()["detail"]["code"] == "INCOMPATIBLE_DEMAND_ITEMS"
@@ -177,19 +178,18 @@ def test_t26_multiple_shift_reports_keep_order_link(env):
     assert env.db.scalar(select(func.count()).select_from(ShiftReport).where(ShiftReport.production_order_id == UUID(order["id"]))) == 2
 
 
-def test_policy_is_extensible_and_null_specs_are_strict():
+def test_policy_accepts_differing_specs_and_stays_extensible():
     from app.production.domain.compatibility import DemandItemCompatibilityChecker, DemandItemSummary, IncompatibleDemandItemsError
     policy = DemandItemCompatibilityChecker()
-    assert policy._specs_compatible(None, None)
-    assert not policy._specs_compatible(None, {})
-    assert policy._specs_compatible({"a": 1, "b": 2}, {"b": 2, "a": 1})
-    class RelaxedPolicy(DemandItemCompatibilityChecker):
-        def _specs_compatible(self, a, b):
-            return True
     items = [DemandItemSummary("generic", "kg", {"a": 1}), DemandItemSummary("generic", "kg", {"a": 2})]
+    policy.validate_compatibility(items)  # differing specifications become separate order lines
     with pytest.raises(IncompatibleDemandItemsError):
-        policy.validate_compatibility(items)
-    RelaxedPolicy().validate_compatibility(items)
+        policy.validate_compatibility([*items, DemandItemSummary("generic", "m", {"a": 1})])
+    class StrictPolicy(DemandItemCompatibilityChecker):
+        def _specs_compatible(self, a, b):
+            return a == b
+    with pytest.raises(IncompatibleDemandItemsError):
+        StrictPolicy().validate_compatibility(items)
 
 
 def test_old_creation_endpoint_cannot_bypass_allocations(env):

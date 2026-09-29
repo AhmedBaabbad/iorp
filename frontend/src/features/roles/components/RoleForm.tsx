@@ -12,9 +12,9 @@ import { createRole, updateRole } from "../api/roles-api";
 import type { RoleDetail } from "../types";
 
 const styles: Record<string, CSSProperties> = {
-  card: { background: "#ffffff", border: "1px solid #d9dee7", borderRadius: "8px", padding: "28px", maxWidth: "600px" },
+  card: { background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "8px", padding: "28px", maxWidth: "600px" },
   field: { display: "grid", gap: "6px", marginBottom: "18px" },
-  label: { fontSize: "14px", fontWeight: 600, color: "#1f2933" },
+  label: { fontSize: "14px", fontWeight: 600, color: "var(--text)" },
   actions: { display: "flex", gap: "12px", marginTop: "24px" },
 };
 

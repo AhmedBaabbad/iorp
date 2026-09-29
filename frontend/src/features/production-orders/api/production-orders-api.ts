@@ -1,6 +1,8 @@
 import { apiClient } from "@/lib/api-client";
 import type {
   CreateProductionOrderRequest,
+  OrderAction,
+  OrderStatusHistoryEntry,
   ProductionOrderData,
   ProductionOrderListFilters,
   ProductionOrderListItem,
@@ -33,11 +35,30 @@ export function getProductionOrderById(productionOrderId: string) {
   );
 }
 
-// Cancels a pre-execution order and releases all of its ACTIVE allocations in one transaction.
-export function cancelProductionOrder(productionOrderId: string, reason: string) {
-  return apiClient<ProductionOrderData>(`${PRODUCTION_ORDERS_PATH}/${productionOrderId}/cancel`, {
+// The only way to change an order's status. expectedVersion guards against a concurrent change.
+export function transitionProductionOrder(productionOrderId: string, action: OrderAction, options: { reason?: string; expectedVersion?: number } = {}) {
+  return apiClient<ProductionOrderData>(`${PRODUCTION_ORDERS_PATH}/${productionOrderId}/transitions`, {
     method: "POST",
-    body: { reason },
+    body: { action, reason: options.reason || null, expected_version: options.expectedVersion ?? null },
+  });
+}
+
+export function getProductionOrderStatusHistory(productionOrderId: string) {
+  return apiClient<OrderStatusHistoryEntry[]>(`${PRODUCTION_ORDERS_PATH}/${productionOrderId}/status-history`);
+}
+
+// Draft orders only: add a demand item, or change how much of it the order takes. Lines rearrange on the server.
+export function addOrderAllocation(productionOrderId: string, productionDemandItemId: string, allocatedQuantity: string) {
+  return apiClient<ProductionOrderData>(`/production/orders/${productionOrderId}/allocations`, {
+    method: "POST",
+    body: { production_demand_item_id: productionDemandItemId, allocated_quantity: allocatedQuantity },
+  });
+}
+
+export function changeAllocationQuantity(allocationId: string, allocatedQuantity: string) {
+  return apiClient<ProductionOrderData>(`/production/allocations/${allocationId}`, {
+    method: "PATCH",
+    body: { allocated_quantity: allocatedQuantity },
   });
 }
 

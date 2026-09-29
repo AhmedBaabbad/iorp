@@ -16,6 +16,7 @@ from sqlalchemy import (
     Text,
     Time,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -215,6 +216,11 @@ class ProductionOrder(Base):
     )
     planned_start_date: Mapped[date] = mapped_column(Date, nullable=False)
     planned_end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    # Set by OrderStatusService: first entry to in_progress (kept on resume), and completion.
+    actual_start_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    actual_end_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    # Increments on every status transition; a stale value means someone else changed it first.
+    status_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -235,9 +241,29 @@ class ProductionOrder(Base):
     )
 
     items: Mapped[list["ProductionOrderItem"]] = relationship(
-        "ProductionOrderItem", cascade="all, delete-orphan",
+        "ProductionOrderItem", cascade="all, delete-orphan", order_by="ProductionOrderItem.line_no",
     )
     allocations: Mapped[list["ProductionAllocation"]] = relationship(back_populates="production_order", lazy="selectin")
+
+
+class ProductionOrderStatusHistory(Base):
+    """One row per status transition; never updated or deleted."""
+    __tablename__ = "production_order_status_history"
+    __table_args__ = (
+        Index("ix_order_status_history_order", "organization_id", "production_order_id", "created_at"),
+        CheckConstraint("trigger IN ('manual','activity','schedule')", name="ck_order_status_history_trigger"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False)
+    production_order_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("production_orders.id", ondelete="RESTRICT"), nullable=False)
+    from_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    to_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    action: Mapped[str] = mapped_column(String(30), nullable=False)
+    trigger: Mapped[str] = mapped_column(String(10), nullable=False)
+    # NULL for automatic (system) transitions; manual ones are always written with the acting user.
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id", ondelete="SET NULL"))
+    reason: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
 
 
 class ProductionOrderItem(Base):
@@ -266,7 +292,8 @@ class ProductionOrderItem(Base):
     )
     line_no: Mapped[int] = mapped_column(Integer, nullable=False)
     target_spec_json: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
-    planned_quantity: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    # Same precision as allocations: planning lines are sums of allocated quantities.
+    planned_quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3), nullable=False)
     unit: Mapped[str] = mapped_column(String(32), nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -686,7 +713,9 @@ class ProductionAllocation(Base):
         CheckConstraint("allocated_quantity > 0", name="ck_allocation_quantity"),
         CheckConstraint("status IN ('active','released')", name="ck_allocation_status"),
         CheckConstraint("(status = 'active' AND released_at IS NULL) OR (status = 'released' AND released_at IS NOT NULL)", name="ck_allocation_release"),
-        UniqueConstraint("organization_id", "production_order_id", "production_demand_item_id", name="uq_allocation_org_order_item"),
+        # One ACTIVE allocation per demand item and order; released history may repeat.
+        Index("uq_allocation_active_order_item", "organization_id", "production_order_id", "production_demand_item_id", unique=True,
+              postgresql_where=text("status = 'active'"), sqlite_where=text("status = 'active'")),
         Index("ix_allocation_org_item_status", "organization_id", "production_demand_item_id", "status"),
         Index("ix_allocation_org_order", "organization_id", "production_order_id"),
         Index("ix_allocation_org_item", "organization_id", "production_demand_item_id"),
@@ -697,6 +726,8 @@ class ProductionAllocation(Base):
     production_order_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("production_orders.id", ondelete="RESTRICT"), nullable=False)
     production_demand_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("production_demands.id", ondelete="RESTRICT"), nullable=False)
     production_demand_item_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("production_demand_items.id", ondelete="RESTRICT"), nullable=False)
+    # The specification line this allocation feeds; lines are regenerated from ACTIVE allocations.
+    production_order_item_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("production_order_items.id", ondelete="SET NULL", name="fk_allocation_order_item"), index=True)
     allocated_quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3), nullable=False)
     unit: Mapped[str] = mapped_column(String(20), nullable=False)
     # ACTIVE reserves demand quantity; RELEASED is kept as history and never counts.

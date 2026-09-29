@@ -1,5 +1,6 @@
 export function isReadOnlyStatus(status: string) {
-  return status === "cancelled" || status === "completed";
+  // Mirrors the backend: finished orders (completed, closed, cancelled) accept no item changes.
+  return status === "cancelled" || status === "completed" || status === "closed";
 }
 
 export function formatStatus(status: string) {

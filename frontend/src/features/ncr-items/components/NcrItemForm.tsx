@@ -41,12 +41,12 @@ const styles: Record<string, CSSProperties> = {
     gap: "12px",
   },
   inlineError: {
-    color: "#be123c",
+    color: "var(--danger)",
     fontSize: "13px",
     margin: 0,
   },
   note: {
-    color: "#52606d",
+    color: "var(--text-muted)",
     fontSize: "13px",
     margin: 0,
   },
@@ -132,7 +132,7 @@ export function NcrItemForm({
       <div style={styles.formGrid}>
         <label style={sharedStyles.field}>
           <span style={sharedStyles.label}>
-            {t("fields.itemName")} <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+            {t("fields.itemName")} <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
           </span>
           <input
             style={sharedStyles.input}
@@ -182,7 +182,7 @@ export function NcrItemForm({
 
       <label style={sharedStyles.field}>
         <span style={sharedStyles.label}>
-          {t("fields.issueDescription")} <span aria-hidden="true" style={{ color: "#be123c" }}>*</span>
+          {t("fields.issueDescription")} <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
         </span>
         <textarea
           style={{ ...sharedStyles.textarea, minHeight: "110px" }}

@@ -184,32 +184,14 @@ describe("production order allocation sources", () => {
     };
   }
 
-  it("cancels a pre-execution order and keeps the released sources visible", async () => {
-    api.apiClient.mockResolvedValue({});
-    const onChanged = vi.fn();
-    const view = ui(<OrderAllocations order={order()} onChanged={onChanged} />);
-    fireEvent.click(screen.getByRole("button", { name: "Cancel order and release allocations" }));
-    const dialog = screen.getByRole("dialog", { name: "Cancel production order PO-2026-000001" });
-    fireEvent.change(within(dialog).getByLabelText("Reason"), { target: { value: "Customer withdrew" } });
-    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Cancel order and release allocations" })); });
-    expect(api.apiClient).toHaveBeenCalledWith("/production/production-orders/po1/cancel", { method: "POST", body: { reason: "Customer withdrew" } });
-    expect(onChanged).toHaveBeenCalled();
-
+  it("keeps released sources visible after the order is cancelled", () => {
     const cancelled = order({ status: "cancelled", active_allocated_quantity: "0",
       allocations: [{ ...order().allocations[0], status: "released", released_at: "2026-09-26T12:00:00Z", release_reason: "Customer withdrew" }] });
-    view.rerender(<NextIntlClientProvider locale="en" messages={messages} timeZone="UTC"><OrderAllocations order={cancelled} onChanged={onChanged} /></NextIntlClientProvider>);
+    ui(<OrderAllocations order={cancelled} />);
     expect(screen.getByText("Released")).toBeTruthy();
     expect(screen.getByText("Customer withdrew")).toBeTruthy();
     expect(screen.getByRole("link", { name: "PD-2026-000001" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Cancel order and release allocations" })).toBeNull();
-  });
-
-  it("hides cancel without permission or after execution starts", () => {
-    ui(<OrderAllocations order={order({ status: "in_progress" })} />);
-    expect(screen.queryByRole("button", { name: "Cancel order and release allocations" })).toBeNull();
-    cleanup();
-    perms.granted.delete("production:orders:cancel");
-    ui(<OrderAllocations order={order()} />);
-    expect(screen.queryByRole("button", { name: "Cancel order and release allocations" })).toBeNull();
+    // Cancelling is a status action now (OrderStatusPanel), not part of this section.
+    expect(screen.queryByRole("button")).toBeNull();
   });
 });
