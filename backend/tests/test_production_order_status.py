@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.core.tenancy import TenantContext
 from app.commercial.infrastructure.models import Customer
 from app.production.api.planning_schemas import TransitionRequest
-from app.production.application.order_status_service import OrderStatusService, auto_start_due_orders
+from app.production.application.order_status_service import OrderStatusService, auto_start_due_orders, organization_today
 from app.production.domain import order_lifecycle as lifecycle
 from app.production.domain.enums import ProductionOrderStatus as S
 from app.production.infrastructure.models import ProductionAllocation, ProductionOrder, ProductionOrderStatusHistory, WorkCenter
@@ -204,7 +204,7 @@ def test_history_is_tenant_scoped_and_names_the_actor(env):
 
 
 def test_overdue_flags_on_the_order(env):
-    today = date.today()
+    today = organization_today(env.db, env.org.id)  # planned dates are the factory's local days
     po = env.order(start=today - timedelta(days=2), end=today - timedelta(days=1))
     assert po["lifecycle"]["start_overdue"] is True and po["lifecycle"]["finish_overdue"] is True
     started = env.walk(po["id"], "release", "start")
@@ -264,3 +264,15 @@ def test_scheduler_loop_runs_survives_errors_and_stops(monkeypatch):
         await real_wait_for(order_scheduler.auto_start_loop(stop), timeout=5)
     asyncio.run(scenario())
     assert len(calls) >= 2  # the failed first run did not stop the loop
+
+
+@pytest.mark.parametrize("zone", ["Pacific/Kiritimati", "Pacific/Pago_Pago"])  # UTC+14 and UTC-11
+def test_scheduled_start_uses_each_organizations_local_date(env, zone):
+    env.org.timezone = zone; env.db.commit()
+    local = organization_today(env.db, env.org.id)
+    due, tomorrow = env.order(start=local), env.order(start=local + timedelta(days=1), end=local + timedelta(days=4))
+    env.walk(due["id"], "release"); env.walk(tomorrow["id"], "release")
+    assert auto_start_due_orders(env.db) == 1  # no pinned date: the organization's own "today"
+    env.db.expire_all()
+    assert env.db.get(ProductionOrder, UUID(due["id"])).status == S.IN_PROGRESS
+    assert env.db.get(ProductionOrder, UUID(tomorrow["id"])).status == S.RELEASED

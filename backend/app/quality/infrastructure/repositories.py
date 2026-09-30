@@ -75,7 +75,6 @@ class QualityCheckRepository:
         status: QualityCheckStatus | None = None,
         result: QualityCheckResult | None = None,
         production_order_id: UUID | None = None,
-        shift_report_id: UUID | None = None,
         check_date: date | None = None,
     ) -> list[QualityCheck]:
         statement = (
@@ -90,8 +89,6 @@ class QualityCheckRepository:
             statement = statement.where(QualityCheck.result == result)
         if production_order_id is not None:
             statement = statement.where(QualityCheck.production_order_id == production_order_id)
-        if shift_report_id is not None:
-            statement = statement.where(QualityCheck.shift_report_id == shift_report_id)
         if check_date is not None:
             # Filter by the date portion of check_datetime using a cast.
             statement = statement.where(

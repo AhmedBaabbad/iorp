@@ -26,7 +26,6 @@ type FilterValues = {
   status: "" | QualityCheckStatus;
   result: "" | QualityCheckResult;
   production_order_id: string;
-  shift_report_id: string;
 };
 
 const defaultFilters: FilterValues = {
@@ -34,7 +33,6 @@ const defaultFilters: FilterValues = {
   status: "",
   result: "",
   production_order_id: "",
-  shift_report_id: "",
 };
 
 const styles: Record<string, CSSProperties> = {
@@ -204,14 +202,6 @@ export function QualityChecksList() {
           />
         </label>
 
-        <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>{t("fields.shiftReportId")}</span>
-          <input
-            style={sharedStyles.input}
-            value={filters.shift_report_id}
-            onChange={(event) => updateFilter("shift_report_id", event.target.value)}
-          />
-        </label>
       </section>
 
       {isLoading ? (
@@ -314,7 +304,6 @@ function toApiFilters(filters: FilterValues): QualityCheckListFilters {
     status: filters.status || undefined,
     result: filters.result || undefined,
     production_order_id: filters.production_order_id.trim() || undefined,
-    shift_report_id: filters.shift_report_id.trim() || undefined,
   };
 }
 

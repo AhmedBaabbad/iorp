@@ -13,7 +13,6 @@ from app.production.domain.enums import (
     ProductionOrderPriority,
     ProductionOrderStatus,
     ShiftDefinitionStatus,
-    ShiftReportStatus,
     ShiftType,
     WasteCategory,
     WorkCenterStatus,
@@ -61,7 +60,6 @@ class WorkCenterRead(WorkCenterListItem):
 class WorkCenterDeleteSummary(BaseModel):
     production_orders_count: int
     shifts_count: int
-    shift_reports_count: int
     downtime_records_count: int
     waste_records_count: int
     production_outputs_count: int
@@ -111,7 +109,6 @@ class ShiftDefinitionRead(ShiftDefinitionListItem):
 
 
 class ShiftDeletionImpact(BaseModel):
-    shift_reports: int
     production_orders: int
     is_blocked: bool
 
@@ -212,55 +209,9 @@ class ProductionOrderItemRead(ProductionOrderItemListItem):
     notes: str | None
 
 
-class ShiftReportCreate(BaseModel):
-    work_center_id: UUID
-    shift_definition_id: UUID
-    production_order_id: UUID | None = None
-    report_date: date
-    shift_started_at: datetime | None = None
-    shift_ended_at: datetime | None = None
-    summary: str = Field(min_length=1)
-    notes: str | None = None
-
-
-class ShiftReportUpdate(BaseModel):
-    work_center_id: UUID | None = None
-    shift_definition_id: UUID | None = None
-    production_order_id: UUID | None = None
-    report_date: date | None = None
-    shift_started_at: datetime | None = None
-    shift_ended_at: datetime | None = None
-    status: ShiftReportStatus | None = None
-    summary: str | None = Field(default=None, min_length=1)
-    notes: str | None = None
-
-
-class ShiftReportListItem(BaseModel):
-    id: UUID
-    organization_id: UUID
-    work_center_id: UUID
-    shift_definition_id: UUID
-    production_order_id: UUID | None
-    report_date: date
-    shift_started_at: ISODatetime | None
-    shift_ended_at: ISODatetime | None
-    status: ShiftReportStatus
-    summary: str
-    created_by_user_id: UUID
-    created_at: ISODatetime
-    updated_at: ISODatetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class ShiftReportRead(ShiftReportListItem):
-    notes: str | None
-
-
 class ProductionOutputCreate(BaseModel):
     production_order_id: UUID
     work_center_id: UUID
-    shift_report_id: UUID | None = None
     production_order_item_id: UUID | None = None
     output_date: date
     recorded_at: datetime | None = None
@@ -272,7 +223,6 @@ class ProductionOutputCreate(BaseModel):
 class ProductionOutputUpdate(BaseModel):
     production_order_id: UUID | None = None
     work_center_id: UUID | None = None
-    shift_report_id: UUID | None = None
     production_order_item_id: UUID | None = None
     output_date: date | None = None
     recorded_at: datetime | None = None
@@ -287,7 +237,6 @@ class ProductionOutputListItem(BaseModel):
     organization_id: UUID
     production_order_id: UUID
     work_center_id: UUID
-    shift_report_id: UUID | None
     production_order_item_id: UUID | None
     output_date: date
     recorded_at: ISODatetime | None
@@ -307,7 +256,6 @@ class ProductionOutputRead(ProductionOutputListItem):
 
 class DowntimeEventCreate(BaseModel):
     work_center_id: UUID
-    shift_report_id: UUID | None = None
     production_order_id: UUID | None = None
     start_time: datetime
     end_time: datetime | None = None
@@ -324,7 +272,6 @@ class DowntimeEventCreate(BaseModel):
 
 class DowntimeEventUpdate(BaseModel):
     work_center_id: UUID | None = None
-    shift_report_id: UUID | None = None
     production_order_id: UUID | None = None
     start_time: datetime | None = None
     end_time: datetime | None = None
@@ -343,7 +290,6 @@ class DowntimeEventListItem(BaseModel):
     id: UUID
     organization_id: UUID
     work_center_id: UUID
-    shift_report_id: UUID | None
     production_order_id: UUID | None
     start_time: ISODatetime
     end_time: ISODatetime | None
@@ -365,7 +311,6 @@ class DowntimeEventRead(DowntimeEventListItem):
 class WasteRecordCreate(BaseModel):
     production_order_id: UUID
     work_center_id: UUID
-    shift_report_id: UUID | None = None
     production_order_item_id: UUID | None = None
     waste_date: date
     quantity_wasted: Decimal = Field(gt=0)
@@ -378,7 +323,6 @@ class WasteRecordCreate(BaseModel):
 class WasteRecordUpdate(BaseModel):
     production_order_id: UUID | None = None
     work_center_id: UUID | None = None
-    shift_report_id: UUID | None = None
     production_order_item_id: UUID | None = None
     waste_date: date | None = None
     quantity_wasted: Decimal | None = Field(default=None, gt=0)
@@ -393,7 +337,6 @@ class WasteRecordListItem(BaseModel):
     organization_id: UUID
     production_order_id: UUID
     work_center_id: UUID
-    shift_report_id: UUID | None
     production_order_item_id: UUID | None
     waste_date: date
     quantity_wasted: Decimal

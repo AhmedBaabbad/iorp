@@ -13,7 +13,6 @@ import type { ProductionOutputStatus } from "@/features/production-outputs/types
 import type { QualityCheckResult, QualityCheckStatus } from "@/features/quality-checks/types";
 import type { DefectCategory, DefectSeverity } from "@/features/quality-defects/types";
 import type { Disposition, DispositionStatus } from "@/features/quality-rejections/types";
-import type { ShiftReportStatus } from "@/features/shift-reports/types";
 import type { ShiftStatus, ShiftType } from "@/features/shifts/types";
 import type { WasteCategory } from "@/features/waste-records/types";
 import type { WorkCenterStatus, WorkCenterType } from "@/features/work-centers/types";
@@ -170,12 +169,6 @@ export const downtimeCategoryColors: Record<DowntimeCategory, BadgeColor> = {
   utilities: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
   setup: { background: "var(--teal-soft)", color: "var(--teal)" },
   other: { background: "var(--surface-muted)", color: "var(--text-muted)" },
-};
-
-export const shiftReportStatusColors: Record<ShiftReportStatus, BadgeColor> = {
-  draft: { background: "var(--surface-muted)", color: "var(--text-muted)" },
-  submitted: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
-  approved: { background: "var(--success-soft)", color: "var(--success)" },
 };
 
 export const shiftTypeColors: Record<ShiftType, BadgeColor> = {

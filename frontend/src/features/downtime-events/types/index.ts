@@ -11,7 +11,6 @@ export type DowntimeStatus = "open" | "closed";
 
 export type DowntimeEventListFilters = {
   work_center_id?: string;
-  shift_report_id?: string;
   production_order_id?: string;
   status?: DowntimeStatus;
   category?: DowntimeCategory;
@@ -21,7 +20,6 @@ export type DowntimeEventListItem = {
   id: string;
   organization_id: string;
   work_center_id: string;
-  shift_report_id: string | null;
   production_order_id: string | null;
   start_time: string;
   end_time: string | null;
@@ -40,7 +38,6 @@ export type DowntimeEventData = DowntimeEventListItem & {
 
 export type CreateDowntimeEventRequest = {
   work_center_id: string;
-  shift_report_id?: string | null;
   production_order_id?: string | null;
   start_time: string;
   end_time?: string | null;

@@ -28,10 +28,6 @@ export function getQualityChecks(filters: QualityCheckListFilters = {}) {
     query.set("production_order_id", filters.production_order_id);
   }
 
-  if (filters.shift_report_id) {
-    query.set("shift_report_id", filters.shift_report_id);
-  }
-
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
   return apiClient<QualityCheckListItem[]>(`${QUALITY_CHECKS_PATH}${suffix}`);
 }

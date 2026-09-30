@@ -30,7 +30,6 @@ import {
 
 type FilterValues = {
   production_order_id: string;
-  shift_report_id: string;
   work_center_id: string;
   waste_category: "" | WasteCategory;
   waste_date: string;
@@ -77,7 +76,6 @@ const styles: Record<string, CSSProperties> = {
 
 const defaultFilters: FilterValues = {
   production_order_id: "",
-  shift_report_id: "",
   work_center_id: "",
   waste_category: "",
   waste_date: "",
@@ -212,15 +210,6 @@ export function WasteRecordsList() {
         </label>
 
         <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>Shift Report ID</span>
-          <input
-            style={sharedStyles.input}
-            value={filters.shift_report_id}
-            onChange={(event) => updateFilter("shift_report_id", event.target.value)}
-          />
-        </label>
-
-        <label style={sharedStyles.field}>
           <span style={sharedStyles.label}>Waste Date</span>
           <input
             style={sharedStyles.input}
@@ -318,7 +307,6 @@ export function WasteRecordsList() {
 function toApiFilters(filters: FilterValues): WasteRecordListFilters {
   return {
     production_order_id: filters.production_order_id || undefined,
-    shift_report_id: filters.shift_report_id || undefined,
     work_center_id: filters.work_center_id || undefined,
     waste_category: filters.waste_category || undefined,
     waste_date: filters.waste_date || undefined,

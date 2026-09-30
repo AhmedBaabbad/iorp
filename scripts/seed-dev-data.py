@@ -61,7 +61,6 @@ from app.production.domain.enums import (
     ProductionOrderStatus,
     ProductionOutputStatus,
     ShiftDefinitionStatus,
-    ShiftReportStatus,
     ShiftType,
     WasteCategory,
     WorkCenterStatus,
@@ -73,7 +72,6 @@ from app.production.infrastructure.models import (
     ProductionOrderItem,
     ProductionOutput,
     ShiftDefinition,
-    ShiftReport,
     WasteRecord,
     WorkCenter,
 )
@@ -140,8 +138,6 @@ QUALITY_MANAGER_PERMISSION_CODES = {
 }
 
 PRODUCTION_SUPERVISOR_PERMISSION_CODES = {
-    "production:shift_reports:read",
-    "production:shift_reports:write",
     "production:production_orders:read",
     "production:downtime_events:read",
     "production:downtime_events:write",
@@ -562,30 +558,9 @@ def seed() -> None:
         db.add(item_2)
         db.flush()
 
-        # Shift report for the morning shift on PO-001.
-        # shift_definition_id used (not shift_id — D1).
-        # status = submitted means shift has ended and is pending approval.
+        # Morning shift window on PO-001 (07:00-15:00), used to timestamp the sample records.
         shift_started = datetime(today.year, today.month, today.day, 7, 0, 0, tzinfo=timezone.utc)
         shift_ended   = datetime(today.year, today.month, today.day, 15, 0, 0, tzinfo=timezone.utc)
-        shift_report = ShiftReport(
-            organization_id=org.id,
-            work_center_id=wc_extrusion.id,
-            shift_definition_id=shift_morn.id,   # shift_definition_id — correct FK name (D1)
-            production_order_id=po_001.id,
-            report_date=today,
-            shift_started_at=shift_started,
-            shift_ended_at=shift_ended,
-            status=ShiftReportStatus.SUBMITTED,
-            summary=(
-                "Morning shift — Steel Rod 14mm on PO-001. "
-                "850 kg produced. 25 kg startup loss. "
-                "One machine downtime (hydraulic, 45 min). Shift closed normally."
-            ),
-            notes="Operator: Ahmed. QC sample taken at 10:00.",
-            created_by_user_id=admin_user.id,
-        )
-        db.add(shift_report)
-        db.flush()
 
         # Production output for PO-001 on this shift.
         # work_center_id is required at output level (D2) — may differ from order's planned work center.
@@ -593,7 +568,6 @@ def seed() -> None:
             organization_id=org.id,
             production_order_id=po_001.id,
             work_center_id=wc_extrusion.id,    # required (D2) — actual production work center
-            shift_report_id=shift_report.id,
             production_order_item_id=item_1.id, # output is against line 1 (wide roll)
             output_date=today,
             recorded_at=shift_started + timedelta(hours=4),  # recorded mid-shift
@@ -617,7 +591,6 @@ def seed() -> None:
         downtime_open = DowntimeEvent(
             organization_id=org.id,
             work_center_id=wc_extrusion.id,    # required (D2)
-            shift_report_id=shift_report.id,
             production_order_id=po_001.id,
             start_time=dt_001_start,
             end_time=None,                      # no end_time → status = OPEN (D4)
@@ -635,7 +608,6 @@ def seed() -> None:
         downtime_closed = DowntimeEvent(
             organization_id=org.id,
             work_center_id=wc_extrusion.id,    # required (D2)
-            shift_report_id=shift_report.id,
             production_order_id=po_001.id,
             start_time=dt_002_start,
             end_time=dt_002_end,
@@ -657,7 +629,6 @@ def seed() -> None:
             organization_id=org.id,
             production_order_id=po_001.id,
             work_center_id=wc_extrusion.id,    # required (D2)
-            shift_report_id=shift_report.id,
             production_order_item_id=None,     # waste not tied to a specific line item
             waste_date=today,
             quantity_wasted=Decimal("25.00"),

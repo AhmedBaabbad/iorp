@@ -22,7 +22,6 @@ import {
 
 type DowntimeEventFormValues = {
   work_center_id: string;
-  shift_report_id: string;
   production_order_id: string;
   start_time: string;
   end_time: string;
@@ -73,7 +72,6 @@ const styles: Record<string, CSSProperties> = {
 
 const defaultValues: DowntimeEventFormValues = {
   work_center_id: "",
-  shift_report_id: "",
   production_order_id: "",
   start_time: "",
   end_time: "",
@@ -258,16 +256,6 @@ export function DowntimeEventForm() {
             </label>
 
             <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>Shift Report ID</span>
-              <input
-                style={sharedStyles.input}
-                value={values.shift_report_id}
-                onChange={(event) => updateField("shift_report_id", event.target.value)}
-                disabled={isSubmitting}
-              />
-            </label>
-
-            <label style={sharedStyles.field}>
               <span style={sharedStyles.label}>Production Order ID</span>
               <input
                 style={sharedStyles.input}
@@ -322,7 +310,6 @@ export function DowntimeEventForm() {
 function toCreateRequest(values: DowntimeEventFormValues): CreateDowntimeEventRequest {
   return {
     work_center_id: values.work_center_id,
-    shift_report_id: optionalText(values.shift_report_id) ?? null,
     production_order_id: optionalText(values.production_order_id) ?? null,
     start_time: toIsoDatetime(values.start_time),
     end_time: toOptionalIsoDatetime(values.end_time),

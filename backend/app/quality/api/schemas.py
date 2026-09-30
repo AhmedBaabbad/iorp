@@ -27,7 +27,6 @@ class QualityCheckCreate(BaseModel):
     production_order_id: UUID | None = None
     production_order_item_id: UUID | None = None
     production_output_id: UUID | None = None
-    shift_report_id: UUID | None = None
 
     check_datetime: datetime
     check_type: QualityCheckType
@@ -61,7 +60,6 @@ class QualityCheckUpdate(BaseModel):
     production_order_id: UUID | None = None
     production_order_item_id: UUID | None = None
     production_output_id: UUID | None = None
-    shift_report_id: UUID | None = None
 
     notes: str | None = None
 
@@ -97,7 +95,6 @@ class QualityCheckListItem(BaseModel):
     qty_rejected: int
     production_order_id: UUID | None
     production_output_id: UUID | None
-    shift_report_id: UUID | None
     created_at: ISODatetime
     updated_at: ISODatetime
 

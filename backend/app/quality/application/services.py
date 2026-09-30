@@ -60,8 +60,8 @@ class QualityCheckService:
         tenant: TenantContext,
         data: QualityCheckCreate,
     ) -> QualityCheck:
-        # Soft check: at least one of production_order_id / production_output_id /
-        # shift_report_id should be provided. Not enforced in v0.1 — promoted in QUAL-002.
+        # Soft check: at least one of production_order_id / production_output_id
+        # should be provided. Not enforced in v0.1 — promoted in QUAL-002.
         self._validate_production_refs(tenant.organization_id, data)
 
         inspection_code = self._generate_inspection_code(tenant.organization_id)
@@ -94,7 +94,6 @@ class QualityCheckService:
         status=None,
         result=None,
         production_order_id: UUID | None = None,
-        shift_report_id: UUID | None = None,
         check_date: date | None = None,
     ) -> list[QualityCheck]:
         return self.checks.list_by_organization(
@@ -103,7 +102,6 @@ class QualityCheckService:
             status=status,
             result=result,
             production_order_id=production_order_id,
-            shift_report_id=shift_report_id,
             check_date=check_date,
         )
 
@@ -159,10 +157,6 @@ class QualityCheckService:
                 production_output_id=payload.get(
                     "production_output_id",
                     quality_check.production_output_id,
-                ),
-                shift_report_id=payload.get(
-                    "shift_report_id",
-                    quality_check.shift_report_id,
                 ),
             ),
         )
@@ -224,13 +218,6 @@ class QualityCheckService:
                 data.production_output_id,
                 organization_id,
                 "production_output_id",
-            )
-        if data.shift_report_id is not None:
-            self._assert_production_row_belongs_to_org(
-                "production_shift_reports",
-                data.shift_report_id,
-                organization_id,
-                "shift_report_id",
             )
         if data.production_order_item_id is not None:
             # Items are validated via their parent order's org — join needed.

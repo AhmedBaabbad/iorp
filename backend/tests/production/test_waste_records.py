@@ -11,12 +11,11 @@ from app.production.domain.enums import (
     ProductionOrderPriority,
     ProductionOrderStatus,
     ShiftDefinitionStatus,
-    ShiftReportStatus,
     ShiftType,
     WorkCenterStatus,
     WorkCenterType,
 )
-from app.production.infrastructure.models import ProductionOrder, ShiftDefinition, ShiftReport, WorkCenter
+from app.production.infrastructure.models import ProductionOrder, ShiftDefinition, WorkCenter
 from tests.production.conftest import grant_production_role
 
 
@@ -93,17 +92,6 @@ def _base_item(**overrides) -> dict:
     return payload
 
 
-def _base_shift_report(work_center_id: str, shift_definition_id: str, **overrides) -> dict:
-    payload = {
-        "work_center_id": work_center_id,
-        "shift_definition_id": shift_definition_id,
-        "report_date": "2026-07-01",
-        "summary": "Morning shift summary",
-    }
-    payload.update(overrides)
-    return payload
-
-
 def _base_waste(production_order_id: str, work_center_id: str, **overrides) -> dict:
     payload = {
         "production_order_id": production_order_id,
@@ -151,16 +139,6 @@ def _create_item(client, auth_headers, production_order_id: str, **overrides):
     resp = client.post(
         _items_url(production_order_id),
         json=_base_item(**overrides),
-        headers=auth_headers,
-    )
-    assert resp.status_code == 201
-    return resp
-
-
-def _create_shift_report(client, auth_headers, work_center_id: str, shift_definition_id: str, **overrides):
-    resp = client.post(
-        "/api/v1/production/shift-reports",
-        json=_base_shift_report(work_center_id, shift_definition_id, **overrides),
         headers=auth_headers,
     )
     assert resp.status_code == 201
@@ -240,28 +218,6 @@ def _create_foreign_production_order(
     return production_order
 
 
-def _create_foreign_shift_report(
-    db,
-    org: Organization,
-    user: User,
-    work_center: WorkCenter,
-    shift_definition: ShiftDefinition,
-) -> ShiftReport:
-    shift_report = ShiftReport(
-        organization_id=org.id,
-        work_center_id=work_center.id,
-        shift_definition_id=shift_definition.id,
-        report_date=date(2026, 7, 1),
-        status=ShiftReportStatus.DRAFT,
-        summary="Foreign shift summary",
-        created_by_user_id=user.id,
-    )
-    db.add(shift_report)
-    db.commit()
-    db.refresh(shift_report)
-    return shift_report
-
-
 @pytest.fixture
 def work_center(client, auth_headers):
     return _create_work_center(client, auth_headers).json()
@@ -282,11 +238,6 @@ def production_order_item(client, auth_headers, production_order):
     return _create_item(client, auth_headers, production_order["id"]).json()
 
 
-@pytest.fixture
-def shift_report(client, auth_headers, work_center, shift_definition):
-    return _create_shift_report(client, auth_headers, work_center["id"], shift_definition["id"]).json()
-
-
 def test_create_waste_record_minimal(client, auth_headers, production_order, work_center):
     resp = client.post(
         WASTE_BASE,
@@ -298,7 +249,7 @@ def test_create_waste_record_minimal(client, auth_headers, production_order, wor
     data = resp.json()
     assert data["organization_id"] is not None
     assert data["created_by_user_id"] is not None
-    assert data["shift_report_id"] is None
+    assert "shift_report_id" not in data  # shift reports were removed
     assert data["production_order_item_id"] is None
     assert data["reason_code"] is None
     assert data["notes"] is None
@@ -309,7 +260,6 @@ def test_create_waste_record_full(
     auth_headers,
     production_order,
     work_center,
-    shift_report,
     production_order_item,
 ):
     resp = client.post(
@@ -317,7 +267,6 @@ def test_create_waste_record_full(
         json=_base_waste(
             production_order["id"],
             work_center["id"],
-            shift_report_id=shift_report["id"],
             production_order_item_id=production_order_item["id"],
             waste_date="2026-07-02",
             quantity_wasted="15.75",
@@ -333,7 +282,6 @@ def test_create_waste_record_full(
     data = resp.json()
     assert data["production_order_id"] == production_order["id"]
     assert data["work_center_id"] == work_center["id"]
-    assert data["shift_report_id"] == shift_report["id"]
     assert data["production_order_item_id"] == production_order_item["id"]
     assert data["waste_date"] == "2026-07-02"
     assert data["quantity_wasted"] == "15.75"
@@ -383,26 +331,6 @@ def test_create_wrong_org_work_center_rejected(client, db, auth_headers, product
     resp = client.post(
         WASTE_BASE,
         json=_base_waste(production_order["id"], str(foreign_wc.id)),
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 400
-
-
-def test_create_wrong_org_shift_report_rejected(client, db, auth_headers, production_order, work_center):
-    other_org = _create_org(db, code="waste-foreign-report-org")
-    other_user = _create_user(db, other_org, email="waste-foreign-report@example.com")
-    foreign_wc = _create_foreign_work_center(db, other_org)
-    foreign_sd = _create_foreign_shift_definition(db, other_org, foreign_wc)
-    foreign_report = _create_foreign_shift_report(db, other_org, other_user, foreign_wc, foreign_sd)
-
-    resp = client.post(
-        WASTE_BASE,
-        json=_base_waste(
-            production_order["id"],
-            work_center["id"],
-            shift_report_id=str(foreign_report.id),
-        ),
         headers=auth_headers,
     )
 
@@ -477,26 +405,6 @@ def test_list_filter_by_production_order_id(client, auth_headers, production_ord
 
     resp = client.get(
         f"{WASTE_BASE}?production_order_id={production_order['id']}",
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 200
-    assert len(resp.json()) == 1
-    assert resp.json()[0]["id"] == first.json()["id"]
-
-
-def test_list_filter_by_shift_report_id(client, auth_headers, production_order, work_center, shift_report):
-    first = _create_waste(
-        client,
-        auth_headers,
-        production_order["id"],
-        work_center["id"],
-        shift_report_id=shift_report["id"],
-    )
-    _create_waste(client, auth_headers, production_order["id"], work_center["id"])
-
-    resp = client.get(
-        f"{WASTE_BASE}?shift_report_id={shift_report['id']}",
         headers=auth_headers,
     )
 

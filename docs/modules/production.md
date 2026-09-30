@@ -112,7 +112,6 @@ Records actual produced quantity for a production order on a specific work cente
 | organization_id | UUID FK → foundation_organizations | Tenant scope |
 | production_order_id | UUID FK → production_orders | |
 | work_center_id | UUID FK → production_work_centers | Required (D2) — may differ from order's planned WC |
-| shift_report_id | UUID FK nullable → production_shift_reports | |
 | production_order_item_id | UUID FK nullable → production_order_items | Cascaded tenant check if provided |
 | output_date | Date | |
 | recorded_at | DateTime(tz) nullable | |
@@ -132,7 +131,6 @@ Records a period of unplanned or planned machine downtime. `status` and `duratio
 | id | UUID PK | |
 | organization_id | UUID FK → foundation_organizations | Tenant scope |
 | work_center_id | UUID FK → production_work_centers | Required (D2) |
-| shift_report_id | UUID FK nullable → production_shift_reports | |
 | production_order_id | UUID FK nullable → production_orders | |
 | start_time | DateTime(tz) | |
 | end_time | DateTime(tz) nullable | |
@@ -156,7 +154,6 @@ Records scrapped material during production. Static fact record — no status fi
 | organization_id | UUID FK → foundation_organizations | Tenant scope |
 | production_order_id | UUID FK → production_orders | |
 | work_center_id | UUID FK → production_work_centers | Required (D2) |
-| shift_report_id | UUID FK nullable → production_shift_reports | |
 | production_order_item_id | UUID FK nullable → production_order_items | |
 | waste_date | Date | |
 | quantity_wasted | Numeric(14,2) | Must be `> 0` (B9, Pydantic `Field(gt=0)`) |

@@ -36,7 +36,6 @@ def create_downtime_event(
     dependencies=[Depends(require_permission("production:downtime_events:read"))])
 def list_downtime_events(
     work_center_id: UUID | None = Query(default=None),
-    shift_report_id: UUID | None = Query(default=None),
     production_order_id: UUID | None = Query(default=None),
     status: DowntimeStatus | None = Query(default=None),
     category: DowntimeCategory | None = Query(default=None),
@@ -47,7 +46,6 @@ def list_downtime_events(
     return service.list_downtime_events(
         tenant,
         work_center_id=work_center_id,
-        shift_report_id=shift_report_id,
         production_order_id=production_order_id,
         status=status,
         category=category,

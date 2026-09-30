@@ -34,7 +34,6 @@ from app.production.api.routes_production_outputs import router as production_ou
 from app.production.api.routes_production_orders import router as production_orders_router
 from app.production.api.routes_planning_orders import router as planning_orders_router
 from app.production.api.routes_shift_definitions import router as shift_definitions_router
-from app.production.api.routes_shift_reports import router as shift_reports_router
 from app.production.api.routes_waste_records import router as waste_records_router
 from app.production.api.routes_work_centers import router as work_centers_router
 from app.quality.api.routes_non_conformance_items import router as non_conformance_items_router
@@ -115,7 +114,6 @@ app.include_router(shift_definitions_router, prefix=f"{settings.api_prefix}/prod
 app.include_router(production_orders_router, prefix=f"{settings.api_prefix}/production")
 app.include_router(planning_orders_router, prefix=f"{settings.api_prefix}/production")
 app.include_router(production_order_items_router, prefix=f"{settings.api_prefix}/production")
-app.include_router(shift_reports_router, prefix=f"{settings.api_prefix}/production")
 app.include_router(production_outputs_router, prefix=f"{settings.api_prefix}/production")
 app.include_router(downtime_events_router, prefix=f"{settings.api_prefix}/production")
 app.include_router(waste_records_router, prefix=f"{settings.api_prefix}/production")

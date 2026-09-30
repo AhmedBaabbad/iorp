@@ -45,7 +45,6 @@ export type UpdateWorkCenterRequest = {
 export type WorkCenterDeleteSummary = {
   production_orders_count: number;
   shifts_count: number;
-  shift_reports_count: number;
   downtime_records_count: number;
   waste_records_count: number;
   production_outputs_count: number;

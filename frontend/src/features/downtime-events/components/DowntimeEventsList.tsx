@@ -30,7 +30,6 @@ import {
 
 type FilterValues = {
   work_center_id: string;
-  shift_report_id: string;
   production_order_id: string;
   status: "" | DowntimeStatus;
   category: "" | DowntimeCategory;
@@ -77,7 +76,6 @@ const styles: Record<string, CSSProperties> = {
 
 const defaultFilters: FilterValues = {
   work_center_id: "",
-  shift_report_id: "",
   production_order_id: "",
   status: "",
   category: "",
@@ -223,14 +221,6 @@ export function DowntimeEventsList() {
           </select>
         </label>
 
-        <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>Shift Report ID</span>
-          <input
-            style={sharedStyles.input}
-            value={filters.shift_report_id}
-            onChange={(event) => updateFilter("shift_report_id", event.target.value)}
-          />
-        </label>
       </section>
 
       {isLoading ? (
@@ -317,7 +307,6 @@ export function DowntimeEventsList() {
 function toApiFilters(filters: FilterValues): DowntimeEventListFilters {
   return {
     work_center_id: filters.work_center_id || undefined,
-    shift_report_id: filters.shift_report_id || undefined,
     production_order_id: filters.production_order_id || undefined,
     status: filters.status || undefined,
     category: filters.category || undefined,

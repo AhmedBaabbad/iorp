@@ -274,9 +274,6 @@ export function ShiftsList() {
               <>
                 <p style={styles.modalBody}>{t("delete.blockedMessage")}</p>
                 <ul style={{ margin: 0, padding: "0 0 0 20px", color: "var(--text-muted)", fontSize: "14px", lineHeight: "1.8" }}>
-                  {pendingDelete.impact.shift_reports > 0 ? (
-                    <li>{t("delete.shiftReportsCount", { count: pendingDelete.impact.shift_reports })}</li>
-                  ) : null}
                   {pendingDelete.impact.production_orders > 0 ? (
                     <li>{t("delete.productionOrdersCount", { count: pendingDelete.impact.production_orders })}</li>
                   ) : null}

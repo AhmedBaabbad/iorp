@@ -211,13 +211,6 @@
       "inactive": "غير نشط"
     }
   },
-  "shiftReport": {
-    "status": {
-      "draft": "مسودة",
-      "submitted": "مُرسل",
-      "approved": "معتمد"
-    }
-  },
   "productionOutput": {
     "status": {
       "recorded": "مسجل",

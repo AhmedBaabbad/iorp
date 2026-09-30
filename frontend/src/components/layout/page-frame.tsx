@@ -282,7 +282,6 @@ const staticNavGroups: StaticNavGroup[] = [
       { href: "/production/planning", labelKey: "links.planning", permission: "production:planning:read" },
       { href: "/production-orders", labelKey: "links.productionOrders" },
       
-      { href: "/shift-reports", labelKey: "links.shiftReports" },
       { href: "/production-outputs", labelKey: "links.productionOutputs" },
       { href: "/downtime-events", labelKey: "links.downtimeEvents" },
       { href: "/waste-records", labelKey: "links.wasteRecords" },

@@ -211,13 +211,6 @@
       "inactive": "Inactive"
     }
   },
-  "shiftReport": {
-    "status": {
-      "draft": "Draft",
-      "submitted": "Submitted",
-      "approved": "Approved"
-    }
-  },
   "productionOutput": {
     "status": {
       "recorded": "Recorded",

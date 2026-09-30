@@ -37,10 +37,11 @@ Order status is changed only by `OrderStatusService` (`backend/app/production/ap
 
 ## Dates and automation
 
+- Planned dates are the factory's local days: "today" is taken in the organization's timezone, never UTC.
 - Planned dates never change status. The late flags are computed:
   - `start_overdue`: draft or released, and past the planned start.
   - `finish_overdue`: not yet completed, and past the planned end.
 - Date-based start is opt-in. `PRODUCTION_AUTO_START_BY_DATE=true` runs an in-process loop every `PRODUCTION_AUTO_START_INTERVAL_MINUTES`. It moves due `released` orders to `in_progress` with trigger `schedule`. It is idempotent and skips locked rows.
-- `OrderStatusService.start_from_activity(order_id, source)` is the extension point for starting an order on its first recorded production activity. It is not wired yet; shift reports and outputs will call it once they are revised.
+- `OrderStatusService.start_from_activity(order_id, source)` is the extension point for starting an order on its first recorded production activity. It is not wired yet; production outputs will call it once they are revised.
 
 Migration: `f6a1b2h0` adds the `on_hold`/`closed` enum values, the actual dates, `status_version`, the history table, and the new permissions. The new permissions are granted to every role holding `production:production_orders:write`.

@@ -30,7 +30,6 @@ from app.production.domain.enums import (
     ProductionOrderPriority,
     ProductionOrderStatus,
     ShiftDefinitionStatus,
-    ShiftReportStatus,
     ShiftType,
     WasteCategory,
     WorkCenterStatus,
@@ -150,12 +149,6 @@ class ShiftDefinition(Base):
         nullable=False,
         default=utc_now,
         onupdate=utc_now,
-    )
-
-    shift_reports: Mapped[list["ShiftReport"]] = relationship(
-        "ShiftReport",
-        foreign_keys="[ShiftReport.shift_definition_id]",
-        cascade="all, delete-orphan",
     )
 
 
@@ -309,91 +302,12 @@ class ProductionOrderItem(Base):
     )
 
 
-class ShiftReport(Base):
-    # Status semantics:
-    # draft = report is open, shift execution may still be in progress.
-    # submitted = shift has ended, report is closed and pending approval.
-    # approved = report has been reviewed and approved by management.
-    #
-    # shift_started_at and shift_ended_at are intentionally present in this simplified v0.1
-    # baseline so future production output, downtime, and waste records can correlate to the
-    # actual execution window without changing the core report schema.
-    #
-    # shift_definition_id references the recurring ShiftDefinition time template, not a live
-    # shift execution instance.
-    __tablename__ = "production_shift_reports"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
-    organization_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("foundation_organizations.id"),
-        nullable=False,
-        index=True,
-    )
-    work_center_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("production_work_centers.id"),
-        nullable=False,
-        index=True,
-    )
-    shift_definition_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("production_shift_definitions.id"),
-        nullable=False,
-        index=True,
-    )
-    production_order_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("production_orders.id"),
-        nullable=True,
-        index=True,
-    )
-    report_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
-    shift_started_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
-    shift_ended_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
-    status: Mapped[ShiftReportStatus] = mapped_column(
-        SqlEnum(
-            ShiftReportStatus,
-            name="production_shift_report_status",
-            values_callable=enum_values,
-        ),
-        nullable=False,
-        default=ShiftReportStatus.DRAFT,
-    )
-    summary: Mapped[str] = mapped_column(Text, nullable=False)
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_by_user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("foundation_users.id"),
-        nullable=False,
-        index=True,
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        TZDateTime,
-        nullable=False,
-        default=utc_now,
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        TZDateTime,
-        nullable=False,
-        default=utc_now,
-        onupdate=utc_now,
-    )
-
-
 class ProductionOutput(Base):
     # work_center_id is stored at output level because actual production may run on a
     # different line than the planned work center on the ProductionOrder header.
     #
     # output_date is the calendar reporting date; recorded_at is the exact optional timestamp
     # for a specific output entry. Keeping both supports multiple entries within one shift.
-    #
-    # shift_report_id present = output is tied to documented shift context.
-    # shift_report_id absent = output was recorded directly against the order.
     #
     # Quality quantities such as approved, rejected, and rework are intentionally excluded
     # from this Production baseline; they belong to future Quality integration.
@@ -420,12 +334,6 @@ class ProductionOutput(Base):
         UUID(as_uuid=True),
         ForeignKey("production_work_centers.id"),
         nullable=False,
-        index=True,
-    )
-    shift_report_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("production_shift_reports.id"),
-        nullable=True,
         index=True,
     )
     production_order_item_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -492,12 +400,6 @@ class DowntimeEvent(Base):
         UUID(as_uuid=True),
         ForeignKey("production_work_centers.id"),
         nullable=False,
-        index=True,
-    )
-    shift_report_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("production_shift_reports.id"),
-        nullable=True,
         index=True,
     )
     production_order_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -580,12 +482,6 @@ class WasteRecord(Base):
         UUID(as_uuid=True),
         ForeignKey("production_work_centers.id"),
         nullable=False,
-        index=True,
-    )
-    shift_report_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("production_shift_reports.id"),
-        nullable=True,
         index=True,
     )
     production_order_item_id: Mapped[uuid.UUID | None] = mapped_column(

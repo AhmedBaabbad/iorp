@@ -7,7 +7,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
 import { getProductionOrders } from "@/features/production-orders";
-import { getShiftReportById } from "@/features/shift-reports";
 import { getWorkCenters } from "@/features/work-centers";
 import { useFormatter } from "@/hooks/useFormatter";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
@@ -29,11 +28,6 @@ import {
 
 type DowntimeEventDetailProps = {
   downtimeEventId: string;
-};
-
-type ShiftReportReference = {
-  id: string;
-  report_date: string;
 };
 
 const styles: Record<string, CSSProperties> = {
@@ -93,7 +87,6 @@ export function DowntimeEventDetail({ downtimeEventId }: DowntimeEventDetailProp
   const messages = useTranslations("messages");
   const fmt = useFormatter();
   const [event, setEvent] = useState<DowntimeEventData | null>(null);
-  const [shiftReport, setShiftReport] = useState<ShiftReportReference | null>(null);
   const [workCenters, setWorkCenters] = useState<WorkCenterOption[]>([]);
   const [productionOrders, setProductionOrders] = useState<ProductionOrderOption[]>([]);
   const [endTime, setEndTime] = useState("");
@@ -113,18 +106,6 @@ export function DowntimeEventDetail({ downtimeEventId }: DowntimeEventDetailProp
 
     try {
       const response = await getDowntimeEventById(downtimeEventId);
-      if (response.shift_report_id) {
-        getShiftReportById(response.shift_report_id)
-          .then((report) => {
-            if (isMountedRef.current) {
-              setShiftReport(report);
-            }
-          })
-          .catch(() => undefined);
-      } else if (isMountedRef.current) {
-        setShiftReport(null);
-      }
-
       const [workCentersResponse, productionOrdersResponse] = await Promise.all([
         getWorkCenters().catch(() => []),
         getProductionOrders().catch(() => []),
@@ -252,13 +233,6 @@ export function DowntimeEventDetail({ downtimeEventId }: DowntimeEventDetailProp
               {formatWorkCenterLabel(workCenters, event.work_center_id)}
             </Link>
           </ReferenceLine>
-          {event.shift_report_id ? (
-            <ReferenceLine label="Shift Report">
-              <Link href={`/shift-reports/${event.shift_report_id}`} style={styles.link}>
-                {shiftReport ? fmt.date(shiftReport.report_date) : event.shift_report_id}
-              </Link>
-            </ReferenceLine>
-          ) : null}
           {event.production_order_id ? (
             <ReferenceLine label="Production Order">
               <Link

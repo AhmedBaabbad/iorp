@@ -19,7 +19,6 @@ export type QualityCheckListFilters = {
   status?: QualityCheckStatus;
   result?: QualityCheckResult;
   production_order_id?: string;
-  shift_report_id?: string;
 };
 
 export type QualityCheckListItem = {
@@ -35,7 +34,6 @@ export type QualityCheckListItem = {
   qty_rejected: number;
   production_order_id: string | null;
   production_output_id: string | null;
-  shift_report_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -50,7 +48,6 @@ export type CreateQualityCheckRequest = {
   production_order_id?: string | null;
   production_order_item_id?: string | null;
   production_output_id?: string | null;
-  shift_report_id?: string | null;
   check_datetime: string;
   check_type: QualityCheckType;
   qty_inspected: number;

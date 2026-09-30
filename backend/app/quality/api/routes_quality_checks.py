@@ -42,7 +42,6 @@ def list_quality_checks(
     check_status: QualityCheckStatus | None = Query(default=None),
     result: QualityCheckResult | None = Query(default=None),
     production_order_id: UUID | None = Query(default=None),
-    shift_report_id: UUID | None = Query(default=None),
     check_date: date | None = Query(default=None),
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
@@ -54,7 +53,6 @@ def list_quality_checks(
         status=check_status,
         result=result,
         production_order_id=production_order_id,
-        shift_report_id=shift_report_id,
         check_date=check_date,
     )
 

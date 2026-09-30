@@ -2,7 +2,6 @@ export type ProductionOutputStatus = "recorded" | "verified" | "posted";
 
 export type ProductionOutputListFilters = {
   production_order_id?: string;
-  shift_report_id?: string;
   work_center_id?: string;
   output_date?: string;
   output_status?: ProductionOutputStatus;
@@ -13,7 +12,6 @@ export type ProductionOutputListItem = {
   organization_id: string;
   production_order_id: string;
   work_center_id: string;
-  shift_report_id: string | null;
   production_order_item_id: string | null;
   output_date: string;
   recorded_at: string | null;
@@ -32,7 +30,6 @@ export type ProductionOutputData = ProductionOutputListItem & {
 export type CreateProductionOutputRequest = {
   production_order_id: string;
   work_center_id: string;
-  shift_report_id?: string | null;
   production_order_item_id?: string | null;
   output_date: string;
   recorded_at?: string | null;

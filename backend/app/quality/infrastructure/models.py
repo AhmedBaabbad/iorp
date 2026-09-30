@@ -93,7 +93,7 @@ class QualityCheck(Base):
     )
 
     # Production context references — plain UUIDs, NO FK constraints (ADR-004).
-    # At least one of production_order_id, production_output_id, or shift_report_id
+    # At least one of production_order_id or production_output_id
     # should be provided. Validated as a soft warning in v0.1.
     production_order_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
@@ -105,11 +105,6 @@ class QualityCheck(Base):
         nullable=True,
     )
     production_output_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        nullable=True,
-        index=True,
-    )
-    shift_report_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         nullable=True,
         index=True,

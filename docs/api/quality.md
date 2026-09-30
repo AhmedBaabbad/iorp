@@ -42,7 +42,6 @@ Create a quality check. `inspection_code`, `status`, and `result` are always aut
   "qty_rejected": 15,
   "production_order_id": "<uuid>",
   "production_output_id": "<uuid>",
-  "shift_report_id": "<uuid>",
   "notes": "optional"
 }
 ```
@@ -58,7 +57,7 @@ Returns `201`.
 ### `GET /quality-checks`
 List quality checks for the current org.
 
-**Query filters:** `check_type`, `check_status`, `result`, `production_order_id`, `shift_report_id`, `check_date`
+**Query filters:** `check_type`, `check_status`, `result`, `production_order_id`, `check_date`
 
 ### `GET /quality-checks/{id}`
 Get a single quality check. Returns `404` if not found or belongs to a different org.

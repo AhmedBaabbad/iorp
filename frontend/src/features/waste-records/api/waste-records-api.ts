@@ -15,10 +15,6 @@ export function getWasteRecords(filters: WasteRecordListFilters = {}) {
     query.set("production_order_id", filters.production_order_id);
   }
 
-  if (filters.shift_report_id) {
-    query.set("shift_report_id", filters.shift_report_id);
-  }
-
   if (filters.work_center_id) {
     query.set("work_center_id", filters.work_center_id);
   }

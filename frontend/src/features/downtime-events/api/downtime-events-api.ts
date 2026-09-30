@@ -16,10 +16,6 @@ export function getDowntimeEvents(filters: DowntimeEventListFilters = {}) {
     query.set("work_center_id", filters.work_center_id);
   }
 
-  if (filters.shift_report_id) {
-    query.set("shift_report_id", filters.shift_report_id);
-  }
-
   if (filters.production_order_id) {
     query.set("production_order_id", filters.production_order_id);
   }

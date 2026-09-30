@@ -22,7 +22,6 @@ import {
 type WasteRecordFormValues = {
   production_order_id: string;
   work_center_id: string;
-  shift_report_id: string;
   production_order_item_id: string;
   waste_date: string;
   quantity_wasted: string;
@@ -81,7 +80,6 @@ const styles: Record<string, CSSProperties> = {
 const defaultValues: WasteRecordFormValues = {
   production_order_id: "",
   work_center_id: "",
-  shift_report_id: "",
   production_order_item_id: "",
   waste_date: "",
   quantity_wasted: "",
@@ -319,16 +317,6 @@ export function WasteRecordForm() {
             </label>
 
             <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>Shift Report ID</span>
-              <input
-                style={sharedStyles.input}
-                value={values.shift_report_id}
-                onChange={(event) => updateField("shift_report_id", event.target.value)}
-                disabled={isSubmitting}
-              />
-            </label>
-
-            <label style={sharedStyles.field}>
               <span style={sharedStyles.label}>Production Order Item ID</span>
               <input
                 style={sharedStyles.input}
@@ -411,7 +399,6 @@ function toCreateRequest(
   return {
     production_order_id: values.production_order_id,
     work_center_id: values.work_center_id,
-    shift_report_id: optionalText(values.shift_report_id) ?? null,
     production_order_item_id: optionalText(values.production_order_item_id) ?? null,
     waste_date: values.waste_date,
     quantity_wasted: quantity,

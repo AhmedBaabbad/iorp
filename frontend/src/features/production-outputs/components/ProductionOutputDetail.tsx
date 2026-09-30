@@ -9,7 +9,6 @@ import { PageFrame } from "@/components/layout/page-frame";
 import { getItemsByOrder } from "@/features/production-order-items";
 import type { ProductionOrderItemListItem } from "@/features/production-order-items";
 import { getProductionOrders } from "@/features/production-orders";
-import { getShiftReportById } from "@/features/shift-reports";
 import { getWorkCenters } from "@/features/work-centers";
 import { useFormatter } from "@/hooks/useFormatter";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
@@ -26,11 +25,6 @@ import {
 
 type ProductionOutputDetailProps = {
   productionOutputId: string;
-};
-
-type ShiftReportReference = {
-  id: string;
-  report_date: string;
 };
 
 const styles: Record<string, CSSProperties> = {
@@ -77,7 +71,6 @@ export function ProductionOutputDetail({
   const messages = useTranslations("messages");
   const fmt = useFormatter();
   const [output, setOutput] = useState<ProductionOutputData | null>(null);
-  const [shiftReport, setShiftReport] = useState<ShiftReportReference | null>(null);
   const [workCenters, setWorkCenters] = useState<WorkCenterOption[]>([]);
   const [productionOrders, setProductionOrders] = useState<ProductionOrderOption[]>([]);
   const [orderItems, setOrderItems] = useState<ProductionOrderItemListItem[]>([]);
@@ -93,18 +86,6 @@ export function ProductionOutputDetail({
         setError(null);
 
         const response = await getProductionOutputById(productionOutputId);
-        if (response.shift_report_id) {
-          getShiftReportById(response.shift_report_id)
-            .then((report) => {
-              if (isMounted) {
-                setShiftReport(report);
-              }
-            })
-            .catch(() => undefined);
-        } else if (isMounted) {
-          setShiftReport(null);
-        }
-
         const [workCentersResponse, productionOrdersResponse, orderItemsResponse] =
           await Promise.all([
             getWorkCenters().catch(() => []),
@@ -221,17 +202,6 @@ export function ProductionOutputDetail({
               {orderItem ? `Line ${orderItem.line_no}` : output.production_order_item_id}
             </ReferenceLine>
           ) : null}
-          {output.shift_report_id ? (
-            <ReferenceLine label="Shift Report">
-              <Link href={`/shift-reports/${output.shift_report_id}`} style={styles.link}>
-                {shiftReport ? fmt.date(shiftReport.report_date) : output.shift_report_id}
-              </Link>
-            </ReferenceLine>
-          ) : (
-            <ReferenceLine label="Shift Report">
-              Recorded directly against order (no shift context)
-            </ReferenceLine>
-          )}
         </section>
 
         <section style={styles.section} aria-label="Notes">

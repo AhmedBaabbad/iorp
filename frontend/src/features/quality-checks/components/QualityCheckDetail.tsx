@@ -12,8 +12,6 @@ import type { ProductionOrderItemListItem } from "@/features/production-order-it
 import { getProductionOutputById } from "@/features/production-outputs";
 import type { ProductionOutputData } from "@/features/production-outputs";
 import { getProductionOrders } from "@/features/production-orders";
-import { getShiftReportById } from "@/features/shift-reports";
-import type { ShiftReportData } from "@/features/shift-reports";
 import { useFormatter } from "@/hooks/useFormatter";
 import { ApiClientError } from "@/lib/api-client";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
@@ -95,7 +93,6 @@ export function QualityCheckDetail({ qualityCheckId }: QualityCheckDetailProps) 
   const [check, setCheck] = useState<QualityCheckData | null>(null);
   const [productionOrders, setProductionOrders] = useState<ProductionOrderOption[]>([]);
   const [productionOutput, setProductionOutput] = useState<ProductionOutputData | null>(null);
-  const [shiftReport, setShiftReport] = useState<ShiftReportData | null>(null);
   const [orderItems, setOrderItems] = useState<ProductionOrderItemListItem[]>([]);
   const [selectedResult, setSelectedResult] = useState<"" | QualityCheckResult>("");
   const [isLoading, setIsLoading] = useState(true);
@@ -127,27 +124,21 @@ export function QualityCheckDetail({ qualityCheckId }: QualityCheckDetailProps) 
         const productionOutputPromise = checkResponse.production_output_id
           ? getProductionOutputById(checkResponse.production_output_id).catch(() => null)
           : Promise.resolve(null);
-        const shiftReportPromise = checkResponse.shift_report_id
-          ? getShiftReportById(checkResponse.shift_report_id).catch(() => null)
-          : Promise.resolve(null);
 
         const [
           productionOrdersResponse,
           orderItemsResponse,
           productionOutputResponse,
-          shiftReportResponse,
         ] = await Promise.all([
           productionOrdersPromise,
           orderItemsPromise,
           productionOutputPromise,
-          shiftReportPromise,
         ]);
 
         if (isMounted) {
           setProductionOrders(productionOrdersResponse);
           setOrderItems(orderItemsResponse);
           setProductionOutput(productionOutputResponse);
-          setShiftReport(shiftReportResponse);
         }
       } catch (caughtError) {
         if (!isMounted) {
@@ -383,21 +374,6 @@ export function QualityCheckDetail({ qualityCheckId }: QualityCheckDetailProps) 
                       {productionOutput
                         ? `${fmt.date(productionOutput.output_date)} - ${fmt.quantity(productionOutput.quantity_produced, productionOutput.unit)}`
                         : shortId(check.production_output_id)}
-                    </Link>
-                  ) : null
-                }
-              />
-              <DetailItem
-                label={t("fields.shiftReport")}
-                value={
-                  check.shift_report_id ? (
-                    <Link
-                      href={`/shift-reports/${check.shift_report_id}`}
-                      style={{ color: "var(--accent-strong)" }}
-                    >
-                      {shiftReport
-                        ? fmt.date(shiftReport.report_date)
-                        : shortId(check.shift_report_id)}
                     </Link>
                   ) : null
                 }

@@ -10,7 +10,6 @@ from app.production.domain.enums import (
     ProductionOutputStatus,
     ProductionOrderPriority,
     ProductionOrderStatus,
-    ShiftReportStatus,
     WasteCategory,
 )
 from app.production.infrastructure.models import (
@@ -19,7 +18,6 @@ from app.production.infrastructure.models import (
     ProductionOrder,
     ProductionOrderItem,
     ShiftDefinition,
-    ShiftReport,
     WasteRecord,
     WorkCenter,
 )
@@ -79,12 +77,6 @@ class WorkCenterRepository:
 
         shifts_count = 0
 
-        shift_reports_count = int(self.db.scalar(
-            select(func.count(ShiftReport.id)).where(
-                ShiftReport.work_center_id == work_center_id,
-            )
-        ) or 0)
-
         downtime_records_count = int(self.db.scalar(
             select(func.count(DowntimeEvent.id)).where(
                 DowntimeEvent.work_center_id == work_center_id,
@@ -106,7 +98,6 @@ class WorkCenterRepository:
         return {
             "production_orders_count": production_orders_count,
             "shifts_count": shifts_count,
-            "shift_reports_count": shift_reports_count,
             "downtime_records_count": downtime_records_count,
             "waste_records_count": waste_records_count,
             "production_outputs_count": production_outputs_count,
@@ -298,56 +289,6 @@ class ProductionOrderItemRepository:
         self.db.delete(item)
 
 
-class ShiftReportRepository:
-    def __init__(self, db: Session) -> None:
-        self.db = db
-
-    def add(self, shift_report: ShiftReport) -> ShiftReport:
-        self.db.add(shift_report)
-        self.db.flush()
-        return shift_report
-
-    def get_by_id(self, organization_id: UUID, shift_report_id: UUID) -> ShiftReport | None:
-        statement = select(ShiftReport).where(
-            ShiftReport.organization_id == organization_id,
-            ShiftReport.id == shift_report_id,
-        )
-        return self.db.scalar(statement)
-
-    def list_by_organization(
-        self,
-        organization_id: UUID,
-        status: ShiftReportStatus | None = None,
-        work_center_id: UUID | None = None,
-        shift_definition_id: UUID | None = None,
-        report_date: date | None = None,
-    ) -> list[ShiftReport]:
-        statement = select(ShiftReport).where(ShiftReport.organization_id == organization_id)
-
-        if status is not None:
-            statement = statement.where(ShiftReport.status == status)
-        if work_center_id is not None:
-            statement = statement.where(ShiftReport.work_center_id == work_center_id)
-        if shift_definition_id is not None:
-            statement = statement.where(ShiftReport.shift_definition_id == shift_definition_id)
-        if report_date is not None:
-            statement = statement.where(ShiftReport.report_date == report_date)
-
-        statement = statement.order_by(
-            ShiftReport.report_date.desc(),
-            ShiftReport.created_at.desc(),
-        )
-        return list(self.db.scalars(statement))
-
-    def count_by_shift_definition(self, shift_definition_id: UUID) -> int:
-        statement = (
-            select(func.count())
-            .select_from(ShiftReport)
-            .where(ShiftReport.shift_definition_id == shift_definition_id)
-        )
-        return self.db.scalar(statement) or 0
-
-
 class ProductionOutputRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -368,7 +309,6 @@ class ProductionOutputRepository:
         self,
         organization_id: UUID,
         production_order_id: UUID | None = None,
-        shift_report_id: UUID | None = None,
         work_center_id: UUID | None = None,
         output_date: date | None = None,
         output_status: ProductionOutputStatus | None = None,
@@ -377,8 +317,6 @@ class ProductionOutputRepository:
 
         if production_order_id is not None:
             statement = statement.where(ProductionOutput.production_order_id == production_order_id)
-        if shift_report_id is not None:
-            statement = statement.where(ProductionOutput.shift_report_id == shift_report_id)
         if work_center_id is not None:
             statement = statement.where(ProductionOutput.work_center_id == work_center_id)
         if output_date is not None:
@@ -414,7 +352,6 @@ class DowntimeEventRepository:
         self,
         organization_id: UUID,
         work_center_id: UUID | None = None,
-        shift_report_id: UUID | None = None,
         production_order_id: UUID | None = None,
         status: DowntimeStatus | None = None,
         category: DowntimeCategory | None = None,
@@ -423,8 +360,6 @@ class DowntimeEventRepository:
 
         if work_center_id is not None:
             statement = statement.where(DowntimeEvent.work_center_id == work_center_id)
-        if shift_report_id is not None:
-            statement = statement.where(DowntimeEvent.shift_report_id == shift_report_id)
         if production_order_id is not None:
             statement = statement.where(DowntimeEvent.production_order_id == production_order_id)
         if status is not None:
@@ -459,7 +394,6 @@ class WasteRecordRepository:
         self,
         organization_id: UUID,
         production_order_id: UUID | None = None,
-        shift_report_id: UUID | None = None,
         work_center_id: UUID | None = None,
         waste_category: WasteCategory | None = None,
         waste_date: date | None = None,
@@ -468,8 +402,6 @@ class WasteRecordRepository:
 
         if production_order_id is not None:
             statement = statement.where(WasteRecord.production_order_id == production_order_id)
-        if shift_report_id is not None:
-            statement = statement.where(WasteRecord.shift_report_id == shift_report_id)
         if work_center_id is not None:
             statement = statement.where(WasteRecord.work_center_id == work_center_id)
         if waste_category is not None:

@@ -1,6 +1,5 @@
 """Allocation acceptance and invariant tests (PROD-PLAN-002)."""
 from copy import deepcopy
-from datetime import date, time
 from decimal import Decimal
 from types import SimpleNamespace
 from uuid import uuid4
@@ -11,7 +10,7 @@ from app.dependencies import get_current_user
 from app.core.tenancy import TenantContext
 from app.commercial.infrastructure.models import Customer
 from app.foundation.infrastructure.models import Organization
-from app.production.infrastructure.models import ProductionDemand, ProductionDemandItem, ProductionOrder, ProductionAllocation, WorkCenter, ShiftReport, ShiftDefinition
+from app.production.infrastructure.models import ProductionDemand, ProductionDemandItem, ProductionOrder, ProductionAllocation, WorkCenter
 
 ROOT = "/api/v1/production"
 PERMISSIONS = frozenset(["production:planning:allocate", "production:orders:create", "production:planning:read", "production:production_orders:read", "production:production_orders:write", "production:work_centers:write"] + [f"production:demands:{a}" for a in ("read", "create", "update")])
@@ -99,8 +98,8 @@ def test_t18_t20_incompatible(env, change):
 def test_t21_t24_t25_t34_t35_model_columns():
     assert "commercial_order_id" not in ProductionOrder.__table__.c
     assert "shift_definition_id" not in ProductionOrder.__table__.c
-    assert "production_order_id" in ShiftReport.__table__.c
-    assert "shift_definition_id" in ShiftReport.__table__.c
+    from app.core.db import Base
+    assert "production_shift_reports" not in Base.metadata.tables  # removed; reports are computed from records
     assert "allocated_quantity" not in ProductionDemandItem.__table__.c
     assert "remaining_quantity" not in ProductionDemandItem.__table__.c
 
@@ -165,17 +164,6 @@ def test_queue_totals_remaining_filter(env):
     assert Decimal(r.json()["items"][0]["total_remaining"]) == 400
     env.create(d, "400")
     assert env.client.get(f"{ROOT}/planning/demands?has_remaining=true").json()["total"] == 0
-
-
-def test_t26_multiple_shift_reports_keep_order_link(env):
-    from uuid import UUID
-    order = env.create(env.demand()).json()
-    shift = ShiftDefinition(organization_id=env.org.id, code="SD", name="Morning", start_time=time(7), end_time=time(15), duration_hours=8, crosses_midnight=False)
-    env.db.add(shift); env.db.flush()
-    for _ in range(2):
-        env.db.add(ShiftReport(organization_id=env.org.id, work_center_id=env.center.id, shift_definition_id=shift.id, production_order_id=UUID(order["id"]), report_date=date.today(), summary="Report", created_by_user_id=env.user.id))
-    env.db.commit()
-    assert env.db.scalar(select(func.count()).select_from(ShiftReport).where(ShiftReport.production_order_id == UUID(order["id"]))) == 2
 
 
 def test_policy_accepts_differing_specs_and_stays_extensible():

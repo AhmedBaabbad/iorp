@@ -37,7 +37,6 @@ def create_waste_record(
     dependencies=[Depends(require_permission("production:waste_records:read"))])
 def list_waste_records(
     production_order_id: UUID | None = Query(default=None),
-    shift_report_id: UUID | None = Query(default=None),
     work_center_id: UUID | None = Query(default=None),
     waste_category: WasteCategory | None = Query(default=None),
     waste_date: date | None = Query(default=None),
@@ -48,7 +47,6 @@ def list_waste_records(
     return service.list_waste_records(
         tenant,
         production_order_id=production_order_id,
-        shift_report_id=shift_report_id,
         work_center_id=work_center_id,
         waste_category=waste_category,
         waste_date=waste_date,

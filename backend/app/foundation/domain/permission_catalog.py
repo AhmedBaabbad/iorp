@@ -46,7 +46,7 @@ RESOURCE_NAMES = {
     "follow_ups": ("Follow-ups", "المتابعات"), "samples": ("Samples", "العينات"),
     "evaluations": ("Evaluations", "التقييمات"), "quotes": ("Quotes", "عروض الأسعار"),
     "orders": ("Orders", "الطلبات"), "work_centers": ("Work Centers", "مراكز العمل"),
-    "production_orders": ("Production Orders", "أوامر الإنتاج"), "shift_reports": ("Shift Reports", "تقارير الورديات"),
+    "production_orders": ("Production Orders", "أوامر الإنتاج"),
     "downtime_events": ("Downtime Events", "أحداث التوقف"), "waste_records": ("Waste Records", "سجلات الهدر"),
     "shift_definitions": ("Shift Definitions", "تعريفات الورديات"), "production_outputs": ("Production Outputs", "مخرجات الإنتاج"),
     "quality_checks": ("Quality Checks", "فحوصات الجودة"), "quality_defects": ("Quality Defects", "عيوب الجودة"),
@@ -128,7 +128,7 @@ COMMERCIAL_PERMISSIONS = _apply_scope_overrides(_resource_permissions("commercia
 
 PRODUCTION_PERMISSIONS = _resource_permissions("production", {
     resource: ("read", "write") for resource in
-    ("work_centers", "production_orders", "shift_reports", "downtime_events", "waste_records", "shift_definitions", "production_outputs")
+    ("work_centers", "production_orders", "downtime_events", "waste_records", "shift_definitions", "production_outputs")
 })
 
 PRODUCTION_PERMISSIONS += _resource_permissions("production", {"demands": ("read", "create", "update", "delete"), "planning": ("read", "sequence", "allocate", "release_allocation"), "orders": ("create", "cancel", "release", "start", "hold", "complete", "close")})

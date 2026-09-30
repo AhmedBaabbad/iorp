@@ -60,12 +60,6 @@ class ShiftDefinitionStatus(str, Enum):
     INACTIVE = "inactive"
 
 
-class ShiftReportStatus(str, Enum):
-    DRAFT = "draft"
-    SUBMITTED = "submitted"
-    APPROVED = "approved"
-
-
 class ProductionOrderStatus(str, Enum):
     # Changed only through domain.order_lifecycle / OrderStatusService.
     DRAFT = "draft"

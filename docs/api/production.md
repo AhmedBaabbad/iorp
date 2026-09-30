@@ -141,40 +141,9 @@ Delete an item. Returns `204`.
 
 ---
 
-## Shift Reports
+## Shift Reports (removed)
 
-### `POST /shift-reports`
-Create a shift report.
-
-**Body:**
-```json
-{
-  "work_center_id": "<uuid>",
-  "shift_definition_id": "<uuid>",
-  "production_order_id": "<uuid>",
-  "report_date": "2026-07-02",
-  "shift_started_at": "2026-07-02T07:00:00Z",
-  "shift_ended_at": "2026-07-02T15:00:00Z",
-  "summary": "optional",
-  "notes": "optional"
-}
-```
-Returns `201`.
-
-**Auto-set:** When `status` is patched to `submitted` and `shift_ended_at` is `null`, the service sets `shift_ended_at = utc_now()` automatically.
-
-### `GET /shift-reports`
-List shift reports.
-
-**Query filters:** `work_center_id`, `production_order_id`, `status`, `report_date`
-
-### `GET /shift-reports/{id}`
-Get a single shift report.
-
-### `PATCH /shift-reports/{id}`
-Update a shift report.
-
----
+The hand-written shift report was removed (migration `f6a1b2h1`). Shift and order reports will be computed from the actual records: rosters, outputs, waste, downtime and quality. There is no `/shift-reports` endpoint, and records no longer carry `shift_report_id`.
 
 ## Production Outputs
 
@@ -186,7 +155,6 @@ Record produced quantity.
 {
   "production_order_id": "<uuid>",
   "work_center_id": "<uuid>",
-  "shift_report_id": "<uuid>",
   "production_order_item_id": "<uuid>",
   "output_date": "2026-07-02",
   "recorded_at": "2026-07-02T11:00:00Z",
@@ -200,7 +168,7 @@ Record produced quantity.
 ### `GET /production-outputs`
 List production outputs.
 
-**Query filters:** `production_order_id`, `shift_report_id`, `work_center_id`, `output_date`, `output_status`
+**Query filters:** `production_order_id`, `work_center_id`, `output_date`, `output_status`
 
 ### `GET /production-outputs/{id}`
 Get a single production output.
@@ -222,7 +190,6 @@ Record a downtime event. `status` and `duration_minutes` are always auto-derived
   "start_time": "2026-07-02T13:30:00Z",
   "category": "machine",
   "reason_code": "Hydraulic pump pressure drop",
-  "shift_report_id": "<uuid>",
   "production_order_id": "<uuid>"
 }
 ```
@@ -247,7 +214,7 @@ Record a downtime event. `status` and `duration_minutes` are always auto-derived
 ### `GET /downtime-events`
 List downtime events.
 
-**Query filters:** `work_center_id`, `shift_report_id`, `production_order_id`, `status`, `category`, `start_date`
+**Query filters:** `work_center_id`, `production_order_id`, `status`, `category`, `start_date`
 
 ### `GET /downtime-events/{id}`
 Get a single downtime event.
@@ -267,7 +234,6 @@ Record a waste/scrap event. WasteRecord has no status field.
 {
   "production_order_id": "<uuid>",
   "work_center_id": "<uuid>",
-  "shift_report_id": "<uuid>",
   "production_order_item_id": "<uuid>",
   "waste_date": "2026-07-02",
   "quantity_wasted": "25.00",
@@ -282,7 +248,7 @@ Record a waste/scrap event. WasteRecord has no status field.
 ### `GET /waste-records`
 List waste records.
 
-**Query filters:** `production_order_id`, `shift_report_id`, `work_center_id`, `waste_category`, `waste_date`
+**Query filters:** `production_order_id`, `work_center_id`, `waste_category`, `waste_date`
 
 ### `GET /waste-records/{id}`
 Get a single waste record.

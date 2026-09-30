@@ -9,7 +9,6 @@ import { PageFrame } from "@/components/layout/page-frame";
 import { getItemsByOrder } from "@/features/production-order-items";
 import type { ProductionOrderItemListItem } from "@/features/production-order-items";
 import { getProductionOrders } from "@/features/production-orders";
-import { getShiftReportById } from "@/features/shift-reports";
 import { getWorkCenters } from "@/features/work-centers";
 import { useFormatter } from "@/hooks/useFormatter";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
@@ -26,11 +25,6 @@ import {
 
 type WasteRecordDetailProps = {
   wasteRecordId: string;
-};
-
-type ShiftReportReference = {
-  id: string;
-  report_date: string;
 };
 
 const styles: Record<string, CSSProperties> = {
@@ -75,7 +69,6 @@ export function WasteRecordDetail({ wasteRecordId }: WasteRecordDetailProps) {
   const messages = useTranslations("messages");
   const fmt = useFormatter();
   const [record, setRecord] = useState<WasteRecordData | null>(null);
-  const [shiftReport, setShiftReport] = useState<ShiftReportReference | null>(null);
   const [workCenters, setWorkCenters] = useState<WorkCenterOption[]>([]);
   const [productionOrders, setProductionOrders] = useState<ProductionOrderOption[]>([]);
   const [orderItems, setOrderItems] = useState<ProductionOrderItemListItem[]>([]);
@@ -91,18 +84,6 @@ export function WasteRecordDetail({ wasteRecordId }: WasteRecordDetailProps) {
         setError(null);
 
         const response = await getWasteRecordById(wasteRecordId);
-        if (response.shift_report_id) {
-          getShiftReportById(response.shift_report_id)
-            .then((report) => {
-              if (isMounted) {
-                setShiftReport(report);
-              }
-            })
-            .catch(() => undefined);
-        } else if (isMounted) {
-          setShiftReport(null);
-        }
-
         const [workCentersResponse, productionOrdersResponse, orderItemsResponse] =
           await Promise.all([
             getWorkCenters().catch(() => []),
@@ -210,13 +191,6 @@ export function WasteRecordDetail({ wasteRecordId }: WasteRecordDetailProps) {
           {record.production_order_item_id ? (
             <ReferenceLine label="Production Order Item">
               {orderItem ? `Line ${orderItem.line_no}` : record.production_order_item_id}
-            </ReferenceLine>
-          ) : null}
-          {record.shift_report_id ? (
-            <ReferenceLine label="Shift Report">
-              <Link href={`/shift-reports/${record.shift_report_id}`} style={styles.link}>
-                {shiftReport ? fmt.date(shiftReport.report_date) : record.shift_report_id}
-              </Link>
             </ReferenceLine>
           ) : null}
         </section>

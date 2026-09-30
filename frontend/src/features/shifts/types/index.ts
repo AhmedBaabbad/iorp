@@ -42,7 +42,6 @@ export type UpdateShiftRequest = {
 };
 
 export type ShiftDeletionImpact = {
-  shift_reports: number;
   production_orders: number;
   is_blocked: boolean;
 };

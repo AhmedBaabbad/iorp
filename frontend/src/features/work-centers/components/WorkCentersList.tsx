@@ -261,7 +261,6 @@ export function WorkCentersList() {
   const hasRelatedData = deleteSummary
     ? deleteSummary.production_orders_count > 0 ||
       deleteSummary.shifts_count > 0 ||
-      deleteSummary.shift_reports_count > 0 ||
       deleteSummary.downtime_records_count > 0 ||
       deleteSummary.waste_records_count > 0 ||
       deleteSummary.production_outputs_count > 0
@@ -292,11 +291,6 @@ export function WorkCentersList() {
                     {deleteSummary.shifts_count > 0 ? (
                       <p style={styles.modalSummaryItem}>
                         {t("deleteRelatedShifts", { count: deleteSummary.shifts_count })}
-                      </p>
-                    ) : null}
-                    {deleteSummary.shift_reports_count > 0 ? (
-                      <p style={styles.modalSummaryItem}>
-                        {t("deleteRelatedShiftReports", { count: deleteSummary.shift_reports_count })}
                       </p>
                     ) : null}
                     {deleteSummary.downtime_records_count > 0 ? (

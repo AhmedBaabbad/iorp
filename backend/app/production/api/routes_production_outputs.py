@@ -37,7 +37,6 @@ def create_production_output(
     dependencies=[Depends(require_permission("production:production_outputs:read"))])
 def list_production_outputs(
     production_order_id: UUID | None = Query(default=None),
-    shift_report_id: UUID | None = Query(default=None),
     work_center_id: UUID | None = Query(default=None),
     output_date: date | None = Query(default=None),
     output_status: ProductionOutputStatus | None = Query(default=None),
@@ -48,7 +47,6 @@ def list_production_outputs(
     return service.list_production_outputs(
         tenant,
         production_order_id=production_order_id,
-        shift_report_id=shift_report_id,
         work_center_id=work_center_id,
         output_date=output_date,
         output_status=output_status,

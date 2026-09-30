@@ -21,8 +21,6 @@
       "productionOrderItemId": "معرف بند أمر الإنتاج",
       "productionOutput": "مخرج الإنتاج",
       "productionOutputId": "معرف مخرج الإنتاج",
-      "shiftReport": "تقرير الوردية",
-      "shiftReportId": "معرف تقرير الوردية",
       "notes": "ملاحظات"
     },
     "subtitle": "فحص المخرجات الإنتاجية وتتبع حالة دورة الحياة بشكل منفصل عن النتيجة.",

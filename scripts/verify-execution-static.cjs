@@ -5,7 +5,7 @@ const root = path.resolve(__dirname, '..');
 const out = path.join(root, 'docs/verification/prod-exec-foundation-001');
 const jobs = {
  typescript: ['node_modules/typescript/bin/tsc', '--noEmit', '--incremental', 'false'],
- eslint: ['node_modules/eslint/bin/eslint.js', 'src/features/production-execution', 'src/features/shifts', 'src/features/shift-reports/components/ShiftReportForm.tsx', 'src/app/shift-rosters', 'src/features/production-orders/components/ProductionOrderDetail.tsx'],
+ eslint: ['node_modules/eslint/bin/eslint.js', 'src/features/production-execution', 'src/features/shifts', 'src/app/shift-rosters', 'src/features/production-orders/components/ProductionOrderDetail.tsx'],
  i18n: ['scripts/check-i18n.mjs'],
 };
 const results = {};

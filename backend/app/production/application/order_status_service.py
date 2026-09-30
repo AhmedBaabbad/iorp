@@ -4,8 +4,11 @@ Rules come from domain.order_lifecycle; this service adds locking, permissions (
 supplied by the API layer), preconditions, actual dates, history and the audit log.
 """
 from collections.abc import Callable
+from datetime import datetime, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from sqlalchemy import select
+from app.core.db import Base
 from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.core.utils import utc_now
 from app.production.application.allocation_service import AllocationLifecycleService
@@ -16,6 +19,17 @@ from app.production.infrastructure.demand_repository import ProductionDemandRepo
 from app.production.infrastructure.models import ProductionOrder, ProductionOrderStatusHistory
 
 PermissionCheck = Callable[[str], bool]
+
+
+def organization_today(db, organization_id):
+    """The calendar date at the organization's location; planned dates are local, not UTC."""
+    # Shared-table read, as elsewhere in production: no foundation model import.
+    organizations = Base.metadata.tables["foundation_organizations"]
+    zone = db.scalar(select(organizations.c.timezone).where(organizations.c.id == organization_id))
+    try:
+        return datetime.now(ZoneInfo(zone or "UTC")).date()
+    except ZoneInfoNotFoundError:
+        return utc_now().date()
 
 
 def _record(db, order, action, *, trigger, actor_user_id, reason, now):
@@ -43,7 +57,7 @@ class OrderStatusService:
 
     def describe(self, order, can: PermissionCheck):
         """Lifecycle facts for the UI, including only the actions this user may take now."""
-        today = utc_now().date()
+        today = organization_today(self.db, self.org_id)
         return dict(
             status_version=order.status_version, actual_start_at=order.actual_start_at, actual_end_at=order.actual_end_at,
             start_overdue=lifecycle.start_overdue(order.status, order.planned_start_date, today),
@@ -124,15 +138,23 @@ class OrderStatusService:
         return None
 
 
-def auto_start_due_orders(db, today, now=None):
+def auto_start_due_orders(db, today=None, now=None):
     """Scheduled job: start released orders whose planned start date has come. Idempotent.
 
     Only runs when PRODUCTION_AUTO_START_BY_DATE is enabled. Rows locked by a user action
     are skipped and picked up on the next run; an order already started is never touched.
     """
     started = 0
-    ids = list(db.scalars(select(ProductionOrder.id).where(ProductionOrder.status == S.RELEASED, ProductionOrder.planned_start_date <= today)))
-    for order_id in ids:
+    # Each organization's own date decides; `today` pins the date for every organization (tests, backfills).
+    horizon = today or (utc_now() + timedelta(days=1)).date()
+    candidates = db.execute(select(ProductionOrder.id, ProductionOrder.organization_id, ProductionOrder.planned_start_date)
+                            .where(ProductionOrder.status == S.RELEASED, ProductionOrder.planned_start_date <= horizon)).all()
+    local_today = {}
+    for order_id, organization_id, planned_start in candidates:
+        if organization_id not in local_today:
+            local_today[organization_id] = today or organization_today(db, organization_id)
+        if planned_start > local_today[organization_id]:
+            continue
         order = db.scalar(select(ProductionOrder).where(ProductionOrder.id == order_id, ProductionOrder.status == S.RELEASED)
                           .with_for_update(skip_locked=True).execution_options(populate_existing=True))
         if order is None:

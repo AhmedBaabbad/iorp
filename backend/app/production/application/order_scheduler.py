@@ -7,7 +7,6 @@ import asyncio
 import logging
 from app.core.config import settings
 from app.core.db import SessionLocal
-from app.core.utils import utc_now
 from app.production.application.order_status_service import auto_start_due_orders
 
 log = logging.getLogger(__name__)
@@ -15,7 +14,7 @@ log = logging.getLogger(__name__)
 
 def run_once() -> int:
     with SessionLocal() as db:
-        return auto_start_due_orders(db, utc_now().date())
+        return auto_start_due_orders(db)  # each organization's local date
 
 
 async def auto_start_loop(stop: asyncio.Event) -> None:

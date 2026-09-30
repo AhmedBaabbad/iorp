@@ -27,7 +27,6 @@ import {
 
 type FilterValues = {
   production_order_id: string;
-  shift_report_id: string;
   work_center_id: string;
   output_date: string;
   output_status: "" | ProductionOutputStatus;
@@ -74,7 +73,6 @@ const styles: Record<string, CSSProperties> = {
 
 const defaultFilters: FilterValues = {
   production_order_id: "",
-  shift_report_id: "",
   work_center_id: "",
   output_date: "",
   output_status: "",
@@ -206,15 +204,6 @@ export function ProductionOutputsList() {
         </label>
 
         <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>Shift Report ID</span>
-          <input
-            style={sharedStyles.input}
-            value={filters.shift_report_id}
-            onChange={(event) => updateFilter("shift_report_id", event.target.value)}
-          />
-        </label>
-
-        <label style={sharedStyles.field}>
           <span style={sharedStyles.label}>Output Date</span>
           <input
             style={sharedStyles.input}
@@ -307,7 +296,6 @@ export function ProductionOutputsList() {
 function toApiFilters(filters: FilterValues): ProductionOutputListFilters {
   return {
     production_order_id: filters.production_order_id || undefined,
-    shift_report_id: filters.shift_report_id || undefined,
     work_center_id: filters.work_center_id || undefined,
     output_date: filters.output_date || undefined,
     output_status: filters.output_status || undefined,

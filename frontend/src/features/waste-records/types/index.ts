@@ -12,7 +12,6 @@ export type WasteCategory =
 
 export type WasteRecordListFilters = {
   production_order_id?: string;
-  shift_report_id?: string;
   work_center_id?: string;
   waste_category?: WasteCategory;
   waste_date?: string;
@@ -23,7 +22,6 @@ export type WasteRecordListItem = {
   organization_id: string;
   production_order_id: string;
   work_center_id: string;
-  shift_report_id: string | null;
   production_order_item_id: string | null;
   waste_date: string;
   quantity_wasted: string;
@@ -42,7 +40,6 @@ export type WasteRecordData = WasteRecordListItem & {
 export type CreateWasteRecordRequest = {
   production_order_id: string;
   work_center_id: string;
-  shift_report_id?: string | null;
   production_order_item_id?: string | null;
   waste_date: string;
   quantity_wasted: number;

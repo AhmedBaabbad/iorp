@@ -21,8 +21,6 @@
       "productionOrderItemId": "Production Order Item ID",
       "productionOutput": "Production Output",
       "productionOutputId": "Production Output ID",
-      "shiftReport": "Shift Report",
-      "shiftReportId": "Shift Report ID",
       "notes": "Notes"
     },
     "subtitle": "Inspect production output and track lifecycle status separately from result.",

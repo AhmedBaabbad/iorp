@@ -23,8 +23,6 @@ from app.production.api.schemas import (
     ShiftDefinitionCreate,
     ShiftDefinitionUpdate,
     ShiftDeletionImpact,
-    ShiftReportCreate,
-    ShiftReportUpdate,
     WasteRecordCreate,
     WasteRecordUpdate,
     WorkCenterCreate,
@@ -36,7 +34,6 @@ from app.production.domain.enums import (
     ProductionOutputStatus,
     ProductionOrderPriority,
     ProductionOrderStatus,
-    ShiftReportStatus,
     WasteCategory,
     WorkCenterStatus,
 )
@@ -46,7 +43,6 @@ from app.production.infrastructure.models import (
     ProductionOrder,
     ProductionOrderItem,
     ShiftDefinition,
-    ShiftReport,
     WasteRecord,
     WorkCenter,
 )
@@ -56,7 +52,6 @@ from app.production.infrastructure.repositories import (
     ProductionOrderItemRepository,
     ProductionOrderRepository,
     ShiftDefinitionRepository,
-    ShiftReportRepository,
     WasteRecordRepository,
     WorkCenterRepository,
 )
@@ -164,21 +159,10 @@ class WorkCenterService:
         order_ids = list(self.db.scalars(
             select(ProductionOrder.id).where(ProductionOrder.work_center_id == work_center_id)
         ))
-        shift_report_ids = list(self.db.scalars(
-            select(ShiftReport.id).where(ShiftReport.work_center_id == work_center_id)
-        ))
 
         # --- Nullable FK nullification on records from OTHER work centers ---
         if order_ids:
-            # ShiftReports and DowntimeEvents from other WCs referencing our orders
-            self.db.execute(
-                sa_update(ShiftReport)
-                .where(
-                    ShiftReport.production_order_id.in_(order_ids),
-                    ShiftReport.work_center_id != work_center_id,
-                )
-                .values(production_order_id=None)
-            )
+            # DowntimeEvents from other WCs referencing our orders
             self.db.execute(
                 sa_update(DowntimeEvent)
                 .where(
@@ -186,32 +170,6 @@ class WorkCenterService:
                     DowntimeEvent.work_center_id != work_center_id,
                 )
                 .values(production_order_id=None)
-            )
-        if shift_report_ids:
-            # ProductionOutputs, DowntimeEvents, WasteRecords from other WCs referencing our ShiftReports
-            self.db.execute(
-                sa_update(ProductionOutput)
-                .where(
-                    ProductionOutput.shift_report_id.in_(shift_report_ids),
-                    ProductionOutput.work_center_id != work_center_id,
-                )
-                .values(shift_report_id=None)
-            )
-            self.db.execute(
-                sa_update(DowntimeEvent)
-                .where(
-                    DowntimeEvent.shift_report_id.in_(shift_report_ids),
-                    DowntimeEvent.work_center_id != work_center_id,
-                )
-                .values(shift_report_id=None)
-            )
-            self.db.execute(
-                sa_update(WasteRecord)
-                .where(
-                    WasteRecord.shift_report_id.in_(shift_report_ids),
-                    WasteRecord.work_center_id != work_center_id,
-                )
-                .values(shift_report_id=None)
             )
         # --- NOT NULL FK cleanup: delete rows from other WCs that cannot be nullified ---
         if order_ids:
@@ -239,9 +197,6 @@ class WorkCenterService:
         )
         self.db.execute(
             sa_delete(DowntimeEvent).where(DowntimeEvent.work_center_id == work_center_id)
-        )
-        self.db.execute(
-            sa_delete(ShiftReport).where(ShiftReport.work_center_id == work_center_id)
         )
         if order_ids:
             self.db.execute(
@@ -279,7 +234,6 @@ class ShiftDefinitionService:
     def __init__(self, db: Session) -> None:
         self.db = db
         self.shift_definitions = ShiftDefinitionRepository(db)
-        self.shift_reports = ShiftReportRepository(db)
 
     def create_shift_definition(
         self,
@@ -374,12 +328,10 @@ class ShiftDefinitionService:
 
         from app.production.infrastructure.execution_models import ShiftRoster, ProductionRun
         execution_history = any(self.db.scalar(select(model.id).where(model.organization_id == tenant.organization_id, model.shift_definition_id == shift_definition.id).limit(1)) for model in (ShiftRoster, ProductionRun))
-        shift_reports = self.shift_reports.count_by_shift_definition(shift_definition.id)
         production_orders = 0
         return ShiftDeletionImpact(
-            shift_reports=shift_reports,
             production_orders=production_orders,
-            is_blocked=shift_reports > 0 or production_orders > 0 or execution_history,
+            is_blocked=production_orders > 0 or execution_history,
         )
 
     def delete_shift_definition(
@@ -396,10 +348,6 @@ class ShiftDefinitionService:
 
         impact = self.get_deletion_impact(tenant, shift_definition_id)
         if impact and impact.is_blocked:
-            if impact.shift_reports:
-                raise ValueError(
-                    "Cannot delete a shift that has shift reports. Remove the shift reports first.",
-                )
             raise ValueError(
                 "Cannot delete a shift that has roster or production run history.",
             )
@@ -678,157 +626,12 @@ class ProductionOrderItemService:
         return True
 
 
-class ShiftReportService:
-    def __init__(self, db: Session) -> None:
-        self.db = db
-        self.production_orders = ProductionOrderRepository(db)
-        self.shift_definitions = ShiftDefinitionRepository(db)
-        self.shift_reports = ShiftReportRepository(db)
-        self.work_centers = WorkCenterRepository(db)
-
-    def _validate_execution_window(
-        self,
-        shift_started_at: datetime | None,
-        shift_ended_at: datetime | None,
-    ) -> None:
-        if (
-            shift_started_at is not None
-            and shift_ended_at is not None
-            and shift_ended_at < shift_started_at
-        ):
-            raise ValueError("shift_ended_at cannot be before shift_started_at.")
-
-    def _validate_required_links(
-        self,
-        tenant: TenantContext,
-        work_center_id: UUID,
-        shift_definition_id: UUID,
-    ) -> None:
-        work_center = self.work_centers.get_by_id(tenant.organization_id, work_center_id)
-        if work_center is None:
-            raise ValueError("Work center must belong to the current organization.")
-
-        shift_definition = self.shift_definitions.get_by_id(
-            tenant.organization_id,
-            shift_definition_id,
-        )
-        if shift_definition is None:
-            raise ValueError("Shift definition must belong to the current organization.")
-
-    def _validate_optional_production_order(
-        self,
-        tenant: TenantContext,
-        production_order_id: UUID | None,
-    ) -> None:
-        if production_order_id is None:
-            return
-
-        production_order = self.production_orders.get_by_id(tenant.organization_id, production_order_id)
-        if production_order is None:
-            raise ValueError("Production order must belong to the current organization.")
-
-    def create_shift_report(
-        self,
-        tenant: TenantContext,
-        data: ShiftReportCreate,
-    ) -> ShiftReport:
-        self._validate_required_links(tenant, data.work_center_id, data.shift_definition_id)
-        self._validate_optional_production_order(tenant, data.production_order_id)
-        self._validate_execution_window(data.shift_started_at, data.shift_ended_at)
-
-        shift_report = ShiftReport(
-            organization_id=tenant.organization_id,
-            status=ShiftReportStatus.DRAFT,
-            created_by_user_id=tenant.user_id,
-            **data.model_dump(),
-        )
-
-        try:
-            self.shift_reports.add(shift_report)
-            self.db.commit()
-        except IntegrityError as exc:
-            self.db.rollback()
-            raise ValueError("Shift report could not be saved due to invalid data.") from exc
-
-        self.db.refresh(shift_report)
-        return shift_report
-
-    def list_shift_reports(
-        self,
-        tenant: TenantContext,
-        status: ShiftReportStatus | None = None,
-        work_center_id: UUID | None = None,
-        shift_definition_id: UUID | None = None,
-        report_date: date | None = None,
-    ) -> list[ShiftReport]:
-        return self.shift_reports.list_by_organization(
-            tenant.organization_id,
-            status=status,
-            work_center_id=work_center_id,
-            shift_definition_id=shift_definition_id,
-            report_date=report_date,
-        )
-
-    def get_shift_report(
-        self,
-        tenant: TenantContext,
-        shift_report_id: UUID,
-    ) -> ShiftReport | None:
-        return self.shift_reports.get_by_id(tenant.organization_id, shift_report_id)
-
-    def update_shift_report(
-        self,
-        tenant: TenantContext,
-        shift_report_id: UUID,
-        data: ShiftReportUpdate,
-    ) -> ShiftReport | None:
-        shift_report = self.shift_reports.get_by_id(tenant.organization_id, shift_report_id)
-        if shift_report is None:
-            return None
-
-        payload = data.model_dump(exclude_unset=True)
-        if "work_center_id" in payload and payload["work_center_id"] is None:
-            raise ValueError("work_center_id cannot be set to null.")
-        if "shift_definition_id" in payload and payload["shift_definition_id"] is None:
-            raise ValueError("shift_definition_id cannot be set to null.")
-
-        new_work_center_id = payload.get("work_center_id", shift_report.work_center_id)
-        new_shift_definition_id = payload.get(
-            "shift_definition_id",
-            shift_report.shift_definition_id,
-        )
-        self._validate_required_links(tenant, new_work_center_id, new_shift_definition_id)
-
-        if "production_order_id" in payload:
-            self._validate_optional_production_order(tenant, payload["production_order_id"])
-
-        new_started_at = payload.get("shift_started_at", shift_report.shift_started_at)
-        new_ended_at = payload.get("shift_ended_at", shift_report.shift_ended_at)
-        if payload.get("status") == ShiftReportStatus.SUBMITTED and new_ended_at is None:
-            new_ended_at = utc_now()
-            payload["shift_ended_at"] = new_ended_at
-        self._validate_execution_window(new_started_at, new_ended_at)
-
-        for field, value in payload.items():
-            setattr(shift_report, field, value)
-
-        try:
-            self.db.commit()
-        except IntegrityError as exc:
-            self.db.rollback()
-            raise ValueError("Shift report could not be saved due to invalid data.") from exc
-
-        self.db.refresh(shift_report)
-        return shift_report
-
-
 class ProductionOutputService:
     def __init__(self, db: Session) -> None:
         self.db = db
         self.items = ProductionOrderItemRepository(db)
         self.outputs = ProductionOutputRepository(db)
         self.production_orders = ProductionOrderRepository(db)
-        self.shift_reports = ShiftReportRepository(db)
         self.work_centers = WorkCenterRepository(db)
 
     def _validate_positive_quantity(self, quantity: Decimal | None) -> None:
@@ -854,18 +657,6 @@ class ProductionOutputService:
 
         return production_order
 
-    def _validate_optional_shift_report(
-        self,
-        tenant: TenantContext,
-        shift_report_id: UUID | None,
-    ) -> None:
-        if shift_report_id is None:
-            return
-
-        shift_report = self.shift_reports.get_by_id(tenant.organization_id, shift_report_id)
-        if shift_report is None:
-            raise ValueError("Shift report must belong to the current organization.")
-
     def _validate_optional_item(
         self,
         tenant: TenantContext,
@@ -888,7 +679,6 @@ class ProductionOutputService:
     ) -> ProductionOutput:
         self._validate_positive_quantity(data.quantity_produced)
         self._validate_required_links(tenant, data.production_order_id, data.work_center_id)
-        self._validate_optional_shift_report(tenant, data.shift_report_id)
         self._validate_optional_item(tenant, data.production_order_id, data.production_order_item_id)
 
         production_output = ProductionOutput(
@@ -912,7 +702,6 @@ class ProductionOutputService:
         self,
         tenant: TenantContext,
         production_order_id: UUID | None = None,
-        shift_report_id: UUID | None = None,
         work_center_id: UUID | None = None,
         output_date: date | None = None,
         output_status: ProductionOutputStatus | None = None,
@@ -920,7 +709,6 @@ class ProductionOutputService:
         return self.outputs.list_by_organization(
             tenant.organization_id,
             production_order_id=production_order_id,
-            shift_report_id=shift_report_id,
             work_center_id=work_center_id,
             output_date=output_date,
             output_status=output_status,
@@ -956,8 +744,6 @@ class ProductionOutputService:
         new_work_center_id = payload.get("work_center_id", production_output.work_center_id)
         self._validate_required_links(tenant, new_production_order_id, new_work_center_id)
 
-        if "shift_report_id" in payload:
-            self._validate_optional_shift_report(tenant, payload["shift_report_id"])
 
         new_item_id = payload.get(
             "production_order_item_id",
@@ -984,7 +770,6 @@ class DowntimeEventService:
         self.db = db
         self.downtime_events = DowntimeEventRepository(db)
         self.production_orders = ProductionOrderRepository(db)
-        self.shift_reports = ShiftReportRepository(db)
         self.work_centers = WorkCenterRepository(db)
 
     def _calculate_duration_minutes(
@@ -1014,18 +799,6 @@ class DowntimeEventService:
         if work_center is None:
             raise ValueError("Work center must belong to the current organization.")
 
-    def _validate_optional_shift_report(
-        self,
-        tenant: TenantContext,
-        shift_report_id: UUID | None,
-    ) -> None:
-        if shift_report_id is None:
-            return
-
-        shift_report = self.shift_reports.get_by_id(tenant.organization_id, shift_report_id)
-        if shift_report is None:
-            raise ValueError("Shift report must belong to the current organization.")
-
     def _validate_optional_production_order(
         self,
         tenant: TenantContext,
@@ -1044,7 +817,6 @@ class DowntimeEventService:
         data: DowntimeEventCreate,
     ) -> DowntimeEvent:
         self._validate_work_center(tenant, data.work_center_id)
-        self._validate_optional_shift_report(tenant, data.shift_report_id)
         self._validate_optional_production_order(tenant, data.production_order_id)
         self._validate_time_window(data.start_time, data.end_time)
 
@@ -1070,7 +842,6 @@ class DowntimeEventService:
         self,
         tenant: TenantContext,
         work_center_id: UUID | None = None,
-        shift_report_id: UUID | None = None,
         production_order_id: UUID | None = None,
         status: DowntimeStatus | None = None,
         category: DowntimeCategory | None = None,
@@ -1078,7 +849,6 @@ class DowntimeEventService:
         return self.downtime_events.list_by_organization(
             tenant.organization_id,
             work_center_id=work_center_id,
-            shift_report_id=shift_report_id,
             production_order_id=production_order_id,
             status=status,
             category=category,
@@ -1110,8 +880,6 @@ class DowntimeEventService:
         new_work_center_id = payload.get("work_center_id", downtime_event.work_center_id)
         self._validate_work_center(tenant, new_work_center_id)
 
-        if "shift_report_id" in payload:
-            self._validate_optional_shift_report(tenant, payload["shift_report_id"])
         if "production_order_id" in payload:
             self._validate_optional_production_order(tenant, payload["production_order_id"])
 
@@ -1139,7 +907,6 @@ class WasteRecordService:
         self.db = db
         self.items = ProductionOrderItemRepository(db)
         self.production_orders = ProductionOrderRepository(db)
-        self.shift_reports = ShiftReportRepository(db)
         self.waste_records = WasteRecordRepository(db)
         self.work_centers = WorkCenterRepository(db)
 
@@ -1166,18 +933,6 @@ class WasteRecordService:
 
         return production_order
 
-    def _validate_optional_shift_report(
-        self,
-        tenant: TenantContext,
-        shift_report_id: UUID | None,
-    ) -> None:
-        if shift_report_id is None:
-            return
-
-        shift_report = self.shift_reports.get_by_id(tenant.organization_id, shift_report_id)
-        if shift_report is None:
-            raise ValueError("Shift report must belong to the current organization.")
-
     def _validate_optional_item(
         self,
         tenant: TenantContext,
@@ -1200,7 +955,6 @@ class WasteRecordService:
     ) -> WasteRecord:
         self._validate_positive_quantity(data.quantity_wasted)
         self._validate_required_links(tenant, data.production_order_id, data.work_center_id)
-        self._validate_optional_shift_report(tenant, data.shift_report_id)
         self._validate_optional_item(tenant, data.production_order_id, data.production_order_item_id)
 
         waste_record = WasteRecord(
@@ -1222,7 +976,6 @@ class WasteRecordService:
         self,
         tenant: TenantContext,
         production_order_id: UUID | None = None,
-        shift_report_id: UUID | None = None,
         work_center_id: UUID | None = None,
         waste_category: WasteCategory | None = None,
         waste_date: date | None = None,
@@ -1230,7 +983,6 @@ class WasteRecordService:
         return self.waste_records.list_by_organization(
             tenant.organization_id,
             production_order_id=production_order_id,
-            shift_report_id=shift_report_id,
             work_center_id=work_center_id,
             waste_category=waste_category,
             waste_date=waste_date,
@@ -1263,8 +1015,6 @@ class WasteRecordService:
         new_work_center_id = payload.get("work_center_id", waste_record.work_center_id)
         self._validate_required_links(tenant, new_production_order_id, new_work_center_id)
 
-        if "shift_report_id" in payload:
-            self._validate_optional_shift_report(tenant, payload["shift_report_id"])
 
         new_item_id = payload.get("production_order_item_id", waste_record.production_order_item_id)
         self._validate_optional_item(tenant, new_production_order_id, new_item_id)
@@ -1289,7 +1039,6 @@ instrument_activity_methods(WorkCenterService, {"create_work_center": ("work_cen
 instrument_activity_methods(ShiftDefinitionService, {"create_shift_definition": ("shift.created", "shift"), "update_shift_definition": ("shift.updated", "shift"), "delete_shift_definition": ("shift.deleted", "shift")})
 instrument_activity_methods(ProductionOrderService, {"create_production_order": ("production_order.created", "production_order"), "update_production_order": ("production_order.updated", "production_order")})
 instrument_activity_methods(ProductionOrderItemService, {"create_item": ("production_order_item.created", "production_order_item"), "update_item": ("production_order_item.updated", "production_order_item"), "delete_item": ("production_order_item.deleted", "production_order_item")})
-instrument_activity_methods(ShiftReportService, {"create_shift_report": ("shift_report.created", "shift_report"), "update_shift_report": ("shift_report.updated", "shift_report")})
 instrument_activity_methods(ProductionOutputService, {"create_production_output": ("production_output.created", "production_output"), "update_production_output": ("production_output.updated", "production_output")})
 instrument_activity_methods(DowntimeEventService, {"create_downtime_event": ("downtime_event.created", "downtime_event"), "update_downtime_event": ("downtime_event.updated", "downtime_event")})
 instrument_activity_methods(WasteRecordService, {"create_waste_record": ("waste_record.created", "waste_record"), "update_waste_record": ("waste_record.updated", "waste_record")})
