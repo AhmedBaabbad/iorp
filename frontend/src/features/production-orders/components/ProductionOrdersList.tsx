@@ -20,6 +20,8 @@ import type {
 import { PRODUCTION_ORDER_STATUSES } from "../types";
 import { ProductionOrderPriorityBadge } from "./ProductionOrderPriorityBadge";
 import { ProductionOrderStatusBadge } from "./ProductionOrderStatusBadge";
+import { usePermission } from "@/features/auth/permission-hooks";
+import { P } from "@/lib/production-permissions";
 
 type WorkCenterOption = {
   id: string;
@@ -80,6 +82,9 @@ const defaultFilters: FilterValues = {
 
 export function ProductionOrdersList() {
   const t = useTranslations("production.productionOrders");
+  const canCreateOrder = usePermission(P.ORDERS_CREATE);
+  const canAllocate = usePermission(P.PLANNING_ALLOCATE);
+  const canCreate = canCreateOrder && canAllocate; // orders are created by allocating demand in planning
   const common = useTranslations("common");
   const enums = useTranslations();
   const messages = useTranslations("messages");
@@ -142,11 +147,11 @@ export function ProductionOrdersList() {
     <PageFrame
       title={t("listTitle")}
       subtitle={t("subtitle")}
-      action={
+      action={canCreate ? (
         <Link href="/production/planning" style={sharedStyles.button}>
           {t("newButton")}
         </Link>
-      }
+      ) : undefined}
     >
       <section style={styles.filters} aria-label={t("filtersAria")}>
         <label style={sharedStyles.field}>
@@ -228,9 +233,11 @@ export function ProductionOrdersList() {
           <p style={{ margin: "0 0 18px" }}>
             {t("createFirst")}
           </p>
-          <Link href="/production/planning" style={sharedStyles.button}>
-            {t("createButton")}
-          </Link>
+          {canCreate ? (
+            <Link href="/production/planning" style={sharedStyles.button}>
+              {t("createButton")}
+            </Link>
+          ) : null}
         </section>
       ) : null}
 

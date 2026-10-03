@@ -19,8 +19,6 @@
       "productionOrderId": "معرف أمر الإنتاج",
       "productionOrderItem": "بند أمر الإنتاج",
       "productionOrderItemId": "معرف بند أمر الإنتاج",
-      "productionOutput": "مخرج الإنتاج",
-      "productionOutputId": "معرف مخرج الإنتاج",
       "notes": "ملاحظات"
     },
     "subtitle": "فحص المخرجات الإنتاجية وتتبع حالة دورة الحياة بشكل منفصل عن النتيجة.",
@@ -84,7 +82,6 @@
         "defectCount": "عدد الوحدات المعيبة",
         "description": "وصف العيب",
         "productionOrderId": "معرف أمر الإنتاج",
-        "productionOutputId": "معرف مخرج الإنتاج",
         "notes": "ملاحظات"
       }
     },
@@ -107,8 +104,6 @@
       "qualityCheckId": "معرف فحص الجودة",
       "qualityDefect": "عيب الجودة",
       "qualityDefectId": "معرف عيب الجودة",
-      "productionOutput": "مخرج الإنتاج",
-      "productionOutputId": "معرف مخرج الإنتاج",
       "productionOrderItem": "بند أمر الإنتاج",
       "productionOrderItemId": "معرف بند أمر الإنتاج",
       "execution": "التنفيذ",

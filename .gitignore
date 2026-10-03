@@ -23,3 +23,6 @@ frontend/.env
 backend/uploads/
 *.tsbuildinfo
 *.egg-info/
+
+# Report review samples are written outside the project (tests/report_samples.py); never commit generated reports.
+backend/artifacts/

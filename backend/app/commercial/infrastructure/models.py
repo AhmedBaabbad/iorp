@@ -317,6 +317,10 @@ class Quote(Base):
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     tax_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    # VAT percentage the server applies to (subtotal - discount); null on quotes saved before it existed.
+    tax_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    attention: Mapped[str | None] = mapped_column(String(255), nullable=True)  # "Attn: Procurement Manager"
+    subject: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -362,7 +366,40 @@ class QuoteItem(Base):
     unit: Mapped[str] = mapped_column(String(32), nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     line_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    # The line as printed on the quotation; empty falls back to the product and its specification.
+    description_ar: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description_en: Mapped[str | None] = mapped_column(Text, nullable=True)
     quote: Mapped[Quote] = relationship(back_populates="items")
+
+
+class QuoteSettings(Base):
+    """Per-organization quotation document settings: who signs it. The terms are QuoteTerm rows."""
+    __tablename__ = "commercial_quote_settings"
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), primary_key=True)
+    signature_title_ar: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    signature_title_en: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    show_preparer_name: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id", ondelete="SET NULL"), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class QuoteTerm(Base):
+    """One term of the organization's quotation terms and conditions (e.g. Delivery, Payment), in both languages.
+
+    Terms belong to the settings, not to a quote: every quotation document prints the current active terms.
+    """
+    __tablename__ = "commercial_quote_terms"
+    __table_args__ = (Index("ix_commercial_quote_terms_org_order", "organization_id", "sort_order"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    title_ar: Mapped[str] = mapped_column(String(120), nullable=False)
+    title_en: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    body_ar: Mapped[str] = mapped_column(Text, nullable=False)
+    body_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 
 class CommercialOrder(Base):

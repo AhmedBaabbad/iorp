@@ -5,7 +5,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 import { sharedStyles } from "@/styles/shared-styles";
-import { usePermission } from "./permission-hooks";
+import { useHasAnyPermission } from "./permission-hooks";
 
 const styles: Record<string, CSSProperties> = {
   page: {
@@ -45,8 +45,9 @@ const styles: Record<string, CSSProperties> = {
   },
 };
 
-export function PermissionGate({ code, children }: { code: string; children: ReactNode }) {
-  const allowed = usePermission(code);
+/** Shows the page when the user holds `code`, or any one of `anyOf` (e.g. one of several reports). */
+export function PermissionGate({ code, anyOf, children }: { code?: string; anyOf?: string[]; children: ReactNode }) {
+  const allowed = useHasAnyPermission(anyOf ?? (code ? [code] : []));
   const t = useTranslations("common");
   const nav = useTranslations("navigation");
 

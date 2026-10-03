@@ -7,7 +7,9 @@ import { loadMessages } from "@/i18n/messages";
 import type { OrderLifecycle, ProductionOrderData } from "@/features/production-orders/types";
 
 const api = vi.hoisted(() => ({ apiClient: vi.fn() }));
+const perms = vi.hoisted(() => ({ granted: new Set<string>() }));
 vi.mock("@/lib/api-client", async importOriginal => ({ ...(await importOriginal<object>()), apiClient: api.apiClient }));
+vi.mock("@/features/auth/permission-hooks", () => ({ usePermission: (code: string) => perms.granted.has(code) }));
 // Dates are formatted with the organization's timezone from the auth context; a plain stand-in suffices here.
 vi.mock("@/hooks/useFormatter", () => ({ useFormatter: () => ({ date: (v: string) => v, dateTime: (v: string) => v }) }));
 
@@ -16,7 +18,7 @@ import { OrderStatusTimeline } from "@/features/production-orders/components/Ord
 
 let messages: Record<string, unknown>;
 beforeAll(async () => { messages = await loadMessages("en") as Record<string, unknown>; });
-beforeEach(() => { api.apiClient.mockReset().mockResolvedValue({}); });
+beforeEach(() => { api.apiClient.mockReset().mockResolvedValue({}); perms.granted = new Set(); });
 afterEach(cleanup);
 const ui = (node: ReactNode) => render(<NextIntlClientProvider locale="en" messages={messages} timeZone="UTC">{node}</NextIntlClientProvider>);
 
@@ -67,6 +69,35 @@ describe("order status panel", () => {
     expect(within(dialog).getByLabelText("Note (optional)")).toBeTruthy();
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Close order" })); });
     expect(api.apiClient.mock.calls[0][1].body.action).toBe("close");
+  });
+
+  it("offers zero output even without permission to read the result", async () => {
+    ui(<OrderStatusPanel order={order("completed", { actions: [action("close", { confirm: true })] })} />);
+    fireEvent.click(screen.getByRole("button", { name: "Close order" }));
+    const dialog = screen.getByRole("dialog", { name: "Close PO-1" });
+    fireEvent.click(within(dialog).getByLabelText(/zero output/));
+    const confirm = within(dialog).getByRole("button", { name: "Close order" }) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);  // the reason is mandatory for zero output
+    fireEvent.change(within(dialog).getByLabelText("Why was nothing produced?"), { target: { value: "Line stopped" } });
+    await act(async () => { fireEvent.click(confirm); });
+    expect(api.apiClient.mock.calls.every(([p]) => !String(p).endsWith("/result"))).toBe(true);
+    expect(api.apiClient.mock.calls[0][1].body).toMatchObject({ action: "close", reason: "Line stopped", zero_output: true });
+  });
+
+  it("close shows the final result first and can close as zero output with a reason", async () => {
+    perms.granted = new Set(["production:results:read"]);
+    api.apiClient.mockImplementation((path: string) => Promise.resolve(String(path).endsWith("/result") ? {
+      order: { id: "po1", number: "PO-1", status: "completed", product_type: "film", unit: "kg" }, available: true, editable: true, locked: false,
+      allocation_level: "none", items: [], totals: [], entries: [], close_check: { ready: false, has_entries: false, missing_item_ids: [] }, actions: [],
+    } : {}));
+    ui(<OrderStatusPanel order={order("completed", { actions: [action("close", { confirm: true })] })} />);
+    fireEvent.click(screen.getByRole("button", { name: "Close order" }));
+    const dialog = screen.getByRole("dialog", { name: "Close PO-1" });
+    fireEvent.click(await within(dialog).findByLabelText(/zero output/));
+    fireEvent.change(within(dialog).getByLabelText("Why was nothing produced?"), { target: { value: "Material never arrived" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Close order" })); });
+    const call = api.apiClient.mock.calls.find(([p]) => String(p).endsWith("/transitions"));
+    expect(call?.[1].body).toMatchObject({ action: "close", reason: "Material never arrived", expected_version: 3, zero_output: true });
   });
 
   it("explains a concurrent change instead of applying twice", async () => {

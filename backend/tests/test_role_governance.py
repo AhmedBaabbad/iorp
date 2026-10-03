@@ -58,7 +58,7 @@ def _other_user(db, administrator):
 def test_factory_department_catalog_contains_shipping_and_maintenance_managers():
     assert {"factory_manager", "shipping_manager", "maintenance_manager"} <= SYSTEM_ROLE_BY_CODE.keys()
     assert permission_matches("commercial:orders:update", "commercial:*")
-    assert permission_matches("production:downtime_events:write", "production:downtime_events:*")
+    assert permission_matches("production:downtime_events:close", "production:downtime_events:*")
 
 
 def test_custom_role_defaults_are_safe_and_code_is_unique_per_organization(db, test_org):

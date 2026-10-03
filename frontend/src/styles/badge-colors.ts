@@ -9,7 +9,6 @@ import type {
 import type { DowntimeCategory, DowntimeStatus } from "@/features/downtime-events/types";
 import type { NCRSourceType, NCRStatus } from "@/features/ncr-reports/types";
 import type { ProductionOrderPriority, ProductionOrderStatus } from "@/features/production-orders/types";
-import type { ProductionOutputStatus } from "@/features/production-outputs/types";
 import type { QualityCheckResult, QualityCheckStatus } from "@/features/quality-checks/types";
 import type { DefectCategory, DefectSeverity } from "@/features/quality-defects/types";
 import type { Disposition, DispositionStatus } from "@/features/quality-rejections/types";
@@ -162,13 +161,16 @@ export const downtimeStatusColors: Record<DowntimeStatus, BadgeColor> = {
 };
 
 export const downtimeCategoryColors: Record<DowntimeCategory, BadgeColor> = {
-  machine: { background: "var(--danger-soft)", color: "var(--danger)" },
-  material: { background: "var(--warning-soft)", color: "var(--warning)" },
-  manpower: { background: "var(--warning-soft)", color: "var(--warning)" },
-  quality: { background: "var(--purple-soft)", color: "var(--purple)" },
-  utilities: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
-  setup: { background: "var(--teal-soft)", color: "var(--teal)" },
+  breakdown: { background: "var(--danger-soft)", color: "var(--danger)" },
+  changeover_setup: { background: "var(--warning-soft)", color: "var(--warning)" },
+  material_shortage: { background: "var(--warning-soft)", color: "var(--warning)" },
+  waiting_labor: { background: "var(--warning-soft)", color: "var(--warning)" },
+  quality_issue: { background: "var(--purple-soft)", color: "var(--purple)" },
+  utilities: { background: "var(--danger-soft)", color: "var(--danger)" },
   other: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  planned_maintenance: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
+  break_meeting: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  no_orders: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 
 export const shiftTypeColors: Record<ShiftType, BadgeColor> = {
@@ -183,22 +185,14 @@ export const shiftStatusColors: Record<ShiftStatus, BadgeColor> = {
   inactive: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 
-export const productionOutputStatusColors: Record<ProductionOutputStatus, BadgeColor> = {
-  recorded: { background: "var(--surface-muted)", color: "var(--text-muted)" },
-  verified: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
-  posted: { background: "var(--success-soft)", color: "var(--success)" },
-};
-
 export const wasteCategoryColors: Record<WasteCategory, BadgeColor> = {
-  startup_loss: { background: "var(--warning-soft)", color: "var(--warning)" },
-  trim_loss: { background: "var(--warning-soft)", color: "var(--warning)" },
-  setup_loss: { background: "var(--warning-soft)", color: "var(--warning)" },
-  rejected_output: { background: "var(--danger-soft)", color: "var(--danger)" },
-  breakage: { background: "var(--danger-soft)", color: "var(--danger)" },
-  rewinding_loss: { background: "var(--warning-soft)", color: "var(--warning)" },
-  end_of_roll_loss: { background: "var(--surface-muted)", color: "var(--text-muted)" },
-  material_loss: { background: "var(--surface-muted)", color: "var(--text-muted)" },
-  contamination_loss: { background: "var(--purple-soft)", color: "var(--purple)" },
+  startup_setup: { background: "var(--warning-soft)", color: "var(--warning)" },
+  changeover: { background: "var(--warning-soft)", color: "var(--warning)" },
+  process: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  material_defect: { background: "var(--purple-soft)", color: "var(--purple)" },
+  machine_fault: { background: "var(--danger-soft)", color: "var(--danger)" },
+  handling_damage: { background: "var(--danger-soft)", color: "var(--danger)" },
+  contamination: { background: "var(--purple-soft)", color: "var(--purple)" },
   other: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 

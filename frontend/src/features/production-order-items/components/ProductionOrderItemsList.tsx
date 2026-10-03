@@ -13,6 +13,8 @@ import { getItemsByOrder } from "../api/production-order-items-api";
 import type { ProductionOrderItemListItem } from "../types";
 import { ProductionOrderItemForm } from "./ProductionOrderItemForm";
 import { formatStatus, isReadOnlyStatus } from "./production-order-items-utils";
+import { usePermission } from "@/features/auth/permission-hooks";
+import { P } from "@/lib/production-permissions";
 
 type ProductionOrderItemsListProps = {
   productionOrderId: string;
@@ -45,6 +47,7 @@ export function ProductionOrderItemsList({
   productionOrderStatus,
 }: ProductionOrderItemsListProps) {
   const t = useTranslations("production.productionOrders.items");
+  const canManageItems = usePermission(P.ORDERS_MANAGE_ITEMS);
   const common = useTranslations("common");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
@@ -92,7 +95,7 @@ export function ProductionOrderItemsList({
       title={t("sectionTitle")}
       subtitle={t("sectionSubtitle")}
     >
-      {isReadOnly ? (
+      {!canManageItems ? null : isReadOnly ? (
         <div style={sharedStyles.state}>
           {t("statusGuardMessage", { status: formatStatus(productionOrderStatus) })}
         </div>

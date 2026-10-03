@@ -1,0 +1,9 @@
+{#- Internal report footer: company, "Internal document" and page, on one row. No legal or contact data. -#}
+{%- set ar = lang == 'ar' %}
+<footer class="id-footer id-internal" dir="{{ 'rtl' if ar else 'ltr' }}">
+  <div class="id-strip">
+    <span class="id-strip-start"><bdi>{{ (branding.legal_name_ar or branding.name) if ar else (branding.legal_name_en or branding.legal_name_ar or branding.name) }}</bdi></span>
+    <span class="id-strip-mid"><b>{{ 'وثيقة داخلية' if ar else 'Internal document' }}</b> · <bdi dir="ltr">{{ generated_at }}</bdi></span>
+    <span class="id-strip-end">{% include 'identity/page.html' %}</span>
+  </div>
+</footer>

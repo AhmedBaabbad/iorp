@@ -1,4 +1,5 @@
 "use client";
+import { CUSTOMER_REPORTS } from "@/features/reports/customer-permissions";
 
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
@@ -25,6 +26,7 @@ import {
   IconUsers,
   IconX,
 } from "./nav-icons";
+import { P, PRODUCTION_REPORTS } from "@/lib/production-permissions";
 
 type PageFrameProps = {
   title: string;
@@ -40,6 +42,7 @@ type StaticNavLink = {
   href: string;
   labelKey: string;
   permission?: string;
+  anyPermissions?: string[];
   icon?: NavIcon;
 };
 
@@ -256,6 +259,7 @@ const staticNavGroups: StaticNavGroup[] = [
     labelKey: "sections.commercial",
     icon: IconUsers,
     links: [
+      { href: "/customer-reports", labelKey: "links.customerReports", anyPermissions: CUSTOMER_REPORTS },
       { href: "/customers", labelKey: "links.customers", permission: "commercial:customers:read" },
       { href: "/customer-interactions", labelKey: "links.customerInteractions", permission: "commercial:interactions:read" },
       { href: "/follow-ups", labelKey: "links.followUps", permission: "commercial:follow_ups:read" },
@@ -275,16 +279,17 @@ const staticNavGroups: StaticNavGroup[] = [
     labelKey: "sections.production",
     icon: IconFactory,
     links: [
-      { href: "/work-centers", labelKey: "links.workCenters" },
-      { href: "/shifts", labelKey: "links.shifts", permission: "production:shifts:read" },
-      { href: "/shift-rosters", labelKey: "links.shiftRosters", permission: "production:shift_rosters:read" },
-      { href: "/production/demands", labelKey: "links.demands", permission: "production:demands:read" },
-      { href: "/production/planning", labelKey: "links.planning", permission: "production:planning:read" },
-      { href: "/production-orders", labelKey: "links.productionOrders" },
-      
-      { href: "/production-outputs", labelKey: "links.productionOutputs" },
-      { href: "/downtime-events", labelKey: "links.downtimeEvents" },
-      { href: "/waste-records", labelKey: "links.wasteRecords" },
+      { href: "/work-centers", labelKey: "links.workCenters", permission: P.WORK_CENTERS_READ },
+      { href: "/shifts", labelKey: "links.shifts", permission: P.SHIFTS_READ },
+      { href: "/shift-rosters", labelKey: "links.shiftRosters", permission: P.ROSTERS_READ },
+      { href: "/production/demands", labelKey: "links.demands", permission: P.DEMANDS_READ },
+      { href: "/production/planning", labelKey: "links.planning", permission: P.PLANNING_READ },
+      { href: "/production-orders", labelKey: "links.productionOrders", permission: P.ORDERS_READ },
+      // The final result of completed and closed orders.
+      { href: "/production-results", labelKey: "links.productionOutputs", permission: P.RESULTS_READ },
+      { href: "/production-reports", labelKey: "links.productionReports", anyPermissions: PRODUCTION_REPORTS },
+      { href: "/downtime-events", labelKey: "links.downtimeEvents", permission: P.DOWNTIME_READ },
+      { href: "/waste-records", labelKey: "links.wasteRecords", permission: P.WASTE_READ },
     ],
   },
   {
@@ -353,6 +358,7 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
   const logoSrc = useOrganizationLogoSrc(user?.organization_logo_url, token);
   const canManageUsers = useHasAnyPermission([
     "foundation:organization:read",
+    "organization:branding:read",
     "foundation:users:read",
     "foundation:roles:read",
     "foundation:permissions:read",
@@ -366,7 +372,7 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
     .map((group) => ({
       ...group,
       links: group.links.filter(
-        (link) => !link.permission || hasPermission(link.permission),
+        (link) => (!link.permission || hasPermission(link.permission)) && (!link.anyPermissions || link.anyPermissions.some(hasPermission)),
       ),
     }))
     .filter((group) => group.links.length > 0);
@@ -378,7 +384,7 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
           labelKey: "sections.administration",
           icon: IconUserCog,
           links: [
-            ...(hasPermission("foundation:organization:read")
+            ...(hasPermission("foundation:organization:read") || hasPermission("organization:branding:read")
               ? [{ href: "/admin/organization", labelKey: "links.organizationSettings", icon: IconFactory }]
               : []),
             ...(hasPermission("foundation:users:read")

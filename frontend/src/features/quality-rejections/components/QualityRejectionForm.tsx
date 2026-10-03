@@ -26,7 +26,6 @@ type QualityRejectionFormValues = {
   unit: string;
   quality_check_id: string;
   quality_defect_id: string;
-  production_output_id: string;
   production_order_item_id: string;
   notes: string;
 };
@@ -78,7 +77,6 @@ const defaultValues: QualityRejectionFormValues = {
   unit: "kg",
   quality_check_id: "",
   quality_defect_id: "",
-  production_output_id: "",
   production_order_item_id: "",
   notes: "",
 };
@@ -254,16 +252,6 @@ export function QualityRejectionForm() {
             </label>
 
             <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>{t("fields.productionOutputId")}</span>
-              <input
-                style={sharedStyles.input}
-                value={values.production_output_id}
-                onChange={(event) => updateField("production_output_id", event.target.value)}
-                disabled={isSubmitting}
-              />
-            </label>
-
-            <label style={sharedStyles.field}>
               <span style={sharedStyles.label}>{t("fields.productionOrderItemId")}</span>
               <input
                 style={sharedStyles.input}
@@ -329,7 +317,6 @@ function toCreateRequest(values: QualityRejectionFormValues): CreateQualityRejec
   return {
     quality_check_id: optionalText(values.quality_check_id) ?? null,
     quality_defect_id: optionalText(values.quality_defect_id) ?? null,
-    production_output_id: optionalText(values.production_output_id) ?? null,
     production_order_item_id: optionalText(values.production_order_item_id) ?? null,
     rejection_date: values.rejection_date,
     rejection_reason: values.rejection_reason,

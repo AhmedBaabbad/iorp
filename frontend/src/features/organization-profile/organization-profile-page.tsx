@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { PageFrame } from "@/components/layout/page-frame";
+import { BrandingEditor } from './BrandingEditor';
 import { useAuth } from "@/features/auth";
 import { TIMEZONES, timezoneLabel } from "@/lib/timezones";
 import { API_BASE_URL, ApiClientError } from "@/lib/api-client";
@@ -18,7 +19,7 @@ const badge: Record<string, CSSProperties> = { provisioning: { background: "var(
 export function OrganizationProfilePage() {
   const t = useTranslations("organization"); const { token, hasPermission, refreshCurrentUser } = useAuth();
   const [profile, setProfile] = useState<OrganizationProfile | null>(null); const [error, setError] = useState(""); const [success, setSuccess] = useState(""); const [busy, setBusy] = useState(false); const [logoSrc, setLogoSrc] = useState<string | null>(null);
-  const canUpdate = hasPermission("foundation:organization:update"); const canBrand = hasPermission("foundation:organization:branding");
+  const canUpdate = hasPermission("foundation:organization:update"); const canBrand = hasPermission("foundation:organization:branding") || hasPermission("organization:branding:update");
   const load = useCallback(() => getOrganizationProfile(token).then(setProfile).catch(() => setError(t("loadError"))), [t, token]);
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { if (!profile?.logo_url || !token) return setLogoSrc(null); let url=""; fetch(`${API_BASE_URL}${profile.logo_url}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.blob() : null).then(b => { if(b){url=URL.createObjectURL(b); setLogoSrc(url);} }); return () => { if(url) URL.revokeObjectURL(url); }; }, [profile?.logo_url, profile?.updated_at, token]);
@@ -41,6 +42,7 @@ export function OrganizationProfilePage() {
         <label style={field}><span>{t("fields.defaultLocale")}</span><select style={input} value={profile.default_locale} onChange={e=>set("default_locale",e.target.value)} disabled={!canUpdate}><option value="ar">{t("localeOptions.ar")}</option><option value="en">{t("localeOptions.en")}</option></select></label>
         <div style={field}><span>{t("fields.status")}</span><span style={{ ...input, ...badge[profile.status] }}>{t(`statuses.${profile.status}`)}</span><small>{t("statusManagedByPlatform")}</small></div>
       </div>{canUpdate && <button disabled={busy} style={{ ...input, marginTop: 20, background: "var(--text)", color: "var(--on-accent)" }}>{busy ? t("saving") : t("saveButton")}</button>}</form>
+      <BrandingEditor revision={profile.updated_at}/>
     </>}
   </PageFrame>;
 }

@@ -2,27 +2,36 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import {
-  canReleaseFromOrder, lifecycleErrorCode, parseView, planningQuery, progress, statusOptions,
-} from "../src/features/production-demands/planning-lifecycle.ts";
+import { canReleaseFromOrder, lifecycleErrorCode, PLANNABLE_STATUSES, progress } from "../src/features/production-demands/planning-lifecycle.ts";
+import { PLANNING, isActiveQueue, planningQuery, planningStatusesFromUrl } from "../src/features/production-demands/status-visibility.ts";
 
-const query = (...args) => Object.fromEntries(new URLSearchParams(planningQuery(...args)));
+const query = (...args) => new URLSearchParams(planningQuery(...args));
 
-test("active queue is the default view and hides completed planning", () => {
-  assert.equal(parseView(null), "active");
-  assert.equal(parseView("bogus"), "active");
-  assert.equal(query(parseView(null), {}, 1).view, "active");
-  // A fully planned status can never be requested from the active queue.
-  assert.equal(query("active", { status: "planned" }, 1).status, undefined);
-  assert.deepEqual(statusOptions("active"), ["ready_for_planning", "partially_planned"]);
+test("the planning queue opens on what can still be planned", () => {
+  assert.deepEqual(PLANNING.defaults, PLANNABLE_STATUSES);
+  assert.ok(isActiveQueue(["partially_planned", "ready_for_planning"]));
+  const q = query(PLANNING.defaults, {}, 1);
+  assert.equal(q.get("view"), "active");
+  assert.deepEqual(q.getAll("statuses"), ["ready_for_planning", "partially_planned"]);
+  // The former single status filter is never sent.
+  assert.equal(query(PLANNING.defaults, { status: "planned" }, 1).get("status"), null);
 });
 
-test("active / planned / all filters are sent to the server", () => {
-  assert.equal(query("planned", {}, 2).view, "planned");
-  assert.equal(query("planned", {}, 2).page, "2");
-  assert.equal(query("all", { status: "cancelled", search: "PD-1", customer_id: "" }, 1).status, "cancelled");
-  assert.equal(query("all", { customer_id: "" }, 1).customer_id, undefined);
-  assert.deepEqual(statusOptions("planned"), []);
+test("other selections are shown read-only from the all view", () => {
+  const q = query(["planned", "cancelled"], { search: "PD-1", customer_id: "" }, 2);
+  assert.equal(q.get("view"), "all");
+  assert.deepEqual(q.getAll("statuses"), ["planned", "cancelled"]);
+  assert.equal(q.get("page"), "2");
+  assert.equal(q.get("search"), "PD-1");
+  assert.equal(q.get("customer_id"), null);
+  assert.deepEqual(query(["draft", "ready_for_planning", "partially_planned", "planned", "cancelled"], {}, 1).getAll("statuses"), []);
+});
+
+test("links from the former tabs still open the same demands", () => {
+  assert.deepEqual(planningStatusesFromUrl(null, "planned"), ["planned"]);
+  assert.equal(planningStatusesFromUrl(null, "all").length, 5);
+  assert.equal(planningStatusesFromUrl(null, null), null);
+  assert.deepEqual(planningStatusesFromUrl("cancelled", "planned"), ["cancelled"]);
 });
 
 test("partial progress is shown correctly", () => {
@@ -55,9 +64,8 @@ test("server lifecycle error codes are surfaced", () => {
 test("every lifecycle message exists in English and Arabic", () => {
   for (const lang of ["en", "ar"]) {
     const m = JSON.parse(readFileSync(new URL(`../src/i18n/locales/${lang}/production.json`, import.meta.url), "utf8"));
-    for (const view of ["active", "planned", "all"]) {
-      assert.ok(m.planning.views[view] && m.planning.views.empty[view], `${lang} view ${view}`);
-    }
+    for (const view of ["active", "all"]) assert.ok(m.planning.views.empty[view], `${lang} empty ${view}`);
+    for (const key of ["label", "summary", "showAll", "reset", "hidden"]) assert.ok(m.demands.statusVisibility[key], `${lang} statusVisibility ${key}`);
     for (const key of ["active", "released"]) assert.ok(m.allocation.statuses[key], `${lang} status ${key}`);
     for (const code of ["ORDER_EXECUTION_STARTED", "ORDER_COMPLETED", "LAST_ACTIVE_ALLOCATION", "ALLOCATION_ALREADY_RELEASED", "ORDER_ALREADY_CANCELLED"]) {
       assert.ok(m.allocation.errors[code], `${lang} error ${code}`);

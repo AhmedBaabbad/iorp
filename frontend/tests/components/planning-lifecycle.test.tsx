@@ -27,9 +27,13 @@ import { OrderAllocations } from "@/features/production-orders/components/OrderA
 
 let messages: Record<string, unknown>;
 beforeAll(async () => { messages = await loadMessages("en") as Record<string, unknown>; });
+beforeAll(() => {  // jsdom has no <dialog> methods; the allocation panel uses them
+  HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+  HTMLDialogElement.prototype.close = function () { this.open = false; };
+});
 beforeEach(() => {
   api.apiClient.mockReset(); nav.replace.mockReset(); nav.search = "";
-  perms.granted = new Set(["production:planning:read", "production:demands:read", "production:planning:release_allocation", "production:orders:cancel"]);
+  perms.granted = new Set(["production:planning:read", "production:demands:read", "production:planning:release_allocation", "production:production_orders:cancel"]);
 });
 afterEach(cleanup);
 
@@ -59,10 +63,11 @@ function demand(overrides: Partial<Demand> = {}, item: Partial<Demand["items"][n
 const page = (items: Demand[]) => ({ items, total: items.length, page: 1, page_size: 20 });
 const planningCalls = () => api.apiClient.mock.calls.map(([path]) => String(path)).filter(path => path.startsWith("/production/planning/demands"));
 const viewOf = (path: string) => new URLSearchParams(path.split("?")[1]).get("view");
+const statusesOf = (path: string) => new URLSearchParams(path.split("?")[1]).getAll("statuses");
 
-function routeApi(queue: (view: string | null) => Demand[]) {
+function routeApi(queue: (view: string | null, statuses: string[]) => Demand[]) {
   api.apiClient.mockImplementation((path: string) => {
-    if (path.startsWith("/production/planning/demands")) return Promise.resolve(page(queue(viewOf(path))));
+    if (path.startsWith("/production/planning/demands")) return Promise.resolve(page(queue(viewOf(path), statusesOf(path))));
     if (path.startsWith("/production/demand-lookups/customers")) return Promise.resolve([]);
     return Promise.resolve({});
   });
@@ -75,8 +80,8 @@ describe("planning queue", () => {
     ui(<DemandList planning />);
     expect(await screen.findByText("PD-2026-000001")).toBeTruthy();
     expect(viewOf(planningCalls()[0])).toBe("active");
+    expect(statusesOf(planningCalls()[0])).toEqual(["ready_for_planning", "partially_planned"]);
     expect(screen.queryByText("PD-PLANNED")).toBeNull();
-    expect(screen.getByRole("tab", { name: "Active queue" }).getAttribute("aria-selected")).toBe("true");
   });
 
   it("shows partial progress and the remaining quantity", async () => {
@@ -87,32 +92,36 @@ describe("planning queue", () => {
     expect(Number(screen.getByRole("progressbar", { name: "Planning progress, line 1" }).getAttribute("value"))).toBe(60);
   });
 
-  it("switches between active, planned and all views on the server", async () => {
+  it("shows the chosen statuses from the server and offers allocation only for the queue", async () => {
     const planned = demand({ id: "d2", demand_number: "PD-PLANNED", status: "planned", total_remaining: "0" }, { remaining_quantity: "0", active_allocated_quantity: "1000" });
-    routeApi(view => (view === "planned" ? [planned] : view === "all" ? [demand(), planned] : [demand()]));
+    routeApi((view, statuses) => (view === "active" ? [demand()] : [demand(), planned].filter(d => !statuses.length || statuses.includes(d.status))));
+    perms.granted.add("production:planning:allocate"); perms.granted.add("production:production_orders:create");
     ui(<DemandList planning />);
-    await screen.findByText("PD-2026-000001");
+    // The queue row and the allocation panel both name the demand.
+    expect((await screen.findAllByText("Select demand items to allocate")).length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole("tab", { name: "Fully planned" }));
+    // Show fully planned demands as well: no longer the queue proper, so no allocation panel.
+    fireEvent.click(screen.getByRole("checkbox", { name: "Planned" }));
     expect(await screen.findByText("PD-PLANNED")).toBeTruthy();
-    await waitFor(() => expect(screen.queryByText("PD-2026-000001")).toBeNull());
-    expect(nav.replace).toHaveBeenLastCalledWith("/production/planning?view=planned", { scroll: false });
-    // Fully planned demands cannot be allocated, so the allocation panel is not offered.
-    expect(screen.queryByText("Select demand items to allocate")).toBeNull();
+    const last = planningCalls().at(-1)!;
+    expect(viewOf(last)).toBe("all");
+    expect(statusesOf(last)).toEqual(["ready_for_planning", "partially_planned", "planned"]);
+    expect(nav.replace).toHaveBeenLastCalledWith("/production/planning?statuses=ready_for_planning%2Cpartially_planned%2Cplanned", { scroll: false });
+    expect(screen.queryAllByText("Select demand items to allocate")).toHaveLength(0);
 
-    fireEvent.click(screen.getByRole("tab", { name: "All demands" }));
-    await waitFor(() => expect(screen.getByText("PD-2026-000001")).toBeTruthy());
-    expect(screen.getByText("PD-PLANNED")).toBeTruthy();
-    expect(planningCalls().map(viewOf)).toEqual(expect.arrayContaining(["active", "planned", "all"]));
+    fireEvent.click(screen.getAllByRole("button", { name: "Default" })[0]);
+    await waitFor(() => expect(viewOf(planningCalls().at(-1)!)).toBe("active"));
+    expect(nav.replace).toHaveBeenLastCalledWith("/production/planning", { scroll: false });
   });
 
-  it("opens the view named in the URL", async () => {
+  it("opens links from the former tabs on the matching statuses", async () => {
     nav.search = "view=planned";
     routeApi(() => []);
     ui(<DemandList planning />);
     await waitFor(() => expect(planningCalls().length).toBeGreaterThan(0));
-    expect(viewOf(planningCalls()[0])).toBe("planned");
-    expect(await screen.findByText("No fully planned demands")).toBeTruthy();
+    expect(viewOf(planningCalls()[0])).toBe("all");
+    expect(statusesOf(planningCalls()[0])).toEqual(["planned"]);
+    expect(await screen.findByText(/No demands/)).toBeTruthy();
   });
 });
 

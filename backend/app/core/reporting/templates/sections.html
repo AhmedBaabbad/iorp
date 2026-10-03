@@ -1,0 +1,26 @@
+{#- Shared body for every module's report: numbered sections, information panels, tables, cards and bars.
+    Numeric cells are aligned to the end of the column with tabular figures (the `numeric` test). -#}
+{%- set ar = lang == 'ar' %}
+{% for section in data.sections %}
+<section class="block">
+  <h2><span class="block-no">{{ loop.index }}</span>{{ section.title }}</h2>
+  {% if section.note %}<p class="note">{{ section.note }}</p>{% endif %}
+  {% if section.cards %}<div class="kpis">{% for label, value in section.cards %}<div class="kpi"><small>{{ label }}</small><strong><bdi>{{ value }}</bdi></strong></div>{% endfor %}</div>{% endif %}
+  {% if section.rows and section.layout == 'fields' %}
+  <dl class="fields">{% for row in section.rows %}<div class="field"><dt>{{ row[0] }}</dt><dd><bdi>{{ row[1] }}</bdi></dd></div>{% endfor %}</dl>
+  {% elif section.rows %}
+  <table class="data">
+    <thead><tr>{% for column in section.columns %}<th>{{ column }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for row in section.rows %}<tr>{% for cell in row %}<td{% if cell is numeric %} class="num"{% endif %}><bdi>{{ cell }}</bdi></td>{% endfor %}</tr>{% endfor %}</tbody>
+  </table>
+  {% elif not section.cards and not section.bars %}
+  <p class="empty">{{ 'لا توجد بيانات ضمن النطاق المختار' if ar else 'No data in the selected scope' }}</p>
+  {% endif %}
+  {% if section.bars %}
+  {%- set top = section.bars | map(attribute=1) | max %}
+  <table class="bars" aria-label="{{ section.title }}"><tbody>{% for label, value in section.bars %}
+    <tr><th><bdi>{{ label }}</bdi></th><td><span class="bar" style="width:{{ ((value / top * 100) if top else 0) | round(1) }}%"></span></td></tr>
+  {% endfor %}</tbody></table>
+  {% endif %}
+</section>
+{% endfor %}

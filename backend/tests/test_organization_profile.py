@@ -7,9 +7,15 @@ from app.core.security import hash_password
 from app.foundation.domain.enums import UserStatus
 from app.foundation.infrastructure.models import Organization, User
 
-PNG = b"\x89PNG\r\n\x1a\nlogo"
-JPEG = b"\xff\xd8\xfflogo"
-WEBP = b"RIFF\x04\x00\x00\x00WEBPlogo"
+from io import BytesIO
+from PIL import Image
+
+def image_bytes(format):
+    output = BytesIO()
+    Image.new('RGB', (8, 8), '#24556b').save(output, format=format)
+    return output.getvalue()
+
+PNG, JPEG, WEBP = (image_bytes(format) for format in ('PNG', 'JPEG', 'WEBP'))
 
 
 @pytest.fixture

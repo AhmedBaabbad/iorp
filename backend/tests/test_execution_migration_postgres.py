@@ -43,6 +43,9 @@ def legacy_database():
             db.commit()
             org_id, center_id, shift_id = org.id, center.id, shift.id
         with isolated.begin() as c:
+            # Waste (f6a1b2h6) and downtime (f6a1b2h7) point at runs; both are after this migration's history.
+            for table in ("production_waste_records", "production_downtime_events"):
+                c.execute(sa.text(f"ALTER TABLE {table} DROP COLUMN production_run_id"))
             for table in ("production_run_members", "production_runs", "production_shift_roster_members", "production_shift_rosters"):
                 c.execute(sa.text(f"DROP TABLE {table}"))
             c.execute(sa.text("ALTER TABLE production_shift_definitions ADD COLUMN work_center_id uuid REFERENCES production_work_centers(id)"))

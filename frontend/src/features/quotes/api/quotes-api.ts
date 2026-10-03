@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import type { CreateQuoteRequest, QuoteData, QuoteDeletionImpact, QuoteListItem, QuoteSampleOption, UpdateQuoteRequest } from "../types";
+import type { CreateQuoteRequest, QuoteData, QuoteDeletionImpact, QuoteListItem, QuoteSampleOption, QuoteSettings, UpdateQuoteRequest } from "../types";
 
 const QUOTES_PATH = "/commercial/quotes";
 const CUSTOMERS_PATH = "/commercial/customers";
@@ -44,4 +44,25 @@ export function deleteQuote(quoteId: string) {
 
 export function getQuoteDeletionImpact(quoteId: string) {
   return apiClient<QuoteDeletionImpact>(`${QUOTES_PATH}/${quoteId}/deletion-impact`);
+}
+
+export function getQuoteSettings() {
+  return apiClient<QuoteSettings>("/commercial/quote-settings");
+}
+
+export function updateQuoteSettings(payload: QuoteSettings) {
+  return apiClient<QuoteSettings>("/commercial/quote-settings", { method: "PUT", body: payload });
+}
+
+/** Downloads the quotation document (PDF) in the chosen language, named as the server suggests. */
+export async function downloadQuoteDocument(quoteId: string, lang: "ar" | "en") {
+  const response = await apiClient<Response>(`${QUOTES_PATH}/${quoteId}/document.pdf?lang=${lang}`, { raw: true });
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = encoded ? decodeURIComponent(encoded) : `quotation-${lang}.pdf`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

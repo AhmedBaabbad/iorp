@@ -54,26 +54,13 @@ class OrganizationProfileService:
         return organization
 
     def replace_logo(self, organization_id: UUID, content: bytes, actor: User | None = None) -> Organization:
-        organization = self.get(organization_id)
-        old_path = organization.logo_path
-        new_path = self.storage.save_logo_content(content, organization_id)
-        try:
-            organization.logo_path = new_path
-            log_tenant_audit(self.db, organization_id, ORG_LOGO_UPLOADED, "organization", organization_id, actor.id if actor else None, actor.full_name if actor else None, actor.email if actor else None, organization.name)
-            self.db.commit(); self.db.refresh(organization)
-        except Exception:
-            self.db.rollback(); self.storage.delete(new_path); raise
-        if old_path:
-            self.storage.delete(old_path)
-        return organization
+        from app.foundation.application.branding_service import BrandingService
+        BrandingService(self.db, self.storage).upload(organization_id, content, actor.id if actor else None)
+        return self.get(organization_id)
 
     def remove_logo(self, organization_id: UUID, actor: User | None = None) -> bool:
-        organization = self.get(organization_id)
-        old_path = organization.logo_path
-        if not old_path:
-            return False
-        organization.logo_path = None
-        log_tenant_audit(self.db, organization_id, ORG_LOGO_REMOVED, "organization", organization_id, actor.id if actor else None, actor.full_name if actor else None, actor.email if actor else None, organization.name)
-        self.db.commit()
-        self.storage.delete(old_path)
-        return True
+        from app.foundation.application.branding_service import BrandingService
+        existed = bool(self.get(organization_id).logo_path)
+        BrandingService(self.db, self.storage).remove(organization_id, actor.id if actor else None)
+        return existed
+

@@ -29,6 +29,7 @@
     "administration": "الإدارة"
   },
   "links": {
+    "productionReports": "مركز التقارير",
     "users": "المستخدمون",
     "roles": "الأدوار",
     "adminUsers": "إدارة المستخدمين",
@@ -58,7 +59,8 @@
     "correctiveActions": "الإجراءات التصحيحية",
     "demands": "طلبات العملاء للإنتاج",
     "planning": "تخطيط الإنتاج",
-    "shiftRosters": "فرق الورديات"
+    "shiftRosters": "فرق الورديات",
+    "customerReports": "تقارير العملاء"
   },
   "userMenu": {
     "changePassword": "تغيير كلمة المرور",

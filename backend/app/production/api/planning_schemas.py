@@ -76,6 +76,8 @@ class TransitionRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=500)
     # The status_version the user saw; a newer one means someone else changed the status first.
     expected_version: int | None = Field(default=None, ge=1)
+    # close only: the order produced nothing. Requires a reason; allowed only when no result entries exist.
+    zero_output: bool = False
 
 
 class StatusHistoryRead(BaseModel):

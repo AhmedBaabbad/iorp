@@ -26,7 +26,7 @@ beforeAll(async () => {
 });
 beforeEach(() => {
   api.apiClient.mockReset();
-  perms.granted = new Set(["production:planning:allocate", "production:orders:create", "production:planning:release_allocation"]);
+  perms.granted = new Set(["production:planning:allocate", "production:production_orders:create", "production:planning:release_allocation"]);
 });
 afterEach(cleanup);
 const ui = (node: ReactNode) => render(<NextIntlClientProvider locale="en" messages={messages} timeZone="UTC">{node}</NextIntlClientProvider>);

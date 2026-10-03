@@ -47,5 +47,6 @@ export type WorkCenterDeleteSummary = {
   shifts_count: number;
   downtime_records_count: number;
   waste_records_count: number;
-  production_outputs_count: number;
+  // Final result entries on this center's orders; they block the delete.
+  production_results_count?: number;
 };

@@ -140,6 +140,8 @@ class PaginatedDemandList(BaseModel):
     total: int
     page: int
     page_size: int
+    # Demands matching the other filters but outside the requested statuses; null when no statuses were given.
+    hidden_by_status: int | None = None
 
 
 class PaginatedPlanningList(PaginatedDemandList):

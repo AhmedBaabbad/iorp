@@ -24,14 +24,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.db import Base
 from app.core.utils import TZDateTime, enum_values, utc_now
 from app.production.domain.enums import (
-    DowntimeCategory,
     DowntimeStatus,
-    ProductionOutputStatus,
     ProductionOrderPriority,
     ProductionOrderStatus,
     ShiftDefinitionStatus,
     ShiftType,
-    WasteCategory,
     WorkCenterStatus,
     WorkCenterType,
 )
@@ -83,11 +80,6 @@ class WorkCenter(Base):
 
     production_orders: Mapped[list["ProductionOrder"]] = relationship(
         "ProductionOrder", cascade="all, delete-orphan",
-    )
-    production_outputs: Mapped[list["ProductionOutput"]] = relationship(
-        "ProductionOutput",
-        foreign_keys="[ProductionOutput.work_center_id]",
-        cascade="all, delete-orphan",
     )
     downtime_events: Mapped[list["DowntimeEvent"]] = relationship(
         "DowntimeEvent", cascade="all, delete-orphan",
@@ -302,164 +294,65 @@ class ProductionOrderItem(Base):
     )
 
 
-class ProductionOutput(Base):
-    # work_center_id is stored at output level because actual production may run on a
-    # different line than the planned work center on the ProductionOrder header.
-    #
-    # output_date is the calendar reporting date; recorded_at is the exact optional timestamp
-    # for a specific output entry. Keeping both supports multiple entries within one shift.
-    #
-    # Quality quantities such as approved, rejected, and rework are intentionally excluded
-    # from this Production baseline; they belong to future Quality integration.
-    __tablename__ = "production_outputs"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
-    organization_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("foundation_organizations.id"),
-        nullable=False,
-        index=True,
-    )
-    production_order_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("production_orders.id"),
-        nullable=False,
-        index=True,
-    )
-    work_center_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("production_work_centers.id"),
-        nullable=False,
-        index=True,
-    )
-    production_order_item_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("production_order_items.id"),
-        nullable=True,
-        index=True,
-    )
-    output_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
-    recorded_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
-    quantity_produced: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
-    unit: Mapped[str] = mapped_column(String(32), nullable=False)
-    output_status: Mapped[ProductionOutputStatus] = mapped_column(
-        SqlEnum(
-            ProductionOutputStatus,
-            name="production_output_status",
-            values_callable=enum_values,
-        ),
-        nullable=False,
-        default=ProductionOutputStatus.RECORDED,
-    )
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_by_user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("foundation_users.id"),
-        nullable=False,
-        index=True,
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        TZDateTime,
-        nullable=False,
-        default=utc_now,
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        TZDateTime,
-        nullable=False,
-        default=utc_now,
-        onupdate=utc_now,
-    )
-
-
 class DowntimeEvent(Base):
-    # duration_minutes is calculated by the service from start_time/end_time and is never
-    # accepted as caller input, which avoids inconsistent manual duration values.
-    #
-    # status mirrors end_time: open means end_time is NULL; closed means end_time is set.
-    #
-    # category is the controlled downtime classification, while reason_code is free text
-    # for the operator's specific reason and is not an enum or lookup table in v0.1.
-    __tablename__ = "production_downtime_events"
+    """A period in which a work center did not produce (PROD-DOWNTIME-001).
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
+    Belongs to the work center; the production order and run it interrupted are optional.
+    status (open/closed), duration_minutes and planned are derived by the service, never input.
+    Rules: domain/downtime_rules.py. reason_code is free text for plant detail.
+    """
+    __tablename__ = "production_downtime_events"
+    __table_args__ = (
+        CheckConstraint("category IN ('planned_maintenance','break_meeting','no_orders','changeover_setup','breakdown',"
+                        "'material_shortage','waiting_labor','quality_issue','utilities','other')", name="ck_downtime_category"),
+        CheckConstraint("planned = (category IN ('planned_maintenance','break_meeting','no_orders'))", name="ck_downtime_planned"),
+        CheckConstraint("end_time IS NULL OR end_time > start_time", name="ck_downtime_period"),
+        CheckConstraint("(status = 'open' AND end_time IS NULL AND duration_minutes IS NULL)"
+                        " OR (status = 'closed' AND end_time IS NOT NULL AND duration_minutes IS NOT NULL)", name="ck_downtime_status"),
+        Index("ix_downtime_org_center_start", "organization_id", "work_center_id", "start_time"),
     )
-    organization_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("foundation_organizations.id"),
-        nullable=False,
-        index=True,
-    )
-    work_center_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("production_work_centers.id"),
-        nullable=False,
-        index=True,
-    )
-    production_order_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("production_orders.id"),
-        nullable=True,
-        index=True,
-    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False, index=True)
+    work_center_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("production_work_centers.id"), nullable=False, index=True)
+    production_order_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("production_orders.id"), nullable=True, index=True)
+    production_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("production_runs.id", ondelete="RESTRICT", name="fk_downtime_run"), nullable=True, index=True)
     start_time: Mapped[datetime] = mapped_column(TZDateTime, nullable=False)
     end_time: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
-    duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    category: Mapped[DowntimeCategory] = mapped_column(
-        SqlEnum(
-            DowntimeCategory,
-            name="production_downtime_category",
-            values_callable=enum_values,
-        ),
-        nullable=False,
-        index=True,
-    )
-    reason_code: Mapped[str] = mapped_column(String(255), nullable=False)
+    duration_minutes: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    category: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    planned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    reason_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[DowntimeStatus] = mapped_column(
-        SqlEnum(
-            DowntimeStatus,
-            name="production_downtime_status",
-            values_callable=enum_values,
-        ),
-        nullable=False,
-        default=DowntimeStatus.OPEN,
-        index=True,
+        SqlEnum(DowntimeStatus, name="production_downtime_status", values_callable=enum_values),
+        nullable=False, default=DowntimeStatus.OPEN, index=True,
     )
-    created_by_user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("foundation_users.id"),
-        nullable=False,
-        index=False,
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        TZDateTime,
-        nullable=False,
-        default=utc_now,
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        TZDateTime,
-        nullable=False,
-        default=utc_now,
-        onupdate=utc_now,
-    )
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=False)
+    closed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("foundation_users.id", name="fk_downtime_closed_by"), nullable=True)
+    updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("foundation_users.id", name="fk_downtime_updated_by"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now, onupdate=utc_now)
 
 
 class WasteRecord(Base):
-    # work_center_id is stored on each waste record because waste happens at a specific
-    # physical line/location and may differ from the planned work center on the order.
-    #
-    # reason_code is intentionally free text in v0.1: no enum, FK, or lookup table.
-    #
-    # Costing, scrap inventory posting, and detailed quality rejection fields are excluded
-    # from this Production baseline and belong to future costing, inventory, and Quality work.
+    """Operational waste: material lost while an order runs (PROD-WASTE-001).
+
+    Always belongs to a production order; optionally to one of its runs, which gives the work
+    center and shift. It has no status of its own: the order's status decides whether it can
+    change (domain/waste_rules.py). It is not the order's scrap, which lives in the final result.
+    reason_code is free text for plant detail. Costing and inventory posting are out of scope.
+    """
     __tablename__ = "production_waste_records"
+    __table_args__ = (
+        CheckConstraint("waste_category IN ('startup_setup','changeover','process','material_defect','machine_fault',"
+                        "'handling_damage','contamination','other')", name="ck_waste_category"),
+        CheckConstraint("quantity_wasted > 0", name="ck_waste_quantity"),
+        Index("ix_waste_org_order", "organization_id", "production_order_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -487,21 +380,20 @@ class WasteRecord(Base):
     production_order_item_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("production_order_items.id"),
+        nullable=True,
+        index=True,
+    )
+    # Optional: the run (machine, shift, team) the waste happened in.
+    production_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("production_runs.id", ondelete="RESTRICT", name="fk_waste_run"),
         nullable=True,
         index=True,
     )
     waste_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
-    quantity_wasted: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    quantity_wasted: Mapped[Decimal] = mapped_column(Numeric(15, 3), nullable=False)
     unit: Mapped[str] = mapped_column(String(32), nullable=False)
-    waste_category: Mapped[WasteCategory] = mapped_column(
-        SqlEnum(
-            WasteCategory,
-            name="production_waste_category",
-            values_callable=enum_values,
-        ),
-        nullable=False,
-        index=True,
-    )
+    waste_category: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     reason_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(
@@ -509,6 +401,9 @@ class WasteRecord(Base):
         ForeignKey("foundation_users.id"),
         nullable=False,
         index=False,
+    )
+    updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("foundation_users.id", name="fk_waste_updated_by"), nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
         TZDateTime,
@@ -645,6 +540,55 @@ class ProductionAllocation(Base):
     @property
     def production_order_status(self):
         return self.production_order.status
+
+class ProductionResultEntry(Base):
+    """One line of an order's final result: how much ended up in which disposition.
+
+    Belongs to the production order only: no work center, shift, run or workforce.
+    Has no status of its own; the order's status decides whether it can change
+    (completed: edit freely, closed: correction entries only).
+    """
+
+    __tablename__ = "production_result_entries"
+    __table_args__ = (
+        CheckConstraint("disposition IN ('customer_good','stock_good','sample','scrap','rework')", name="ck_result_disposition"),
+        CheckConstraint(
+            "(entry_type = 'original' AND quantity > 0 AND corrects_entry_id IS NULL AND correction_reason IS NULL)"
+            " OR (entry_type = 'correction' AND quantity <> 0 AND corrects_entry_id IS NOT NULL AND correction_reason IS NOT NULL)",
+            name="ck_result_entry_type"),
+        # Loss is fixed for every disposition except samples, where the user decides.
+        CheckConstraint(
+            "disposition = 'sample' OR (disposition = 'scrap' AND counts_as_loss)"
+            " OR (disposition IN ('customer_good','stock_good','rework') AND NOT counts_as_loss)",
+            name="ck_result_counts_as_loss"),
+        CheckConstraint("(secondary_quantity IS NULL) = (secondary_unit IS NULL)", name="ck_result_secondary_measure"),
+        Index("ix_result_org_order", "organization_id", "production_order_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False)
+    production_order_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("production_orders.id", ondelete="RESTRICT"), nullable=False)
+    # Null only for orders without items (legacy orders); then the unit is the order's.
+    production_order_item_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("production_order_items.id", ondelete="RESTRICT"), nullable=True, index=True)
+    disposition: Mapped[str] = mapped_column(String(20), nullable=False)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3), nullable=False)
+    unit: Mapped[str] = mapped_column(String(32), nullable=False)
+    # Informational second measure (e.g. weight in kg); totalled per unit, never converted.
+    secondary_quantity: Mapped[Decimal | None] = mapped_column(Numeric(15, 3), nullable=True)
+    secondary_unit: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    counts_as_loss: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    reason_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    entry_type: Mapped[str] = mapped_column(String(12), nullable=False, default="original")
+    corrects_entry_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("production_result_entries.id", ondelete="RESTRICT"), nullable=True, index=True)
+    correction_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=False)
+    updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now, onupdate=utc_now)
+
 
 # Register execution tables for metadata, migrations, and test databases.
 from app.production.infrastructure.execution_models import ShiftRoster, ShiftRosterMember, ProductionRun, ProductionRunMember  # noqa: F401,E402

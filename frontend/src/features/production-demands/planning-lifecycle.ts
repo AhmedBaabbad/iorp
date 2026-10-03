@@ -1,30 +1,10 @@
 // Pure planning-lifecycle rules shared by the queue, demand detail and order detail.
 // Quantities stay strings end to end; arithmetic uses integer thousandths (3 decimals).
 
-export type PlanningView = "active" | "planned" | "all";
-export const PLANNING_VIEWS: PlanningView[] = ["active", "planned", "all"];
 export const PLANNABLE_STATUSES = ["ready_for_planning", "partially_planned"];
 // Server rule: only orders without execution can give quantity back; the server also checks execution records.
 export const RELEASABLE_ORDER_STATUSES = ["draft", "released"];
-
-const STATUS_OPTIONS: Record<PlanningView, string[]> = {
-  active: PLANNABLE_STATUSES,
-  planned: [],
-  all: ["draft", "ready_for_planning", "partially_planned", "planned", "cancelled"],
-};
-
-export function statusOptions(view: PlanningView) {
-  return STATUS_OPTIONS[view];
-}
-
-export function parseView(value: string | null | undefined): PlanningView {
-  return PLANNING_VIEWS.includes(value as PlanningView) ? (value as PlanningView) : "active";
-}
-
-export function planningQuery(view: PlanningView, filters: Record<string, string>, page: number, pageSize = 20) {
-  const values = Object.entries(filters).filter(([key, value]) => value && (key !== "status" || statusOptions(view).includes(value)));
-  return new URLSearchParams({ ...Object.fromEntries(values), view, page: String(page), page_size: String(pageSize) }).toString();
-}
+// Which statuses the queue shows, and its query: status-visibility.ts (PLANNING).
 
 export function toMilli(value: string | null | undefined): bigint {
   const match = /^(-?)(\d+)(?:\.(\d{1,3}))?$/.exec(String(value ?? "0").trim());

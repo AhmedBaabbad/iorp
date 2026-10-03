@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, require_permission
+from app.production.domain import permissions as P
 from app.production.api.schemas import (
     ShiftDefinitionCreate,
     ShiftDefinitionListItem,
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/shift-definitions", tags=["production-shift-definiti
 
 
 @router.post("", response_model=ShiftDefinitionRead, status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("production:shifts:create"))])
+    dependencies=[Depends(require_permission(P.SHIFTS_CREATE))])
 def create_shift_definition(
     payload: ShiftDefinitionCreate,
     tenant: TenantContext = Depends(get_current_tenant),
@@ -33,7 +34,7 @@ def create_shift_definition(
 
 
 @router.get("", response_model=list[ShiftDefinitionListItem],
-    dependencies=[Depends(require_permission("production:shifts:read"))])
+    dependencies=[Depends(require_permission(P.SHIFTS_READ))])
 def list_shift_definitions(
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
@@ -46,7 +47,7 @@ def list_shift_definitions(
 
 
 @router.get("/{shift_definition_id}", response_model=ShiftDefinitionRead,
-    dependencies=[Depends(require_permission("production:shifts:read"))])
+    dependencies=[Depends(require_permission(P.SHIFTS_READ))])
 def get_shift_definition(
     shift_definition_id: UUID,
     tenant: TenantContext = Depends(get_current_tenant),
@@ -60,7 +61,7 @@ def get_shift_definition(
 
 
 @router.patch("/{shift_definition_id}", response_model=ShiftDefinitionRead,
-    dependencies=[Depends(require_permission("production:shifts:update"))])
+    dependencies=[Depends(require_permission(P.SHIFTS_UPDATE))])
 def update_shift_definition(
     shift_definition_id: UUID,
     payload: ShiftDefinitionUpdate,
@@ -78,7 +79,7 @@ def update_shift_definition(
 
 
 @router.get("/{shift_definition_id}/deletion-impact", response_model=ShiftDeletionImpact,
-    dependencies=[Depends(require_permission("production:shifts:read"))])
+    dependencies=[Depends(require_permission(P.SHIFTS_READ))])
 def get_shift_deletion_impact(
     shift_definition_id: UUID,
     tenant: TenantContext = Depends(get_current_tenant),
@@ -92,7 +93,7 @@ def get_shift_deletion_impact(
 
 
 @router.delete("/{shift_definition_id}", status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("production:shifts:delete"))])
+    dependencies=[Depends(require_permission(P.SHIFTS_DELETE))])
 def delete_shift_definition(
     shift_definition_id: UUID,
     tenant: TenantContext = Depends(get_current_tenant),

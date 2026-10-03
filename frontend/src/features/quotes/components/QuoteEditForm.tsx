@@ -18,6 +18,9 @@ import type { CreateQuoteItemRequest, QuoteItem, QuoteSampleOption, QuoteStatus,
 import { QuoteItemsTable } from "./QuoteItemsTable";
 import { QuoteTotals } from "./QuoteTotals";
 import { useFormatter } from "@/hooks/useFormatter";
+import { LineDescriptionFields, QuoteHeadingFields, UnitSelect } from "./QuoteLineFields";
+import { SpecEditor } from "./SpecEditor";
+import { VAT_RATE } from "../quote-units";
 
 type QuoteEditValues = {
   sample_id: string;
@@ -27,6 +30,8 @@ type QuoteEditValues = {
   currency: string;
   discount_amount: string;
   include_tax: boolean;
+  attention: string;
+  subject: string;
   notes: string;
   items: QuoteItemFormValues[];
 };
@@ -37,6 +42,8 @@ type QuoteItemFormValues = {
   unit: string;
   unit_price: string;
   requested_spec_json: string;
+  description_ar: string;
+  description_en: string;
 };
 
 const QUOTE_STATUS_OPTIONS: QuoteStatus[] = ["draft", "issued", "accepted", "rejected", "expired"];
@@ -120,6 +127,8 @@ export function QuoteEditForm() {
     currency: "SAR",
     discount_amount: "",
     include_tax: false,
+    attention: "",
+    subject: "",
     notes: "",
     items: [createDefaultItem()],
   });
@@ -148,7 +157,7 @@ export function QuoteEditForm() {
           const subtotal = Number(quote.subtotal_amount);
           const discount = Number(quote.discount_amount);
           const taxableAmount = Math.max(0, subtotal - discount);
-          const hasTax = taxAmount > 0 && taxableAmount > 0;
+          const hasTax = quote.tax_rate != null ? Number(quote.tax_rate) > 0 : taxAmount > 0 && taxableAmount > 0;
 
           setValues({
             sample_id: quote.sample_id ?? "",
@@ -158,6 +167,8 @@ export function QuoteEditForm() {
             currency: quote.currency,
             discount_amount: discount > 0 ? String(discount) : "",
             include_tax: hasTax,
+            attention: quote.attention ?? "",
+            subject: quote.subject ?? "",
             notes: quote.notes ?? "",
             items: quote.items.map((item) => ({
               product_type: item.product_type,
@@ -167,6 +178,8 @@ export function QuoteEditForm() {
               requested_spec_json: item.requested_spec_json
                 ? JSON.stringify(item.requested_spec_json, null, 2)
                 : "",
+              description_ar: item.description_ar ?? "",
+              description_en: item.description_en ?? "",
             })),
           });
         }
@@ -216,7 +229,7 @@ export function QuoteEditForm() {
 
   const discountAmount = Number(values.discount_amount || 0);
   const taxableAmount = Math.max(0, subtotal - discountAmount);
-  const taxAmount = values.include_tax ? taxableAmount * 0.15 : 0;
+  const taxAmount = values.include_tax ? taxableAmount * VAT_RATE / 100 : 0;  // preview; the server computes it
   const totalAmount = taxableAmount + taxAmount;
 
   function updateField<TField extends keyof QuoteEditValues>(
@@ -263,7 +276,10 @@ export function QuoteEditForm() {
         status: values.status,
         currency: values.currency,
         discount_amount: Number(values.discount_amount || 0),
+        tax_rate: values.include_tax ? VAT_RATE : 0,
         tax_amount: taxAmount,
+        attention: optionalText(values.attention) ?? null,
+        subject: optionalText(values.subject) ?? null,
         notes: optionalText(values.notes) ?? null,
         items: values.items.map((item, index) => toItemRequest(item, index, messages)),
       };
@@ -427,6 +443,9 @@ export function QuoteEditForm() {
               </div>
             </div>
 
+            <QuoteHeadingFields attention={values.attention} subject={values.subject} disabled={isSubmitting}
+              onChange={(field, value) => updateField(field, value)} />
+
             <label style={sharedStyles.field}>
               <span style={sharedStyles.label}>{t("fields.notes")}</span>
               <textarea
@@ -508,14 +527,8 @@ export function QuoteEditForm() {
                         {t("items.fields.unit")}
                         <span style={styles.required} aria-hidden="true"> *</span>
                       </span>
-                      <input
-                        style={sharedStyles.input}
-                        value={item.unit}
-                        onChange={(event) => updateItemField(index, "unit", event.target.value)}
-                        maxLength={32}
-                        disabled={isSubmitting}
-                        required
-                      />
+                      <UnitSelect value={item.unit} disabled={isSubmitting}
+                        onChange={(value) => updateItemField(index, "unit", value)} />
                     </label>
 
                     <label style={sharedStyles.field}>
@@ -546,16 +559,11 @@ export function QuoteEditForm() {
                     </label>
                   </div>
 
-                  <label style={sharedStyles.field}>
-                    <span style={sharedStyles.label}>{t("fields.requestedSpecJson")}</span>
-                    <textarea
-                      style={{ ...sharedStyles.textarea, fontFamily: "monospace" }}
-                      value={item.requested_spec_json}
-                      onChange={(event) => updateItemField(index, "requested_spec_json", event.target.value)}
-                      disabled={isSubmitting}
-                      placeholder={'{"grade":"A","color":"blue"}'}
-                    />
-                  </label>
+                  <SpecEditor value={item.requested_spec_json} disabled={isSubmitting}
+                    onChange={(json) => updateItemField(index, "requested_spec_json", json)} />
+
+                  <LineDescriptionFields arabic={item.description_ar} english={item.description_en} disabled={isSubmitting}
+                    onChange={(field, value) => updateItemField(index, field, value)} />
                 </section>
               ))}
             </div>
@@ -592,7 +600,7 @@ export function QuoteEditForm() {
 }
 
 function createDefaultItem(): QuoteItemFormValues {
-  return { product_type: "", quantity: "", unit: "", unit_price: "", requested_spec_json: "" };
+  return { product_type: "", quantity: "", unit: "", unit_price: "", requested_spec_json: "", description_ar: "", description_en: "" };
 }
 
 function toPreviewItem(item: QuoteItemFormValues, index: number): QuoteItem {
@@ -633,6 +641,8 @@ function toItemRequest(
     quantity: Number(item.quantity),
     unit: item.unit,
     unit_price: Number(item.unit_price),
+    description_ar: optionalText(item.description_ar) ?? null,
+    description_en: optionalText(item.description_en) ?? null,
   };
 }
 

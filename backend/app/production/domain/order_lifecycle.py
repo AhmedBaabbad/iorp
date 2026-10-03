@@ -14,6 +14,7 @@ Planned dates never change status; they only raise the late-start / late-finish 
 from dataclasses import dataclass
 from datetime import date
 from app.production.domain.enums import ProductionOrderStatus as S
+from app.production.domain.permissions import ORDER_TRANSITIONS
 
 
 class TransitionError(ValueError):
@@ -33,15 +34,17 @@ class Action:
     confirm: bool = False
 
 
+# Each action's permission comes from the one production map (domain/permissions.py).
+T = ORDER_TRANSITIONS
 ACTIONS: dict[str, Action] = {a.name: a for a in (
-    Action("release", frozenset({S.DRAFT}), S.RELEASED, "production:orders:release"),
-    Action("return_to_draft", frozenset({S.RELEASED}), S.DRAFT, "production:orders:release"),
-    Action("start", frozenset({S.RELEASED}), S.IN_PROGRESS, "production:orders:start"),
-    Action("hold", frozenset({S.IN_PROGRESS}), S.ON_HOLD, "production:orders:hold", requires_reason=True),
-    Action("resume", frozenset({S.ON_HOLD}), S.IN_PROGRESS, "production:orders:hold"),
-    Action("complete", frozenset({S.IN_PROGRESS}), S.COMPLETED, "production:orders:complete"),
-    Action("close", frozenset({S.COMPLETED}), S.CLOSED, "production:orders:close", confirm=True),
-    Action("cancel", frozenset({S.DRAFT, S.RELEASED}), S.CANCELLED, "production:orders:cancel", requires_reason=True, confirm=True),
+    Action("release", frozenset({S.DRAFT}), S.RELEASED, T["release"]),
+    Action("return_to_draft", frozenset({S.RELEASED}), S.DRAFT, T["return_to_draft"]),
+    Action("start", frozenset({S.RELEASED}), S.IN_PROGRESS, T["start"]),
+    Action("hold", frozenset({S.IN_PROGRESS}), S.ON_HOLD, T["hold"], requires_reason=True),
+    Action("resume", frozenset({S.ON_HOLD}), S.IN_PROGRESS, T["resume"]),
+    Action("complete", frozenset({S.IN_PROGRESS}), S.COMPLETED, T["complete"]),
+    Action("close", frozenset({S.COMPLETED}), S.CLOSED, T["close"], confirm=True),
+    Action("cancel", frozenset({S.DRAFT, S.RELEASED}), S.CANCELLED, T["cancel"], requires_reason=True, confirm=True),
 )}
 
 TERMINAL = frozenset({S.CLOSED, S.CANCELLED})

@@ -5,7 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.tenancy import TenantContext
-from app.dependencies import get_current_tenant, get_db, get_customer_lookup, require_permission
+from app.dependencies import get_current_tenant, get_db, get_customer_lookup, permission_checked_in_handler, require_permission
+from app.production.domain import permissions as P
 from app.core.db import Base
 from app.production.api.planning_schemas import PlanningOrderRead, PlanningOrderCreate, ReleaseRequest, StatusHistoryRead, TransitionRequest
 from app.production.application.order_status_service import OrderStatusService
@@ -27,7 +28,7 @@ router = APIRouter(prefix="/production-orders", tags=["production-orders"])
 
 
 @router.post("", response_model=PlanningOrderRead, status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("production:planning:allocate")), Depends(require_permission("production:orders:create"))])
+    dependencies=[Depends(require_permission(P.PLANNING_ALLOCATE)), Depends(require_permission(P.ORDERS_CREATE))])
 def create_production_order(
     payload: PlanningOrderCreate,
     tenant: TenantContext = Depends(get_current_tenant),
@@ -43,7 +44,7 @@ def create_production_order(
 
 
 @router.get("", response_model=list[ProductionOrderListItem],
-    dependencies=[Depends(require_permission("production:production_orders:read"))])
+    dependencies=[Depends(require_permission(P.ORDERS_READ))])
 def list_production_orders(
     status: ProductionOrderStatus | None = Query(default=None),
     work_center_id: UUID | None = Query(default=None),
@@ -61,7 +62,7 @@ def list_production_orders(
 
 
 @router.get("/{production_order_id}", response_model=PlanningOrderRead,
-    dependencies=[Depends(require_permission("production:production_orders:read"))])
+    dependencies=[Depends(require_permission(P.ORDERS_READ))])
 def get_production_order(
     production_order_id: UUID,
     tenant: TenantContext = Depends(get_current_tenant),
@@ -77,7 +78,7 @@ def get_production_order(
 
 
 @router.patch("/{production_order_id}", response_model=ProductionOrderRead,
-    dependencies=[Depends(require_permission("production:production_orders:write"))])
+    dependencies=[Depends(require_permission(P.ORDERS_UPDATE))])
 def update_production_order(
     production_order_id: UUID,
     payload: ProductionOrderUpdate,
@@ -95,7 +96,8 @@ def update_production_order(
 
 
 @router.post("/{production_order_id}/transitions", response_model=PlanningOrderRead,
-    dependencies=[Depends(require_permission("production:production_orders:read"))])
+    dependencies=[Depends(require_permission(P.ORDERS_READ)),
+                  Depends(permission_checked_in_handler(*dict.fromkeys(P.ORDER_TRANSITIONS.values())))])
 def transition_production_order(
     production_order_id: UUID,
     payload: TransitionRequest,
@@ -107,14 +109,14 @@ def transition_production_order(
     """The only way to change an order's status. Each action checks its own permission."""
     try:
         order = OrderStatusService(db, tenant).transition(production_order_id, payload.action, can=can, reason=payload.reason,
-                                                          expected_version=payload.expected_version)
+                                                          expected_version=payload.expected_version, zero_output=payload.zero_output)
     except (TransitionError, AllocationError) as exc:
         raise lifecycle_errors(exc) from exc
     return with_lifecycle(order, db, tenant, customers, can)
 
 
 @router.get("/{production_order_id}/status-history", response_model=list[StatusHistoryRead],
-    dependencies=[Depends(require_permission("production:production_orders:read"))])
+    dependencies=[Depends(require_permission(P.ORDERS_READ))])
 def production_order_status_history(
     production_order_id: UUID,
     tenant: TenantContext = Depends(get_current_tenant),
@@ -132,7 +134,7 @@ def production_order_status_history(
 
 
 @router.post("/{production_order_id}/cancel", response_model=PlanningOrderRead,
-    dependencies=[Depends(require_permission("production:orders:cancel"))])
+    dependencies=[Depends(require_permission(P.ORDERS_CANCEL))])
 def cancel_production_order(
     production_order_id: UUID,
     payload: ReleaseRequest,

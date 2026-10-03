@@ -20,6 +20,8 @@ import {
   statusBadgeStyle,
   typeBadgeStyle,
 } from "./shift-utils";
+import { usePermission } from "@/features/auth/permission-hooks";
+import { P } from "@/lib/production-permissions";
 
 
 const styles: Record<string, CSSProperties> = {
@@ -49,6 +51,7 @@ const styles: Record<string, CSSProperties> = {
 
 export function ShiftDetail() {
   const t = useTranslations("production.shifts");
+  const canUpdate = usePermission(P.SHIFTS_UPDATE);
   const tEnums = useTranslations();
   const common = useTranslations("common");
   const messages = useTranslations("messages");
@@ -107,9 +110,11 @@ export function ShiftDetail() {
       subtitle={shift ? shift.code : t("detailSubtitle")}
       action={
         <div style={{ display: "flex", gap: "8px" }}>
-          <Link href={`/shifts/${shiftId}/edit`} style={sharedStyles.button}>
-            {common("actions.edit")}
-          </Link>
+          {canUpdate ? (
+            <Link href={`/shifts/${shiftId}/edit`} style={sharedStyles.button}>
+              {common("actions.edit")}
+            </Link>
+          ) : null}
           <Link href="/shifts" style={sharedStyles.secondaryButton}>
             {t("backToList")}
           </Link>

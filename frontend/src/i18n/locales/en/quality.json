@@ -19,8 +19,6 @@
       "productionOrderId": "Production Order ID",
       "productionOrderItem": "Production Order Item",
       "productionOrderItemId": "Production Order Item ID",
-      "productionOutput": "Production Output",
-      "productionOutputId": "Production Output ID",
       "notes": "Notes"
     },
     "subtitle": "Inspect production output and track lifecycle status separately from result.",
@@ -84,7 +82,6 @@
         "defectCount": "Defect Count",
         "description": "Description",
         "productionOrderId": "Production Order ID",
-        "productionOutputId": "Production Output ID",
         "notes": "Notes"
       }
     },
@@ -107,8 +104,6 @@
       "qualityCheckId": "Quality Check ID",
       "qualityDefect": "Quality Defect",
       "qualityDefectId": "Quality Defect ID",
-      "productionOutput": "Production Output",
-      "productionOutputId": "Production Output ID",
       "productionOrderItem": "Production Order Item",
       "productionOrderItemId": "Production Order Item ID",
       "execution": "Execution",

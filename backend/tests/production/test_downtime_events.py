@@ -1,492 +1,302 @@
-from tests.production.order_fixtures import historical_order
-from datetime import date, time
+"""PROD-DOWNTIME-001: machine downtime — belongs to a work center; order and run are optional context."""
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
+from types import SimpleNamespace
+from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy import select
 
-from app.core.security import hash_password
-from app.foundation.domain.enums import OrganizationStatus, UserStatus
-from app.foundation.infrastructure.models import Organization, User
-from app.production.domain.enums import (
-    ProductionOrderPriority,
-    ProductionOrderStatus,
-    ShiftDefinitionStatus,
-    ShiftType,
-    WorkCenterStatus,
-    WorkCenterType,
-)
-from app.production.infrastructure.models import ProductionOrder, ShiftDefinition, WorkCenter
-from tests.production.conftest import grant_production_role
+from app.commercial.infrastructure.models import Customer
+from app.core.tenancy import TenantContext
+from app.dependencies import get_current_user
+from app.main import app
+from app.production.infrastructure.execution_models import ProductionRun
+from app.production.infrastructure.models import DowntimeEvent, WorkCenter
+from tests.test_production_allocation_lifecycle import other_org_demand
 
-
-ZERO_UUID = "00000000-0000-0000-0000-000000000000"
-DOWNTIME_BASE = "/api/v1/production/downtime-events"
-
-
-def _create_org(db, code="other-org") -> Organization:
-    org = Organization(
-        name="Other Org",
-        code=code,
-        status=OrganizationStatus.ACTIVE,
-        timezone="UTC",
-    )
-    db.add(org)
-    db.commit()
-    db.refresh(org)
-    return org
+ROOT = "/api/v1/production"
+DT = f"{ROOT}/downtime-events"
+PERMISSIONS = frozenset(
+    ["production:production_orders:read", "production:production_orders:update", "production:production_orders:manage_items", "production:planning:read", "production:planning:allocate",
+     "production:production_orders:create", "production:downtime_events:read", "production:downtime_events:create", "production:downtime_events:update", "production:downtime_events:delete", "production:downtime_events:close"]
+    + [f"production:production_orders:{a}" for a in ("release", "start", "hold", "complete", "close", "cancel")]
+    + [f"production:demands:{a}" for a in ("read", "create", "update")])
+PLANNED = {"planned_maintenance", "break_meeting", "no_orders"}
+UNPLANNED = {"changeover_setup", "breakdown", "material_shortage", "waiting_labor", "quality_issue", "utilities", "other"}
+T0 = datetime(2026, 9, 29, 8, 0, tzinfo=timezone.utc)
 
 
-def _create_user(db, org, email="other@example.com") -> User:
-    user = User(
-        organization_id=org.id,
-        full_name="Other User",
-        email=email,
-        password_hash=hash_password("Other1234!"),
-        status=UserStatus.ACTIVE,
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    grant_production_role(db, org, user)
-    return user
-
-
-def _login(client, email, password="Other1234!") -> dict[str, str]:
-    resp = client.post(
-        "/api/v1/auth/login",
-        json={"email": email, "password": password},
-    )
-    assert resp.status_code == 200
-    return {"Authorization": f"Bearer {resp.json()['access_token']}"}
-
-
-def _base_shift_definition(work_center_id: str, code="SD-DT-001") -> dict:
-    return {
-        "code": code,
-        "name": "Morning",
-        "shift_type": "morning",
-        "start_time": "07:00:00",
-        "end_time": "15:00:00",
-    }
-
-
-def _base_order(work_center_id: str, **overrides) -> dict:
-    payload = {
-        "work_center_id": work_center_id,
-        "product_type": "PE Film",
-        "planned_quantity": "100.00",
-        "unit": "kg",
-        "planned_start_date": "2026-07-01",
-        "planned_end_date": "2026-07-02",
-    }
-    payload.update(overrides)
-    return payload
-
-
-def _base_downtime(work_center_id: str, **overrides) -> dict:
-    payload = {
-        "work_center_id": work_center_id,
-        "start_time": "2026-07-01T06:00:00Z",
-        "category": "machine",
-        "reason_code": "Bearing failure on motor 2",
-    }
-    payload.update(overrides)
-    return payload
-
-
-def _create_work_center(client, auth_headers, code="WC-DT-001"):
-    resp = client.post(
-        "/api/v1/production/work-centers",
-        json={"code": code, "name": "Line 1", "center_type": "extrusion"},
-        headers=auth_headers,
-    )
-    assert resp.status_code == 201
-    return resp
-
-
-def _create_shift_definition(client, auth_headers, work_center_id: str, code="SD-DT-001"):
-    resp = client.post(
-        "/api/v1/production/shift-definitions",
-        json=_base_shift_definition(work_center_id, code),
-        headers=auth_headers,
-    )
-    assert resp.status_code == 201
-    return resp
-
-
-def _create_order(client, auth_headers, work_center_id: str, **overrides):
-    resp = historical_order(client, auth_headers, _base_order(work_center_id, **overrides))
-    assert resp.status_code == 201
-    return resp
-
-
-def _create_downtime(client, auth_headers, work_center_id: str, **overrides):
-    resp = client.post(
-        DOWNTIME_BASE,
-        json=_base_downtime(work_center_id, **overrides),
-        headers=auth_headers,
-    )
-    assert resp.status_code == 201
-    return resp
-
-
-def _create_foreign_work_center(db, org: Organization, code="WC-FOREIGN") -> WorkCenter:
-    work_center = WorkCenter(
-        organization_id=org.id,
-        code=code,
-        name="Foreign Line",
-        center_type=WorkCenterType.EXTRUSION,
-        status=WorkCenterStatus.ACTIVE,
-    )
-    db.add(work_center)
-    db.commit()
-    db.refresh(work_center)
-    return work_center
-
-
-def _create_foreign_shift_definition(
-    db,
-    org: Organization,
-    work_center: WorkCenter,
-    code="SD-FOREIGN",
-) -> ShiftDefinition:
-    shift_definition = ShiftDefinition(
-        organization_id=org.id,
-        code=code,
-        name="Foreign Morning",
-        shift_type=ShiftType.MORNING,
-        start_time=time(7, 0),
-        end_time=time(15, 0),
-        duration_hours=Decimal("8.00"),
-        crosses_midnight=False,
-        status=ShiftDefinitionStatus.ACTIVE,
-    )
-    db.add(shift_definition)
-    db.commit()
-    db.refresh(shift_definition)
-    return shift_definition
-
-
-def _create_foreign_production_order(
-    db,
-    org: Organization,
-    user: User,
-    work_center: WorkCenter,
-    number="PO-FOREIGN-DT-001",
-) -> ProductionOrder:
-    production_order = ProductionOrder(
-        organization_id=org.id,
-        production_order_number=number,
-        work_center_id=work_center.id,
-        product_type="PE Film",
-        planned_quantity=Decimal("100.00"),
-        unit="kg",
-        priority=ProductionOrderPriority.NORMAL,
-        status=ProductionOrderStatus.DRAFT,
-        planned_start_date=date(2026, 7, 1),
-        planned_end_date=date(2026, 7, 2),
-        created_by_user_id=user.id,
-    )
-    db.add(production_order)
-    db.commit()
-    db.refresh(production_order)
-    return production_order
+def at(minutes):
+    return (T0 + timedelta(minutes=minutes)).isoformat()
 
 
 @pytest.fixture
-def work_center(client, auth_headers):
-    return _create_work_center(client, auth_headers).json()
-
-
-@pytest.fixture
-def shift_definition(client, auth_headers, work_center):
-    return _create_shift_definition(client, auth_headers, work_center["id"]).json()
-
-
-@pytest.fixture
-def production_order(client, auth_headers, work_center):
-    return _create_order(client, auth_headers, work_center["id"]).json()
-
-
-def test_create_open_downtime_event(client, auth_headers, work_center):
-    resp = client.post(
-        DOWNTIME_BASE,
-        json=_base_downtime(work_center["id"]),
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 201
-    assert resp.json()["status"] == "open"
-    assert resp.json()["duration_minutes"] is None
-
-
-def test_create_closed_downtime_event(client, auth_headers, work_center):
-    resp = client.post(
-        DOWNTIME_BASE,
-        json=_base_downtime(
-            work_center["id"],
-            start_time="2026-07-01T06:00:00Z",
-            end_time="2026-07-01T07:30:00Z",
-        ),
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 201
-    assert resp.json()["status"] == "closed"
-    assert resp.json()["duration_minutes"] == 90
-
-
-def test_create_duration_calculation_precision(client, auth_headers, work_center):
-    resp = client.post(
-        DOWNTIME_BASE,
-        json=_base_downtime(
-            work_center["id"],
-            start_time="2026-07-01T06:00:00Z",
-            end_time="2026-07-01T06:45:00Z",
-        ),
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 201
-    assert resp.json()["duration_minutes"] == 45
-
-
-def test_create_end_time_before_start_time_rejected(client, auth_headers, work_center):
-    resp = client.post(
-        DOWNTIME_BASE,
-        json=_base_downtime(
-            work_center["id"],
-            start_time="2026-07-01T07:00:00Z",
-            end_time="2026-07-01T07:00:00Z",
-        ),
-        headers=auth_headers,
-    )
-    assert resp.status_code == 422
-
-
-def test_create_invalid_work_center_rejected(client, db, auth_headers):
-    other_org = _create_org(db, code="dt-foreign-wc-org")
-    foreign_wc = _create_foreign_work_center(db, other_org)
-
-    resp = client.post(
-        DOWNTIME_BASE,
-        json=_base_downtime(str(foreign_wc.id)),
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 400
-
-
-def test_create_invalid_production_order_rejected(client, db, auth_headers, work_center):
-    other_org = _create_org(db, code="dt-foreign-order-org")
-    other_user = _create_user(db, other_org, email="dt-foreign-order@example.com")
-    foreign_wc = _create_foreign_work_center(db, other_org)
-    foreign_order = _create_foreign_production_order(db, other_org, other_user, foreign_wc)
-
-    resp = client.post(
-        DOWNTIME_BASE,
-        json=_base_downtime(work_center["id"], production_order_id=str(foreign_order.id)),
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 400
-
-
-def test_create_empty_reason_code_rejected(client, auth_headers, work_center):
-    resp = client.post(
-        DOWNTIME_BASE,
-        json=_base_downtime(work_center["id"], reason_code=""),
-        headers=auth_headers,
-    )
-    assert resp.status_code == 422
-
-
-def test_list_returns_own_org_only(client, auth_headers, work_center):
-    _create_downtime(client, auth_headers, work_center["id"])
-    _create_downtime(client, auth_headers, work_center["id"], category="material")
-
-    resp = client.get(DOWNTIME_BASE, headers=auth_headers)
-
-    assert resp.status_code == 200
-    assert len(resp.json()) == 2
-
-
-def test_list_cross_tenant_isolation(client, db, auth_headers, work_center):
-    first_event = _create_downtime(client, auth_headers, work_center["id"])
-
-    other_org = _create_org(db, code="dt-tenant-org")
-    _create_user(db, other_org, email="dt-tenant@example.com")
-    other_headers = _login(client, "dt-tenant@example.com")
-    other_wc = _create_work_center(client, other_headers, code="WC-DT-TENANT")
-    other_event = _create_downtime(client, other_headers, other_wc.json()["id"])
-
-    resp = client.get(DOWNTIME_BASE, headers=auth_headers)
-
-    assert resp.status_code == 200
-    assert len(resp.json()) == 1
-    assert resp.json()[0]["id"] == first_event.json()["id"]
-    assert resp.json()[0]["id"] != other_event.json()["id"]
-
-
-def test_list_filter_by_work_center_id(client, auth_headers, work_center):
-    second_wc = _create_work_center(client, auth_headers, code="WC-DT-002")
-    first = _create_downtime(client, auth_headers, work_center["id"])
-    _create_downtime(client, auth_headers, second_wc.json()["id"])
-
-    resp = client.get(
-        f"{DOWNTIME_BASE}?work_center_id={work_center['id']}",
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 200
-    assert len(resp.json()) == 1
-    assert resp.json()[0]["id"] == first.json()["id"]
-
-
-def test_list_filter_by_production_order_id(client, auth_headers, work_center, production_order):
-    first = _create_downtime(client, auth_headers, work_center["id"], production_order_id=production_order["id"])
-    _create_downtime(client, auth_headers, work_center["id"])
-
-    resp = client.get(
-        f"{DOWNTIME_BASE}?production_order_id={production_order['id']}",
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 200
-    assert len(resp.json()) == 1
-    assert resp.json()[0]["id"] == first.json()["id"]
-
-
-def test_list_filter_by_status_open(client, auth_headers, work_center):
-    open_event = _create_downtime(client, auth_headers, work_center["id"])
-    _create_downtime(client, auth_headers, work_center["id"], end_time="2026-07-01T07:00:00Z")
-
-    resp = client.get(f"{DOWNTIME_BASE}?status=open", headers=auth_headers)
-
-    assert resp.status_code == 200
-    assert len(resp.json()) == 1
-    assert resp.json()[0]["id"] == open_event.json()["id"]
-    assert resp.json()[0]["status"] == "open"
-
-
-def test_list_filter_by_category(client, auth_headers, work_center):
-    machine_event = _create_downtime(client, auth_headers, work_center["id"], category="machine")
-    _create_downtime(client, auth_headers, work_center["id"], category="material")
-
-    resp = client.get(f"{DOWNTIME_BASE}?category=machine", headers=auth_headers)
-
-    assert resp.status_code == 200
-    assert len(resp.json()) == 1
-    assert resp.json()[0]["id"] == machine_event.json()["id"]
-    assert resp.json()[0]["category"] == "machine"
-
-
-def test_get_by_id_returns_notes(client, auth_headers, work_center):
-    create_resp = _create_downtime(client, auth_headers, work_center["id"], notes="test note")
-    event_id = create_resp.json()["id"]
-
-    resp = client.get(f"{DOWNTIME_BASE}/{event_id}", headers=auth_headers)
-
-    assert resp.status_code == 200
-    assert "notes" in resp.json()
-    assert resp.json()["notes"] == "test note"
-
-
-def test_get_by_id_wrong_org_returns_404(client, db, auth_headers):
-    other_org = _create_org(db, code="dt-wrong-org")
-    _create_user(db, other_org, email="dt-wrong-org@example.com")
-    other_headers = _login(client, "dt-wrong-org@example.com")
-    other_wc = _create_work_center(client, other_headers, code="WC-DT-WRONG")
-    other_event = _create_downtime(client, other_headers, other_wc.json()["id"])
-
-    resp = client.get(f"{DOWNTIME_BASE}/{other_event.json()['id']}", headers=auth_headers)
-
-    assert resp.status_code == 404
-
-
-def test_patch_close_open_event(client, auth_headers, work_center):
-    create_resp = _create_downtime(
-        client,
-        auth_headers,
-        work_center["id"],
-        start_time="2026-07-01T06:00:00Z",
-    )
-
-    resp = client.patch(
-        f"{DOWNTIME_BASE}/{create_resp.json()['id']}",
-        json={"end_time": "2026-07-01T07:30:00Z"},
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "closed"
-    assert resp.json()["duration_minutes"] == 90
-
-
-def test_patch_recalculates_duration_from_stored_start(client, auth_headers, work_center):
-    create_resp = _create_downtime(
-        client,
-        auth_headers,
-        work_center["id"],
-        start_time="2026-07-01T06:00:00Z",
-        end_time="2026-07-01T07:00:00Z",
-    )
-    assert create_resp.json()["duration_minutes"] == 60
-
-    resp = client.patch(
-        f"{DOWNTIME_BASE}/{create_resp.json()['id']}",
-        json={"end_time": "2026-07-01T08:00:00Z"},
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 200
-    assert resp.json()["duration_minutes"] == 120
-
-
-def test_patch_set_work_center_null_rejected(client, auth_headers, work_center):
-    create_resp = _create_downtime(client, auth_headers, work_center["id"])
-
-    resp = client.patch(
-        f"{DOWNTIME_BASE}/{create_resp.json()['id']}",
-        json={"work_center_id": None},
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 400
-
-
-def test_patch_set_start_time_null_rejected(client, auth_headers, work_center):
-    create_resp = _create_downtime(client, auth_headers, work_center["id"])
-
-    resp = client.patch(
-        f"{DOWNTIME_BASE}/{create_resp.json()['id']}",
-        json={"start_time": None},
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 400
-
-
-def test_patch_end_time_before_stored_start_rejected(client, auth_headers, work_center):
-    create_resp = _create_downtime(
-        client,
-        auth_headers,
-        work_center["id"],
-        start_time="2026-07-01T08:00:00Z",
-    )
-
-    resp = client.patch(
-        f"{DOWNTIME_BASE}/{create_resp.json()['id']}",
-        json={"end_time": "2026-07-01T07:00:00Z"},
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 400
-
-
-def test_unauthenticated_request_rejected(client, work_center):
-    resp = client.post(
-        DOWNTIME_BASE,
-        json=_base_downtime(work_center["id"]),
-    )
-    assert resp.status_code == 401
+def env(client, db, test_org, test_user):
+    customer = Customer(organization_id=test_org.id, customer_code="C-DT", name="Downtime Customer")
+    center = WorkCenter(organization_id=test_org.id, code="WC-DT", name="Extruder 1")
+    other_center = WorkCenter(organization_id=test_org.id, code="WC-DT2", name="Extruder 2")
+    db.add_all([customer, center, other_center]); db.commit()
+    ctx = SimpleNamespace(user=SimpleNamespace(is_organization_root=False), auth_user=SimpleNamespace(permissions=set(PERMISSIONS)),
+                          tenant=TenantContext(test_user.id, test_org.id, permissions=PERMISSIONS))
+    app.dependency_overrides[get_current_user] = lambda: ctx
+
+    def transition(order_id, action, reason="because", **extra):
+        return client.post(f"{ROOT}/production-orders/{order_id}/transitions", json={"action": action, "reason": reason, **extra})
+
+    def order(to="in_progress"):
+        items = [dict(product_type="film", unit="kg", required_quantity="1000", target_spec_json={"width_mm": 10})]
+        demand_id = client.post(f"{ROOT}/demands", json={"customer_id": str(customer.id), "items": items}).json()["id"]
+        client.post(f"{ROOT}/demands/{demand_id}/status", json={"status": "ready_for_planning"})
+        demand = client.get(f"{ROOT}/demands/{demand_id}").json()
+        r = client.post(f"{ROOT}/planning/create-production-order", json=dict(
+            allocations=[{"production_demand_item_id": i["id"], "allocated_quantity": "400"} for i in demand["items"]],
+            work_center_id=str(center.id), planned_start_date="2026-10-01", planned_end_date="2026-10-03"))
+        assert r.status_code == 201, r.text
+        po = r.json()
+        path = {"draft": [], "released": ["release"], "in_progress": ["release", "start"], "on_hold": ["release", "start", "hold"],
+                "completed": ["release", "start", "complete"], "closed": ["release", "start", "complete", "close"], "cancelled": ["cancel"]}[to]
+        for action in path:
+            assert transition(po["id"], action, **({"zero_output": True} if action == "close" else {})).status_code == 200
+        return po
+
+    def run(po, status="in_progress", work_center=None):
+        row = ProductionRun(organization_id=test_org.id, production_order_id=UUID(po["id"]), work_center_id=(work_center or other_center).id,
+                            run_date=date(2026, 9, 29), status=status, created_by_user_id=test_user.id)
+        db.add(row); db.commit()
+        return row
+
+    def add(category="breakdown", start=0, end=30, center_=None, **extra):
+        body = {"work_center_id": str((center_ or center).id), "start_time": at(start), "category": category, **extra}
+        if end is not None:
+            body["end_time"] = at(end)
+        return client.post(DT, json={k: v for k, v in body.items() if v is not None})
+
+    def added(*args, **kwargs):
+        r = add(*args, **kwargs)
+        assert r.status_code == 201, r.text
+        return r.json()
+
+    def rows():
+        db.expire_all()
+        return list(db.scalars(select(DowntimeEvent).order_by(DowntimeEvent.start_time)))
+
+    return SimpleNamespace(db=db, client=client, org=test_org, user=test_user, ctx=ctx, center=center, other_center=other_center,
+                           order=order, run=run, add=add, added=added, rows=rows, transition=transition)
+
+
+def code(r):
+    return r.json()["detail"]["code"]
+
+
+# ---- open, close and derived fields -------------------------------------------------------------
+
+def test_open_stop_then_close_derives_status_duration_and_closer(env):
+    event = env.added("breakdown", start=0, end=None, reason_code="HYD-PUMP")
+    assert (event["status"], event["duration_minutes"], event["planned"]) == ("open", None, False)
+    assert event["labels"]["actions"] == ["close", "edit", "delete"] and Decimal(event["labels"]["elapsed_minutes"]) > 0
+    r = env.client.post(f"{DT}/{event['id']}/close", json={"end_time": at(42.5)})
+    assert r.status_code == 200, r.text
+    (row,) = env.rows()
+    assert (row.status.value, row.duration_minutes, row.closed_by_user_id) == ("closed", Decimal("42.50"), env.user.id)
+    assert code(env.client.post(f"{DT}/{event['id']}/close", json={})) == "DOWNTIME_ALREADY_CLOSED"
+
+
+def test_close_defaults_to_now(env):
+    start = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+    event = env.client.post(DT, json={"work_center_id": str(env.center.id), "start_time": start, "category": "utilities"}).json()
+    closed = env.client.post(f"{DT}/{event['id']}/close", json={}).json()
+    assert closed["status"] == "closed" and Decimal("9.9") < Decimal(str(closed["duration_minutes"])) < Decimal("11")
+
+
+def test_derived_fields_are_never_accepted(env):
+    for extra in ({"status": "closed"}, {"duration_minutes": 5}, {"planned": True}, {"organization_id": str(uuid4())}):
+        assert env.add(**extra).status_code == 422
+    assert env.rows() == []
+
+
+@pytest.mark.parametrize("category", sorted(PLANNED | UNPLANNED))
+def test_planned_is_derived_from_the_category(env, category):
+    event = env.added(category)
+    assert event["planned"] is (category in PLANNED)
+
+
+def test_old_categories_are_rejected(env):
+    for old in ("machine", "manpower", "setup", "material"):
+        assert env.add(old).status_code == 422
+
+
+# ---- one machine, one stop at a time -------------------------------------------------------------
+
+def test_periods_on_one_machine_never_overlap(env):
+    env.added(start=0, end=30)
+    r = env.add(start=20, end=50)
+    assert r.status_code == 409 and code(r) == "DOWNTIME_OVERLAP"
+    env.added(start=30, end=40)                       # touching the end is fine
+    env.added(start=20, end=50, center_=env.other_center)  # another machine is fine
+    env.added(start=60, end=None)                     # an open stop
+    r = env.add(start=90, end=100)
+    assert code(r) == "DOWNTIME_OVERLAP" and r.json()["detail"]["conflicting_status"] == "open"
+    assert code(env.add(start=70, end=None)) == "DOWNTIME_OVERLAP"  # only one open stop per machine
+    env.added(start=50, end=60)                       # before the open stop
+    assert len(env.rows()) == 5
+
+
+def test_period_rules(env):
+    assert code(env.add(start=30, end=30)) == "END_BEFORE_START"
+    assert code(env.add(start=30, end=10)) == "END_BEFORE_START"
+    future = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+    r = env.client.post(DT, json={"work_center_id": str(env.center.id), "start_time": future, "category": "other"})
+    assert code(r) == "START_IN_FUTURE"
+    # Times need a timezone, so a device's local clock is never misread.
+    r = env.client.post(DT, json={"work_center_id": str(env.center.id), "start_time": "2026-09-29T08:00:00", "category": "other"})
+    assert r.status_code == 422
+
+
+def test_editing_rechecks_overlap_and_planned(env):
+    first = env.added(start=0, end=30)
+    env.added(start=40, end=50)
+    assert code(env.client.patch(f"{DT}/{first['id']}", json={"end_time": at(45)})) == "DOWNTIME_OVERLAP"
+    r = env.client.patch(f"{DT}/{first['id']}", json={"end_time": at(35), "category": "planned_maintenance"})
+    assert r.status_code == 200, r.text
+    row = env.rows()[0]
+    assert (row.duration_minutes, row.category, row.planned, row.updated_by_user_id) == (Decimal("35.00"), "planned_maintenance", True, env.user.id)
+    # Reopening clears the end and the duration.
+    reopened = env.client.patch(f"{DT}/{first['id']}", json={"end_time": None})
+    assert code(reopened) == "DOWNTIME_OVERLAP"  # it would run into the next stop
+
+
+# ---- order and run -----------------------------------------------------------------------------
+
+@pytest.mark.parametrize("status,expected", [("draft", "ORDER_NOT_RUNNING"), ("released", "ORDER_NOT_RUNNING"), ("cancelled", "ORDER_NOT_RUNNING"),
+                                             ("closed", "DOWNTIME_LOCKED")])
+def test_order_link_only_while_it_runs(env, status, expected):
+    po = env.order(to=status)
+    r = env.add(production_order_id=po["id"])
+    assert code(r) == expected and env.rows() == []
+
+
+@pytest.mark.parametrize("status", ["in_progress", "on_hold", "completed"])
+def test_order_link_while_running_or_completed(env, status):
+    po = env.order(to=status)
+    event = env.added(production_order_id=po["id"])
+    assert event["labels"]["order_number"] == po["production_order_number"]
+
+
+def test_closing_the_order_locks_its_downtime(env):
+    po = env.order(to="completed")
+    event = env.added(production_order_id=po["id"], end=None)
+    assert env.transition(po["id"], "close", zero_output=True).status_code == 200
+    for r in (env.client.patch(f"{DT}/{event['id']}", json={"reason_code": "x"}), env.client.delete(f"{DT}/{event['id']}"),
+              env.client.post(f"{DT}/{event['id']}/close", json={})):
+        assert r.status_code == 409 and code(r) == "DOWNTIME_LOCKED"
+    assert env.client.get(f"{DT}/{event['id']}").json()["labels"]["actions"] == []
+
+
+def test_run_gives_machine_and_order(env):
+    po = env.order()
+    run = env.run(po)
+    r = env.client.post(DT, json={"production_run_id": str(run.id), "start_time": at(0), "end_time": at(5), "category": "material_shortage"})
+    assert r.status_code == 201, r.text
+    row = env.rows()[0]
+    assert (row.work_center_id, str(row.production_order_id), row.production_run_id) == (env.other_center.id, po["id"], run.id)
+    assert code(env.add(production_run_id=str(run.id), start=10, end=20)) == "WORK_CENTER_MISMATCH"
+    other = env.order()
+    r = env.client.post(DT, json={"production_run_id": str(run.id), "production_order_id": other["id"], "start_time": at(10), "category": "other"})
+    assert code(r) == "RUN_NOT_IN_ORDER"
+    cancelled = env.run(po, status="cancelled")
+    r = env.client.post(DT, json={"production_run_id": str(cancelled.id), "start_time": at(10), "category": "other"})
+    assert code(r) == "RUN_CANCELLED"
+
+
+def test_a_machine_is_required_without_a_run(env):
+    r = env.client.post(DT, json={"start_time": at(0), "category": "other"})
+    assert r.status_code == 422 and code(r) == "WORK_CENTER_REQUIRED"
+
+
+def test_a_machine_can_stop_without_any_order(env):
+    event = env.added("no_orders", start=0, end=480)
+    assert event["production_order_id"] is None and event["planned"] is True
+
+
+# ---- reports -----------------------------------------------------------------------------------
+
+def test_summary_for_reports(env):
+    env.added("breakdown", start=0, end=30)
+    env.added("breakdown", start=40, end=100)
+    env.added("changeover_setup", start=100, end=115)
+    env.added("break_meeting", start=120, end=150)
+    env.added("utilities", start=0, end=10, center_=env.other_center)
+    env.added("other", start=200, end=None)
+    s = env.client.get(f"{DT}/summary").json()
+    assert (s["count"], Decimal(s["total_minutes"]), Decimal(s["planned_minutes"]), Decimal(s["unplanned_minutes"])) == (5, Decimal("145"), Decimal("30"), Decimal("115"))
+    assert s["open_count"] == 1 and Decimal(s["open_minutes_so_far"]) > 0
+    assert Decimal(s["mttr_minutes"]) == Decimal("45.00")  # (30 + 60) / 2
+    assert [(c["category"], c["planned"], c["count"], Decimal(c["minutes"])) for c in s["by_category"]] == [
+        ("breakdown", False, 2, Decimal("90")), ("break_meeting", True, 1, Decimal("30")), ("changeover_setup", False, 1, Decimal("15")), ("utilities", False, 1, Decimal("10"))]
+    machines = {m["work_center_name"]: (Decimal(m["minutes"]), Decimal(m["unplanned_minutes"])) for m in s["by_work_center"]}
+    assert machines == {"Extruder 1": (Decimal("135"), Decimal("105")), "Extruder 2": (Decimal("10"), Decimal("10"))}
+    only = env.client.get(f"{DT}/summary", params={"work_center_id": str(env.other_center.id)}).json()
+    assert only["count"] == 1 and Decimal(only["total_minutes"]) == 10
+
+
+def test_date_filters_use_the_factory_local_day(env):
+    env.org.timezone = "Asia/Riyadh"; env.db.commit()  # UTC+3
+    late = datetime(2026, 9, 28, 22, 30, tzinfo=timezone.utc)  # 01:30 on the 29th in Riyadh
+    env.client.post(DT, json={"work_center_id": str(env.center.id), "start_time": late.isoformat(), "end_time": (late + timedelta(minutes=10)).isoformat(), "category": "other"})
+    assert len(env.client.get(DT, params={"date_from": "2026-09-29", "date_to": "2026-09-29"}).json()) == 1
+    assert env.client.get(DT, params={"date_to": "2026-09-28"}).json() == []
+
+
+def test_list_filters(env):
+    po = env.order()
+    env.added("breakdown", start=0, end=10, production_order_id=po["id"])
+    env.added("planned_maintenance", start=20, end=30)
+    env.added("other", start=40, end=None)
+    names = lambda **q: {e["category"] for e in env.client.get(DT, params=q).json()}  # noqa: E731
+    assert names(planned="true") == {"planned_maintenance"}
+    assert names(planned="false") == {"breakdown", "other"}
+    assert names(status="open") == {"other"}
+    assert names(production_order_id=po["id"]) == {"breakdown"}
+    assert names(category="planned_maintenance") == {"planned_maintenance"}
+
+
+# ---- security and records ------------------------------------------------------------------------
+
+def test_other_organizations_are_invisible(env):
+    foreign = other_org_demand(env.db)
+    center = env.db.scalar(select(WorkCenter).where(WorkCenter.organization_id == foreign.org.id))
+    r = env.client.post(DT, json={"work_center_id": str(center.id), "start_time": at(0), "category": "other"})
+    assert r.status_code == 422 and code(r) == "WORK_CENTER_NOT_FOUND"
+    env.db.add(DowntimeEvent(organization_id=foreign.org.id, work_center_id=center.id, start_time=T0, category="other", planned=False,
+                             status="open", created_by_user_id=env.user.id))
+    env.db.commit()
+    foreign_id = env.db.scalar(select(DowntimeEvent.id).where(DowntimeEvent.organization_id == foreign.org.id))
+    assert env.client.get(DT).json() == [] and env.client.get(f"{DT}/{foreign_id}").status_code == 404
+    assert env.client.post(f"{DT}/{foreign_id}/close", json={}).status_code == 404
+    assert env.client.get(f"{DT}/summary").json()["open_count"] == 0
+
+
+def test_permissions(env):
+    event = env.added(end=None)
+    env.ctx.auth_user.permissions = set(PERMISSIONS) - {"production:downtime_events:create", "production:downtime_events:update", "production:downtime_events:delete", "production:downtime_events:close"}
+    assert env.add(start=100, end=110).status_code == 403
+    assert env.client.post(f"{DT}/{event['id']}/close", json={}).status_code == 403
+    assert env.client.patch(f"{DT}/{event['id']}", json={"notes": "x"}).status_code == 403
+    assert env.client.delete(f"{DT}/{event['id']}").status_code == 403
+    assert env.client.get(f"{DT}/{event['id']}").json()["labels"]["actions"] == []
+    env.ctx.auth_user.permissions = set(PERMISSIONS) - {"production:downtime_events:read"}
+    assert env.client.get(DT).status_code == 403 and env.client.get(f"{DT}/summary").status_code == 403
+
+
+def test_delete(env):
+    event = env.added()
+    assert env.client.delete(f"{DT}/{event['id']}").status_code == 204 and env.rows() == []
+
+
+def test_work_center_delete_refused_while_downtime_exists(env):
+    env.added(center_=env.other_center)
+    env.ctx.auth_user.permissions = set(PERMISSIONS) | {"production:work_centers:delete"}
+    r = env.client.delete(f"{ROOT}/work-centers/{env.other_center.id}")
+    assert r.status_code == 409 and "downtime" in r.json()["detail"]
+    assert len(env.rows()) == 1 and env.db.get(WorkCenter, env.other_center.id) is not None

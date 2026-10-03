@@ -16,6 +16,7 @@ from app.production.domain import order_lifecycle as lifecycle
 from app.production.domain.enums import OrderTransitionTrigger as Trigger, ProductionOrderStatus as S
 from app.production.domain.order_lifecycle import TransitionError
 from app.production.infrastructure.demand_repository import ProductionDemandRepository
+from app.production.application.result_service import close_readiness
 from app.production.infrastructure.models import ProductionOrder, ProductionOrderStatusHistory
 
 PermissionCheck = Callable[[str], bool]
@@ -77,15 +78,17 @@ class OrderStatusService:
 
     # ---- writes ----------------------------------------------------------------------
 
-    def transition(self, order_id, action_name: str, *, can: PermissionCheck, reason: str | None = None, expected_version: int | None = None):
-        """A user-requested transition (the action buttons)."""
-        return self._apply(order_id, action_name, reason=reason, expected_version=expected_version, trigger=Trigger.MANUAL, can=can)
+    def transition(self, order_id, action_name: str, *, can: PermissionCheck, reason: str | None = None, expected_version: int | None = None,
+                   zero_output: bool = False):
+        """A user-requested transition (the action buttons). zero_output: close an order that produced nothing."""
+        return self._apply(order_id, action_name, reason=reason, expected_version=expected_version, trigger=Trigger.MANUAL, can=can,
+                           zero_output=zero_output)
 
     def start_from_activity(self, order_id, source: str):
         """Extension point: the first recorded production activity starts a released order.
 
         Not wired yet. Call it from the service that records the first production output,
-        shift report or material issue for an order, e.g. start_from_activity(order.id, "production_output").
+        run or material issue for an order, e.g. start_from_activity(order.id, "production_run").
         Does nothing unless the order is still released.
         """
         return self._apply(order_id, "start", reason=f"First activity: {source}", trigger=Trigger.ACTIVITY, only_from=S.RELEASED)
@@ -97,7 +100,8 @@ class OrderStatusService:
             raise TransitionError("PRODUCTION_ORDER_NOT_FOUND", 404)
         return order
 
-    def _apply(self, order_id, action_name, *, reason, trigger, expected_version=None, can: PermissionCheck | None = None, only_from=None):
+    def _apply(self, order_id, action_name, *, reason, trigger, expected_version=None, can: PermissionCheck | None = None, only_from=None,
+               zero_output=False):
         db = self.db
         try:
             # Same first lock as allocation and demand writes, so a cancellation and a
@@ -112,12 +116,14 @@ class OrderStatusService:
             action = lifecycle.resolve(order.status, action_name, reason)
             if trigger == Trigger.MANUAL and not (can and can(action.permission)):
                 raise TransitionError("ACTION_FORBIDDEN", 403, action=action.name, permission=action.permission)
-            released = self._preconditions(order, action, reason)
+            released = self._preconditions(order, action, reason, zero_output)
             actor = self.tenant.user_id if trigger == Trigger.MANUAL else None
             previous = _record(db, order, action, trigger=trigger, actor_user_id=actor, reason=reason, now=utc_now())
             details = dict(action=action.name, from_status=previous.value, to_status=action.target.value, trigger=trigger.value, reason=reason or "")
             if released is not None:
                 details["released_allocations"] = len(released)
+            if zero_output:
+                details["zero_output"] = True
             get_registered_activity_logger().log_activity(db, self.org_id, "production_order.status_changed", "production_order", order.id,
                                                           order.production_order_number, actor_id=actor, details={k: str(v) for k, v in details.items()})
             db.commit()
@@ -127,15 +133,35 @@ class OrderStatusService:
             db.rollback()
             raise
 
-    def _preconditions(self, order, action, reason):
+    def _preconditions(self, order, action, reason, zero_output=False):
         if action.name == "release" and not (order.planned_quantity and order.planned_quantity > Decimal(0)):
             raise TransitionError("ORDER_HAS_NO_QUANTITY", 409)
         if action.name == "release" and order.allocations and not any(a.status == "active" for a in order.allocations):
             raise TransitionError("ORDER_HAS_NO_ACTIVE_ALLOCATIONS", 409)
+        if zero_output and action.name != "close":
+            raise TransitionError("ZERO_OUTPUT_ONLY_ON_CLOSE", 400)
+        if action.name == "close":
+            self._close_guard(order, reason, zero_output)
         if action.name == "cancel":
             # Cancelling returns every reserved quantity to planning in the same transaction.
             return AllocationLifecycleService(self.db, self.tenant).release_all_for_cancellation(order, reason)
         return None
+
+
+    def _close_guard(self, order, reason, zero_output):
+        """Closing freezes the final result: it needs result entries (one per item for multi-item
+        orders), or an explicit zero-output confirmation with a reason. Runs under the order lock."""
+        readiness = close_readiness(self.db, self.org_id, order)
+        if zero_output:
+            if readiness["has_entries"]:
+                raise TransitionError("ZERO_OUTPUT_WITH_ENTRIES", 409)
+            if not (reason or "").strip():
+                raise TransitionError("REASON_REQUIRED", 400, action="close")
+            return
+        if not readiness["has_entries"]:
+            raise TransitionError("RESULT_REQUIRED_TO_CLOSE", 409)
+        if readiness["missing_item_ids"]:
+            raise TransitionError("RESULT_MISSING_FOR_ITEMS", 409, missing_item_ids=[str(i) for i in readiness["missing_item_ids"]])
 
 
 def auto_start_due_orders(db, today=None, now=None):

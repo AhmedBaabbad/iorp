@@ -33,7 +33,6 @@ export type QualityCheckListItem = {
   qty_accepted: number;
   qty_rejected: number;
   production_order_id: string | null;
-  production_output_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -47,7 +46,6 @@ export type QualityCheckData = QualityCheckListItem & {
 export type CreateQualityCheckRequest = {
   production_order_id?: string | null;
   production_order_item_id?: string | null;
-  production_output_id?: string | null;
   check_datetime: string;
   check_type: QualityCheckType;
   qty_inspected: number;

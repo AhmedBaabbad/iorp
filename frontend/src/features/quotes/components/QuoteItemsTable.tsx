@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { useFormatter } from "@/hooks/useFormatter";
 import { displayValue } from "@/lib/utils";
@@ -54,6 +54,9 @@ const styles: Record<string, CSSProperties> = {
 export function QuoteItemsTable({ items, currency }: QuoteItemsTableProps) {
   const fmt = useFormatter();
   const t = useTranslations("commercial.quotes");
+  const units = useTranslations("commercial.quoteUnits.units");
+  const locale = useLocale();
+  const unitLabel = (code: string) => (units.has(code) ? units(code) : code);
   void currency;
 
   return (
@@ -88,6 +91,9 @@ export function QuoteItemsTable({ items, currency }: QuoteItemsTableProps) {
                 <td style={{ ...styles.td, textAlign: "center" }}>{item.line_no}</td>
                 <td style={{ ...styles.td, textAlign: "start" }}>
                   {item.product_type}
+                  {(locale === "ar" ? item.description_ar || item.description_en : item.description_en || item.description_ar) ? (
+                    <div style={{ marginTop: "4px" }}>{locale === "ar" ? item.description_ar || item.description_en : item.description_en || item.description_ar}</div>
+                  ) : null}
                   {item.requested_spec_json ? (
                     <pre style={styles.spec}>
                       {JSON.stringify(item.requested_spec_json, null, 2)}
@@ -95,7 +101,7 @@ export function QuoteItemsTable({ items, currency }: QuoteItemsTableProps) {
                   ) : null}
                 </td>
                 <td style={{ ...styles.td, textAlign: "center" }}>{fmt.number(item.quantity)}</td>
-                <td style={{ ...styles.td, textAlign: "start" }}>{displayValue(item.unit)}</td>
+                <td style={{ ...styles.td, textAlign: "start" }}>{displayValue(unitLabel(item.unit))}</td>
                 <td style={{ ...styles.td, textAlign: "end" }}>{fmt.decimal(item.unit_price)}</td>
                 <td style={{ ...styles.td, textAlign: "end" }}>{fmt.decimal(item.line_total)}</td>
               </tr>

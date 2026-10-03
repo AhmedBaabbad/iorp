@@ -1,0 +1,19 @@
+{#- The corporate header of every report and document: Arabic identity on the right, the logo in the centre,
+    English identity on the left, whatever the document language. External documents add the company's legal
+    identity (CR, Unified No., VAT) under each side, in that side's language. Values come from «هوية الشركة». -#}
+{%- set name_ar = branding.legal_name_ar or branding.name %}{% set name_en = branding.legal_name_en %}
+{%- set external = classification == 'external' %}
+{%- set legal = [('السجل التجاري', 'CR No.', branding.commercial_registration_no),
+                 ('الرقم الموحد', 'Unified No.', branding.unified_number),
+                 ('الرقم الضريبي', 'VAT No.', branding.vat_number)] | selectattr(2) | list %}
+<header class="id-header id-{{ classification or 'internal' }}" dir="rtl">
+  <div class="id-side" lang="ar">
+    <strong>{{ name_ar }}</strong>{% if branding.descriptor_ar %}<span>{{ branding.descriptor_ar }}</span>{% endif %}
+    {% if external and legal %}<dl class="id-legal">{% for ar, en, value in legal %}<div><dt>{{ ar }}</dt><dd><bdi dir="ltr">{{ value }}</bdi></dd></div>{% endfor %}</dl>{% endif %}
+  </div>
+  <div class="id-centre"><img class="id-logo" src="{{ branding.logo_data_uri }}" alt="">{% if branding.secondary_logo_data_uri %}<img class="id-logo id-secondary" src="{{ branding.secondary_logo_data_uri }}" alt="">{% endif %}</div>
+  <div class="id-side id-en" lang="en" dir="ltr">
+    <strong>{{ name_en or '' }}</strong>{% if branding.descriptor_en %}<span>{{ branding.descriptor_en }}</span>{% endif %}
+    {% if external and legal %}<dl class="id-legal">{% for ar, en, value in legal %}<div><dt>{{ en }}</dt><dd>{{ value }}</dd></div>{% endfor %}</dl>{% endif %}
+  </div>
+</header>

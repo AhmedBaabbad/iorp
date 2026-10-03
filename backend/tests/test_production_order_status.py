@@ -19,8 +19,8 @@ from tests.test_production_allocation_lifecycle import other_org_demand
 
 ROOT = "/api/v1/production"
 ORDER_ACTIONS = ["release", "start", "hold", "complete", "close", "cancel"]
-PERMISSIONS = frozenset(["production:production_orders:read", "production:production_orders:write", "production:planning:read", "production:planning:allocate",
-                         "production:orders:create"] + [f"production:orders:{a}" for a in ORDER_ACTIONS] + [f"production:demands:{a}" for a in ("read", "create", "update")])
+PERMISSIONS = frozenset(["production:production_orders:read", "production:production_orders:update", "production:production_orders:manage_items", "production:planning:read", "production:planning:allocate",
+                         "production:production_orders:create"] + [f"production:production_orders:{a}" for a in ORDER_ACTIONS] + [f"production:demands:{a}" for a in ("read", "create", "update")])
 ALL_STATUSES = list(S)
 
 
@@ -51,7 +51,8 @@ def env(client, db, test_org, test_user):
     def walk(order_id, *actions):
         body = None
         for a in actions:
-            r = act(order_id, a, "because")
+            # These orders record no final result, so closing is the zero-output close (PROD-OUTPUT-001).
+            r = act(order_id, a, "because", **({"zero_output": True} if a == "close" else {}))
             assert r.status_code == 200, r.text
             body = r.json()
         return body
@@ -139,14 +140,14 @@ def test_hold_and_cancel_need_a_reason(env, action, setup):
 
 def test_each_action_needs_its_own_permission(env):
     po = env.order()
-    env.ctx.auth_user.permissions = set(PERMISSIONS) - {"production:orders:release"}
+    env.ctx.auth_user.permissions = set(PERMISSIONS) - {"production:production_orders:release"}
     body = env.client.get(f"{ROOT}/production-orders/{po['id']}").json()
     assert [a["action"] for a in body["lifecycle"]["actions"]] == ["cancel"]  # release hidden
     r = env.act(po["id"], "release")
     assert r.status_code == 403 and r.json()["detail"]["code"] == "ACTION_FORBIDDEN"
     env.ctx.auth_user.permissions = set(PERMISSIONS)
     env.walk(po["id"], "release")
-    env.ctx.auth_user.permissions = set(PERMISSIONS) - {"production:orders:start"}
+    env.ctx.auth_user.permissions = set(PERMISSIONS) - {"production:production_orders:start"}
     assert env.act(po["id"], "start").status_code == 403
     assert "start" not in [a["action"] for a in env.client.get(f"{ROOT}/production-orders/{po['id']}").json()["lifecycle"]["actions"]]
 
@@ -234,10 +235,10 @@ def test_scheduled_start_is_idempotent_and_touches_only_due_released_orders(env)
 def test_activity_extension_point_starts_only_released_orders(env):
     po = env.order()
     service = OrderStatusService(env.db, TenantContext(env.user.id, env.org.id))
-    assert service.start_from_activity(UUID(po["id"]), "production_output").status == S.DRAFT  # not released: no change
+    assert service.start_from_activity(UUID(po["id"]), "production_run").status == S.DRAFT  # not released: no change
     env.walk(po["id"], "release")
-    assert service.start_from_activity(UUID(po["id"]), "production_output").status == S.IN_PROGRESS
-    assert service.start_from_activity(UUID(po["id"]), "production_output").status == S.IN_PROGRESS  # idempotent
+    assert service.start_from_activity(UUID(po["id"]), "production_run").status == S.IN_PROGRESS
+    assert service.start_from_activity(UUID(po["id"]), "production_run").status == S.IN_PROGRESS  # idempotent
     rows = env.db.scalars(select(ProductionOrderStatusHistory).where(ProductionOrderStatusHistory.production_order_id == UUID(po["id"]), ProductionOrderStatusHistory.trigger == "activity")).all()
     assert len(rows) == 1 and rows[0].actor_user_id is None
 

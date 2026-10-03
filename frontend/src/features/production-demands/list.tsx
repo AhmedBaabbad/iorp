@@ -7,17 +7,20 @@ import { useTranslations } from "next-intl";
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth/permission-hooks";
 import { demandsApi, type Customer, type Demand, type Page, type DemandStatus } from "./api";
-import { Badge, ErrorMessage, errorKey, priorities, statuses, Specs, today } from "./shared";
-import { PLANNABLE_STATUSES, PLANNING_VIEWS, parseView, planningQuery, progress, statusOptions, type PlanningView } from "./planning-lifecycle";
+import { Badge, ErrorMessage, errorKey, priorities, Specs, today } from "./shared";
+import { PLANNABLE_STATUSES, progress } from "./planning-lifecycle";
 import s from "./demands.module.css";
+import { StatusVisibilityPicker } from "./StatusVisibilityPicker";
+import { ALL_STATUSES, DEMANDS, PLANNING, initialStatuses, isActiveQueue, planningQuery, planningStatusesFromUrl, readStored, statusQuery, store, withStatusesInUrl } from "./status-visibility";
+import { P } from "@/lib/production-permissions";
 
 export function DemandList({ planning = false }: { planning?: boolean }) {
   const t = useTranslations("production.demands");
   const p = useTranslations("production.planning");
-  const canCreate = usePermission("production:demands:create");
-  const canReorder = usePermission("production:planning:sequence");
-  const canRead = usePermission("production:demands:read");
-  const canUpdate = usePermission("production:demands:update");
+  const canCreate = usePermission(P.DEMANDS_CREATE);
+  const canReorder = usePermission(P.PLANNING_SEQUENCE);
+  const canRead = usePermission(P.DEMANDS_READ);
+  const canUpdate = usePermission(P.DEMANDS_UPDATE);
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -27,9 +30,18 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
     if (search) initial.search = search;
     return initial;
   });
-  // Planning queue view: "active" hides fully planned demands without deleting them.
-  const [view, setView] = useState<PlanningView>(() => parseView(searchParams.get("view")));
   const [page, setPage] = useState(1);
+  // The statuses shown (hidden ones are only hidden, never deleted). Read from the URL now and from this
+  // browser after mount (localStorage is not available while rendering on the server); nothing loads until known.
+  const config = planning ? PLANNING : DEMANDS;
+  const fromUrl = planning ? planningStatusesFromUrl(searchParams.get("statuses"), searchParams.get("view")) : initialStatuses(searchParams.get("statuses"), null, []);
+  const [visible, setVisible] = useState<DemandStatus[]>(() => fromUrl?.length ? fromUrl : config.defaults);
+  const [visibleReady, setVisibleReady] = useState(Boolean(fromUrl?.length));
+  useEffect(() => {
+    if (visibleReady) return;
+    setVisible(initialStatuses(null, readStored(config.storageKey), config.defaults));
+    setVisibleReady(true);
+  }, [config, visibleReady]);
   const [data, setData] = useState<Page | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [error, setError] = useState("");
@@ -38,21 +50,22 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
   const [revision, refresh] = useState(0);
   useEffect(() => { let active = true; demandsApi.customers().then(v => { if (active) setCustomers(v); }).catch(e => { if (active) setError(errorKey(e)); }); return () => { active = false; }; }, []);
   useEffect(() => {
+    if (!visibleReady) return;
     let active = true; setBusy(true); setError("");
-    const query = planning ? planningQuery(view, filters, page) : new URLSearchParams({ ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)), page: String(page), page_size: "20" }).toString();
+    const query = planning ? planningQuery(visible, filters, page) : new URLSearchParams([...Object.entries(filters).filter(([, v]) => v), ...statusQuery(visible), ["page", String(page)], ["page_size", "20"]]).toString();
     demandsApi.list(query, planning).then(v => { if (active) setData(v); }).catch(e => { if (active) setError(errorKey(e)); }).finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
-  }, [filters, page, planning, revision, view]);
+  }, [filters, page, planning, revision, visible, visibleReady]);
   const filter = (key: string, value: string) => { setFilters(old => ({ ...old, [key]: value })); setPage(1); };
-  const changeView = (next: PlanningView) => {
-    setView(next); setFilters(old => ({ ...old, status: "" })); setPage(1);
-    // Keep the view in the URL so reloads and shared links open the same queue.
-    const params = new URLSearchParams(searchParams.toString());
-    if (next === "active") params.delete("view"); else params.set("view", next);
+  const changeVisible = (next: DemandStatus[]) => {
+    setVisible(next); setPage(1); store(next, config.storageKey);
+    const params = withStatusesInUrl(searchParams.toString(), next, config.defaults);
     router.replace(params.size ? `${pathname}?${params}` : pathname, { scroll: false });
   };
-  const reorderable = planning && canReorder && view === "active";
-  const planningStatuses = statusOptions(view);
+  const hidden = data?.hidden_by_status ?? 0;
+  // The queue proper: sequence order, reordering and allocation.
+  const activeQueue = planning && isActiveQueue(visible);
+  const reorderable = activeQueue && canReorder;
   // Stable reference: PlanningAllocation clears the planner's selection whenever this list changes.
   const allocatable = useMemo(() => data?.items.filter(d => PLANNABLE_STATUSES.includes(d.status)) ?? [], [data]);
   const filtered = Object.values(filters).some(Boolean);
@@ -69,16 +82,16 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
   }
   return <PageFrame title={planning ? p("title") : t("listTitle")} subtitle={planning ? p("subtitle") : t("listSubtitle")}>
     <section className={s.panel}>
-      {planning && <div className={s.actions} role="tablist" aria-label={p("views.label")}>{PLANNING_VIEWS.map(v => <button key={v} role="tab" aria-selected={view === v} className={`${s.button} ${view === v ? s.primary : ""}`} onClick={() => changeView(v)}>{p(`views.${v}`)}</button>)}</div>}
       <div className={s.toolbar}>
         <label className={s.field}>{t("search")}<input value={filters.search ?? ""} onChange={e => filter("search", e.target.value)} /></label>
         <label className={s.field}>{t("customer")}<select value={filters.customer_id ?? ""} onChange={e => filter("customer_id", e.target.value)}><option value="">{t("all")}</option>{customers.map(c => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}</select></label>
         <label className={s.field}>{t("priority")}<select value={filters.priority ?? ""} onChange={e => filter("priority", e.target.value)}><option value="">{t("all")}</option>{priorities.map(v => <option key={v} value={v}>{t(`priorities.${v}`)}</option>)}</select></label>
-        {(!planning || planningStatuses.length > 0) && <label className={s.field}>{t("status")}<select value={filters.status ?? ""} onChange={e => filter("status", e.target.value)}><option value="">{t("all")}</option>{(planning ? planningStatuses : statuses).map(v => <option key={v} value={v}>{t(`statuses.${v}`)}</option>)}</select></label>}
+        <StatusVisibilityPicker value={visible} defaults={config.defaults} onChange={changeVisible} />
         {planning && <><label className={s.field}>{t("productType")}<input value={filters.product_type ?? ""} onChange={e => filter("product_type", e.target.value)} /></label><label className={s.field}>{t("deliveryFrom")}<input type="date" value={filters.requested_delivery_from ?? ""} onChange={e => filter("requested_delivery_from", e.target.value)} /></label><label className={s.field}>{t("deliveryTo")}<input type="date" value={filters.requested_delivery_to ?? ""} onChange={e => filter("requested_delivery_to", e.target.value)} /></label></>}
         {!planning && canCreate && <Link className={`${s.button} ${s.primary}`} href="/production/demands/new">{t("createTitle")}</Link>}
       </div>
       <ErrorMessage code={error} />
+      {hidden > 0 && <p role="status" className={s.muted}>{t("statusVisibility.hidden", { count: hidden })} <button type="button" className={s.linkButton} onClick={() => changeVisible([...ALL_STATUSES])}>{t("statusVisibility.showAll")}</button></p>}
       {notice && <p role="status" className={s.success}>{notice}</p>}
       {busy && <p role="status">{t("loading")}</p>}
       {reorderable && filtered && <p className={s.muted}>{p("clearFiltersToReorder")}</p>}
@@ -99,10 +112,10 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
           {reorderable && <td><div className={s.actions}><button className={s.button} disabled={busy || filtered || position === 1} aria-label={p("moveUp")} onClick={() => reorder(d.id, position - 1)}>↑</button><button className={s.button} disabled={busy || filtered || position >= (data?.total ?? 0)} aria-label={p("moveDown")} onClick={() => reorder(d.id, position + 1)}>↓</button></div></td>}
         </tr>;
       })}</tbody></table></div>
-      {!busy && data?.total === 0 && <p>{planning ? p(`views.empty.${view}`) : t("empty")}</p>}
+      {!busy && data?.total === 0 && <p>{planning ? p(`views.empty.${activeQueue ? "active" : "all"}`) : t("empty")}</p>}
       <div className={s.toolbar}><button className={s.button} disabled={busy || page <= 1} onClick={() => setPage(v => v - 1)}>{t("previous")}</button><span>{t("page", { page, count: Math.max(1, Math.ceil((data?.total ?? 0) / 20)) })}</span><button className={s.button} disabled={busy || page * 20 >= (data?.total ?? 0)} onClick={() => setPage(v => v + 1)}>{t("next")}</button></div>
     </section>
-    {planning && view === "active" && data && <PlanningAllocation demands={allocatable} busy={busy} onRefresh={() => refresh(v => v + 1)} />}
+    {activeQueue && data && <PlanningAllocation demands={allocatable} busy={busy} onRefresh={() => refresh(v => v + 1)} />}
   </PageFrame>;
 }
 

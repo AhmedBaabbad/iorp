@@ -7,6 +7,9 @@ rows, API metadata, system-role grants, and tests all derive from this file.
 from dataclasses import dataclass, replace
 import re
 
+# Each module declares its own permissions (a pure domain module); the catalog registers them.
+from app.production.domain import permissions as production_permissions
+
 
 @dataclass(frozen=True)
 class PermissionDefinition:
@@ -23,6 +26,8 @@ class PermissionDefinition:
 
 
 MODULE_NAMES = {
+    "organization": {"en": "Organization identity", "ar": "هوية المؤسسة"},
+    "reports": {"en": "Production reports", "ar": "تقارير الإنتاج"},
     "foundation": {"en": "Administration", "ar": "الإدارة"},
     "commercial": {"en": "Commercial", "ar": "التجاري"},
     "production": {"en": "Production", "ar": "الإنتاج"},
@@ -45,10 +50,11 @@ RESOURCE_NAMES = {
     "customers": ("Customers", "العملاء"), "interactions": ("Interactions", "التفاعلات"),
     "follow_ups": ("Follow-ups", "المتابعات"), "samples": ("Samples", "العينات"),
     "evaluations": ("Evaluations", "التقييمات"), "quotes": ("Quotes", "عروض الأسعار"),
+    "quote_settings": ("Quotation Settings", "إعدادات عروض الأسعار"),
     "orders": ("Orders", "الطلبات"), "work_centers": ("Work Centers", "مراكز العمل"),
     "production_orders": ("Production Orders", "أوامر الإنتاج"),
     "downtime_events": ("Downtime Events", "أحداث التوقف"), "waste_records": ("Waste Records", "سجلات الهدر"),
-    "shift_definitions": ("Shift Definitions", "تعريفات الورديات"), "production_outputs": ("Production Outputs", "مخرجات الإنتاج"),
+    "results": ("Production Results", "النتيجة النهائية للإنتاج"),
     "quality_checks": ("Quality Checks", "فحوصات الجودة"), "quality_defects": ("Quality Defects", "عيوب الجودة"),
     "rejections": ("Rejections", "حالات الرفض"), "ncr_reports": ("NCR Reports", "تقارير عدم المطابقة"),
     "members": ("Workforce Members", "أعضاء القوى العاملة"),
@@ -57,7 +63,9 @@ RESOURCE_NAMES = {
 ACTION_NAMES = {
     "start": ("Start", "بدء"),
     "release": ("Release", "اعتماد"),
-    "hold": ("Hold or Resume", "إيقاف مؤقت أو استئناف"),
+    "verify": ("Verify", "التحقق من"),
+    "correct": ("Correct", "تصحيح"),
+    "hold": ("Hold", "تعليق"),
     "close": ("Close", "إغلاق"),
     "pause": ("Pause", "إيقاف مؤقت لـ"),
     "cancel": ("Cancel", "إلغاء"),
@@ -72,6 +80,7 @@ ACTION_NAMES = {
     "branding": ("Manage Branding for", "إدارة الهوية البصرية لـ"), "assign": ("Assign", "تعيين"),
     "complete": ("Complete", "إكمال"), "assign_owner": ("Assign Owner for", "تعيين المسؤول عن"),
     "link_user": ("Link User to", "ربط مستخدم بـ"),
+    "manage_items": ("Manage Items of", "إدارة بنود"),
 }
 
 
@@ -123,17 +132,22 @@ COMMERCIAL_PERMISSIONS = _apply_scope_overrides(_resource_permissions("commercia
     "samples": ("read", "create", "update", "delete", "write"),
     "evaluations": ("read", "create", "update", "delete"),
     "quotes": ("read", "create", "update", "delete", "write"),
+    # Quotation document settings: signature and the bilingual terms and conditions (QUOTE-DOC-001).
+    "quote_settings": ("read", "update"),
     "orders": ("read", "create", "update", "delete", "write"),
 }))
 
-PRODUCTION_PERMISSIONS = _resource_permissions("production", {
-    resource: ("read", "write") for resource in
-    ("work_centers", "production_orders", "downtime_events", "waste_records", "shift_definitions", "production_outputs")
-})
+def _labelled(permission: PermissionDefinition, labels: dict[str, tuple[str, str]]) -> PermissionDefinition:
+    if permission.code not in labels:
+        return permission
+    en, ar = labels[permission.code]
+    return replace(permission, name_en=en, name_ar=ar, description_en=f"Allows the account to {en[0].lower()}{en[1:]}.",
+                   description_ar=f"تسمح للحساب بـ{ar}.")
 
-PRODUCTION_PERMISSIONS += _resource_permissions("production", {"demands": ("read", "create", "update", "delete"), "planning": ("read", "sequence", "allocate", "release_allocation"), "orders": ("create", "cancel", "release", "start", "hold", "complete", "close")})
 
-PRODUCTION_PERMISSIONS += _resource_permissions("production", {"shifts": ("read", "create", "update", "delete"), "shift_rosters": ("read", "create", "update", "manage_members"), "runs": ("read", "create", "update", "start", "pause", "complete", "cancel", "manage_members")})
+# PROD-RBAC-001: read/create/update/delete plus explicit actions, from production/domain/permissions.py.
+PRODUCTION_PERMISSIONS = [_labelled(p, production_permissions.LABELS)
+                          for p in _resource_permissions(production_permissions.MODULE, production_permissions.RESOURCES)]
 
 QUALITY_PERMISSIONS = _resource_permissions("quality", {
     resource: ("read", "write") for resource in
@@ -144,9 +158,22 @@ WORKFORCE_PERMISSIONS = _resource_permissions("workforce", {
     "members": ("read", "create", "update", "delete", "link_user"),
 })
 
+REPORTING_PERMISSIONS = [PermissionDefinition(code, *code.split(":"), en, ar, en, ar) for code, en, ar in (
+    ("organization:branding:read", "Read company identity", "عرض هوية الشركة"),
+    ("organization:branding:update", "Update company identity", "تعديل هوية الشركة"),
+    (production_permissions.REPORT_ORDER_FULL, "Production order report", "تقرير أمر الإنتاج"),
+    (production_permissions.REPORT_ORDERS_SUMMARY, "Production orders summary", "ملخص أوامر الإنتاج"),
+    (production_permissions.REPORT_RESULTS_ANALYSIS, "Production results analysis", "تحليل نتائج الإنتاج"),
+    (production_permissions.REPORT_SHIFT_WORKFORCE, "Shift workforce report", "تقرير فرق الورديات"),
+)]
+
+from app.commercial.domain.report_permissions import LABELS as CUSTOMER_REPORT_LABELS
+REPORTING_PERMISSIONS += [PermissionDefinition('reports:customers:'+key, 'reports', 'customers', key, en, ar, en, ar)
+                         for key, (en, ar) in CUSTOMER_REPORT_LABELS.items()]
+
 ALL_TENANT_PERMISSIONS = (
     FOUNDATION_PERMISSIONS + COMMERCIAL_PERMISSIONS + PRODUCTION_PERMISSIONS
-    + QUALITY_PERMISSIONS + WORKFORCE_PERMISSIONS
+    + QUALITY_PERMISSIONS + WORKFORCE_PERMISSIONS + REPORTING_PERMISSIONS
 )
 PERMISSION_BY_CODE = {permission.code: permission for permission in ALL_TENANT_PERMISSIONS}
 ALL_PERMISSION_CODES = frozenset(PERMISSION_BY_CODE)

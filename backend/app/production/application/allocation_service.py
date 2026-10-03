@@ -9,7 +9,7 @@ from app.production.infrastructure.demand_repository import ProductionDemandRepo
 from app.production.infrastructure.execution_models import ProductionRun
 from app.production.infrastructure.models import (
     DowntimeEvent, ProductionAllocation, ProductionDemand, ProductionDemandItem, ProductionOrder,
-    ProductionOutput, WasteRecord,
+    WasteRecord,
 )
 
 ACTIVE = ProductionAllocationStatus.ACTIVE.value
@@ -90,7 +90,7 @@ class AllocationLifecycleService:
             ProductionRun.organization_id == self.org_id, ProductionRun.production_order_id == order_id,
             or_(ProductionRun.started_at.is_not(None), ProductionRun.status.not_in(("planned", "cancelled"))))
         checks = {"production_runs": started_run}
-        for name, model in (("production_outputs", ProductionOutput), ("downtime_events", DowntimeEvent), ("waste_records", WasteRecord)):
+        for name, model in (("downtime_events", DowntimeEvent), ("waste_records", WasteRecord)):
             checks[name] = select(model.id).where(model.organization_id == self.org_id, model.production_order_id == order_id)
         return [name for name, query in checks.items() if self.db.scalar(query.limit(1)) is not None]
 

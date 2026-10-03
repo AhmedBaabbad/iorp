@@ -1,229 +1,88 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import type { CSSProperties, ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
-import { getItemsByOrder } from "@/features/production-order-items";
-import type { ProductionOrderItemListItem } from "@/features/production-order-items";
-import { getProductionOrders } from "@/features/production-orders";
-import { getWorkCenters } from "@/features/work-centers";
+import s from "@/features/production-demands/demands.module.css";
 import { useFormatter } from "@/hooks/useFormatter";
-import { getApiErrorMessage } from "@/lib/api-error-handler";
-import { sharedStyles } from "@/styles/shared-styles";
-import { getWasteRecordById } from "../api/waste-records-api";
+import { deleteWasteRecord, getWasteRecordById } from "../api";
 import type { WasteRecordData } from "../types";
 import { WasteCategoryBadge } from "./WasteCategoryBadge";
-import {
-  formatProductionOrderLabel,
-  formatWorkCenterLabel,
-  type ProductionOrderOption,
-  type WorkCenterOption,
-} from "./waste-records-utils";
+import { wasteErrorMessage } from "./waste-errors";
 
-type WasteRecordDetailProps = {
-  wasteRecordId: string;
-};
+function Item({ label, children }: { label: string; children: ReactNode }) {
+  return <div><dt className={s.muted}>{label}</dt><dd style={{ margin: "4px 0 0", overflowWrap: "anywhere" }}>{children}</dd></div>;
+}
 
-const styles: Record<string, CSSProperties> = {
-  panel: {
-    background: "var(--surface)",
-    border: "1px solid var(--border-strong)",
-    borderRadius: "8px",
-    boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
-    padding: "24px",
-  },
-  grid: {
-    display: "grid",
-    gap: "18px",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  },
-  label: {
-    color: "var(--text-muted)",
-    display: "block",
-    fontSize: "13px",
-    marginBottom: "6px",
-  },
-  value: {
-    color: "var(--text)",
-    fontWeight: 700,
-    margin: 0,
-  },
-  section: {
-    borderTop: "1px solid var(--border)",
-    display: "grid",
-    gap: "12px",
-    marginTop: "24px",
-    paddingTop: "20px",
-  },
-  link: {
-    color: "var(--accent-strong)",
-    fontWeight: 700,
-    textDecoration: "none",
-  },
-};
-
-export function WasteRecordDetail({ wasteRecordId }: WasteRecordDetailProps) {
+export function WasteRecordDetail({ recordId }: { recordId: string }) {
+  const t = useTranslations("production.wasteRecords");
+  const orderStatus = useTranslations("enums.productionOrder.status");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
+  const router = useRouter();
   const [record, setRecord] = useState<WasteRecordData | null>(null);
-  const [workCenters, setWorkCenters] = useState<WorkCenterOption[]>([]);
-  const [productionOrders, setProductionOrders] = useState<ProductionOrderOption[]>([]);
-  const [orderItems, setOrderItems] = useState<ProductionOrderItemListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    let isMounted = true;
+    let active = true;
+    getWasteRecordById(recordId).then(r => { if (active) setRecord(r); })
+      .catch(e => { if (active) setError(wasteErrorMessage(e, t)); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [recordId, t]);
 
-    async function loadWasteRecord() {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const response = await getWasteRecordById(wasteRecordId);
-        const [workCentersResponse, productionOrdersResponse, orderItemsResponse] =
-          await Promise.all([
-            getWorkCenters().catch(() => []),
-            getProductionOrders().catch(() => []),
-            getItemsByOrder(response.production_order_id).catch(() => []),
-          ]);
-
-        if (isMounted) {
-          setRecord(response);
-          setWorkCenters(workCentersResponse);
-          setProductionOrders(productionOrdersResponse);
-          setOrderItems(orderItemsResponse);
-        }
-      } catch (caughtError) {
-        if (isMounted) {
-          setError(getApiErrorMessage(caughtError, messages));
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void loadWasteRecord();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [wasteRecordId]);
-
-  if (isLoading) {
-    return (
-      <PageFrame section="Production" title="Waste Record" subtitle={messages("loading.default")}>
-        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
-          {messages("loading.default")}
-        </div>
-      </PageFrame>
-    );
+  async function remove() {
+    if (!record) return;
+    setBusy(true); setError("");
+    try { await deleteWasteRecord(record.id); router.push(`/waste-records?order=${record.production_order_id}`); }
+    catch (e) { setError(wasteErrorMessage(e, t)); setConfirming(false); setBusy(false); }
   }
 
-  if (error || !record) {
-    return (
-      <PageFrame
-        section="Production"
-        title="Waste Record"
-        subtitle="The requested waste record could not be loaded."
-        action={
-          <Link href="/waste-records" style={sharedStyles.secondaryButton}>
-            Back to Waste Records
-          </Link>
-        }
-      >
-        <div style={sharedStyles.error} role="alert">
-          {error ?? "Waste record not found."}
+  const back = <Link href={record ? `/waste-records?order=${record.production_order_id}` : "/waste-records"} className={s.button}>{t("actions.backToList")}</Link>;
+  if (loading) return <PageFrame title={t("detailTitle")} action={back}><p className={s.muted}>{messages("loading.default")}</p></PageFrame>;
+  if (!record) return <PageFrame title={t("detailTitle")} action={back}><p role="alert" className={s.error}>{error || t("notFound")}</p></PageFrame>;
+  const labels = record.labels;
+  const actions = labels?.actions ?? [];
+
+  return <PageFrame title={t("detailTitle")} subtitle={labels?.order_number ?? undefined} action={back}>
+    {labels?.order_status === "closed" && <p role="status" className={s.muted}>{t("hints.locked")}</p>}
+    {error && <p role="alert" className={s.error}>{error}</p>}
+    <section className={s.panel}>
+      <div className={s.actions} style={{ justifyContent: "space-between", marginBottom: 16 }}>
+        <WasteCategoryBadge category={record.waste_category} />
+        {actions.length > 0 && <span className={s.actions}>
+          {actions.includes("edit") && <Link href={`/waste-records/${record.id}/edit`} className={s.button}>{t("actions.edit")}</Link>}
+          {actions.includes("delete") && <button type="button" className={`${s.button} ${s.danger}`} disabled={busy} onClick={() => setConfirming(true)}>{t("actions.delete")}</button>}
+        </span>}
+      </div>
+      <dl className={s.grid} style={{ margin: 0 }}>
+        <Item label={t("fields.productionOrder")}><Link href={`/production-orders/${record.production_order_id}`}>{labels?.order_number ?? "—"}</Link></Item>
+        <Item label={t("fields.orderStatus")}>{labels?.order_status ? orderStatus(labels.order_status) : "—"}</Item>
+        <Item label={t("fields.line")}>{labels?.line_no ?? t("placeholders.wholeOrder")}</Item>
+        <Item label={t("fields.quantityWasted")}><bdi>{fmt.quantity(record.quantity_wasted, record.unit)}</bdi></Item>
+        <Item label={t("fields.wasteDate")}>{fmt.date(record.waste_date)}</Item>
+        <Item label={t("fields.workCenter")}>{labels?.work_center_name ?? "—"}</Item>
+        <Item label={t("fields.run")}>{labels?.run_date ? fmt.date(labels.run_date) : "—"}</Item>
+        <Item label={t("fields.reasonCode")}>{record.reason_code ?? "—"}</Item>
+        <Item label={t("fields.recordedBy")}>{labels?.created_by_name ?? "—"}</Item>
+        <Item label={t("fields.createdAt")}>{fmt.dateTime(record.created_at)}</Item>
+      </dl>
+      {record.notes && <p style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}><span className={s.muted}>{t("fields.notes")}: </span>{record.notes}</p>}
+    </section>
+    {confirming && <div className={s.overlay} onKeyDown={e => { if (e.key === "Escape" && !busy) setConfirming(false); }}>
+      <div role="dialog" aria-modal="true" aria-label={t("delete.title")} className={`${s.panel} ${s.dialog}`}>
+        <h2>{t("delete.title")}</h2>
+        <p className={s.muted}>{t("delete.text")}</p>
+        <div className={s.actions}>
+          <button type="button" className={s.button} disabled={busy} onClick={() => setConfirming(false)} autoFocus>{t("actions.cancel")}</button>
+          <button type="button" className={`${s.button} ${s.danger}`} disabled={busy} onClick={() => void remove()}>{t("actions.delete")}</button>
         </div>
-      </PageFrame>
-    );
-  }
-
-  const orderItem = record.production_order_item_id
-    ? orderItems.find((item) => item.id === record.production_order_item_id)
-    : null;
-
-  return (
-    <PageFrame
-      section="Production"
-      title={`Waste Record - ${fmt.date(record.waste_date)}`}
-      subtitle="Waste record detail and linked production context."
-      action={
-        <Link href="/waste-records" style={sharedStyles.secondaryButton}>
-          Back to Waste Records
-        </Link>
-      }
-    >
-      <section style={styles.panel}>
-        <div style={styles.grid}>
-          <DetailValue label="Waste Date" value={fmt.date(record.waste_date)} />
-          <DetailValue
-            label="Quantity Wasted"
-            value={fmt.quantity(record.quantity_wasted, record.unit)}
-          />
-          <div>
-            <span style={styles.label}>Waste Category</span>
-            <WasteCategoryBadge category={record.waste_category} />
-          </div>
-          <DetailValue label="Reason Code" value={record.reason_code ?? "Not specified"} />
-        </div>
-
-        <section style={styles.section} aria-label="References">
-          <h2 style={{ margin: 0, fontSize: "18px" }}>References</h2>
-          <ReferenceLine label="Work Center">
-            <Link href={`/work-centers/${record.work_center_id}`} style={styles.link}>
-              {formatWorkCenterLabel(workCenters, record.work_center_id)}
-            </Link>
-          </ReferenceLine>
-          <ReferenceLine label="Production Order">
-            <Link
-              href={`/production-orders/${record.production_order_id}`}
-              style={styles.link}
-            >
-              {formatProductionOrderLabel(productionOrders, record.production_order_id)}
-            </Link>
-          </ReferenceLine>
-          {record.production_order_item_id ? (
-            <ReferenceLine label="Production Order Item">
-              {orderItem ? `Line ${orderItem.line_no}` : record.production_order_item_id}
-            </ReferenceLine>
-          ) : null}
-        </section>
-
-        <section style={styles.section} aria-label="Notes">
-          <h2 style={{ margin: 0, fontSize: "18px" }}>Notes</h2>
-          <p style={{ margin: 0 }}>{record.notes || "No notes recorded."}</p>
-        </section>
-      </section>
-    </PageFrame>
-  );
-}
-
-function DetailValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <span style={styles.label}>{label}</span>
-      <p style={styles.value}>{value}</p>
-    </div>
-  );
-}
-
-function ReferenceLine({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <div>
-      <span style={styles.label}>{label}</span>
-      <p style={styles.value}>{children}</p>
-    </div>
-  );
+      </div>
+    </div>}
+  </PageFrame>;
 }

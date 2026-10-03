@@ -27,7 +27,6 @@ An inspection event. The root entity of the quality chain.
 | qty_rejected | Integer | Units that failed — must be `>= 0` |
 | production_order_id | UUID nullable | Plain UUID ref — no FK (ADR-004) |
 | production_order_item_id | UUID nullable | Plain UUID ref — no FK |
-| production_output_id | UUID nullable | Plain UUID ref — no FK |
 | shift_report_id | UUID nullable | Plain UUID ref — no FK |
 | notes | Text nullable | |
 | checked_by_user_id | UUID FK → foundation_users (DB-level only) | |
@@ -88,7 +87,6 @@ A formal rejection decision following an inspection or defect finding.
 | organization_id | UUID FK | Tenant scope |
 | quality_check_id | UUID nullable | Optional reference to the triggering check |
 | quality_defect_id | UUID nullable | Optional reference to the triggering defect |
-| production_output_id | UUID nullable | Plain UUID ref — no FK |
 | production_order_item_id | UUID nullable | Plain UUID ref — no FK |
 | rejection_date | Date | |
 | rejection_reason | Enum (8 values) | |
@@ -201,7 +199,7 @@ Three levels of isolation enforce ADR-001 across all 5 entities:
 ## Module boundary rules (ADR-004)
 
 - No Python imports from `app.production.*`, `app.commercial.*`, or `app.foundation.infrastructure.models`
-- Production references (`production_order_id`, `production_output_id`, `shift_report_id`) are plain `UUID` columns with no FK constraints
+- Production references (`production_order_id`, `production_order_item_id`) are plain `UUID` columns with no FK constraints. `production_output_id` was removed with the legacy production outputs (migration `f6a1b2h5`).
 - Cross-module existence checks use raw `text()` SQL — no Production model imports
 - `created_by_user_id` / `checked_by_user_id` / `detected_by_user_id` / `rejected_by_user_id` use `ForeignKey("foundation_users.id")` at DB level only — no import of the Foundation `User` model into Quality code
 

@@ -1,5 +1,7 @@
 import { ShiftsList } from "@/features/shifts";
+import { PermissionGate } from "@/features/auth/permission-gate";
+import { P } from "@/lib/production-permissions";
 
 export default function Page() {
-  return <ShiftsList />;
+  return <PermissionGate code={P.SHIFTS_READ}><ShiftsList /></PermissionGate>;
 }

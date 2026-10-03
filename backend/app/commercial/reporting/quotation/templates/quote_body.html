@@ -1,0 +1,55 @@
+{%- set ar = lang == 'ar' %}{% set d = data.document %}
+<main class="q">
+  <h1 class="q-title">{{ title }}</h1>
+  <div class="q-meta">
+    <div><span>{{ 'التاريخ' if ar else 'Date' }}</span><b><bdi dir="ltr">{{ d.date }}</bdi></b></div>
+    <div><span>{{ 'رقم العرض' if ar else 'Quotation no.' }}</span><b><bdi dir="ltr">{{ d.number }}</bdi></b></div>
+    <div><span>{{ 'صالح حتى' if ar else 'Valid until' }}</span><b><bdi dir="ltr">{{ d.valid_until }}</bdi></b></div>
+  </div>
+
+  <section class="q-block">
+    <h2>{{ 'بيانات العميل' if ar else 'Customer' }}</h2>
+    <dl class="q-party">
+      <dt>{{ 'إلى' if ar else 'To' }}</dt><dd><bdi>{{ d.customer }}</bdi></dd>
+      {% if d.attention %}<dt>{{ 'عناية' if ar else 'Attention' }}</dt><dd><bdi>{{ d.attention }}</bdi></dd>{% endif %}
+      {% if d.subject %}<dt>{{ 'الموضوع' if ar else 'Subject' }}</dt><dd><bdi>{{ d.subject }}</bdi></dd>{% endif %}
+    </dl>
+  </section>
+
+  <section class="q-block" style="break-inside:auto">
+    <h2>{{ 'المنتجات والأسعار' if ar else 'Products and prices' }}</h2>
+    <table class="q-items">
+      <thead><tr>
+        <th class="n">{{ 'م' if ar else '#' }}</th><th>{{ 'الوصف' if ar else 'Description' }}</th>
+        <th>{{ 'الكمية' if ar else 'Quantity' }}</th><th>{{ 'الوحدة' if ar else 'Unit' }}</th>
+        <th>{{ 'سعر الوحدة' if ar else 'Unit price' }} <span class="q-currency">({{ d.currency }})</span></th>
+        <th>{{ 'الإجمالي' if ar else 'Amount' }} <span class="q-currency">({{ d.currency }})</span></th>
+      </tr></thead>
+      <tbody>{% for i in d['items'] %}<tr>
+        <td class="n">{{ i.no }}</td><td><bdi>{{ i.description }}</bdi></td>
+        <td class="num">{{ i.quantity }}</td><td>{{ i.unit }}</td>
+        <td class="num">{{ i.unit_price }}</td><td class="num">{{ i.total }}</td>
+      </tr>{% endfor %}</tbody>
+      <tfoot>{% for label, value, kind in d.totals %}<tr class="{{ kind }}">
+        <td colspan="5" class="lbl">{{ label }}</td><td class="num">{{ value }}</td>
+      </tr>{% endfor %}</tfoot>
+    </table>
+  </section>
+
+  {% if d.notes %}<section class="q-block"><h2>{{ 'ملاحظات' if ar else 'Notes' }}</h2><p class="q-notes">{{ d.notes }}</p></section>{% endif %}
+
+  {% if d.terms %}
+  <section class="q-block" style="break-inside:auto">
+    <h2>{{ 'الشروط والأحكام' if ar else 'Terms and conditions' }}</h2>
+    <table class="q-terms"><tbody>{% for t in d.terms %}<tr><th>{{ t.title }}</th><td>{{ t.body }}</td></tr>{% endfor %}</tbody></table>
+  </section>
+  {% endif %}
+
+  <div class="q-sign">
+    <p>{{ 'مع خالص التحية،' if ar else 'With best regards,' }}</p>
+    <strong>{{ (branding.legal_name_ar if ar else branding.legal_name_en) or branding.name }}</strong>
+    {% if d.signature_title %}<span>{{ d.signature_title }}</span>{% endif %}
+    {% if d.preparer %}<span>{{ d.preparer }}</span>{% endif %}
+    <div class="q-sign-line"></div>
+  </div>
+</main>

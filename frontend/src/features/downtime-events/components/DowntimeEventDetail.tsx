@@ -1,313 +1,96 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import type { CSSProperties, FormEvent, ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
-import { getProductionOrders } from "@/features/production-orders";
-import { getWorkCenters } from "@/features/work-centers";
+import s from "@/features/production-demands/demands.module.css";
 import { useFormatter } from "@/hooks/useFormatter";
-import { getApiErrorMessage } from "@/lib/api-error-handler";
-import { sharedStyles } from "@/styles/shared-styles";
-import {
-  endDowntimeEvent,
-  getDowntimeEventById,
-} from "../api/downtime-events-api";
-import type { DowntimeEventData } from "../types";
-import { DowntimeCategoryBadge } from "./DowntimeCategoryBadge";
-import { DowntimeStatusBadge } from "./DowntimeStatusBadge";
-import {
-  formatProductionOrderLabel,
-  formatWorkCenterLabel,
-  toIsoDatetime,
-  type ProductionOrderOption,
-  type WorkCenterOption,
-} from "./downtime-events-utils";
+import { closeDowntimeEvent, deleteDowntimeEvent, getDowntimeEventById } from "../api";
+import { fromLocalInput, nowLocalInput } from "../downtime-rules";
+import type { DowntimeEvent } from "../types";
+import { DowntimeCategoryBadge, DowntimeStatusBadge, DowntimeTypeBadge } from "./DowntimeBadges";
+import { downtimeErrorMessage } from "./downtime-errors";
 
-type DowntimeEventDetailProps = {
-  downtimeEventId: string;
-};
+function Item({ label, children }: { label: string; children: ReactNode }) {
+  return <div><dt className={s.muted}>{label}</dt><dd style={{ margin: "4px 0 0", overflowWrap: "anywhere" }}>{children}</dd></div>;
+}
 
-const styles: Record<string, CSSProperties> = {
-  panel: {
-    background: "var(--surface)",
-    border: "1px solid var(--border-strong)",
-    borderRadius: "8px",
-    boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
-    padding: "24px",
-  },
-  grid: {
-    display: "grid",
-    gap: "18px",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  },
-  label: {
-    color: "var(--text-muted)",
-    display: "block",
-    fontSize: "13px",
-    marginBottom: "6px",
-  },
-  value: {
-    color: "var(--text)",
-    fontWeight: 700,
-    margin: 0,
-  },
-  section: {
-    borderTop: "1px solid var(--border)",
-    display: "grid",
-    gap: "12px",
-    marginTop: "24px",
-    paddingTop: "20px",
-  },
-  openAction: {
-    background: "var(--warning-soft)",
-    border: "1px solid color-mix(in srgb, var(--warning) 35%, var(--surface))",
-    borderRadius: "8px",
-    display: "grid",
-    gap: "14px",
-    marginTop: "24px",
-    padding: "18px",
-  },
-  actionRow: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "12px",
-    alignItems: "end",
-  },
-  link: {
-    color: "var(--accent-strong)",
-    fontWeight: 700,
-    textDecoration: "none",
-  },
-};
-
-export function DowntimeEventDetail({ downtimeEventId }: DowntimeEventDetailProps) {
+export function DowntimeEventDetail({ eventId }: { eventId: string }) {
+  const t = useTranslations("production.downtimeEvents");
+  const orderStatus = useTranslations("enums.productionOrder.status");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
-  const [event, setEvent] = useState<DowntimeEventData | null>(null);
-  const [workCenters, setWorkCenters] = useState<WorkCenterOption[]>([]);
-  const [productionOrders, setProductionOrders] = useState<ProductionOrderOption[]>([]);
-  const [endTime, setEndTime] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isEnding, setIsEnding] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [endError, setEndError] = useState<string | null>(null);
-  const isMountedRef = useRef(true);
+  const router = useRouter();
+  const [event, setEvent] = useState<DowntimeEvent | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [dialog, setDialog] = useState<"close" | "delete" | null>(null);
+  const [end, setEnd] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const loadDowntimeEvent = useCallback(async () => {
-    if (!isMountedRef.current) {
-      return;
-    }
+  const load = useCallback(async () => {
+    try { setEvent(await getDowntimeEventById(eventId)); } catch (e) { setError(downtimeErrorMessage(e, t)); } finally { setLoading(false); }
+  }, [eventId, t]);
+  useEffect(() => { void load(); }, [load]);
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await getDowntimeEventById(downtimeEventId);
-      const [workCentersResponse, productionOrdersResponse] = await Promise.all([
-        getWorkCenters().catch(() => []),
-        getProductionOrders().catch(() => []),
-      ]);
-
-      if (isMountedRef.current) {
-        setEvent(response);
-        setWorkCenters(workCentersResponse);
-        setProductionOrders(productionOrdersResponse);
-      }
-    } catch (caughtError) {
-      if (isMountedRef.current) {
-        setError(getApiErrorMessage(caughtError, messages));
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [downtimeEventId]);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    void loadDowntimeEvent();
-
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, [loadDowntimeEvent]);
-
-  async function handleEndDowntime(submitEvent: FormEvent<HTMLFormElement>) {
-    submitEvent.preventDefault();
-    setEndError(null);
-
-    if (!endTime) {
-      setEndError("End time is required to close downtime.");
-      return;
-    }
-
-    setIsEnding(true);
-
-    try {
-      const closedEvent = await endDowntimeEvent(downtimeEventId, toIsoDatetime(endTime));
-      if (isMountedRef.current) {
-        setEvent(closedEvent);
-        setEndTime("");
-      }
-    } catch (caughtError) {
-      if (isMountedRef.current) {
-      setEndError(getApiErrorMessage(caughtError, messages));
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setIsEnding(false);
-      }
-    }
+  async function run(action: () => Promise<unknown>, after?: () => void) {
+    setBusy(true); setError("");
+    try { await action(); setDialog(null); if (after) after(); else await load(); }
+    catch (e) { setError(downtimeErrorMessage(e, t)); }
+    finally { setBusy(false); }
   }
 
-  if (isLoading) {
-    return (
-      <PageFrame section="Production" title="Downtime Event" subtitle={messages("loading.default")}>
-        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
-          {messages("loading.default")}
+  const back = <Link href="/downtime-events" className={s.button}>{t("actions.backToList")}</Link>;
+  if (loading) return <PageFrame title={t("detailTitle")} action={back}><p className={s.muted}>{messages("loading.default")}</p></PageFrame>;
+  if (!event) return <PageFrame title={t("detailTitle")} action={back}><p role="alert" className={s.error}>{error || t("notFound")}</p></PageFrame>;
+  const labels = event.labels;
+  const actions = labels?.actions ?? [];
+  const minutes = (value: string | null | undefined) => (value ? fmt.duration(Math.round(Number(value))) : "—");
+
+  return <PageFrame title={t("detailTitle")} subtitle={labels?.work_center_name ?? undefined} action={back}>
+    {labels?.order_status === "closed" && <p role="status" className={s.muted}>{t("hints.locked")}</p>}
+    {error && !dialog && <p role="alert" className={s.error}>{error}</p>}
+    <section className={s.panel}>
+      <div className={s.actions} style={{ justifyContent: "space-between", marginBottom: 16 }}>
+        <span className={s.actions}><DowntimeStatusBadge status={event.status} /><DowntimeCategoryBadge category={event.category} /><DowntimeTypeBadge planned={event.planned} /></span>
+        {actions.length > 0 && <span className={s.actions}>
+          {actions.includes("close") && <button type="button" className={`${s.button} ${s.primary}`} disabled={busy} onClick={() => { setEnd(nowLocalInput()); setDialog("close"); }}>{t("actions.close")}</button>}
+          {actions.includes("edit") && <Link href={`/downtime-events/${event.id}/edit`} className={s.button}>{t("actions.edit")}</Link>}
+          {actions.includes("delete") && <button type="button" className={`${s.button} ${s.danger}`} disabled={busy} onClick={() => setDialog("delete")}>{t("actions.delete")}</button>}
+        </span>}
+      </div>
+      <dl className={s.grid} style={{ margin: 0 }}>
+        <Item label={t("fields.workCenter")}>{labels?.work_center_name ?? "—"}</Item>
+        <Item label={t("fields.startTime")}>{fmt.dateTime(event.start_time)}</Item>
+        <Item label={t("fields.endTime")}>{event.end_time ? fmt.dateTime(event.end_time) : t("ongoing")}</Item>
+        <Item label={t("fields.duration")}>{event.status === "open" ? t("elapsed", { minutes: minutes(labels?.elapsed_minutes) }) : minutes(event.duration_minutes)}</Item>
+        <Item label={t("fields.productionOrder")}>{event.production_order_id ? <Link href={`/production-orders/${event.production_order_id}`}>{labels?.order_number ?? "—"}</Link> : t("placeholders.noOrder")}</Item>
+        <Item label={t("fields.orderStatus")}>{labels?.order_status ? orderStatus(labels.order_status) : "—"}</Item>
+        <Item label={t("fields.run")}>{labels?.run_date ? fmt.date(labels.run_date) : "—"}</Item>
+        <Item label={t("fields.reasonCode")}>{event.reason_code ?? "—"}</Item>
+        <Item label={t("fields.recordedBy")}>{labels?.created_by_name ?? "—"}</Item>
+        <Item label={t("fields.closedBy")}>{labels?.closed_by_name ?? "—"}</Item>
+      </dl>
+      {event.notes && <p style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}><span className={s.muted}>{t("fields.notes")}: </span>{event.notes}</p>}
+    </section>
+    {dialog && <div className={s.overlay} onKeyDown={e => { if (e.key === "Escape" && !busy) setDialog(null); }}>
+      <div role="dialog" aria-modal="true" aria-label={t(`${dialog}Dialog.title`)} className={`${s.panel} ${s.dialog}`}>
+        <h2>{t(`${dialog}Dialog.title`)}</h2>
+        <p className={s.muted}>{t(`${dialog}Dialog.text`)}</p>
+        {dialog === "close" && <label className={s.field}>{t("fields.endTime")}
+          <input type="datetime-local" value={end} disabled={busy} onChange={e => setEnd(e.target.value)} />
+        </label>}
+        {error && <p role="alert" className={s.error}>{error}</p>}
+        <div className={s.actions}>
+          <button type="button" className={s.button} disabled={busy} onClick={() => setDialog(null)} autoFocus>{t("actions.cancel")}</button>
+          {dialog === "close"
+            ? <button type="button" className={`${s.button} ${s.primary}`} disabled={busy || !end} onClick={() => run(() => closeDowntimeEvent(event.id, fromLocalInput(end)))}>{t("actions.close")}</button>
+            : <button type="button" className={`${s.button} ${s.danger}`} disabled={busy} onClick={() => run(() => deleteDowntimeEvent(event.id), () => router.push("/downtime-events"))}>{t("actions.delete")}</button>}
         </div>
-      </PageFrame>
-    );
-  }
-
-  if (error || !event) {
-    return (
-      <PageFrame
-        section="Production"
-        title="Downtime Event"
-        subtitle="The requested downtime event could not be loaded."
-        action={
-          <Link href="/downtime-events" style={sharedStyles.secondaryButton}>
-            Back to Downtime Events
-          </Link>
-        }
-      >
-        <div style={sharedStyles.error} role="alert">
-          {error ?? "Downtime event not found."}
-        </div>
-      </PageFrame>
-    );
-  }
-
-  return (
-    <PageFrame
-      section="Production"
-      title={`Downtime Event - ${fmt.dateTime(event.start_time)}`}
-      subtitle="Downtime detail and linked production context."
-      action={
-        <Link href="/downtime-events" style={sharedStyles.secondaryButton}>
-          Back to Downtime Events
-        </Link>
-      }
-    >
-      <section style={styles.panel}>
-        <div style={styles.grid}>
-          <DetailValue label="Start Time" value={fmt.dateTime(event.start_time)} />
-          <DetailValue
-            label="End Time"
-            value={event.end_time ? fmt.dateTime(event.end_time) : "Still open"}
-          />
-          <DetailValue
-            label="Duration"
-            value={fmt.duration(event.duration_minutes)}
-          />
-          <div>
-            <span style={styles.label}>Category</span>
-            <DowntimeCategoryBadge category={event.category} />
-          </div>
-          <DetailValue label="Reason Code" value={event.reason_code ?? "Not specified"} />
-          <div>
-            <span style={styles.label}>Status</span>
-            <DowntimeStatusBadge status={event.status} />
-          </div>
-        </div>
-
-        <section style={styles.section} aria-label="References">
-          <h2 style={{ margin: 0, fontSize: "18px" }}>References</h2>
-          <ReferenceLine label="Work Center">
-            <Link href={`/work-centers/${event.work_center_id}`} style={styles.link}>
-              {formatWorkCenterLabel(workCenters, event.work_center_id)}
-            </Link>
-          </ReferenceLine>
-          {event.production_order_id ? (
-            <ReferenceLine label="Production Order">
-              <Link
-                href={`/production-orders/${event.production_order_id}`}
-                style={styles.link}
-              >
-                {formatProductionOrderLabel(productionOrders, event.production_order_id)}
-              </Link>
-            </ReferenceLine>
-          ) : null}
-        </section>
-
-        <section style={styles.section} aria-label="Notes">
-          <h2 style={{ margin: 0, fontSize: "18px" }}>Notes</h2>
-          <p style={{ margin: 0 }}>{event.notes || "No notes recorded."}</p>
-        </section>
-
-        {event.status === "open" ? (
-          <section style={styles.openAction} aria-label="End downtime">
-            <div>
-              <h2 style={{ margin: "0 0 6px", fontSize: "18px" }}>
-                This event is still open
-              </h2>
-              <p style={{ margin: 0, color: "var(--text-muted)" }}>
-                Provide an end time to close the event. Duration will be calculated by the backend.
-              </p>
-            </div>
-            <form style={styles.actionRow} onSubmit={handleEndDowntime}>
-              <label style={{ ...sharedStyles.field, minWidth: "240px" }}>
-                <span style={sharedStyles.label}>End Time</span>
-                <input
-                  style={sharedStyles.input}
-                  type="datetime-local"
-                  value={endTime}
-                  onChange={(changeEvent) => setEndTime(changeEvent.target.value)}
-                  disabled={isEnding}
-                  required
-                />
-              </label>
-              <button style={sharedStyles.button} type="submit" disabled={isEnding}>
-                {isEnding ? "Ending..." : "End Downtime"}
-              </button>
-            </form>
-            {endError ? (
-              <div style={sharedStyles.error} role="alert">
-                {endError}
-              </div>
-            ) : null}
-          </section>
-        ) : null}
-      </section>
-    </PageFrame>
-  );
-}
-
-function DetailValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <span style={styles.label}>{label}</span>
-      <p style={styles.value}>{value}</p>
-    </div>
-  );
-}
-
-function ReferenceLine({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <div>
-      <span style={styles.label}>{label}</span>
-      <p style={styles.value}>{children}</p>
-    </div>
-  );
+      </div>
+    </div>}
+  </PageFrame>;
 }

@@ -41,6 +41,13 @@ Recomputed after every allocation, release and cancellation. `draft` and `cancel
 
 `GET /api/v1/production/planning/demands?view=active|planned|all` (default `active`). Filtering and pagination run in the database.
 
+**Status picker (later).** The planning screen and the demands list share one control, «الحالات المعروضة»: a dropdown of status checkboxes, with «إظهار الكل» and «الافتراضي».
+- **Planning default:** «جاهز للتخطيط» and «مخطط جزئياً». With exactly that selection the screen is the planning queue (`view=active`): sequence order, reordering and allocation.
+- **Other selections:** read-only, using `view=all&statuses=...`.
+- **Demands list default:** finished demands, fully planned and cancelled, are hidden.
+- **API:** both endpoints accept repeated `statuses` and return `hidden_by_status`, the number of demands left out, which the screen reports.
+- **Saving the choice:** it is kept per screen in the browser, and in the page URL (`?statuses=`) when it differs from the default. Older `?view=planned|all` links still open the matching statuses.
+
 - `active`: status `ready_for_planning`/`partially_planned` and at least one item with remaining > 0
 - `planned`: status `planned`
 - `all`: every demand in the organization

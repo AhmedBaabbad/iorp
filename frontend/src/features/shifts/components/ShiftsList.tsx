@@ -17,6 +17,8 @@ import {
   statusBadgeStyle,
   typeBadgeStyle,
 } from "./shift-utils";
+import { usePermission } from "@/features/auth/permission-hooks";
+import { P } from "@/lib/production-permissions";
 
 
 const styles: Record<string, CSSProperties> = {
@@ -155,6 +157,9 @@ const styles: Record<string, CSSProperties> = {
 
 export function ShiftsList() {
   const t = useTranslations("production.shifts");
+  const canCreate = usePermission(P.SHIFTS_CREATE);
+  const canUpdate = usePermission(P.SHIFTS_UPDATE);
+  const canDelete = usePermission(P.SHIFTS_DELETE);
   const tEnums = useTranslations();
   const common = useTranslations("common");
   const messages = useTranslations("messages");
@@ -249,11 +254,11 @@ export function ShiftsList() {
       section="Production"
       title={t("listTitle")}
       subtitle={t("subtitle")}
-      action={
+      action={canCreate ? (
         <Link href="/shifts/new" style={sharedStyles.button}>
           {t("newButton")}
         </Link>
-      }
+      ) : undefined}
     >
       {pendingDelete ? (
         <div
@@ -343,10 +348,12 @@ export function ShiftsList() {
       {!isLoading && !error && shifts.length === 0 ? (
         <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("empty")}</h2>
-          <p style={{ margin: "0 0 18px" }}>{t("createFirst")}</p>
-          <Link href="/shifts/new" style={sharedStyles.button}>
-            {t("createButton")}
-          </Link>
+          {canCreate ? <p style={{ margin: "0 0 18px" }}>{t("createFirst")}</p> : null}
+          {canCreate ? (
+            <Link href="/shifts/new" style={sharedStyles.button}>
+              {t("createButton")}
+            </Link>
+          ) : null}
         </section>
       ) : null}
 
@@ -396,19 +403,23 @@ export function ShiftsList() {
                     </td>
                     <td style={styles.td}>
                       <div style={styles.actions}>
-                        <Link href={`/shifts/${shift.id}/edit`} style={styles.actionButton}>
-                          {common("actions.edit")}
-                        </Link>
-                        <button
-                          type="button"
-                          style={styles.deleteButton}
-                          disabled={loadingImpactId === shift.id || deletingId === shift.id}
-                          onClick={() => void handleDelete(shift.id)}
-                        >
-                          {loadingImpactId === shift.id || deletingId === shift.id
-                            ? "..."
-                            : common("actions.delete")}
-                        </button>
+                        {canUpdate ? (
+                          <Link href={`/shifts/${shift.id}/edit`} style={styles.actionButton}>
+                            {common("actions.edit")}
+                          </Link>
+                        ) : null}
+                        {canDelete ? (
+                          <button
+                            type="button"
+                            style={styles.deleteButton}
+                            disabled={loadingImpactId === shift.id || deletingId === shift.id}
+                            onClick={() => void handleDelete(shift.id)}
+                          >
+                            {loadingImpactId === shift.id || deletingId === shift.id
+                              ? "..."
+                              : common("actions.delete")}
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

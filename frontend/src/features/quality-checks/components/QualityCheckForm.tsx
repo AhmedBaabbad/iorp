@@ -24,7 +24,6 @@ type QualityCheckFormValues = {
   qty_accepted: string;
   qty_rejected: string;
   production_order_id: string;
-  production_output_id: string;
   production_order_item_id: string;
   notes: string;
 };
@@ -81,7 +80,6 @@ const defaultValues: QualityCheckFormValues = {
   qty_accepted: "0",
   qty_rejected: "0",
   production_order_id: "",
-  production_output_id: "",
   production_order_item_id: "",
   notes: "",
 };
@@ -293,16 +291,6 @@ export function QualityCheckForm() {
             </label>
 
             <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>{t("fields.productionOutputId")}</span>
-              <input
-                style={sharedStyles.input}
-                value={values.production_output_id}
-                onChange={(event) => updateField("production_output_id", event.target.value)}
-                disabled={isSubmitting}
-              />
-            </label>
-
-            <label style={sharedStyles.field}>
               <span style={sharedStyles.label}>{t("fields.productionOrderItemId")}</span>
               <input
                 style={sharedStyles.input}
@@ -375,7 +363,6 @@ function toCreateRequest(values: QualityCheckFormValues): CreateQualityCheckRequ
   return {
     production_order_id: optionalText(values.production_order_id) ?? null,
     production_order_item_id: optionalText(values.production_order_item_id) ?? null,
-    production_output_id: optionalText(values.production_output_id) ?? null,
     check_datetime: `${values.check_date}T00:00:00`,
     check_type: values.check_type,
     qty_inspected: Number(values.qty_inspected),

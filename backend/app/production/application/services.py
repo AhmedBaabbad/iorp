@@ -1,9 +1,9 @@
 import logging
-from datetime import date, datetime, time
+from datetime import time
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import delete as sa_delete, select, update as sa_update
+from sqlalchemy import delete as sa_delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -12,10 +12,6 @@ _log = logging.getLogger(__name__)
 from app.core.tenancy import TenantContext
 from app.core.utils import utc_now
 from app.production.api.schemas import (
-    DowntimeEventCreate,
-    DowntimeEventUpdate,
-    ProductionOutputCreate,
-    ProductionOutputUpdate,
     ProductionOrderItemCreate,
     ProductionOrderItemUpdate,
     ProductionOrderCreate,
@@ -23,36 +19,27 @@ from app.production.api.schemas import (
     ShiftDefinitionCreate,
     ShiftDefinitionUpdate,
     ShiftDeletionImpact,
-    WasteRecordCreate,
-    WasteRecordUpdate,
     WorkCenterCreate,
     WorkCenterUpdate,
 )
 from app.production.domain.enums import (
-    DowntimeCategory,
-    DowntimeStatus,
-    ProductionOutputStatus,
     ProductionOrderPriority,
     ProductionOrderStatus,
-    WasteCategory,
     WorkCenterStatus,
 )
 from app.production.infrastructure.models import (
     DowntimeEvent,
-    ProductionOutput,
     ProductionOrder,
     ProductionOrderItem,
+    ProductionResultEntry,
     ShiftDefinition,
     WasteRecord,
     WorkCenter,
 )
 from app.production.infrastructure.repositories import (
-    DowntimeEventRepository,
-    ProductionOutputRepository,
     ProductionOrderItemRepository,
     ProductionOrderRepository,
     ShiftDefinitionRepository,
-    WasteRecordRepository,
     WorkCenterRepository,
 )
 
@@ -159,45 +146,22 @@ class WorkCenterService:
         order_ids = list(self.db.scalars(
             select(ProductionOrder.id).where(ProductionOrder.work_center_id == work_center_id)
         ))
+        # An order's final result, its waste and machine downtime are records to keep, never side effects of a delete.
+        if order_ids and self.db.scalar(select(ProductionResultEntry.id).where(
+                ProductionResultEntry.organization_id == tenant.organization_id, ProductionResultEntry.production_order_id.in_(order_ids)).limit(1)):
+            raise ValueError("Cannot delete a work center whose production orders have a recorded final result.")
+        at_center = WasteRecord.work_center_id == work_center_id
+        if order_ids:
+            at_center = at_center | WasteRecord.production_order_id.in_(order_ids)
+        if self.db.scalar(select(WasteRecord.id).where(WasteRecord.organization_id == tenant.organization_id, at_center).limit(1)):
+            raise ValueError("Cannot delete a work center with recorded waste.")
+        stopped = DowntimeEvent.work_center_id == work_center_id
+        if order_ids:
+            stopped = stopped | DowntimeEvent.production_order_id.in_(order_ids)
+        if self.db.scalar(select(DowntimeEvent.id).where(DowntimeEvent.organization_id == tenant.organization_id, stopped).limit(1)):
+            raise ValueError("Cannot delete a work center with recorded downtime.")
 
-        # --- Nullable FK nullification on records from OTHER work centers ---
-        if order_ids:
-            # DowntimeEvents from other WCs referencing our orders
-            self.db.execute(
-                sa_update(DowntimeEvent)
-                .where(
-                    DowntimeEvent.production_order_id.in_(order_ids),
-                    DowntimeEvent.work_center_id != work_center_id,
-                )
-                .values(production_order_id=None)
-            )
-        # --- NOT NULL FK cleanup: delete rows from other WCs that cannot be nullified ---
-        if order_ids:
-            # ProductionOutputs and WasteRecords from other WCs referencing our orders
-            self.db.execute(
-                sa_delete(ProductionOutput)
-                .where(
-                    ProductionOutput.production_order_id.in_(order_ids),
-                    ProductionOutput.work_center_id != work_center_id,
-                )
-            )
-            self.db.execute(
-                sa_delete(WasteRecord)
-                .where(
-                    WasteRecord.production_order_id.in_(order_ids),
-                    WasteRecord.work_center_id != work_center_id,
-                )
-            )
         # --- Delete owned entities in FK-safe order ---
-        self.db.execute(
-            sa_delete(ProductionOutput).where(ProductionOutput.work_center_id == work_center_id)
-        )
-        self.db.execute(
-            sa_delete(WasteRecord).where(WasteRecord.work_center_id == work_center_id)
-        )
-        self.db.execute(
-            sa_delete(DowntimeEvent).where(DowntimeEvent.work_center_id == work_center_id)
-        )
         if order_ids:
             self.db.execute(
                 sa_delete(ProductionOrderItem)
@@ -626,419 +590,9 @@ class ProductionOrderItemService:
         return True
 
 
-class ProductionOutputService:
-    def __init__(self, db: Session) -> None:
-        self.db = db
-        self.items = ProductionOrderItemRepository(db)
-        self.outputs = ProductionOutputRepository(db)
-        self.production_orders = ProductionOrderRepository(db)
-        self.work_centers = WorkCenterRepository(db)
-
-    def _validate_positive_quantity(self, quantity: Decimal | None) -> None:
-        if quantity is not None and quantity <= 0:
-            raise ValueError("quantity_produced must be positive.")
-
-    def _validate_required_links(
-        self,
-        tenant: TenantContext,
-        production_order_id: UUID,
-        work_center_id: UUID,
-    ) -> ProductionOrder:
-        production_order = self.production_orders.get_by_id(
-            tenant.organization_id,
-            production_order_id,
-        )
-        if production_order is None:
-            raise ValueError("Production order must belong to the current organization.")
-
-        work_center = self.work_centers.get_by_id(tenant.organization_id, work_center_id)
-        if work_center is None:
-            raise ValueError("Work center must belong to the current organization.")
-
-        return production_order
-
-    def _validate_optional_item(
-        self,
-        tenant: TenantContext,
-        production_order_id: UUID,
-        production_order_item_id: UUID | None,
-    ) -> None:
-        if production_order_item_id is None:
-            return
-
-        item = self.items.get_by_id_with_parent_org(tenant.organization_id, production_order_item_id)
-        if item is None:
-            raise ValueError("Production order item must belong to the current organization.")
-        if item.production_order_id != production_order_id:
-            raise ValueError("Production order item must belong to the selected production order.")
-
-    def create_production_output(
-        self,
-        tenant: TenantContext,
-        data: ProductionOutputCreate,
-    ) -> ProductionOutput:
-        self._validate_positive_quantity(data.quantity_produced)
-        self._validate_required_links(tenant, data.production_order_id, data.work_center_id)
-        self._validate_optional_item(tenant, data.production_order_id, data.production_order_item_id)
-
-        production_output = ProductionOutput(
-            organization_id=tenant.organization_id,
-            output_status=ProductionOutputStatus.RECORDED,
-            created_by_user_id=tenant.user_id,
-            **data.model_dump(),
-        )
-
-        try:
-            self.outputs.add(production_output)
-            self.db.commit()
-        except IntegrityError as exc:
-            self.db.rollback()
-            raise ValueError("Production output could not be saved due to invalid data.") from exc
-
-        self.db.refresh(production_output)
-        return production_output
-
-    def list_production_outputs(
-        self,
-        tenant: TenantContext,
-        production_order_id: UUID | None = None,
-        work_center_id: UUID | None = None,
-        output_date: date | None = None,
-        output_status: ProductionOutputStatus | None = None,
-    ) -> list[ProductionOutput]:
-        return self.outputs.list_by_organization(
-            tenant.organization_id,
-            production_order_id=production_order_id,
-            work_center_id=work_center_id,
-            output_date=output_date,
-            output_status=output_status,
-        )
-
-    def get_production_output(
-        self,
-        tenant: TenantContext,
-        production_output_id: UUID,
-    ) -> ProductionOutput | None:
-        return self.outputs.get_by_id(tenant.organization_id, production_output_id)
-
-    def update_production_output(
-        self,
-        tenant: TenantContext,
-        production_output_id: UUID,
-        data: ProductionOutputUpdate,
-    ) -> ProductionOutput | None:
-        production_output = self.outputs.get_by_id(tenant.organization_id, production_output_id)
-        if production_output is None:
-            return None
-
-        payload = data.model_dump(exclude_unset=True)
-        if "production_order_id" in payload and payload["production_order_id"] is None:
-            raise ValueError("production_order_id cannot be set to null.")
-        if "work_center_id" in payload and payload["work_center_id"] is None:
-            raise ValueError("work_center_id cannot be set to null.")
-
-        new_production_order_id = payload.get(
-            "production_order_id",
-            production_output.production_order_id,
-        )
-        new_work_center_id = payload.get("work_center_id", production_output.work_center_id)
-        self._validate_required_links(tenant, new_production_order_id, new_work_center_id)
-
-
-        new_item_id = payload.get(
-            "production_order_item_id",
-            production_output.production_order_item_id,
-        )
-        self._validate_optional_item(tenant, new_production_order_id, new_item_id)
-        self._validate_positive_quantity(payload.get("quantity_produced"))
-
-        for field, value in payload.items():
-            setattr(production_output, field, value)
-
-        try:
-            self.db.commit()
-        except IntegrityError as exc:
-            self.db.rollback()
-            raise ValueError("Production output could not be saved due to invalid data.") from exc
-
-        self.db.refresh(production_output)
-        return production_output
-
-
-class DowntimeEventService:
-    def __init__(self, db: Session) -> None:
-        self.db = db
-        self.downtime_events = DowntimeEventRepository(db)
-        self.production_orders = ProductionOrderRepository(db)
-        self.work_centers = WorkCenterRepository(db)
-
-    def _calculate_duration_minutes(
-        self,
-        start_time: datetime,
-        end_time: datetime | None,
-    ) -> int | None:
-        if end_time is None:
-            return None
-        return int((end_time - start_time).total_seconds() // 60)
-
-    def _derive_status(self, end_time: datetime | None) -> DowntimeStatus:
-        if end_time is None:
-            return DowntimeStatus.OPEN
-        return DowntimeStatus.CLOSED
-
-    def _validate_time_window(
-        self,
-        start_time: datetime,
-        end_time: datetime | None,
-    ) -> None:
-        if end_time is not None and end_time <= start_time:
-            raise ValueError("end_time must be after start_time.")
-
-    def _validate_work_center(self, tenant: TenantContext, work_center_id: UUID) -> None:
-        work_center = self.work_centers.get_by_id(tenant.organization_id, work_center_id)
-        if work_center is None:
-            raise ValueError("Work center must belong to the current organization.")
-
-    def _validate_optional_production_order(
-        self,
-        tenant: TenantContext,
-        production_order_id: UUID | None,
-    ) -> None:
-        if production_order_id is None:
-            return
-
-        production_order = self.production_orders.get_by_id(tenant.organization_id, production_order_id)
-        if production_order is None:
-            raise ValueError("Production order must belong to the current organization.")
-
-    def create_downtime_event(
-        self,
-        tenant: TenantContext,
-        data: DowntimeEventCreate,
-    ) -> DowntimeEvent:
-        self._validate_work_center(tenant, data.work_center_id)
-        self._validate_optional_production_order(tenant, data.production_order_id)
-        self._validate_time_window(data.start_time, data.end_time)
-
-        downtime_event = DowntimeEvent(
-            organization_id=tenant.organization_id,
-            status=self._derive_status(data.end_time),
-            duration_minutes=self._calculate_duration_minutes(data.start_time, data.end_time),
-            created_by_user_id=tenant.user_id,
-            **data.model_dump(),
-        )
-
-        try:
-            self.downtime_events.add(downtime_event)
-            self.db.commit()
-        except IntegrityError as exc:
-            self.db.rollback()
-            raise ValueError("Downtime event could not be saved due to invalid data.") from exc
-
-        self.db.refresh(downtime_event)
-        return downtime_event
-
-    def list_downtime_events(
-        self,
-        tenant: TenantContext,
-        work_center_id: UUID | None = None,
-        production_order_id: UUID | None = None,
-        status: DowntimeStatus | None = None,
-        category: DowntimeCategory | None = None,
-    ) -> list[DowntimeEvent]:
-        return self.downtime_events.list_by_organization(
-            tenant.organization_id,
-            work_center_id=work_center_id,
-            production_order_id=production_order_id,
-            status=status,
-            category=category,
-        )
-
-    def get_downtime_event(
-        self,
-        tenant: TenantContext,
-        downtime_event_id: UUID,
-    ) -> DowntimeEvent | None:
-        return self.downtime_events.get_by_id(tenant.organization_id, downtime_event_id)
-
-    def update_downtime_event(
-        self,
-        tenant: TenantContext,
-        downtime_event_id: UUID,
-        data: DowntimeEventUpdate,
-    ) -> DowntimeEvent | None:
-        downtime_event = self.downtime_events.get_by_id(tenant.organization_id, downtime_event_id)
-        if downtime_event is None:
-            return None
-
-        payload = data.model_dump(exclude_unset=True)
-        if "work_center_id" in payload and payload["work_center_id"] is None:
-            raise ValueError("work_center_id cannot be set to null.")
-        if "start_time" in payload and payload["start_time"] is None:
-            raise ValueError("start_time cannot be set to null.")
-
-        new_work_center_id = payload.get("work_center_id", downtime_event.work_center_id)
-        self._validate_work_center(tenant, new_work_center_id)
-
-        if "production_order_id" in payload:
-            self._validate_optional_production_order(tenant, payload["production_order_id"])
-
-        new_start_time = payload.get("start_time", downtime_event.start_time)
-        new_end_time = payload.get("end_time", downtime_event.end_time)
-        self._validate_time_window(new_start_time, new_end_time)
-        payload["status"] = self._derive_status(new_end_time)
-        payload["duration_minutes"] = self._calculate_duration_minutes(new_start_time, new_end_time)
-
-        for field, value in payload.items():
-            setattr(downtime_event, field, value)
-
-        try:
-            self.db.commit()
-        except IntegrityError as exc:
-            self.db.rollback()
-            raise ValueError("Downtime event could not be saved due to invalid data.") from exc
-
-        self.db.refresh(downtime_event)
-        return downtime_event
-
-
-class WasteRecordService:
-    def __init__(self, db: Session) -> None:
-        self.db = db
-        self.items = ProductionOrderItemRepository(db)
-        self.production_orders = ProductionOrderRepository(db)
-        self.waste_records = WasteRecordRepository(db)
-        self.work_centers = WorkCenterRepository(db)
-
-    def _validate_positive_quantity(self, quantity: Decimal | None) -> None:
-        if quantity is not None and quantity <= 0:
-            raise ValueError("quantity_wasted must be positive.")
-
-    def _validate_required_links(
-        self,
-        tenant: TenantContext,
-        production_order_id: UUID,
-        work_center_id: UUID,
-    ) -> ProductionOrder:
-        production_order = self.production_orders.get_by_id(
-            tenant.organization_id,
-            production_order_id,
-        )
-        if production_order is None:
-            raise ValueError("Production order must belong to the current organization.")
-
-        work_center = self.work_centers.get_by_id(tenant.organization_id, work_center_id)
-        if work_center is None:
-            raise ValueError("Work center must belong to the current organization.")
-
-        return production_order
-
-    def _validate_optional_item(
-        self,
-        tenant: TenantContext,
-        production_order_id: UUID,
-        production_order_item_id: UUID | None,
-    ) -> None:
-        if production_order_item_id is None:
-            return
-
-        item = self.items.get_by_id_with_parent_org(tenant.organization_id, production_order_item_id)
-        if item is None:
-            raise ValueError("Production order item must belong to the current organization.")
-        if item.production_order_id != production_order_id:
-            raise ValueError("Production order item must belong to the selected production order.")
-
-    def create_waste_record(
-        self,
-        tenant: TenantContext,
-        data: WasteRecordCreate,
-    ) -> WasteRecord:
-        self._validate_positive_quantity(data.quantity_wasted)
-        self._validate_required_links(tenant, data.production_order_id, data.work_center_id)
-        self._validate_optional_item(tenant, data.production_order_id, data.production_order_item_id)
-
-        waste_record = WasteRecord(
-            organization_id=tenant.organization_id,
-            created_by_user_id=tenant.user_id,
-            **data.model_dump(),
-        )
-
-        try:
-            self.waste_records.add(waste_record)
-            self.db.commit()
-        except IntegrityError as exc:
-            self.db.rollback()
-            raise ValueError("Waste record could not be saved due to invalid data.") from exc
-
-        self.db.refresh(waste_record)
-        return waste_record
-    def list_waste_records(
-        self,
-        tenant: TenantContext,
-        production_order_id: UUID | None = None,
-        work_center_id: UUID | None = None,
-        waste_category: WasteCategory | None = None,
-        waste_date: date | None = None,
-    ) -> list[WasteRecord]:
-        return self.waste_records.list_by_organization(
-            tenant.organization_id,
-            production_order_id=production_order_id,
-            work_center_id=work_center_id,
-            waste_category=waste_category,
-            waste_date=waste_date,
-        )
-
-    def get_waste_record(
-        self,
-        tenant: TenantContext,
-        waste_record_id: UUID,
-    ) -> WasteRecord | None:
-        return self.waste_records.get_by_id(tenant.organization_id, waste_record_id)
-
-    def update_waste_record(
-        self,
-        tenant: TenantContext,
-        waste_record_id: UUID,
-        data: WasteRecordUpdate,
-    ) -> WasteRecord | None:
-        waste_record = self.waste_records.get_by_id(tenant.organization_id, waste_record_id)
-        if waste_record is None:
-            return None
-
-        payload = data.model_dump(exclude_unset=True)
-        if "production_order_id" in payload and payload["production_order_id"] is None:
-            raise ValueError("production_order_id cannot be set to null.")
-        if "work_center_id" in payload and payload["work_center_id"] is None:
-            raise ValueError("work_center_id cannot be set to null.")
-
-        new_production_order_id = payload.get("production_order_id", waste_record.production_order_id)
-        new_work_center_id = payload.get("work_center_id", waste_record.work_center_id)
-        self._validate_required_links(tenant, new_production_order_id, new_work_center_id)
-
-
-        new_item_id = payload.get("production_order_item_id", waste_record.production_order_item_id)
-        self._validate_optional_item(tenant, new_production_order_id, new_item_id)
-        self._validate_positive_quantity(payload.get("quantity_wasted"))
-
-        for field, value in payload.items():
-            setattr(waste_record, field, value)
-
-        try:
-            self.db.commit()
-        except IntegrityError as exc:
-            self.db.rollback()
-            raise ValueError("Waste record could not be saved due to invalid data.") from exc
-
-        self.db.refresh(waste_record)
-        return waste_record
-
-
 from app.core.interfaces.activity_log import instrument_activity_methods
 
 instrument_activity_methods(WorkCenterService, {"create_work_center": ("work_center.created", "work_center"), "update_work_center": ("work_center.updated", "work_center"), "delete_work_center": ("work_center.deleted", "work_center")})
 instrument_activity_methods(ShiftDefinitionService, {"create_shift_definition": ("shift.created", "shift"), "update_shift_definition": ("shift.updated", "shift"), "delete_shift_definition": ("shift.deleted", "shift")})
 instrument_activity_methods(ProductionOrderService, {"create_production_order": ("production_order.created", "production_order"), "update_production_order": ("production_order.updated", "production_order")})
 instrument_activity_methods(ProductionOrderItemService, {"create_item": ("production_order_item.created", "production_order_item"), "update_item": ("production_order_item.updated", "production_order_item"), "delete_item": ("production_order_item.deleted", "production_order_item")})
-instrument_activity_methods(ProductionOutputService, {"create_production_output": ("production_output.created", "production_output"), "update_production_output": ("production_output.updated", "production_output")})
-instrument_activity_methods(DowntimeEventService, {"create_downtime_event": ("downtime_event.created", "downtime_event"), "update_downtime_event": ("downtime_event.updated", "downtime_event")})
-instrument_activity_methods(WasteRecordService, {"create_waste_record": ("waste_record.created", "waste_record"), "update_waste_record": ("waste_record.updated", "waste_record")})

@@ -41,9 +41,9 @@
     "deleteRelatedSummary": "Data that will be deleted with this work center",
     "deleteRelatedProductionOrders": "Production Orders: {count}",
     "deleteRelatedShifts": "Shifts: {count}",
-    "deleteRelatedDowntime": "Downtime Records: {count}",
-    "deleteRelatedWaste": "Waste Records: {count}",
-    "deleteRelatedOutputs": "Production Outputs: {count}",
+    "deleteBlockedByDowntime": "Downtime events: {count}. They are kept as records, so this work center cannot be deleted.",
+    "deleteBlockedByWaste": "Waste records: {count}. They are kept as records, so this work center cannot be deleted.",
+    "deleteBlockedByResults": "Final result entries on its production orders: {count}. They are kept as records, so this work center cannot be deleted.",
     "deleteWarning": "This action cannot be undone.",
     "deleteConfirmButton": "Yes, Delete Everything",
     "deleteCancelButton": "Cancel",
@@ -255,69 +255,250 @@
         "ORDER_EXECUTION_STARTED": "Production has already started on this order, so it cannot be cancelled.",
         "ORDER_COMPLETED": "This order is completed; it cannot be cancelled.",
         "forbidden": "You do not have permission for this action.",
-        "request_failed": "The request failed. Refresh and try again."
+        "request_failed": "The request failed. Refresh and try again.",
+        "RESULT_REQUIRED_TO_CLOSE": "Record the final result before closing, or close it as zero output with a reason.",
+        "RESULT_MISSING_FOR_ITEMS": "Every item of this order needs a result entry before closing.",
+        "ZERO_OUTPUT_WITH_ENTRIES": "This order has result entries, so it cannot be closed as zero output.",
+        "ZERO_OUTPUT_ONLY_ON_CLOSE": "Zero output applies only when closing."
       }
     }
   },
-  "productionOutputs": {
-    "listTitle": "Production Outputs",
-    "createTitle": "Record Production Output",
-    "detailTitle": "Production Output Details",
-    "fields": {
-      "outputDate": "Output Date",
-      "quantityProduced": "Quantity Produced",
-      "unit": "Unit",
-      "status": "Status",
-      "workCenter": "Work Center",
-      "productionOrder": "Production Order",
-      "notes": "Notes"
-    },
-    "shiftContext": {
-      "linked": "Output is linked to shift context",
-      "notLinked": "Direct order recording without shift context"
-    },
-    "empty": "No production outputs yet",
-    "notFound": "Production output not found"
-  },
   "downtimeEvents": {
     "listTitle": "Downtime Events",
-    "createTitle": "Record Downtime Event",
+    "listSubtitle": "When, where and why machines stopped. Planned stops are kept apart from the stops that cost availability.",
+    "createTitle": "Record Downtime",
+    "createSubtitle": "Record a machine stop: leave the end empty while it is still going on, and close it when the machine runs again.",
+    "editTitle": "Edit Downtime Event",
     "detailTitle": "Downtime Event Details",
-    "createOpenNotice": "Leave blank to create an open downtime event that is still ongoing",
+    "filtersLabel": "Downtime filters",
+    "listLabel": "Downtime events list",
+    "filters": {
+      "allWorkCenters": "All work centers",
+      "allOrders": "All production orders",
+      "allCategories": "All causes",
+      "allTypes": "All types",
+      "allStatuses": "Open and closed",
+      "dateFrom": "From date",
+      "dateTo": "To date",
+      "clear": "Clear filters"
+    },
     "fields": {
-      "startTime": "Start Time",
-      "endTime": "End Time",
-      "duration": "Duration (minutes)",
-      "category": "Category",
-      "reasonCode": "Reason Code",
+      "workCenter": "Work center (machine)",
+      "productionOrder": "Production order",
+      "orderOptional": "Production order (optional)",
+      "runOptional": "Production run (optional)",
+      "run": "Production run",
+      "orderStatus": "Order status",
+      "category": "Cause",
+      "type": "Type",
       "status": "Status",
-      "workCenter": "Work Center",
-      "notes": "Notes"
+      "startTime": "Start",
+      "endTime": "End",
+      "endTimeOptional": "End (empty while ongoing)",
+      "duration": "Duration",
+      "reasonCode": "Reason code (optional)",
+      "notes": "Notes",
+      "recordedBy": "Recorded by",
+      "closedBy": "Closed by"
     },
-    "durationAuto": "Calculated automatically",
-    "statusAuto": "Derived automatically from end time",
+    "types": {
+      "loss": "Availability loss",
+      "planned": "Planned stop"
+    },
+    "placeholders": {
+      "noOrder": "No order",
+      "noRun": "No specific run",
+      "noRuns": "No runs for this order",
+      "selectWorkCenter": "Select a work center"
+    },
+    "runOption": "Run on {date} — {center}",
+    "categoryHints": {
+      "breakdown": "A mechanical or electrical failure stopped the machine.",
+      "changeover_setup": "Changing product, die, mould or colour, or setting the machine up.",
+      "material_shortage": "Waiting for raw material or components.",
+      "waiting_labor": "No operator was available to run the machine.",
+      "quality_issue": "Stopped for a quality problem or adjustment.",
+      "utilities": "Power, compressed air, water or steam were missing.",
+      "other": "Any other cause; describe it in the reason code or notes.",
+      "planned_maintenance": "Scheduled preventive maintenance or cleaning.",
+      "break_meeting": "Breaks, meetings or training.",
+      "no_orders": "The machine was idle: nothing was scheduled on it."
+    },
+    "hints": {
+      "lossType": "It counts as an availability loss.",
+      "plannedType": "It is a planned stop and does not reduce availability.",
+      "openStop": "Without an end the stop stays open (ongoing) until you close it.",
+      "runWorkCenter": "The machine and the order come from the selected run.",
+      "locked": "The linked order is closed, so this stop can no longer change."
+    },
     "actions": {
-      "endDowntime": "End Downtime",
-      "endTimeLabel": "End Time"
+      "record": "Record downtime",
+      "save": "Save changes",
+      "cancel": "Cancel",
+      "back": "Back",
+      "backToList": "Back to downtime events",
+      "close": "End the stop",
+      "edit": "Edit",
+      "delete": "Delete"
     },
-    "empty": "No downtime events yet",
-    "notFound": "Downtime event not found"
+    "closeDialog": {
+      "title": "End this stop?",
+      "text": "Set when the machine started running again. The duration is calculated from it."
+    },
+    "deleteDialog": {
+      "title": "Delete this downtime event?",
+      "text": "The stop is removed from the reports. This cannot be undone."
+    },
+    "elapsed": "{minutes} so far",
+    "ongoing": "Still stopped",
+    "empty": "No downtime events found",
+    "emptyHint": "Record a machine stop, or adjust the filters.",
+    "notFound": "Downtime event not found",
+    "summary": {
+      "label": "Downtime summary",
+      "total": "Total downtime",
+      "loss": "Availability loss",
+      "planned": "Planned stops",
+      "count": "Closed stops",
+      "mttr": "Mean time to repair",
+      "open": "Open stops",
+      "openValue": "{count} ({minutes} so far)",
+      "hint": "Totals count closed stops. Mean time to repair is the average length of a breakdown.",
+      "byCategory": "Downtime by cause",
+      "category": "Cause",
+      "type": "Type",
+      "stops": "Stops",
+      "minutes": "Duration",
+      "byMachine": "Downtime by machine",
+      "machine": "Machine",
+      "lossMinutes": "Availability loss"
+    },
+    "orderSection": {
+      "title": "Machine stops",
+      "hint": "Stops recorded against this order. Planned stops are shown apart from availability losses.",
+      "viewAll": "View downtime events",
+      "empty": "No stops recorded for this order."
+    },
+    "errors": {
+      "DOWNTIME_OVERLAP": "This machine already has a stop in that period. A machine can have only one stop at a time.",
+      "DOWNTIME_LOCKED": "The linked order is closed, so its stops can no longer change.",
+      "DOWNTIME_ALREADY_CLOSED": "This stop is already closed.",
+      "ORDER_NOT_RUNNING": "A stop can be linked only to an order that is in progress, on hold or completed.",
+      "START_IN_FUTURE": "The start cannot be in the future.",
+      "END_IN_FUTURE": "The end cannot be in the future.",
+      "END_BEFORE_START": "The end must be after the start.",
+      "WORK_CENTER_REQUIRED": "Select the work center (machine), or a run.",
+      "WORK_CENTER_MISMATCH": "The work center must be the run's work center.",
+      "WORK_CENTER_NOT_FOUND": "The work center was not found.",
+      "RUN_NOT_FOUND": "The run was not found.",
+      "RUN_NOT_IN_ORDER": "The selected run does not belong to this order.",
+      "RUN_CANCELLED": "The selected run was cancelled.",
+      "PRODUCTION_ORDER_NOT_FOUND": "Production order not found.",
+      "DOWNTIME_EVENT_NOT_FOUND": "Downtime event not found.",
+      "DOWNTIME_EVENT_INVALID": "The downtime event is not valid.",
+      "forbidden": "You do not have permission for this action.",
+      "request_failed": "The request failed. Refresh and try again."
+    }
   },
   "wasteRecords": {
     "listTitle": "Waste Records",
+    "listSubtitle": "Material lost while production orders run: how much, why, where and in which run. Defective finished product is scrap in the order's final result, not waste.",
     "createTitle": "Record Waste",
+    "createSubtitle": "Record material lost during operation against a production order.",
+    "editTitle": "Edit Waste Record",
     "detailTitle": "Waste Record Details",
-    "fields": {
-      "wasteDate": "Waste Date",
-      "quantityWasted": "Quantity Wasted",
-      "unit": "Unit",
-      "wasteCategory": "Waste Category",
-      "reasonCode": "Reason Code",
-      "workCenter": "Work Center",
-      "notes": "Notes"
+    "filtersLabel": "Waste record filters",
+    "listLabel": "Waste records list",
+    "filters": {
+      "allOrders": "All production orders",
+      "allCategories": "All waste types",
+      "allWorkCenters": "All work centers",
+      "dateFrom": "From date",
+      "dateTo": "To date",
+      "clear": "Clear filters"
     },
-    "empty": "No waste records yet",
-    "notFound": "Waste record not found"
+    "fields": {
+      "productionOrder": "Production order",
+      "orderStatus": "Order status",
+      "line": "Order line",
+      "lineOptional": "Order line (optional)",
+      "run": "Production run",
+      "runOptional": "Production run (optional)",
+      "workCenter": "Work center",
+      "wasteDate": "Waste date",
+      "quantityWasted": "Quantity wasted",
+      "unit": "Unit",
+      "wasteCategory": "Waste type",
+      "reasonCode": "Reason code (optional)",
+      "notes": "Notes",
+      "recordedBy": "Recorded by",
+      "createdAt": "Recorded at"
+    },
+    "placeholders": {
+      "selectOrder": "Select a production order",
+      "noOrders": "No orders are running",
+      "wholeOrder": "Whole order",
+      "noRun": "No specific run",
+      "noRuns": "No runs for this order",
+      "orderWorkCenter": "The order's work center"
+    },
+    "lineOption": "Line {no} ({unit})",
+    "runOption": "Run on {date} — {center}",
+    "categoryHints": {
+      "startup_setup": "Material lost while starting, warming up or setting the machine.",
+      "changeover": "Material lost when changing product, colour, die or mould.",
+      "process": "The normal loss of the process: trim, edges, cuts, purges.",
+      "material_defect": "Raw material or components that were defective.",
+      "machine_fault": "Material lost because of a breakdown or malfunction.",
+      "handling_damage": "Breakage or damage while moving or handling material.",
+      "contamination": "Material contaminated and no longer usable.",
+      "other": "Anything else; describe it in the reason code or notes."
+    },
+    "hints": {
+      "notScrap": "Waste is material lost during operation. Defective finished product is recorded once as scrap in the order's final result.",
+      "locked": "The order is closed, so its waste records can no longer change.",
+      "runWorkCenter": "The work center comes from the selected run."
+    },
+    "actions": {
+      "record": "Record waste",
+      "save": "Save changes",
+      "cancel": "Cancel",
+      "back": "Back",
+      "backToList": "Back to waste records",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "delete": {
+      "title": "Delete this waste record?",
+      "text": "The record is removed from the order's waste. This cannot be undone."
+    },
+    "orderSection": {
+      "title": "Operational waste",
+      "hint": "Material lost while this order ran. It is shown apart from the final result and is not added to its scrap.",
+      "viewAll": "View waste records",
+      "empty": "No waste recorded for this order.",
+      "total": "Total waste ({unit})",
+      "count": "{count} records",
+      "byCategory": "Waste by type",
+      "records": "Records"
+    },
+    "empty": "No waste records found",
+    "emptyHint": "Record waste on a running production order, or adjust the filters.",
+    "notFound": "Waste record not found",
+    "errors": {
+      "WASTE_NOT_AVAILABLE": "Waste can be recorded only while the order is in progress, on hold or completed.",
+      "WASTE_LOCKED": "The order is closed, so its waste records can no longer change.",
+      "RUN_NOT_IN_ORDER": "The selected run does not belong to this order.",
+      "RUN_CANCELLED": "The selected run was cancelled.",
+      "WORK_CENTER_MISMATCH": "The work center must be the run's work center.",
+      "WORK_CENTER_NOT_FOUND": "The work center was not found.",
+      "ORDER_ITEM_NOT_IN_ORDER": "The selected line is not part of this order.",
+      "PRODUCTION_ORDER_NOT_FOUND": "Production order not found.",
+      "WASTE_RECORD_NOT_FOUND": "Waste record not found.",
+      "WASTE_RECORD_INVALID": "The waste record is not valid.",
+      "forbidden": "You do not have permission for this action.",
+      "request_failed": "The request failed. Refresh and try again."
+    }
   },
   "demands": {
     "listTitle": "Customer Production Demands",
@@ -428,6 +609,13 @@
       "roll": "Rolls",
       "pcs": "Pieces",
       "m": "Meters"
+    },
+    "statusVisibility": {
+      "label": "Statuses shown",
+      "summary": "{shown} of {total}",
+      "showAll": "Show all",
+      "reset": "Default",
+      "hidden": "{count, plural, one {# demand is} other {# demands are}} hidden by the status filter."
     }
   },
   "planning": {
@@ -458,13 +646,8 @@
     "remainingOf": "{remaining} {unit} remaining",
     "progressLabel": "Planning progress, line {line}",
     "views": {
-      "label": "Planning queue view",
-      "active": "Active queue",
-      "planned": "Fully planned",
-      "all": "All demands",
       "empty": {
         "active": "No demands waiting for planning",
-        "planned": "No fully planned demands",
         "all": "No demands"
       }
     }
@@ -620,5 +803,270 @@
       "ended": "Ended"
     },
     "noMembers": "No members yet"
+  },
+  "results": {
+    "title": "Final production result",
+    "pendingHint": "The result is recorded after the order is completed.",
+    "editableHint": "Record what happened to the produced quantity. Entries can change until the order is closed.",
+    "lockedHint": "The order is closed and its result is locked. Changes are made with correction entries.",
+    "noAllocationHint": "This order has no customer allocations, so good quantity is recorded as good for stock.",
+    "empty": "No result entries yet.",
+    "entriesLabel": "Result entries",
+    "effective": "Effective quantity after corrections: {value} {unit}",
+    "yes": "Yes",
+    "no": "No",
+    "actions": {
+      "add": "Add entry",
+      "edit": "Edit",
+      "delete": "Delete",
+      "correct": "Correct",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "dispositions": {
+      "customer_good": "Good for customers",
+      "stock_good": "Good for stock",
+      "sample": "Samples",
+      "scrap": "Scrap / damaged",
+      "rework": "Rework"
+    },
+    "dispositionHints": {
+      "customer_good": "Good finished quantity that fulfils customer demand. It cannot exceed the quantity allocated to customers.",
+      "stock_good": "Good finished quantity beyond customer demand, or made for stock. Surplus goes to the warehouse.",
+      "sample": "Quantity taken as samples or tests. Choose whether it counts as loss.",
+      "scrap": "Unusable final loss. Always counted as loss.",
+      "rework": "Not final-good, but possibly recoverable. Not counted as loss."
+    },
+    "entryTypes": {
+      "original": "Original",
+      "correction": "Correction"
+    },
+    "columns": {
+      "disposition": "Disposition",
+      "item": "Item",
+      "quantity": "Quantity",
+      "unit": "Unit",
+      "secondary": "Secondary measure",
+      "countsAsLoss": "Counts as loss",
+      "reason": "Reason",
+      "notes": "Notes",
+      "type": "Type",
+      "by": "By",
+      "date": "Date",
+      "actions": "Actions"
+    },
+    "summary": {
+      "planned": "Planned quantity",
+      "customerGood": "Good for customers",
+      "stockGood": "Good for stock",
+      "samples": "Samples",
+      "scrap": "Scrap",
+      "rework": "Rework",
+      "fulfillment": "Fulfillment",
+      "lossPct": "Loss rate",
+      "unitGroup": "Totals in {unit}",
+      "label": "Result summary in {unit}",
+      "details": "Good total {good} · sample loss {samplesLoss} · total loss {loss} · total output {total} {unit}",
+      "yield": "Yield",
+      "variance": "Variance against plan",
+      "secondary": "Secondary measure"
+    },
+    "fields": {
+      "disposition": "Disposition",
+      "item": "Order item",
+      "quantityWithUnit": "Quantity ({unit})",
+      "sampleLoss": "Counts as loss?",
+      "secondaryQuantity": "Secondary quantity (optional)",
+      "secondaryUnit": "Secondary unit",
+      "reasonCode": "Reason code (optional)",
+      "notes": "Notes",
+      "correctionReason": "Correction reason"
+    },
+    "dialog": {
+      "addTitle": "Add result entry",
+      "editTitle": "Edit result entry",
+      "selectItem": "Select an order item",
+      "itemOption": "Item {no} — {spec} — {unit}",
+      "customerRoom": "Allocated to customers: {allocated} {unit} · already recorded: {recorded} · remaining: {remaining}",
+      "customerExceeded": "Above the customer allocation: only {remaining} {unit} remain of {allocated}. Record the excess as good for stock.",
+      "noAllocation": "No customer allocation for this item. Record it as good for stock.",
+      "sampleLossYes": "Yes — defective or incomplete sample (counted in loss)",
+      "sampleLossNo": "No — intentional sample (customer, lab or internal test)",
+      "alwaysLoss": "Always counted as loss.",
+      "neverLoss": "Never counted as loss.",
+      "secondaryBoth": "Enter both the secondary quantity and its unit, or neither."
+    },
+    "correction": {
+      "title": "Correct entry",
+      "text": "{disposition}: the effective quantity is {effective} {unit}. Enter a signed change: negative reduces it, positive increases it. The original entry stays as recorded.",
+      "delta": "Change ({unit})",
+      "after": "After the correction: {value} {unit}",
+      "negative": "This would make the entry negative ({value} {unit}).",
+      "secondaryDelta": "Secondary change ({unit}, optional)"
+    },
+    "delete": {
+      "title": "Delete this entry?",
+      "text": "{disposition}: {quantity} {unit} will be removed from the result."
+    },
+    "close": {
+      "title": "Close {order}",
+      "text": "Closing locks the final result. Afterwards it changes only through corrections.",
+      "noEntries": "This order has no result entries.",
+      "missingItems": "These items have no result entries yet: {lines}.",
+      "zeroOutput": "This order produced nothing (zero output)",
+      "zeroReason": "Why was nothing produced?",
+      "reasonOptional": "Note (optional)",
+      "confirm": "Close order"
+    },
+    "errors": {
+      "RESULT_NOT_AVAILABLE": "The result can be recorded only once the order is completed.",
+      "RESULT_LOCKED": "The order is closed, so its result is locked. Use a correction.",
+      "CORRECTION_REQUIRES_CLOSED_ORDER": "Corrections are for closed orders. While the order is completed, edit the entry.",
+      "SAMPLE_LOSS_FLAG_REQUIRED": "Choose whether the sample counts as loss.",
+      "NO_CUSTOMER_ALLOCATION": "No customer allocation for this item. Record it as good for stock.",
+      "CUSTOMER_GOOD_EXCEEDS_ALLOCATION": "Good for customers would exceed the allocation of {allocated_quantity} by {excess_quantity}. Record the excess as good for stock.",
+      "CORRECTION_MAKES_TOTAL_NEGATIVE": "The correction would make the entry negative (effective {effective_quantity}).",
+      "CORRECT_THE_ORIGINAL": "Correct the original entry, not a correction.",
+      "ORDER_ITEM_REQUIRED": "Select the order item.",
+      "ORDER_ITEM_NOT_IN_ORDER": "The selected item is not part of this order.",
+      "UNIT_MISMATCH": "The unit must be the item's unit ({expected_unit}).",
+      "SECONDARY_MEASURE_INCOMPLETE": "Enter both the secondary quantity and its unit, or neither.",
+      "SECONDARY_QUANTITY_NOT_POSITIVE": "The secondary quantity must be greater than zero.",
+      "SECONDARY_MEASURE_NOT_SET": "This entry has no secondary measure to correct.",
+      "RESULT_ENTRY_NOT_FOUND": "The result entry was not found. Refresh the page.",
+      "RESULT_ENTRY_INVALID": "The entry is not valid.",
+      "PRODUCTION_ORDER_NOT_FOUND": "Production order not found.",
+      "forbidden": "You do not have permission for this action.",
+      "request_failed": "The request failed. Refresh and try again."
+    },
+    "list": {
+      "title": "Production Outputs",
+      "subtitle": "The final result of completed and closed production orders: what the produced quantity became. Record entries on each order once it is completed.",
+      "filters": "Result filters",
+      "status": "Order status",
+      "allStatuses": "Completed and closed",
+      "empty": "No completed or closed orders yet",
+      "emptyHint": "Complete a production order; its final result is then recorded here.",
+      "readyToClose": "Ready to close",
+      "needsResult": "Result still needed",
+      "corrections": "{count} corrections",
+      "record": "Record result",
+      "view": "View result",
+      "columns": {
+        "order": "Production order",
+        "status": "Status",
+        "unit": "Unit",
+        "planned": "Planned",
+        "customerGood": "Good for customers",
+        "stockGood": "Good for stock",
+        "samples": "Samples",
+        "scrap": "Scrap",
+        "rework": "Rework",
+        "fulfillment": "Fulfillment",
+        "lossPct": "Loss rate",
+        "entries": "Entries"
+      }
+    }
+  },
+  "reports": {
+    "center": {
+      "title": "Production report center",
+      "subtitle": "Choose a report, set its filters, then preview or download it as PDF.",
+      "empty": "No reports are available for your permissions and organization data.",
+      "loadError": "Could not load the reports."
+    },
+    "form": {
+      "search": "Search",
+      "searchFor": "Search {field}",
+      "language": "Language",
+      "arabic": "العربية",
+      "english": "English",
+      "orientation": "Orientation",
+      "portrait": "Portrait",
+      "landscape": "Landscape",
+      "sections": "Report sections",
+      "preview": "Preview",
+      "preparing": "Preparing…",
+      "download": "Download PDF",
+      "previewTitle": "Report preview"
+    },
+    "params": {
+      "order_id": "Production order",
+      "date_from": "From date",
+      "date_to": "To date",
+      "date_basis": "Date basis",
+      "status": "Status",
+      "product": "Product",
+      "customer_id": "Customer",
+      "priority": "Priority",
+      "work_center_id": "Work center (via runs)",
+      "grouping": "Grouping",
+      "sort": "Sort",
+      "period": "Period"
+    },
+    "values": {
+      "planned_start": "Planned start",
+      "completion": "Completion",
+      "none": "No grouping",
+      "status": "Status",
+      "product": "Product",
+      "customer": "Customer",
+      "month": "Month",
+      "week": "Week",
+      "day": "Day",
+      "date_asc": "Oldest first",
+      "date_desc": "Newest first",
+      "number": "Order number",
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "urgent": "Urgent",
+      "draft": "Draft",
+      "released": "Released",
+      "in_progress": "In progress",
+      "on_hold": "On hold",
+      "completed": "Completed",
+      "closed": "Closed",
+      "cancelled": "Cancelled"
+    },
+    "order": {
+      "button": "Order report",
+      "close": "Close",
+      "unavailable": "The report is not available.",
+      "loadError": "Could not load the report."
+    },
+    "history": {
+      "title": "Export history",
+      "loadError": "Could not load the export history.",
+      "previous": "Previous",
+      "next": "Next",
+      "columns": {
+        "reference": "Reference",
+        "report": "Report",
+        "user": "User",
+        "date": "Date",
+        "status": "Status"
+      },
+      "statuses": {
+        "success": "Succeeded",
+        "failed": "Failed",
+        "pending": "Preparing"
+      }
+    },
+    "errors": {
+      "REPORT_ROW_LIMIT_NARROW_FILTERS": "The report has too many rows. Narrow the filters.",
+      "REPORT_TOO_LARGE_NARROW_FILTERS": "The report is too large. Narrow the filters.",
+      "REPORT_TIMEOUT_NARROW_FILTERS": "The report took too long to prepare. Narrow the filters.",
+      "PDF_RENDER_FAILED_RETRY": "The PDF could not be created. Check the print service and try again.",
+      "REPORT_PERMISSION_DENIED": "You do not have permission for this report.",
+      "SECTION_PERMISSION_DENIED": "You do not have permission for one of the selected sections.",
+      "INVALID_REPORT_PARAMS": "Check the required fields and the date range.",
+      "INVALID_REPORT_SECTIONS": "One of the selected sections is not valid for this report.",
+      "PRODUCTION_ORDER_NOT_FOUND": "The production order was not found or is not available.",
+      "REPORT_GENERATION_FAILED": "The report could not be created. See the export history.",
+      "REPORT_DATA_UNAVAILABLE": "There is no data for this report yet.",
+      "REPORT_NOT_FOUND": "This report does not exist.",
+      "default": "The report could not be created. Check your connection and permissions."
+    }
   }
 }

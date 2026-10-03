@@ -56,7 +56,7 @@ def test_create_quote_returns_201(client, auth_headers, customer_id):
     assert resp.status_code == 201
     data = resp.json()
     assert "id" in data
-    assert re.match(r"^RFQ-\d{4}-\d{4}$", data["quote_number"])  # server-generated; client value ignored
+    assert re.match(r"^QT-\d{4}-\d{4}$", data["quote_number"])  # server-generated; client value ignored
     assert data["status"] == "draft"
     assert "subtotal_amount" in data
     assert "total_amount" in data
@@ -123,7 +123,7 @@ def test_list_quotes_returns_results(client, auth_headers, customer_id):
     assert resp.status_code == 200
     items = resp.json()
     assert len(items) == 1
-    assert re.match(r"^RFQ-\d{4}-\d{4}$", items[0]["quote_number"])
+    assert re.match(r"^QT-\d{4}-\d{4}$", items[0]["quote_number"])
     assert "items" not in items[0]
 
 

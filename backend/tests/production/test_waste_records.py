@@ -1,562 +1,269 @@
-from tests.production.order_fixtures import historical_order
-from datetime import date, time
+"""PROD-WASTE-001: operational waste records, tied to a production order and optionally a run."""
+from datetime import date
 from decimal import Decimal
+from types import SimpleNamespace
+from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy import select
 
-from app.core.security import hash_password
-from app.foundation.domain.enums import OrganizationStatus, UserStatus
-from app.foundation.infrastructure.models import Organization, User
-from app.production.domain.enums import (
-    ProductionOrderPriority,
-    ProductionOrderStatus,
-    ShiftDefinitionStatus,
-    ShiftType,
-    WorkCenterStatus,
-    WorkCenterType,
-)
-from app.production.infrastructure.models import ProductionOrder, ShiftDefinition, WorkCenter
-from tests.production.conftest import grant_production_role
+from app.commercial.infrastructure.models import Customer
+from app.core.tenancy import TenantContext
+from app.dependencies import get_current_user
+from app.main import app
+from app.production.infrastructure.execution_models import ProductionRun
+from app.production.infrastructure.models import ProductionOrder, ProductionResultEntry, WasteRecord, WorkCenter
+from tests.test_production_allocation_lifecycle import other_org_demand
 
-
-WASTE_BASE = "/api/v1/production/waste-records"
-
-
-def _create_org(db, code="other-org") -> Organization:
-    org = Organization(
-        name="Other Org",
-        code=code,
-        status=OrganizationStatus.ACTIVE,
-        timezone="UTC",
-    )
-    db.add(org)
-    db.commit()
-    db.refresh(org)
-    return org
-
-
-def _create_user(db, org, email="other@example.com") -> User:
-    user = User(
-        organization_id=org.id,
-        full_name="Other User",
-        email=email,
-        password_hash=hash_password("Other1234!"),
-        status=UserStatus.ACTIVE,
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    grant_production_role(db, org, user)
-    return user
-
-
-def _login(client, email, password="Other1234!") -> dict[str, str]:
-    resp = client.post(
-        "/api/v1/auth/login",
-        json={"email": email, "password": password},
-    )
-    assert resp.status_code == 200
-    return {"Authorization": f"Bearer {resp.json()['access_token']}"}
-
-
-def _base_shift_definition(work_center_id: str, code="SD-WASTE-001") -> dict:
-    return {
-        "code": code,
-        "name": "Morning",
-        "shift_type": "morning",
-        "start_time": "07:00:00",
-        "end_time": "15:00:00",
-    }
-
-
-def _base_order(work_center_id: str, **overrides) -> dict:
-    payload = {
-        "work_center_id": work_center_id,
-        "product_type": "PE Film",
-        "planned_quantity": "100.00",
-        "unit": "kg",
-        "planned_start_date": "2026-07-01",
-        "planned_end_date": "2026-07-02",
-    }
-    payload.update(overrides)
-    return payload
-
-
-def _base_item(**overrides) -> dict:
-    payload = {
-        "planned_quantity": "12.50",
-        "unit": "kg",
-        "notes": "Roll line item",
-    }
-    payload.update(overrides)
-    return payload
-
-
-def _base_waste(production_order_id: str, work_center_id: str, **overrides) -> dict:
-    payload = {
-        "production_order_id": production_order_id,
-        "work_center_id": work_center_id,
-        "waste_date": "2026-07-01",
-        "quantity_wasted": "10.25",
-        "unit": "kg",
-        "waste_category": "startup_loss",
-    }
-    payload.update(overrides)
-    return payload
-
-
-def _items_url(production_order_id: str) -> str:
-    return f"/api/v1/production/production-orders/{production_order_id}/items"
-
-
-def _create_work_center(client, auth_headers, code="WC-WASTE-001"):
-    resp = client.post(
-        "/api/v1/production/work-centers",
-        json={"code": code, "name": "Line 1", "center_type": "extrusion"},
-        headers=auth_headers,
-    )
-    assert resp.status_code == 201
-    return resp
-
-
-def _create_shift_definition(client, auth_headers, work_center_id: str, code="SD-WASTE-001"):
-    resp = client.post(
-        "/api/v1/production/shift-definitions",
-        json=_base_shift_definition(work_center_id, code),
-        headers=auth_headers,
-    )
-    assert resp.status_code == 201
-    return resp
-
-
-def _create_order(client, auth_headers, work_center_id: str, **overrides):
-    resp = historical_order(client, auth_headers, _base_order(work_center_id, **overrides))
-    assert resp.status_code == 201
-    return resp
-
-
-def _create_item(client, auth_headers, production_order_id: str, **overrides):
-    resp = client.post(
-        _items_url(production_order_id),
-        json=_base_item(**overrides),
-        headers=auth_headers,
-    )
-    assert resp.status_code == 201
-    return resp
-
-
-def _create_waste(client, auth_headers, production_order_id: str, work_center_id: str, **overrides):
-    resp = client.post(
-        WASTE_BASE,
-        json=_base_waste(production_order_id, work_center_id, **overrides),
-        headers=auth_headers,
-    )
-    assert resp.status_code == 201
-    return resp
-
-
-def _create_foreign_work_center(db, org: Organization, code="WC-FOREIGN-WASTE") -> WorkCenter:
-    work_center = WorkCenter(
-        organization_id=org.id,
-        code=code,
-        name="Foreign Line",
-        center_type=WorkCenterType.EXTRUSION,
-        status=WorkCenterStatus.ACTIVE,
-    )
-    db.add(work_center)
-    db.commit()
-    db.refresh(work_center)
-    return work_center
-
-
-def _create_foreign_shift_definition(
-    db,
-    org: Organization,
-    work_center: WorkCenter,
-    code="SD-FOREIGN-WASTE",
-) -> ShiftDefinition:
-    shift_definition = ShiftDefinition(
-        organization_id=org.id,
-        code=code,
-        name="Foreign Morning",
-        shift_type=ShiftType.MORNING,
-        start_time=time(7, 0),
-        end_time=time(15, 0),
-        duration_hours=Decimal("8.00"),
-        crosses_midnight=False,
-        status=ShiftDefinitionStatus.ACTIVE,
-    )
-    db.add(shift_definition)
-    db.commit()
-    db.refresh(shift_definition)
-    return shift_definition
-
-
-def _create_foreign_production_order(
-    db,
-    org: Organization,
-    user: User,
-    work_center: WorkCenter,
-    number="PO-FOREIGN-WASTE-001",
-) -> ProductionOrder:
-    production_order = ProductionOrder(
-        organization_id=org.id,
-        production_order_number=number,
-        work_center_id=work_center.id,
-        product_type="PE Film",
-        planned_quantity=Decimal("100.00"),
-        unit="kg",
-        priority=ProductionOrderPriority.NORMAL,
-        status=ProductionOrderStatus.DRAFT,
-        planned_start_date=date(2026, 7, 1),
-        planned_end_date=date(2026, 7, 2),
-        created_by_user_id=user.id,
-    )
-    db.add(production_order)
-    db.commit()
-    db.refresh(production_order)
-    return production_order
+ROOT = "/api/v1/production"
+WASTE = f"{ROOT}/waste-records"
+PERMISSIONS = frozenset(
+    ["production:production_orders:read", "production:production_orders:update", "production:production_orders:manage_items", "production:planning:read", "production:planning:allocate",
+     "production:production_orders:create", "production:waste_records:read", "production:waste_records:create", "production:waste_records:update", "production:waste_records:delete", "production:results:read", "production:results:create", "production:results:update", "production:results:delete"]
+    + [f"production:production_orders:{a}" for a in ("release", "start", "hold", "complete", "close", "cancel")]
+    + [f"production:demands:{a}" for a in ("read", "create", "update")])
+CATEGORIES = ["startup_setup", "changeover", "process", "material_defect", "machine_fault", "handling_damage", "contamination", "other"]
 
 
 @pytest.fixture
-def work_center(client, auth_headers):
-    return _create_work_center(client, auth_headers).json()
-
-
-@pytest.fixture
-def shift_definition(client, auth_headers, work_center):
-    return _create_shift_definition(client, auth_headers, work_center["id"]).json()
-
-
-@pytest.fixture
-def production_order(client, auth_headers, work_center):
-    return _create_order(client, auth_headers, work_center["id"]).json()
-
-
-@pytest.fixture
-def production_order_item(client, auth_headers, production_order):
-    return _create_item(client, auth_headers, production_order["id"]).json()
-
-
-def test_create_waste_record_minimal(client, auth_headers, production_order, work_center):
-    resp = client.post(
-        WASTE_BASE,
-        json=_base_waste(production_order["id"], work_center["id"]),
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 201
-    data = resp.json()
-    assert data["organization_id"] is not None
-    assert data["created_by_user_id"] is not None
-    assert "shift_report_id" not in data  # shift reports were removed
-    assert data["production_order_item_id"] is None
-    assert data["reason_code"] is None
-    assert data["notes"] is None
-
-
-def test_create_waste_record_full(
-    client,
-    auth_headers,
-    production_order,
-    work_center,
-    production_order_item,
-):
-    resp = client.post(
-        WASTE_BASE,
-        json=_base_waste(
-            production_order["id"],
-            work_center["id"],
-            production_order_item_id=production_order_item["id"],
-            waste_date="2026-07-02",
-            quantity_wasted="15.75",
-            unit="m",
-            waste_category="trim_loss",
-            reason_code="Edge trimming during size adjustment",
-            notes="Observed during rewinding",
-        ),
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 201
-    data = resp.json()
-    assert data["production_order_id"] == production_order["id"]
-    assert data["work_center_id"] == work_center["id"]
-    assert data["production_order_item_id"] == production_order_item["id"]
-    assert data["waste_date"] == "2026-07-02"
-    assert data["quantity_wasted"] == "15.75"
-    assert data["unit"] == "m"
-    assert data["waste_category"] == "trim_loss"
-    assert data["reason_code"] == "Edge trimming during size adjustment"
-    assert data["notes"] == "Observed during rewinding"
-
-
-def test_create_quantity_zero_rejected(client, auth_headers, production_order, work_center):
-    resp = client.post(
-        WASTE_BASE,
-        json=_base_waste(production_order["id"], work_center["id"], quantity_wasted="0"),
-        headers=auth_headers,
-    )
-    assert resp.status_code == 422
-
-
-def test_create_quantity_negative_rejected(client, auth_headers, production_order, work_center):
-    resp = client.post(
-        WASTE_BASE,
-        json=_base_waste(production_order["id"], work_center["id"], quantity_wasted="-1"),
-        headers=auth_headers,
-    )
-    assert resp.status_code == 422
-
-
-def test_create_wrong_org_production_order_rejected(client, db, auth_headers, work_center):
-    other_org = _create_org(db, code="waste-foreign-order-org")
-    other_user = _create_user(db, other_org, email="waste-foreign-order@example.com")
-    foreign_wc = _create_foreign_work_center(db, other_org)
-    foreign_order = _create_foreign_production_order(db, other_org, other_user, foreign_wc)
-
-    resp = client.post(
-        WASTE_BASE,
-        json=_base_waste(str(foreign_order.id), work_center["id"]),
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 400
-
-
-def test_create_wrong_org_work_center_rejected(client, db, auth_headers, production_order):
-    other_org = _create_org(db, code="waste-foreign-wc-org")
-    foreign_wc = _create_foreign_work_center(db, other_org)
-
-    resp = client.post(
-        WASTE_BASE,
-        json=_base_waste(production_order["id"], str(foreign_wc.id)),
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 400
-
-
-def test_create_item_wrong_order_rejected(client, auth_headers, production_order, work_center):
-    second_order = _create_order(
-        client,
-        auth_headers,
-        work_center["id"],
-        production_order_number="PO-WASTE-SECOND",
-    )
-    other_item = _create_item(client, auth_headers, second_order.json()["id"])
-
-    resp = client.post(
-        WASTE_BASE,
-        json=_base_waste(
-            production_order["id"],
-            work_center["id"],
-            production_order_item_id=other_item.json()["id"],
-        ),
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 400
-
-
-def test_list_returns_own_org_only(client, auth_headers, production_order, work_center):
-    _create_waste(client, auth_headers, production_order["id"], work_center["id"])
-    _create_waste(
-        client,
-        auth_headers,
-        production_order["id"],
-        work_center["id"],
-        waste_category="trim_loss",
-    )
-
-    resp = client.get(WASTE_BASE, headers=auth_headers)
-
-    assert resp.status_code == 200
-    assert len(resp.json()) == 2
-
-
-def test_list_cross_tenant_isolation(client, db, auth_headers, production_order, work_center):
-    first_waste = _create_waste(client, auth_headers, production_order["id"], work_center["id"])
-
-    other_org = _create_org(db, code="waste-tenant-org")
-    _create_user(db, other_org, email="waste-tenant@example.com")
-    other_headers = _login(client, "waste-tenant@example.com")
-    other_wc = _create_work_center(client, other_headers, code="WC-WASTE-TENANT")
-    other_order = _create_order(client, other_headers, other_wc.json()["id"])
-    other_waste = _create_waste(client, other_headers, other_order.json()["id"], other_wc.json()["id"])
-
-    resp = client.get(WASTE_BASE, headers=auth_headers)
-
-    assert resp.status_code == 200
-    assert len(resp.json()) == 1
-    assert resp.json()[0]["id"] == first_waste.json()["id"]
-    assert resp.json()[0]["id"] != other_waste.json()["id"]
-
-
-def test_list_filter_by_production_order_id(client, auth_headers, production_order, work_center):
-    second_order = _create_order(
-        client,
-        auth_headers,
-        work_center["id"],
-        production_order_number="PO-WASTE-FILTER-ORDER",
-    )
-    first = _create_waste(client, auth_headers, production_order["id"], work_center["id"])
-    _create_waste(client, auth_headers, second_order.json()["id"], work_center["id"])
-
-    resp = client.get(
-        f"{WASTE_BASE}?production_order_id={production_order['id']}",
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 200
-    assert len(resp.json()) == 1
-    assert resp.json()[0]["id"] == first.json()["id"]
-
-
-def test_list_filter_by_work_center_id(client, auth_headers, production_order, work_center):
-    second_wc = _create_work_center(client, auth_headers, code="WC-WASTE-002")
-    second_order = _create_order(
-        client,
-        auth_headers,
-        second_wc.json()["id"],
-        production_order_number="PO-WASTE-WC-002",
-    )
-    first = _create_waste(client, auth_headers, production_order["id"], work_center["id"])
-    _create_waste(client, auth_headers, second_order.json()["id"], second_wc.json()["id"])
-
-    resp = client.get(
-        f"{WASTE_BASE}?work_center_id={work_center['id']}",
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 200
-    assert len(resp.json()) == 1
-    assert resp.json()[0]["id"] == first.json()["id"]
-
-
-def test_list_filter_by_waste_category(client, auth_headers, production_order, work_center):
-    _create_waste(client, auth_headers, production_order["id"], work_center["id"])
-    trim_loss = _create_waste(
-        client,
-        auth_headers,
-        production_order["id"],
-        work_center["id"],
-        waste_category="trim_loss",
-    )
-
-    resp = client.get(f"{WASTE_BASE}?waste_category=trim_loss", headers=auth_headers)
-
-    assert resp.status_code == 200
-    assert len(resp.json()) == 1
-    assert resp.json()[0]["id"] == trim_loss.json()["id"]
-    assert resp.json()[0]["waste_category"] == "trim_loss"
-
-
-def test_list_filter_by_waste_date(client, auth_headers, production_order, work_center):
-    first = _create_waste(
-        client,
-        auth_headers,
-        production_order["id"],
-        work_center["id"],
-        waste_date="2026-07-01",
-    )
-    _create_waste(
-        client,
-        auth_headers,
-        production_order["id"],
-        work_center["id"],
-        waste_date="2026-07-02",
-    )
-
-    resp = client.get(f"{WASTE_BASE}?waste_date=2026-07-01", headers=auth_headers)
-
-    assert resp.status_code == 200
-    assert len(resp.json()) == 1
-    assert resp.json()[0]["id"] == first.json()["id"]
-    assert resp.json()[0]["waste_date"] == "2026-07-01"
-
-
-def test_get_by_id_returns_notes(client, auth_headers, production_order, work_center):
-    create_resp = _create_waste(
-        client,
-        auth_headers,
-        production_order["id"],
-        work_center["id"],
-        notes="scrap from startup",
-    )
-
-    resp = client.get(f"{WASTE_BASE}/{create_resp.json()['id']}", headers=auth_headers)
-
-    assert resp.status_code == 200
-    assert "notes" in resp.json()
-    assert resp.json()["notes"] == "scrap from startup"
-
-
-def test_get_by_id_wrong_org_returns_404(client, db, auth_headers):
-    other_org = _create_org(db, code="waste-wrong-org")
-    _create_user(db, other_org, email="waste-wrong-org@example.com")
-    other_headers = _login(client, "waste-wrong-org@example.com")
-    other_wc = _create_work_center(client, other_headers, code="WC-WASTE-WRONG")
-    other_order = _create_order(client, other_headers, other_wc.json()["id"])
-    other_waste = _create_waste(client, other_headers, other_order.json()["id"], other_wc.json()["id"])
-
-    resp = client.get(f"{WASTE_BASE}/{other_waste.json()['id']}", headers=auth_headers)
-
-    assert resp.status_code == 404
-
-
-def test_patch_update_quantity(client, auth_headers, production_order, work_center):
-    create_resp = _create_waste(client, auth_headers, production_order["id"], work_center["id"])
-
-    resp = client.patch(
-        f"{WASTE_BASE}/{create_resp.json()['id']}",
-        json={"quantity_wasted": "50.00"},
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 200
-    assert resp.json()["quantity_wasted"] == "50.00"
-
-
-def test_patch_set_production_order_null_rejected(client, auth_headers, production_order, work_center):
-    create_resp = _create_waste(client, auth_headers, production_order["id"], work_center["id"])
-
-    resp = client.patch(
-        f"{WASTE_BASE}/{create_resp.json()['id']}",
-        json={"production_order_id": None},
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 400
-
-
-def test_patch_set_work_center_null_rejected(client, auth_headers, production_order, work_center):
-    create_resp = _create_waste(client, auth_headers, production_order["id"], work_center["id"])
-
-    resp = client.patch(
-        f"{WASTE_BASE}/{create_resp.json()['id']}",
-        json={"work_center_id": None},
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 400
-
-
-def test_patch_quantity_zero_rejected(client, auth_headers, production_order, work_center):
-    create_resp = _create_waste(client, auth_headers, production_order["id"], work_center["id"])
-
-    resp = client.patch(
-        f"{WASTE_BASE}/{create_resp.json()['id']}",
-        json={"quantity_wasted": "0"},
-        headers=auth_headers,
-    )
-
-    assert resp.status_code == 422
-
-
-def test_unauthenticated_request_rejected(client, production_order, work_center):
-    resp = client.post(
-        WASTE_BASE,
-        json=_base_waste(production_order["id"], work_center["id"]),
-    )
-    assert resp.status_code == 401
+def env(client, db, test_org, test_user):
+    customer = Customer(organization_id=test_org.id, customer_code="C-WASTE", name="Waste Customer")
+    center = WorkCenter(organization_id=test_org.id, code="WC-WASTE", name="Extruder 1")
+    other_center = WorkCenter(organization_id=test_org.id, code="WC-WASTE2", name="Extruder 2")
+    db.add_all([customer, center, other_center]); db.commit()
+    ctx = SimpleNamespace(user=SimpleNamespace(is_organization_root=False), auth_user=SimpleNamespace(permissions=set(PERMISSIONS)),
+                          tenant=TenantContext(test_user.id, test_org.id, permissions=PERMISSIONS))
+    app.dependency_overrides[get_current_user] = lambda: ctx
+
+    def transition(order_id, action, reason="because", **extra):
+        return client.post(f"{ROOT}/production-orders/{order_id}/transitions", json={"action": action, "reason": reason, **extra})
+
+    def order(*specs, to="in_progress"):
+        items = [dict(product_type="film", unit="kg", required_quantity="1000", target_spec_json=s) for s in (specs or ({"width_mm": 10},))]
+        demand_id = client.post(f"{ROOT}/demands", json={"customer_id": str(customer.id), "items": items}).json()["id"]
+        client.post(f"{ROOT}/demands/{demand_id}/status", json={"status": "ready_for_planning"})
+        demand = client.get(f"{ROOT}/demands/{demand_id}").json()
+        r = client.post(f"{ROOT}/planning/create-production-order", json=dict(
+            allocations=[{"production_demand_item_id": i["id"], "allocated_quantity": "400"} for i in demand["items"]],
+            work_center_id=str(center.id), planned_start_date="2026-10-01", planned_end_date="2026-10-03"))
+        assert r.status_code == 201, r.text
+        po = r.json()
+        path = {"draft": [], "released": ["release"], "in_progress": ["release", "start"], "on_hold": ["release", "start", "hold"],
+                "completed": ["release", "start", "complete"], "closed": ["release", "start", "complete", "close"], "cancelled": ["cancel"]}[to]
+        for action in path:
+            extra = {"zero_output": True} if action == "close" else {}
+            assert transition(po["id"], action, **extra).status_code == 200
+        return client.get(f"{ROOT}/production-orders/{po['id']}").json()
+
+    def run(po, status="in_progress", work_center=None):
+        row = ProductionRun(organization_id=test_org.id, production_order_id=UUID(po["id"]), work_center_id=(work_center or other_center).id,
+                            run_date=date(2026, 10, 1), status=status, created_by_user_id=test_user.id)
+        db.add(row); db.commit()
+        return row
+
+    def add(po, category="process", quantity="12.5", **extra):
+        return client.post(WASTE, json={"production_order_id": po["id"], "waste_date": "2026-10-01", "quantity_wasted": quantity, "unit": "kg",
+                                        "waste_category": category, **extra})
+
+    def added(po, *args, **kwargs):
+        r = add(po, *args, **kwargs)
+        assert r.status_code == 201, r.text
+        return r.json()
+
+    def rows():
+        db.expire_all()
+        return list(db.scalars(select(WasteRecord).order_by(WasteRecord.created_at)))
+
+    return SimpleNamespace(db=db, client=client, org=test_org, user=test_user, ctx=ctx, center=center, other_center=other_center,
+                           order=order, run=run, add=add, added=added, rows=rows, transition=transition)
+
+
+def code(r):
+    return r.json()["detail"]["code"]
+
+
+# ---- the order decides -------------------------------------------------------------------------
+
+@pytest.mark.parametrize("status", ["in_progress", "on_hold", "completed"])
+def test_waste_recorded_while_the_order_runs_or_as_a_late_entry(env, status):
+    po = env.order(to=status)
+    record = env.added(po, "startup_setup", "30.125", reason_code="WARM-UP", notes="first metres")
+    (row,) = env.rows()
+    assert (row.production_order_id, row.work_center_id, row.quantity_wasted, row.waste_category, row.created_by_user_id) == (
+        UUID(po["id"]), env.center.id, Decimal("30.125"), "startup_setup", env.user.id)
+    assert record["labels"]["order_number"] == po["production_order_number"] and record["labels"]["actions"] == ["edit", "delete"]
+
+
+@pytest.mark.parametrize("status,expected", [("draft", "WASTE_NOT_AVAILABLE"), ("released", "WASTE_NOT_AVAILABLE"),
+                                             ("cancelled", "WASTE_NOT_AVAILABLE"), ("closed", "WASTE_LOCKED")])
+def test_waste_rejected_before_production_and_after_close(env, status, expected):
+    po = env.order(to=status)
+    r = env.add(po)
+    assert r.status_code == 409 and code(r) == expected and r.json()["detail"]["order_status"] == status
+    assert env.rows() == []
+
+
+def test_closing_locks_existing_records(env):
+    po = env.order(to="completed")
+    record = env.added(po)
+    assert env.transition(po["id"], "close", zero_output=True).status_code == 200
+    for r in (env.client.patch(f"{WASTE}/{record['id']}", json={"quantity_wasted": "1"}), env.client.delete(f"{WASTE}/{record['id']}")):
+        assert r.status_code == 409 and code(r) == "WASTE_LOCKED"
+    assert env.rows()[0].quantity_wasted == Decimal("12.5")
+    assert env.client.get(f"{WASTE}/{record['id']}").json()["labels"]["actions"] == []
+
+
+def test_order_is_required_and_cannot_be_changed(env):
+    po = env.order()
+    r = env.client.post(WASTE, json={"waste_date": "2026-10-01", "quantity_wasted": "1", "unit": "kg", "waste_category": "other"})
+    assert r.status_code == 422
+    record = env.added(po)
+    other = env.order()
+    assert env.client.patch(f"{WASTE}/{record['id']}", json={"production_order_id": other["id"]}).status_code == 422
+    assert str(env.rows()[0].production_order_id) == po["id"]
+
+
+# ---- run, work center and item ----------------------------------------------------------------
+
+def test_run_is_optional_and_gives_the_work_center(env):
+    po = env.order()
+    run = env.run(po)
+    record = env.added(po, production_run_id=str(run.id))
+    row = env.rows()[0]
+    assert (row.production_run_id, row.work_center_id) == (run.id, env.other_center.id)
+    assert record["labels"]["work_center_name"] == "Extruder 2" and record["labels"]["run_date"] == "2026-10-01"
+    r = env.add(po, production_run_id=str(run.id), work_center_id=str(env.center.id))
+    assert r.status_code == 422 and code(r) == "WORK_CENTER_MISMATCH"
+    # Without a run: the given work center, else the order's.
+    env.added(po, work_center_id=str(env.other_center.id))
+    env.added(po)
+    assert [r.work_center_id for r in env.rows()] == [env.other_center.id, env.other_center.id, env.center.id]
+
+
+def test_run_must_belong_to_the_order_and_not_be_cancelled(env):
+    po, other = env.order(), env.order()
+    r = env.add(po, production_run_id=str(env.run(other).id))
+    assert r.status_code == 422 and code(r) == "RUN_NOT_IN_ORDER"
+    r = env.add(po, production_run_id=str(env.run(po, status="cancelled").id))
+    assert r.status_code == 422 and code(r) == "RUN_CANCELLED"
+    r = env.add(po, production_run_id=str(uuid4()))
+    assert code(r) == "RUN_NOT_IN_ORDER"
+    assert env.rows() == []
+
+
+def test_item_must_belong_to_the_order(env):
+    po, other = env.order(), env.order()
+    env.added(po, production_order_item_id=po["lines"][0]["id"])
+    r = env.add(po, production_order_item_id=other["lines"][0]["id"])
+    assert r.status_code == 422 and code(r) == "ORDER_ITEM_NOT_IN_ORDER"
+
+
+# ---- categories and quantities ----------------------------------------------------------------
+
+def test_every_generic_category_is_accepted_and_old_ones_are_not(env):
+    po = env.order()
+    for category in CATEGORIES:
+        env.added(po, category, "1")
+    assert {r.waste_category for r in env.rows()} == set(CATEGORIES)
+    # Plastics-specific values are gone, and finished product is scrap in the final result, not waste.
+    for old in ("trim_loss", "end_of_roll_loss", "rejected_output"):
+        assert env.add(po, old).status_code == 422
+
+
+@pytest.mark.parametrize("quantity", ["0", "-5", "1.0001"])
+def test_quantity_must_be_positive_with_three_decimals(env, quantity):
+    po = env.order()
+    r = env.add(po, quantity=quantity)
+    assert r.status_code == 422 and any(e["loc"][-1] == "quantity_wasted" for e in r.json()["detail"])
+
+
+def test_edit_and_delete_while_open(env):
+    po = env.order()
+    run = env.run(po)
+    record = env.added(po)
+    r = env.client.patch(f"{WASTE}/{record['id']}", json={"quantity_wasted": "7.5", "waste_category": "machine_fault", "production_run_id": str(run.id)})
+    assert r.status_code == 200, r.text
+    row = env.rows()[0]
+    assert (row.quantity_wasted, row.waste_category, row.work_center_id, row.updated_by_user_id) == (Decimal("7.5"), "machine_fault", env.other_center.id, env.user.id)
+    assert env.client.patch(f"{WASTE}/{record['id']}", json={"quantity_wasted": None}).status_code == 422
+    assert env.client.delete(f"{WASTE}/{record['id']}").status_code == 204
+    assert env.rows() == []
+
+
+# ---- summary: apart from the final result ------------------------------------------------------
+
+def test_summary_per_unit_and_category_is_separate_from_the_result(env):
+    po = env.order(to="completed")
+    env.added(po, "process", "10")
+    env.added(po, "process", "5.5")
+    env.added(po, "startup_setup", "3")
+    env.client.post(WASTE, json={"production_order_id": po["id"], "waste_date": "2026-10-01", "quantity_wasted": "2", "unit": "m", "waste_category": "other"})
+    summary = env.client.get(f"{WASTE}/summary", params={"production_order_id": po["id"]}).json()
+    assert [(t["unit"], Decimal(t["quantity"]), t["count"]) for t in summary["totals"]] == [("kg", Decimal("18.5"), 3), ("m", Decimal("2"), 1)]
+    assert [(c["category"], c["unit"], Decimal(c["quantity"])) for c in summary["by_category"]] == [
+        ("process", "kg", Decimal("15.5")), ("startup_setup", "kg", Decimal("3")), ("other", "m", Decimal("2"))]
+    assert summary["actions"] == ["create"] and summary["available"] and not summary["locked"]
+    # Waste never enters the order's final result.
+    result = env.client.get(f"{ROOT}/production-orders/{po['id']}/result").json()
+    assert all(Decimal(t["scrap_total"]) == 0 and Decimal(t["total_output"]) == 0 for t in result["totals"])
+    assert env.db.scalar(select(ProductionResultEntry.id)) is None
+
+
+# ---- lists, security ---------------------------------------------------------------------------
+
+def test_list_filters(env):
+    po, other = env.order(), env.order()
+    run = env.run(po)
+    env.added(po, "process", production_run_id=str(run.id))
+    env.client.post(WASTE, json={"production_order_id": po["id"], "waste_date": "2026-09-20", "quantity_wasted": "1", "unit": "kg", "waste_category": "other"})
+    env.added(other, "changeover")
+    ids = lambda **q: {r["waste_category"] for r in env.client.get(WASTE, params=q).json()}  # noqa: E731
+    assert ids(production_order_id=po["id"]) == {"process", "other"}
+    assert ids(waste_category="changeover") == {"changeover"}
+    assert ids(production_run_id=str(run.id)) == {"process"}
+    assert ids(date_from="2026-10-01") == {"process", "changeover"}
+    assert ids(date_to="2026-09-30") == {"other"}
+    assert ids(work_center_id=str(env.other_center.id)) == {"process"}
+
+
+def test_other_organizations_are_invisible_and_body_org_is_refused(env):
+    foreign = other_org_demand(env.db)
+    foreign.order.status = "in_progress"; env.db.commit()
+    r = env.client.post(WASTE, json={"production_order_id": str(foreign.order.id), "waste_date": "2026-10-01", "quantity_wasted": "1", "unit": "kg", "waste_category": "other"})
+    assert r.status_code == 404 and code(r) == "PRODUCTION_ORDER_NOT_FOUND"
+    po = env.order()
+    assert env.add(po, organization_id=str(foreign.org.id)).status_code == 422
+    env.db.add(WasteRecord(organization_id=foreign.org.id, production_order_id=foreign.order.id, work_center_id=foreign.order.work_center_id,
+                           waste_date=date(2026, 10, 1), quantity_wasted=Decimal("9"), unit="kg", waste_category="other", created_by_user_id=env.user.id))
+    env.db.commit()
+    foreign_id = env.db.scalar(select(WasteRecord.id).where(WasteRecord.organization_id == foreign.org.id))
+    assert env.client.get(WASTE).json() == []
+    assert env.client.get(f"{WASTE}/{foreign_id}").status_code == 404
+    assert env.client.delete(f"{WASTE}/{foreign_id}").status_code == 404
+    assert env.client.get(f"{WASTE}/summary", params={"production_order_id": str(foreign.order.id)}).status_code == 404
+
+
+def test_permissions(env):
+    po = env.order()
+    record = env.added(po)
+    env.ctx.auth_user.permissions = set(PERMISSIONS) - {"production:waste_records:create", "production:waste_records:update", "production:waste_records:delete"}
+    assert env.add(po).status_code == 403
+    assert env.client.patch(f"{WASTE}/{record['id']}", json={"quantity_wasted": "1"}).status_code == 403
+    assert env.client.delete(f"{WASTE}/{record['id']}").status_code == 403
+    assert env.client.get(f"{WASTE}/{record['id']}").json()["labels"]["actions"] == []
+    assert env.client.get(f"{WASTE}/summary", params={"production_order_id": po["id"]}).json()["actions"] == []
+    env.ctx.auth_user.permissions = set(PERMISSIONS) - {"production:waste_records:read"}
+    assert env.client.get(WASTE).status_code == 403
+
+
+def test_work_center_delete_refused_while_waste_exists(env):
+    # An order without customer allocations, so only the waste can block the delete.
+    order = ProductionOrder(organization_id=env.org.id, production_order_number="PO-BARE", work_center_id=env.other_center.id, product_type="film",
+                            planned_quantity=Decimal("100"), unit="kg", status="in_progress", planned_start_date=date(2026, 10, 1),
+                            planned_end_date=date(2026, 10, 3), created_by_user_id=env.user.id)
+    env.db.add(order); env.db.commit()
+    env.added({"id": str(order.id)})
+    env.ctx.auth_user.permissions = set(PERMISSIONS) | {"production:work_centers:delete"}
+    r = env.client.delete(f"{ROOT}/work-centers/{env.other_center.id}")
+    assert r.status_code == 409 and "waste" in r.json()["detail"]
+    assert len(env.rows()) == 1 and env.db.get(ProductionOrder, order.id) is not None

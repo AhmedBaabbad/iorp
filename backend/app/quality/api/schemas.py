@@ -26,7 +26,6 @@ class QualityCheckCreate(BaseModel):
 
     production_order_id: UUID | None = None
     production_order_item_id: UUID | None = None
-    production_output_id: UUID | None = None
 
     check_datetime: datetime
     check_type: QualityCheckType
@@ -59,7 +58,6 @@ class QualityCheckUpdate(BaseModel):
 
     production_order_id: UUID | None = None
     production_order_item_id: UUID | None = None
-    production_output_id: UUID | None = None
 
     notes: str | None = None
 
@@ -94,7 +92,6 @@ class QualityCheckListItem(BaseModel):
     qty_accepted: int
     qty_rejected: int
     production_order_id: UUID | None
-    production_output_id: UUID | None
     created_at: ISODatetime
     updated_at: ISODatetime
 
@@ -111,7 +108,6 @@ class QualityDefectCreate(BaseModel):
     # quality_check_id is derived from the URL path — never a body field.
     production_order_id: UUID | None = None
     production_order_item_id: UUID | None = None
-    production_output_id: UUID | None = None
     defect_date: date
     defect_category: DefectCategory
     severity: DefectSeverity
@@ -123,7 +119,6 @@ class QualityDefectCreate(BaseModel):
 class QualityDefectUpdate(BaseModel):
     production_order_id: UUID | None = None
     production_order_item_id: UUID | None = None
-    production_output_id: UUID | None = None
     defect_date: date | None = None
     defect_category: DefectCategory | None = None
     severity: DefectSeverity | None = None
@@ -138,7 +133,6 @@ class QualityDefectListItem(BaseModel):
     quality_check_id: UUID
     production_order_id: UUID | None
     production_order_item_id: UUID | None
-    production_output_id: UUID | None
     defect_date: date
     defect_category: DefectCategory
     severity: DefectSeverity
@@ -158,7 +152,6 @@ class QualityDefectRead(QualityDefectListItem):
 class QualityRejectionCreate(BaseModel):
     quality_check_id: UUID | None = None
     quality_defect_id: UUID | None = None
-    production_output_id: UUID | None = None
     production_order_item_id: UUID | None = None
     rejection_date: date
     rejection_reason: RejectionReason
@@ -171,7 +164,6 @@ class QualityRejectionCreate(BaseModel):
 class QualityRejectionUpdate(BaseModel):
     quality_check_id: UUID | None = None
     quality_defect_id: UUID | None = None
-    production_output_id: UUID | None = None
     production_order_item_id: UUID | None = None
     rejection_date: date | None = None
     rejection_reason: RejectionReason | None = None
@@ -187,7 +179,6 @@ class QualityRejectionListItem(BaseModel):
     organization_id: UUID
     quality_check_id: UUID | None
     quality_defect_id: UUID | None
-    production_output_id: UUID | None
     production_order_item_id: UUID | None
     rejection_date: date
     rejection_reason: RejectionReason

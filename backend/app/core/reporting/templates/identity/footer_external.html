@@ -1,0 +1,23 @@
+{#- Customer-facing footer: the contact line (address · phone · e-mail · website), one line per active bank
+    account, then the closing strip with the document number and page. The legal identity is in the header.
+    Only values that are set are shown; each label/value pair is isolated for RTL/LTR. -#}
+{%- set ar = lang == 'ar' %}
+{%- set address = branding.address_ar if ar else (branding.address_en or branding.address_ar) %}
+{%- set contact = [(('العنوان' if ar else 'Address'), address, false), (('الهاتف' if ar else 'Phone'), branding.phone, true),
+                   (('البريد' if ar else 'E-mail'), branding.email, true), (('الموقع' if ar else 'Website'), branding.website, true)] | selectattr(1) | list %}
+{%- set banks = (branding.bank_accounts or []) | selectattr('is_active') | list %}
+<footer class="id-footer id-external" dir="{{ 'rtl' if ar else 'ltr' }}">
+  {% if contact %}<div class="id-contact">{% for label, value, latin in contact %}<span class="id-item{% if loop.first %} id-address{% endif %}"><em>{{ label }}</em><bdi{% if latin %} dir="ltr"{% endif %}>{{ value }}</bdi></span>{% endfor %}</div>{% endif %}
+  {% for a in banks %}<div class="id-bankline">
+    <span class="id-item"><em>{{ 'البنك' if ar else 'Bank' }}</em><bdi>{{ a.bank_name_ar if ar else (a.bank_name_en or a.bank_name_ar) }}</bdi></span>
+    {%- if a.account_name %}<span class="id-item"><em>{{ 'اسم الحساب' if ar else 'Account name' }}</em><bdi>{{ a.account_name }}</bdi></span>{% endif %}
+    {%- if a.account_number %}<span class="id-item"><em>{{ 'رقم الحساب' if ar else 'Account no.' }}</em><bdi dir="ltr">{{ a.account_number }}</bdi></span>{% endif %}
+    <span class="id-item"><em>IBAN</em><bdi dir="ltr">{{ a.iban }}</bdi></span>
+    {%- if a.swift_code %}<span class="id-item"><em>SWIFT</em><bdi dir="ltr">{{ a.swift_code }}</bdi></span>{% endif %}
+  </div>{% endfor %}
+  <div class="id-strip">
+    <span class="id-strip-start"><bdi>{{ (branding.legal_name_ar or branding.name) if ar else (branding.legal_name_en or branding.legal_name_ar or branding.name) }}</bdi></span>
+    <span class="id-strip-mid">{% if data.subject %}<bdi dir="ltr">{{ data.subject }}</bdi>{% endif %}</span>
+    <span class="id-strip-end">{% include 'identity/page.html' %}</span>
+  </div>
+</footer>

@@ -40,3 +40,11 @@
 
 .flowArrow::before { content: "→"; color: var(--text-muted); }
 :global([dir="rtl"]) .flowArrow::before { content: "←"; }
+/* Status visibility dropdown (demands list). */
+.picker { position: relative; }
+.picker summary { list-style: none; cursor: pointer; padding: 10px; min-width: 170px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
+.picker summary::-webkit-details-marker { display: none; }
+.picker summary::after { content: "▾"; float: inline-end; color: var(--text-muted); }
+.pickerMenu { position: absolute; z-index: 20; inset-inline-start: 0; top: calc(100% + 4px); display: flex; flex-direction: column; gap: 8px; min-width: 230px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); box-shadow: 0 8px 24px var(--overlay); }
+.pickerOption { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.linkButton { border: 0; padding: 0; background: none; color: var(--accent-strong); font: inherit; text-decoration: underline; cursor: pointer; }

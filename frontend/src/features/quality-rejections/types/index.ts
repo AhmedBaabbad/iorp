@@ -29,7 +29,6 @@ export type QualityRejectionListItem = {
   organization_id: string;
   quality_check_id: string | null;
   quality_defect_id: string | null;
-  production_output_id: string | null;
   production_order_item_id: string | null;
   rejection_date: string;
   rejection_reason: RejectionReason;
@@ -49,7 +48,6 @@ export type QualityRejectionData = QualityRejectionListItem & {
 export type CreateQualityRejectionRequest = {
   quality_check_id?: string | null;
   quality_defect_id?: string | null;
-  production_output_id?: string | null;
   production_order_item_id?: string | null;
   rejection_date: string;
   rejection_reason: RejectionReason;

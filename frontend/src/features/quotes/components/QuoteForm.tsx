@@ -17,6 +17,9 @@ import type { CustomerListItem } from "@/types/customers";
 import { createQuote, listSamplesForQuoteCustomer } from "../api/quotes-api";
 import type { CreateQuoteRequest, QuoteItem, QuoteSampleOption } from "../types";
 import { QuoteItemsTable } from "./QuoteItemsTable";
+import { LineDescriptionFields, QuoteHeadingFields, UnitSelect } from "./QuoteLineFields";
+import { SpecEditor } from "./SpecEditor";
+import { VAT_RATE } from "../quote-units";
 import { QuoteTotals } from "./QuoteTotals";
 
 type QuoteFormValues = {
@@ -27,6 +30,8 @@ type QuoteFormValues = {
   currency: string;
   discount_amount: string;
   include_tax: boolean;
+  attention: string;
+  subject: string;
   notes: string;
   items: QuoteItemFormValues[];
 };
@@ -37,6 +42,8 @@ type QuoteItemFormValues = {
   unit: string;
   unit_price: string;
   requested_spec_json: string;
+  description_ar: string;
+  description_en: string;
 };
 
 const styles: Record<string, CSSProperties> = {
@@ -199,7 +206,7 @@ export function QuoteForm() {
 
   const discountAmount = Number(values.discount_amount || 0);
   const taxableAmount = Math.max(0, subtotal - discountAmount);
-  const taxAmount = values.include_tax ? taxableAmount * 0.15 : 0;
+  const taxAmount = values.include_tax ? taxableAmount * VAT_RATE / 100 : 0;  // preview; the server computes it
   const totalAmount = taxableAmount + taxAmount;
 
   function updateField<TField extends keyof QuoteFormValues>(
@@ -419,6 +426,9 @@ export function QuoteForm() {
             </div>
           </div>
 
+          <QuoteHeadingFields attention={values.attention} subject={values.subject} disabled={isSubmitting}
+            onChange={(field, value) => updateField(field, value)} />
+
           <label style={sharedStyles.field}>
             <span style={sharedStyles.label}>{t("fields.notes")}</span>
             <textarea
@@ -496,14 +506,8 @@ export function QuoteForm() {
                       {t("items.fields.unit")}
                       <span style={styles.required} aria-hidden="true"> *</span>
                     </span>
-                    <input
-                      style={sharedStyles.input}
-                      value={item.unit}
-                      onChange={(event) => updateItemField(index, "unit", event.target.value)}
-                      maxLength={32}
-                      disabled={isSubmitting}
-                      required
-                    />
+                    <UnitSelect value={item.unit} disabled={isSubmitting}
+                      onChange={(value) => updateItemField(index, "unit", value)} />
                   </label>
 
                   <label style={sharedStyles.field}>
@@ -536,18 +540,11 @@ export function QuoteForm() {
                   </label>
                 </div>
 
-                <label style={sharedStyles.field}>
-                  <span style={sharedStyles.label}>{t("fields.requestedSpecJson")}</span>
-                  <textarea
-                    style={{ ...sharedStyles.textarea, fontFamily: "monospace" }}
-                    value={item.requested_spec_json}
-                    onChange={(event) =>
-                      updateItemField(index, "requested_spec_json", event.target.value)
-                    }
-                    disabled={isSubmitting}
-                    placeholder={'{"grade":"A","color":"blue"}'}
-                  />
-                </label>
+                <SpecEditor value={item.requested_spec_json} disabled={isSubmitting}
+                  onChange={(json) => updateItemField(index, "requested_spec_json", json)} />
+
+                <LineDescriptionFields arabic={item.description_ar} english={item.description_en} disabled={isSubmitting}
+                  onChange={(field, value) => updateItemField(index, field, value)} />
               </section>
             ))}
           </div>
@@ -597,7 +594,9 @@ function createDefaultValues(): QuoteFormValues {
     valid_until: toDatetimeLocalValue(validUntil),
     currency: "SAR",
     discount_amount: "",
-    include_tax: false,
+    include_tax: true,
+    attention: "",
+    subject: "",
     notes: "",
     items: [createDefaultItem()],
   };
@@ -610,6 +609,8 @@ function createDefaultItem(): QuoteItemFormValues {
     unit: "",
     unit_price: "",
     requested_spec_json: "",
+    description_ar: "",
+    description_en: "",
   };
 }
 
@@ -625,7 +626,10 @@ function toCreateRequest(
     valid_until: new Date(values.valid_until).toISOString(),
     currency: values.currency,
     discount_amount: Number(values.discount_amount || 0),
+    tax_rate: values.include_tax ? VAT_RATE : 0,
     tax_amount: taxAmount,
+    attention: optionalText(values.attention) ?? null,
+    subject: optionalText(values.subject) ?? null,
     notes: optionalText(values.notes) ?? null,
     items: values.items.map((item, index) => ({
       line_no: index + 1,
@@ -634,6 +638,8 @@ function toCreateRequest(
       quantity: Number(item.quantity),
       unit: item.unit,
       unit_price: Number(item.unit_price),
+      description_ar: optionalText(item.description_ar) ?? null,
+      description_en: optionalText(item.description_en) ?? null,
     })),
   };
 }

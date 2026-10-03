@@ -36,9 +36,17 @@ class QuoteService:
                 unit=item.unit,
                 unit_price=item.unit_price,
                 line_total=item.quantity * item.unit_price,
+                description_ar=item.description_ar,
+                description_en=item.description_en,
             )
             for item in items
         ]
+
+    @staticmethod
+    def _tax_from_rate(items: list[QuoteItem], discount_amount: Decimal, tax_rate: Decimal) -> Decimal:
+        """VAT on the discounted subtotal, rounded to halalas (0.01)."""
+        subtotal_amount = sum((item.line_total for item in items), Decimal("0"))
+        return (max(subtotal_amount - discount_amount, Decimal("0")) * tax_rate / 100).quantize(Decimal("0.01"))
 
     @staticmethod
     def _calculate_quote_total(
@@ -65,7 +73,8 @@ class QuoteService:
             raise ValueError("Quote number counter could not be initialized.")
 
         counter.last_value += 1
-        return f"RFQ-{year}-{counter.last_value:04d}"
+        # QT = quotation issued by us. The sequence continues across the former RFQ- numbers.
+        return f"QT-{year}-{counter.last_value:04d}"
 
     def create_quote(
         self,
@@ -83,6 +92,8 @@ class QuoteService:
                 raise ValueError("Sample must belong to the target customer.")
 
         items = self._build_quote_items(data.items)
+        if data.tax_rate is not None:
+            data = data.model_copy(update={"tax_amount": self._tax_from_rate(items, data.discount_amount, data.tax_rate)})
         subtotal_amount, total_amount = self._calculate_quote_total(
             items,
             data.discount_amount,
@@ -182,6 +193,8 @@ class QuoteService:
             quote.items = self._build_quote_items(
                 [QuoteItemCreate(**item) for item in items_payload]
             )
+        if quote.tax_rate is not None:
+            quote.tax_amount = self._tax_from_rate(quote.items, quote.discount_amount, quote.tax_rate)
 
         subtotal_amount, total_amount = self._calculate_quote_total(
             quote.items,

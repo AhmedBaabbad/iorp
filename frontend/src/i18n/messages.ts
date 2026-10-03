@@ -87,7 +87,9 @@ export async function loadMessages(locale: Locale) {
     readLocaleFile(locale, "password-reset.json"),
   ]);
 
+  const reports = await readLocaleFile(locale, "reports.json");
   return {
+    reports,
     auth,
     common,
     navigation,

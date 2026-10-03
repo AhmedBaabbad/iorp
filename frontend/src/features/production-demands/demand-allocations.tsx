@@ -7,6 +7,7 @@ import { demandsApi, type Demand, type DemandItemAllocation } from "./api";
 import { ReasonDialog } from "./reason-dialog";
 import { canReleaseFromOrder, lifecycleErrorCode, PLANNABLE_STATUSES, progress } from "./planning-lifecycle";
 import s from "./demands.module.css";
+import { P } from "@/lib/production-permissions";
 
 export function AllocationStatusBadge({ status }: { status: DemandItemAllocation["status"] }) {
   const t = useTranslations("production.allocation");
@@ -17,9 +18,9 @@ export function DemandAllocations({ demand, onChanged }: { demand: Demand; onCha
   const t = useTranslations("production.allocation");
   const d = useTranslations("production.demands");
   const enums = useTranslations();
-  const canAllocate = usePermission("production:planning:allocate");
-  const canCreate = usePermission("production:orders:create");
-  const canRelease = usePermission("production:planning:release_allocation");
+  const canAllocate = usePermission(P.PLANNING_ALLOCATE);
+  const canCreate = usePermission(P.ORDERS_CREATE);
+  const canRelease = usePermission(P.PLANNING_RELEASE_ALLOCATION);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");

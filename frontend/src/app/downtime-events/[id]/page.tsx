@@ -1,4 +1,6 @@
 import { DowntimeEventDetail } from "@/features/downtime-events";
+import { PermissionGate } from "@/features/auth/permission-gate";
+import { P } from "@/lib/production-permissions";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -6,5 +8,5 @@ type PageProps = {
 
 export default async function Page({ params }: PageProps) {
   const { id } = await params;
-  return <DowntimeEventDetail downtimeEventId={id} />;
+  return <PermissionGate code={P.DOWNTIME_READ}><DowntimeEventDetail eventId={id} /></PermissionGate>;
 }

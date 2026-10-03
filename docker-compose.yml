@@ -1,4 +1,27 @@
 services:
+  report-renderer:
+    image: gotenberg/gotenberg:8.37.0
+    command:
+      - gotenberg
+      - --chromium-disable-javascript=true
+      - --chromium-deny-public-ips=true
+      - --chromium-deny-private-ips=true
+      - --api-disable-download-from=true
+      - --webhook-disable=true
+      - --chromium-max-concurrency=2
+      - --chromium-max-queue-size=4
+      - --api-timeout=60s
+    volumes:
+      - ./backend/app/core/reporting/assets/fonts:/usr/local/share/fonts/reports:ro
+    networks: [renderer]
+  report-gateway:
+    image: nginx:1.28-alpine
+    ports:
+      - "127.0.0.1:3005:80"
+    volumes:
+      - ./backend/app/core/reporting/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks: [default, renderer]
+    depends_on: [report-renderer]
   postgres:
     image: postgres:16
     environment:
@@ -12,3 +35,7 @@ services:
 
 volumes:
   postgres_data:
+
+networks:
+  renderer:
+    internal: true

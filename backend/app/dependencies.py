@@ -308,6 +308,7 @@ def require_permission(permission_code: str):
             )
         return current
 
+    dependency.permission_policy = ("all", (permission_code,))
     return dependency
 
 
@@ -325,6 +326,20 @@ def require_any_permission(permission_codes: list[str]):
             )
         return current
 
+    dependency.permission_policy = ("any", tuple(permission_codes))
+    return dependency
+
+
+def permission_checked_in_handler(*permission_codes: str):
+    """Declares a route whose permission depends on the request (an action, a report, a section).
+
+    It enforces nothing itself: the handler checks one of these codes. It makes the policy
+    visible, so every route either requires a permission or names the ones it checks.
+    """
+    def dependency() -> None:
+        return None
+
+    dependency.permission_policy = ("in_handler", tuple(permission_codes))
     return dependency
 
 

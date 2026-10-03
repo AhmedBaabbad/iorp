@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, require_permission
+from app.production.domain import permissions as P
 from app.production.api.schemas import (
     WorkCenterCreate,
     WorkCenterDeleteSummary,
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/work-centers", tags=["production-work-centers"])
 
 
 @router.post("", response_model=WorkCenterRead, status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("production:work_centers:write"))])
+    dependencies=[Depends(require_permission(P.WORK_CENTERS_CREATE))])
 def create_work_center(
     payload: WorkCenterCreate,
     tenant: TenantContext = Depends(get_current_tenant),
@@ -33,7 +34,7 @@ def create_work_center(
 
 
 @router.get("", response_model=list[WorkCenterListItem],
-    dependencies=[Depends(require_permission("production:work_centers:read"))])
+    dependencies=[Depends(require_permission(P.WORK_CENTERS_READ))])
 def list_work_centers(
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
@@ -43,7 +44,7 @@ def list_work_centers(
 
 
 @router.get("/{work_center_id}", response_model=WorkCenterRead,
-    dependencies=[Depends(require_permission("production:work_centers:read"))])
+    dependencies=[Depends(require_permission(P.WORK_CENTERS_READ))])
 def get_work_center(
     work_center_id: UUID,
     tenant: TenantContext = Depends(get_current_tenant),
@@ -57,7 +58,7 @@ def get_work_center(
 
 
 @router.get("/{work_center_id}/delete-summary", response_model=WorkCenterDeleteSummary,
-    dependencies=[Depends(require_permission("production:work_centers:read"))])
+    dependencies=[Depends(require_permission(P.WORK_CENTERS_READ))])
 def get_work_center_delete_summary(
     work_center_id: UUID,
     tenant: TenantContext = Depends(get_current_tenant),
@@ -71,7 +72,7 @@ def get_work_center_delete_summary(
 
 
 @router.patch("/{work_center_id}", response_model=WorkCenterRead,
-    dependencies=[Depends(require_permission("production:work_centers:write"))])
+    dependencies=[Depends(require_permission(P.WORK_CENTERS_UPDATE))])
 def update_work_center(
     work_center_id: UUID,
     payload: WorkCenterUpdate,
@@ -89,7 +90,7 @@ def update_work_center(
 
 
 @router.delete("/{work_center_id}", status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("production:work_centers:write"))])
+    dependencies=[Depends(require_permission(P.WORK_CENTERS_DELETE))])
 def delete_work_center(
     work_center_id: UUID,
     tenant: TenantContext = Depends(get_current_tenant),

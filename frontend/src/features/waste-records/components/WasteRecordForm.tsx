@@ -1,410 +1,144 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
-import type { CSSProperties, FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
-import { getProductionOrders } from "@/features/production-orders";
+import { usePermission } from "@/features/auth/permission-hooks";
+import s from "@/features/production-demands/demands.module.css";
+import { getProductionOrderById, getProductionOrders } from "@/features/production-orders/api/production-orders-api";
+import type { ProductionOrderData, ProductionOrderListItem } from "@/features/production-orders/types";
 import { getWorkCenters } from "@/features/work-centers";
-import { getApiErrorMessage } from "@/lib/api-error-handler";
-import { optionalText } from "@/lib/utils";
-import { sharedStyles } from "@/styles/shared-styles";
-import { createWasteRecord } from "../api/waste-records-api";
-import type { CreateWasteRecordRequest, WasteCategory } from "../types";
-import {
-  formatWasteCategory,
-  wasteCategories,
-} from "./waste-records-utils";
+import { useFormatter } from "@/hooks/useFormatter";
+import { createWasteRecord, getOrderRuns, getWasteRecordById, updateWasteRecord, type RunOption } from "../api";
+import type { WasteCategory, WasteRecordData } from "../types";
+import { QUANTITY, todayIso, WASTE_CATEGORIES, WASTE_ORDER_STATUSES } from "../waste-rules";
+import { wasteErrorMessage } from "./waste-errors";
+import { P } from "@/lib/production-permissions";
 
-type WasteRecordFormValues = {
-  production_order_id: string;
-  work_center_id: string;
-  production_order_item_id: string;
-  waste_date: string;
-  quantity_wasted: string;
-  unit: string;
-  waste_category: WasteCategory;
-  reason_code: string;
-  notes: string;
-};
+type Values = { order: string; item: string; run: string; center: string; date: string; quantity: string; unit: string; category: WasteCategory; reason: string; notes: string };
 
-type WorkCenterOption = {
-  id: string;
-  code: string;
-  name: string;
-};
-
-type ProductionOrderOption = {
-  id: string;
-  production_order_number: string;
-  product_type: string;
-};
-
-const styles: Record<string, CSSProperties> = {
-  panel: {
-    background: "var(--surface)",
-    border: "1px solid var(--border-strong)",
-    borderRadius: "8px",
-    boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
-  },
-  form: {
-    display: "grid",
-    gap: "18px",
-    padding: "24px",
-  },
-  formGrid: {
-    display: "grid",
-    gap: "18px",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  },
-  actions: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "12px",
-    alignItems: "center",
-  },
-  required: {
-    color: "var(--danger)",
-    marginLeft: "2px",
-  },
-  requiredNote: {
-    color: "var(--text-muted)",
-    fontSize: "13px",
-    marginLeft: "auto",
-  },
-};
-
-const defaultValues: WasteRecordFormValues = {
-  production_order_id: "",
-  work_center_id: "",
-  production_order_item_id: "",
-  waste_date: "",
-  quantity_wasted: "",
-  unit: "",
-  waste_category: "startup_loss",
-  reason_code: "",
-  notes: "",
-};
-
-export function WasteRecordForm() {
-  const tEnums = useTranslations();
+// Records waste against a production order (required), optionally one of its runs; or edits a record (recordId).
+export function WasteRecordForm({ recordId }: { recordId?: string }) {
+  const t = useTranslations("production.wasteRecords");
+  const categories = useTranslations("enums.wasteRecord.wasteCategory");
+  const hints = useTranslations("production.wasteRecords.categoryHints");
   const messages = useTranslations("messages");
-  const common = useTranslations("common");
+  const fmt = useFormatter();
   const router = useRouter();
-  const [values, setValues] = useState<WasteRecordFormValues>(defaultValues);
-  const [workCenters, setWorkCenters] = useState<WorkCenterOption[]>([]);
-  const [productionOrders, setProductionOrders] = useState<ProductionOrderOption[]>([]);
-  const [isLoadingReferences, setIsLoadingReferences] = useState(true);
-  const [referenceError, setReferenceError] = useState<string | null>(null);
-  const [quantityError, setQuantityError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const params = useSearchParams();
+  const canReadRuns = usePermission(P.RUNS_READ);
+  const editing = Boolean(recordId);
+  const [values, setValues] = useState<Values>({ order: params.get("order") ?? "", item: "", run: "", center: "", date: todayIso(), quantity: "", unit: "kg", category: "process", reason: "", notes: "" });
+  const [existing, setExisting] = useState<WasteRecordData | null>(null);
+  const [orders, setOrders] = useState<ProductionOrderListItem[]>([]);
+  const [order, setOrder] = useState<ProductionOrderData | null>(null);
+  const [runs, setRuns] = useState<RunOption[]>([]);
+  const [centers, setCenters] = useState<{ id: string; code: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(editing);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    let isMounted = true;
+    getWorkCenters().then(setCenters).catch(() => setCenters([]));
+    if (!editing) getProductionOrders().then(list => setOrders(list.filter(o => WASTE_ORDER_STATUSES.includes(o.status)))).catch(() => setOrders([]));
+  }, [editing]);
+  useEffect(() => {
+    if (!recordId) return;
+    let active = true;
+    getWasteRecordById(recordId).then(r => {
+      if (!active) return;
+      setExisting(r);
+      setValues({ order: r.production_order_id, item: r.production_order_item_id ?? "", run: r.production_run_id ?? "", center: r.production_run_id ? "" : r.work_center_id,
+        date: r.waste_date, quantity: r.quantity_wasted, unit: r.unit, category: r.waste_category, reason: r.reason_code ?? "", notes: r.notes ?? "" });
+    }).catch(e => { if (active) setError(wasteErrorMessage(e, t)); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [recordId, t]);
+  // The chosen order's items and runs.
+  useEffect(() => {
+    if (!values.order) { setOrder(null); setRuns([]); return; }
+    let active = true;
+    getProductionOrderById(values.order).then(o => { if (active) setOrder(o); }).catch(() => { if (active) setOrder(null); });
+    if (canReadRuns) getOrderRuns(values.order).then(list => { if (active) setRuns(list.filter(r => r.status !== "cancelled")); }).catch(() => { if (active) setRuns([]); });
+    return () => { active = false; };
+  }, [values.order, canReadRuns]);
 
-    async function loadReferences() {
-      try {
-        setIsLoadingReferences(true);
-        setReferenceError(null);
+  const locked = Boolean(existing && !existing.labels?.actions.includes("edit"));
+  const run = useMemo(() => runs.find(r => r.id === values.run) ?? null, [runs, values.run]);
+  const valid = Boolean(values.order && values.date && values.unit.trim() && QUANTITY.test(values.quantity) && Number(values.quantity) > 0);
+  const set = <K extends keyof Values>(field: K, value: Values[K]) => setValues(old => ({ ...old, [field]: value, ...(field === "order" ? { item: "", run: "" } : {}) }));
 
-        const [workCentersResponse, productionOrdersResponse] = await Promise.all([
-          getWorkCenters().catch(() => []),
-          getProductionOrders().catch(() => []),
-        ]);
-
-        if (isMounted) {
-          setWorkCenters(workCentersResponse);
-          setProductionOrders(productionOrdersResponse);
-          setValues((current) => ({
-            ...current,
-            work_center_id: current.work_center_id || workCentersResponse[0]?.id || "",
-            production_order_id:
-              current.production_order_id || productionOrdersResponse[0]?.id || "",
-          }));
-        }
-      } catch (caughtError) {
-        if (isMounted) {
-          setReferenceError(getApiErrorMessage(caughtError, messages));
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoadingReferences(false);
-        }
-      }
-    }
-
-    void loadReferences();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  function updateField<TField extends keyof WasteRecordFormValues>(
-    field: TField,
-    value: WasteRecordFormValues[TField],
-  ) {
-    setValues((current) => ({
-      ...current,
-      [field]: value,
-    }));
-
-    if (field === "quantity_wasted") {
-      setQuantityError(null);
-    }
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
-    setError(null);
-    setQuantityError(null);
-
-    const quantity = Number(values.quantity_wasted);
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      setQuantityError("Quantity wasted must be greater than zero");
-      return;
-    }
-
-    setIsSubmitting(true);
-
+    if (!valid || busy || locked) return;
+    setBusy(true); setError("");
+    const body = {
+      production_order_item_id: values.item || null, production_run_id: values.run || null,
+      // A run decides the work center; otherwise the one chosen, else the order's.
+      work_center_id: values.run ? null : values.center || null,
+      waste_date: values.date, quantity_wasted: values.quantity, unit: values.unit.trim(), waste_category: values.category,
+      reason_code: values.reason.trim() || null, notes: values.notes.trim() || null,
+    };
     try {
-      const createdRecord = await createWasteRecord(toCreateRequest(values, quantity));
-      router.replace(`/waste-records/${createdRecord.id}`);
-    } catch (caughtError) {
-      setError(getApiErrorMessage(caughtError, messages));
-    } finally {
-      setIsSubmitting(false);
-    }
+      const saved = recordId ? await updateWasteRecord(recordId, body) : await createWasteRecord({ production_order_id: values.order, ...body });
+      router.push(`/waste-records/${saved.id}`);
+    } catch (e) { setError(wasteErrorMessage(e, t)); setBusy(false); }
   }
 
-  return (
-    <PageFrame
-      section="Production"
-      title="Record waste"
-      subtitle="Record waste quantity by order, work center, and category."
-      action={
-        <Link href="/waste-records" style={sharedStyles.secondaryButton}>
-          Back to Waste Records
-        </Link>
-      }
-    >
-      <section style={styles.panel}>
-        <form style={styles.form} onSubmit={handleSubmit}>
-          <div style={styles.formGrid}>
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>
-                Production Order
-                <span style={styles.required} aria-hidden="true"> *</span>
-              </span>
-              <select
-                style={sharedStyles.input}
-                value={values.production_order_id}
-                onChange={(event) => updateField("production_order_id", event.target.value)}
-                disabled={
-                  isSubmitting || isLoadingReferences || productionOrders.length === 0
-                }
-                required
-              >
-                {isLoadingReferences ? (
-                  <option value="">{messages("loading.fetching")}</option>
-                ) : null}
-                {!isLoadingReferences && productionOrders.length === 0 ? (
-                  <option value="">No production orders available</option>
-                ) : null}
-                {productionOrders.map((order) => (
-                  <option key={order.id} value={order.id}>
-                    {order.production_order_number} - {order.product_type}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>
-                Work Center
-                <span style={styles.required} aria-hidden="true"> *</span>
-              </span>
-              <select
-                style={sharedStyles.input}
-                value={values.work_center_id}
-                onChange={(event) => updateField("work_center_id", event.target.value)}
-                disabled={isSubmitting || isLoadingReferences || workCenters.length === 0}
-                required
-              >
-                {isLoadingReferences ? <option value="">{messages("loading.fetching")}</option> : null}
-                {!isLoadingReferences && workCenters.length === 0 ? (
-                  <option value="">No work centers available</option>
-                ) : null}
-                {workCenters.map((workCenter) => (
-                  <option key={workCenter.id} value={workCenter.id}>
-                    {workCenter.code} - {workCenter.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>
-                Waste Date
-                <span style={styles.required} aria-hidden="true"> *</span>
-              </span>
-              <input
-                style={sharedStyles.input}
-                type="date"
-                value={values.waste_date}
-                onChange={(event) => updateField("waste_date", event.target.value)}
-                disabled={isSubmitting}
-                required
-              />
-            </label>
-
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>
-                Quantity Wasted
-                <span style={styles.required} aria-hidden="true"> *</span>
-              </span>
-              <input
-                style={sharedStyles.input}
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={values.quantity_wasted}
-                onChange={(event) => updateField("quantity_wasted", event.target.value)}
-                disabled={isSubmitting}
-                required
-              />
-            </label>
-
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>
-                Unit
-                <span style={styles.required} aria-hidden="true"> *</span>
-              </span>
-              <input
-                style={sharedStyles.input}
-                value={values.unit}
-                placeholder="kg, pcs, m, roll"
-                onChange={(event) => updateField("unit", event.target.value)}
-                disabled={isSubmitting}
-                required
-              />
-            </label>
-
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>
-                Waste Category
-                <span style={styles.required} aria-hidden="true"> *</span>
-              </span>
-              <select
-                style={sharedStyles.input}
-                value={values.waste_category}
-                onChange={(event) =>
-                  updateField("waste_category", event.target.value as WasteCategory)
-                }
-                disabled={isSubmitting}
-                required
-              >
-                {wasteCategories.map((category) => (
-                  <option key={category} value={category}>
-                    {formatWasteCategory(category, tEnums)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>Production Order Item ID</span>
-              <input
-                style={sharedStyles.input}
-                value={values.production_order_item_id}
-                onChange={(event) =>
-                  updateField("production_order_item_id", event.target.value)
-                }
-                disabled={isSubmitting}
-              />
-            </label>
-
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>Reason Code</span>
-              <input
-                style={sharedStyles.input}
-                value={values.reason_code}
-                placeholder="Describe the specific reason for this waste..."
-                onChange={(event) => updateField("reason_code", event.target.value)}
-                disabled={isSubmitting}
-              />
-            </label>
-          </div>
-
-          <label style={sharedStyles.field}>
-            <span style={sharedStyles.label}>Notes</span>
-            <textarea
-              style={{ ...sharedStyles.textarea, minHeight: "110px" }}
-              value={values.notes}
-              onChange={(event) => updateField("notes", event.target.value)}
-              disabled={isSubmitting}
-            />
-          </label>
-
-          {referenceError ? (
-            <div style={sharedStyles.error} role="alert">
-              {referenceError}
-            </div>
-          ) : null}
-
-          {quantityError ? (
-            <div style={sharedStyles.error} role="alert">
-              {quantityError}
-            </div>
-          ) : null}
-
-          {error ? (
-            <div style={sharedStyles.error} role="alert">
-              {error}
-            </div>
-          ) : null}
-
-          <div style={styles.actions}>
-            <button
-              style={sharedStyles.button}
-              type="submit"
-              disabled={
-                isSubmitting ||
-                isLoadingReferences ||
-                workCenters.length === 0 ||
-                productionOrders.length === 0
-              }
-            >
-              {isSubmitting ? messages("loading.saving") : common("actions.create")}
-            </button>
-            <Link href="/waste-records" style={sharedStyles.secondaryButton}>
-              {common("actions.cancel")}
-            </Link>
-            <span style={styles.requiredNote}>* {common("labels.required")}</span>
-          </div>
-        </form>
-      </section>
-    </PageFrame>
-  );
-}
-
-function toCreateRequest(
-  values: WasteRecordFormValues,
-  quantity: number,
-): CreateWasteRecordRequest {
-  return {
-    production_order_id: values.production_order_id,
-    work_center_id: values.work_center_id,
-    production_order_item_id: optionalText(values.production_order_item_id) ?? null,
-    waste_date: values.waste_date,
-    quantity_wasted: quantity,
-    unit: values.unit,
-    waste_category: values.waste_category,
-    reason_code: optionalText(values.reason_code) ?? null,
-    notes: optionalText(values.notes) ?? null,
-  };
+  const back = recordId ? `/waste-records/${recordId}` : values.order ? `/waste-records?order=${values.order}` : "/waste-records";
+  return <PageFrame title={editing ? t("editTitle") : t("createTitle")} subtitle={t("createSubtitle")}
+    action={<Link href={back} className={s.button}>{t("actions.back")}</Link>}>
+    {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form className={s.panel} onSubmit={submit} aria-label={editing ? t("editTitle") : t("createTitle")}>
+      {locked && <p role="status" className={s.error}>{t("hints.locked")}</p>}
+      <p className={s.muted} style={{ marginTop: 0 }}>{t("hints.notScrap")}</p>
+      <div className={s.grid}>
+        <label className={s.field}>{t("fields.productionOrder")}
+          {editing ? <input readOnly value={order?.production_order_number ?? existing?.labels?.order_number ?? ""} />
+            : <select required value={values.order} disabled={busy} onChange={e => set("order", e.target.value)}>
+              <option value="">{orders.length ? t("placeholders.selectOrder") : t("placeholders.noOrders")}</option>
+              {orders.map(o => <option key={o.id} value={o.id}>{o.production_order_number} — {o.product_type}</option>)}
+            </select>}
+        </label>
+        <label className={s.field}>{t("fields.wasteCategory")}
+          <select required value={values.category} disabled={busy || locked} onChange={e => set("category", e.target.value as WasteCategory)}>
+            {WASTE_CATEGORIES.map(c => <option key={c} value={c}>{categories(c)}</option>)}
+          </select>
+        </label>
+        {(order?.lines?.length ?? 0) > 0 && <label className={s.field}>{t("fields.lineOptional")}
+          <select value={values.item} disabled={busy || locked} onChange={e => set("item", e.target.value)}>
+            <option value="">{t("placeholders.wholeOrder")}</option>
+            {order!.lines!.map(l => <option key={l.id} value={l.id}>{t("lineOption", { no: String(l.line_no), unit: l.unit })}</option>)}
+          </select>
+        </label>}
+        {canReadRuns && <label className={s.field}>{t("fields.runOptional")}
+          <select value={values.run} disabled={busy || locked || !values.order} onChange={e => set("run", e.target.value)}>
+            <option value="">{runs.length ? t("placeholders.noRun") : t("placeholders.noRuns")}</option>
+            {runs.map(r => <option key={r.id} value={r.id}>{t("runOption", { date: fmt.date(r.run_date), center: centers.find(c => c.id === r.work_center_id)?.name ?? "—" })}</option>)}
+          </select>
+        </label>}
+        <label className={s.field}>{t("fields.workCenter")}
+          <select value={run ? run.work_center_id : values.center} disabled={busy || locked || Boolean(run)} onChange={e => set("center", e.target.value)}>
+            <option value="">{t("placeholders.orderWorkCenter")}</option>
+            {centers.map(c => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
+          </select>
+        </label>
+        <label className={s.field}>{t("fields.wasteDate")}<input type="date" required value={values.date} disabled={busy || locked} onChange={e => set("date", e.target.value)} /></label>
+        <label className={s.field}>{t("fields.quantityWasted")}
+          <input type="number" required min="0.001" step="0.001" inputMode="decimal" value={values.quantity} disabled={busy || locked} onChange={e => set("quantity", e.target.value)} />
+        </label>
+        <label className={s.field}>{t("fields.unit")}<input required maxLength={32} value={values.unit} disabled={busy || locked} onChange={e => set("unit", e.target.value)} /></label>
+        <label className={s.field}>{t("fields.reasonCode")}<input maxLength={255} value={values.reason} disabled={busy || locked} onChange={e => set("reason", e.target.value)} /></label>
+      </div>
+      <p className={s.muted}>{hints(values.category)}</p>
+      {run && <p className={s.muted}>{t("hints.runWorkCenter")}</p>}
+      <label className={s.field}>{t("fields.notes")}<textarea maxLength={2000} value={values.notes} disabled={busy || locked} onChange={e => set("notes", e.target.value)} /></label>
+      {error && <p role="alert" className={s.error}>{error}</p>}
+      <div className={s.actions} style={{ marginTop: 16 }}>
+        <button type="submit" className={`${s.button} ${s.primary}`} disabled={!valid || busy || locked}>{editing ? t("actions.save") : t("actions.record")}</button>
+        <Link href={back} className={s.button}>{t("actions.cancel")}</Link>
+      </div>
+    </form>}
+  </PageFrame>;
 }

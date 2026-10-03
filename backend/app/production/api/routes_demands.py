@@ -5,6 +5,8 @@ from fastapi.routing import APIRoute
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 from app.dependencies import get_current_tenant, get_db, get_customer_lookup, get_quote_lookup, require_permission, require_any_permission
+from app.production.domain import permissions as P
+from app.production.domain.enums import ProductionDemandStatus
 from app.production.api.demand_schemas import (
     CreateDemandRequest, UpdateDemandRequest, CreateDemandItemRequest, UpdateDemandItemRequest,
     DemandResponse, DemandDetailResponse, DemandItemResponse, PaginatedDemandList,
@@ -37,10 +39,10 @@ def service(db=Depends(get_db), tenant=Depends(get_current_tenant), customers=De
 
 
 def allowed(action):
-    return Depends(require_permission(f"production:demands:{action}"))
+    return Depends(require_permission(P.code("demands", action)))
 
 
-lookup_access = Depends(require_any_permission(["production:demands:create", "production:demands:update", "production:demands:read", "production:planning:read"]))
+lookup_access = Depends(require_any_permission([P.DEMANDS_CREATE, P.DEMANDS_UPDATE, P.DEMANDS_READ, P.PLANNING_READ]))
 
 
 @router.get("/demand-lookups/customers", dependencies=[lookup_access])
@@ -54,7 +56,7 @@ def quotes(customer_id: UUID, svc=Depends(service)):
     return [{"id": q.id, "number": q.quote_number, "status": q.status} for q in svc.quotes.find_quotes(svc.db, customer_id, svc.org_id)]
 
 
-@router.get("/demand-lookups/quotes/{quote_id}/items", response_model=list[CreateDemandItemRequest], dependencies=[Depends(require_any_permission(["production:demands:create", "production:demands:update"]))])
+@router.get("/demand-lookups/quotes/{quote_id}/items", response_model=list[CreateDemandItemRequest], dependencies=[Depends(require_any_permission([P.DEMANDS_CREATE, P.DEMANDS_UPDATE]))])
 def quote_items(quote_id: UUID, customer_id: UUID, svc=Depends(service)):
     return svc.quote_items(customer_id, quote_id)
 
@@ -65,8 +67,9 @@ def create(payload: CreateDemandRequest, svc=Depends(service)):
 
 
 @router.get("/demands", response_model=PaginatedDemandList, dependencies=[allowed("read")])
-def list_demands(filters: PlanningFilters = Depends(), svc=Depends(service)):
-    return svc.list(filters)
+def list_demands(filters: PlanningFilters = Depends(), statuses: list[ProductionDemandStatus] = Query(default=[]), svc=Depends(service)):
+    """`statuses` (repeatable) shows only those statuses; the screen hides fully planned and cancelled demands by default."""
+    return svc.list(filters, statuses=list(dict.fromkeys(statuses)))
 
 
 @router.get("/demands/{demand_id}", response_model=DemandDetailResponse, dependencies=[allowed("read")])
@@ -112,11 +115,12 @@ def change_status(demand_id: UUID, payload: DemandStatusRequest, svc=Depends(ser
     return svc.response(svc.update_status(demand_id, payload.status))
 
 
-@router.get("/planning/demands", response_model=PaginatedPlanningList, dependencies=[Depends(require_permission("production:planning:read"))])
-def planning(filters: PlanningFilters = Depends(), svc=Depends(service)):
-    return svc.list(filters, planning=True)
+@router.get("/planning/demands", response_model=PaginatedPlanningList, dependencies=[Depends(require_permission(P.PLANNING_READ))])
+def planning(filters: PlanningFilters = Depends(), statuses: list[ProductionDemandStatus] = Query(default=[]), svc=Depends(service)):
+    """`statuses` narrows the view; with view=active (the default queue) it also reports what the queue hides."""
+    return svc.list(filters, planning=True, statuses=list(dict.fromkeys(statuses)))
 
 
-@router.post("/planning/demands/{demand_id}/reorder", dependencies=[Depends(require_permission("production:planning:sequence"))])
+@router.post("/planning/demands/{demand_id}/reorder", dependencies=[Depends(require_permission(P.PLANNING_SEQUENCE))])
 def reorder(demand_id: UUID, payload: ReorderRequest, svc=Depends(service)):
     return svc.reorder(demand_id, payload.new_position)

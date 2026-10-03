@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><style>{{ css }}</style></head>
+{%- set ar = lang == 'ar' %}
+<body style="--brand: {{ branding.primary_color or '#24556b' }}">
+<div class="preview-header">{% include 'header_content.html' %}</div>
+{% if watermark %}<div class="watermark">{{ watermark }}</div>{% endif %}
+<main>
+  <section class="doc-head">
+    <div class="doc-title">
+      <h1>{{ title }}</h1>
+      {% if data.subject %}<div class="doc-subject"><bdi>{{ data.subject }}</bdi></div>{% endif %}
+      {% if watermark %}<span class="doc-flag">{{ watermark }}</span>{% endif %}
+    </div>
+    <table class="doc-meta">
+      <tr><th>{{ 'تاريخ الإصدار' if ar else 'Issued' }}</th><td><bdi dir="ltr">{{ generated_at }}</bdi></td></tr>
+      {% if audience == 'customer' %}
+      {% if data.prepared_for %}<tr><th>{{ 'مُعد للعميل' if ar else 'Prepared for' }}</th><td><bdi>{{ data.prepared_for }}</bdi></td></tr>{% endif %}
+      {% else %}
+      <tr><th>{{ 'أعدّه' if ar else 'Prepared by' }}</th><td><bdi>{{ generated_by }}</bdi></td></tr>
+      {% if department %}<tr><th>{{ 'القسم' if ar else 'Department' }}</th><td>{{ department }}</td></tr>{% endif %}
+      {% endif %}
+    </table>
+  </section>
+  {% if filters %}<p class="doc-filters"><span>{{ 'نطاق التقرير' if ar else 'Report scope' }}</span> {{ filters }}</p>{% endif %}
+  {% include body_template %}
+  <p class="doc-end">{{ '— نهاية التقرير —' if ar else '— End of report —' }}</p>
+</main>
+<div class="preview-footer">{% include 'footer_content.html' %}</div>
+</body>
+</html>

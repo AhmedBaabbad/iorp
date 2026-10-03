@@ -57,7 +57,7 @@ class QualityCheck(Base):
       This ensures consistency, avoids duplicate or out-of-sequence codes,
       and matches how production_order_number is handled in the Production module.
 
-    Production references (production_order_id, production_output_id, etc.):
+    Production references (production_order_id, production_order_item_id):
       These are plain UUID columns — there are NO foreign key constraints to
       production tables. This preserves the Quality/Production module boundary
       (ADR-004). The service layer validates that referenced IDs belong to the
@@ -93,8 +93,7 @@ class QualityCheck(Base):
     )
 
     # Production context references — plain UUIDs, NO FK constraints (ADR-004).
-    # At least one of production_order_id or production_output_id
-    # should be provided. Validated as a soft warning in v0.1.
+    # production_order_id should be provided. Validated as a soft warning in v0.1.
     production_order_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         nullable=True,
@@ -103,11 +102,6 @@ class QualityCheck(Base):
     production_order_item_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         nullable=True,
-    )
-    production_output_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        nullable=True,
-        index=True,
     )
 
     check_datetime: Mapped[datetime] = mapped_column(
@@ -185,7 +179,7 @@ class QualityDefect(Base):
       defect rates without duplicating identical rows.
 
     Production references:
-      production_order_id, production_order_item_id, and production_output_id
+      production_order_id and production_order_item_id
       are plain optional UUIDs. They intentionally have no FK constraints to
       Production tables, preserving the Quality/Production module boundary.
     """
@@ -219,11 +213,6 @@ class QualityDefect(Base):
     production_order_item_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         nullable=True,
-    )
-    production_output_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        nullable=True,
-        index=True,
     )
 
     defect_date: Mapped[date] = mapped_column(nullable=False, index=True)
@@ -290,7 +279,7 @@ class QualityRejection(Base):
       connect back to the QualityCheck -> QualityDefect -> QualityRejection chain.
 
     Production references:
-      production_output_id and production_order_item_id are plain optional IDs
+      production_order_item_id is a plain optional ID
       with no FK constraints to Production tables, preserving module boundaries.
     """
 
@@ -321,11 +310,6 @@ class QualityRejection(Base):
     )
 
     # Optional Production context references: plain UUIDs, no FK constraints.
-    production_output_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        nullable=True,
-        index=True,
-    )
     production_order_item_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         nullable=True,

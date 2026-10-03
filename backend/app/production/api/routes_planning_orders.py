@@ -4,6 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from app.dependencies import get_current_tenant, get_db, get_customer_lookup, require_permission
+from app.production.domain import permissions as P
 from app.production.api.planning_schemas import AllocationInput, AllocationQuantityUpdate, PlanningOrderCreate, PlanningOrderRead, PlanningPreviewRequest, ReleaseRequest
 from app.production.application.allocation_service import AllocationLifecycleService, demand_quantity_summary
 from app.production.api.order_views import permission_check, with_lifecycle
@@ -33,7 +34,7 @@ def compatibility_checker():
 
 
 @router.post("/planning/create-production-order", status_code=201, response_model=PlanningOrderRead,
-    dependencies=[Depends(require_permission("production:planning:allocate")), Depends(require_permission("production:orders:create"))])
+    dependencies=[Depends(require_permission(P.PLANNING_ALLOCATE)), Depends(require_permission(P.ORDERS_CREATE))])
 def create(payload: PlanningOrderCreate, db=Depends(get_db), tenant=Depends(get_current_tenant),
            customers=Depends(get_customer_lookup), checker=Depends(compatibility_checker), can=Depends(permission_check)):
     order = PlanningOrderService(db, tenant, checker).create_order_from_planning(payload)
@@ -41,7 +42,7 @@ def create(payload: PlanningOrderCreate, db=Depends(get_db), tenant=Depends(get_
 
 
 @router.post("/planning/preview-production-order",
-    dependencies=[Depends(require_permission("production:planning:allocate"))])
+    dependencies=[Depends(require_permission(P.PLANNING_ALLOCATE))])
 def preview(payload: PlanningPreviewRequest, db=Depends(get_db), tenant=Depends(get_current_tenant),
             customers=Depends(get_customer_lookup), checker=Depends(compatibility_checker)):
     """How the selected allocations would be arranged into order lines; writes nothing."""
@@ -54,7 +55,7 @@ def preview(payload: PlanningPreviewRequest, db=Depends(get_db), tenant=Depends(
 
 
 @router.post("/orders/{order_id}/allocations", response_model=PlanningOrderRead,
-    dependencies=[Depends(require_permission("production:planning:allocate"))])
+    dependencies=[Depends(require_permission(P.PLANNING_ALLOCATE))])
 def add_allocation(order_id: UUID, payload: AllocationInput, db=Depends(get_db), tenant=Depends(get_current_tenant),
                    customers=Depends(get_customer_lookup), checker=Depends(compatibility_checker), can=Depends(permission_check)):
     order = PlanningOrderService(db, tenant, checker).add_allocation(order_id, payload)
@@ -62,7 +63,7 @@ def add_allocation(order_id: UUID, payload: AllocationInput, db=Depends(get_db),
 
 
 @router.patch("/allocations/{allocation_id}", response_model=PlanningOrderRead,
-    dependencies=[Depends(require_permission("production:planning:allocate"))])
+    dependencies=[Depends(require_permission(P.PLANNING_ALLOCATE))])
 def change_allocation(allocation_id: UUID, payload: AllocationQuantityUpdate, db=Depends(get_db), tenant=Depends(get_current_tenant),
                       customers=Depends(get_customer_lookup), can=Depends(permission_check)):
     order = PlanningOrderService(db, tenant).change_allocation(allocation_id, payload.allocated_quantity)
@@ -70,7 +71,7 @@ def change_allocation(allocation_id: UUID, payload: AllocationQuantityUpdate, db
 
 
 @router.get("/orders/{order_id}", response_model=PlanningOrderRead,
-    dependencies=[Depends(require_permission("production:production_orders:read"))])
+    dependencies=[Depends(require_permission(P.ORDERS_READ))])
 def detail(order_id: UUID, db=Depends(get_db), tenant=Depends(get_current_tenant), customers=Depends(get_customer_lookup), can=Depends(permission_check)):
     order = ProductionOrderService(db).get_production_order(tenant, order_id)
     if order is None:
@@ -79,7 +80,7 @@ def detail(order_id: UUID, db=Depends(get_db), tenant=Depends(get_current_tenant
 
 
 @router.post("/allocations/{allocation_id}/release",
-    dependencies=[Depends(require_permission("production:planning:release_allocation"))])
+    dependencies=[Depends(require_permission(P.PLANNING_RELEASE_ALLOCATION))])
 def release_allocation(allocation_id: UUID, payload: ReleaseRequest, db=Depends(get_db), tenant=Depends(get_current_tenant)):
     allocation = AllocationLifecycleService(db, tenant).release_allocation(allocation_id, payload.reason)
     return {

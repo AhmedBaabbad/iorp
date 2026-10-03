@@ -15,6 +15,10 @@ import { useFormatter } from "@/hooks/useFormatter";
 import { getDashboardSummary } from "./api/dashboard-api";
 import type { DashboardSummary } from "./types";
 import styles from "./dashboard.module.css";
+import { P } from "@/lib/production-permissions";
+
+// The server sends these sections only with the matching read permission (dashboard summary route).
+const QUALITY_CHECKS_READ = "quality:quality_checks:read";
 
 type Icon = (props: { size?: number }) => ReactNode;
 type Kpi = { key: string; href: string; permission?: string; icon: Icon; tone: string; value: (s: DashboardSummary) => number | null };
@@ -23,8 +27,8 @@ type Action = { key: string; href: string; permission: string };
 const kpis: Kpi[] = [
   { key: "followUpsOverdue", href: "/follow-ups?tab=overdue", permission: "commercial:follow_ups:read", icon: IconAlertTriangle, tone: "danger", value: s => s.follow_ups_overdue },
   { key: "followUpsDueToday", href: "/follow-ups?tab=today", permission: "commercial:follow_ups:read", icon: IconCalendar, tone: "warning", value: s => s.follow_ups_due_today },
-  { key: "productionOrders", href: "/production-orders", icon: IconFactory, tone: "orange", value: s => s.production_orders_count },
-  { key: "qualityChecks", href: "/quality-checks", icon: IconClipboardCheck, tone: "purple", value: s => s.quality_checks_count },
+  { key: "productionOrders", href: "/production-orders", permission: P.ORDERS_READ, icon: IconFactory, tone: "orange", value: s => s.production_orders_count },
+  { key: "qualityChecks", href: "/quality-checks", permission: QUALITY_CHECKS_READ, icon: IconClipboardCheck, tone: "purple", value: s => s.quality_checks_count },
   { key: "customers", href: "/customers", permission: "commercial:customers:read", icon: IconUsers, tone: "blue", value: s => s.customers_count },
   { key: "activeMembers", href: "/workforce", permission: "workforce:members:read", icon: IconCheckCircle, tone: "success", value: s => s.workforce_active_count },
   { key: "systemUsers", href: "/admin/users", permission: "foundation:users:read", icon: IconUserCog, tone: "teal", value: s => s.users_count },
@@ -101,8 +105,8 @@ export function DashboardPage() {
         <section className={styles.panelWide}>
           <div className={styles.panelHeader}><div><span>{t("sections.analyticsEyebrow")}</span><h3>{t("sections.analytics")}</h3></div></div>
           <div className={styles.chartGrid}>
-            <article><h4>{t("charts.production")}</h4><DistributionChart data={summary?.production_by_status} label={key => key === "empty" ? t("charts.empty") : enumLabel("productionOrder", "status", key)} /></article>
-            <article><h4>{t("charts.quality")}</h4><DistributionChart data={summary?.quality_checks_by_result} label={key => key === "empty" ? t("charts.empty") : enumLabel("qualityCheck", "result", key)} /></article>
+            {hasPermission(P.ORDERS_READ) ? <article><h4>{t("charts.production")}</h4><DistributionChart data={summary?.production_by_status} label={key => key === "empty" ? t("charts.empty") : enumLabel("productionOrder", "status", key)} /></article> : null}
+            {hasPermission(QUALITY_CHECKS_READ) ? <article><h4>{t("charts.quality")}</h4><DistributionChart data={summary?.quality_checks_by_result} label={key => key === "empty" ? t("charts.empty") : enumLabel("qualityCheck", "result", key)} /></article> : null}
             {hasPermission("workforce:members:read") ? <article><h4>{t("charts.workforce")}</h4><DistributionChart data={summary?.workforce_by_status} label={key => key === "empty" ? t("charts.empty") : enumLabel("workforceMember", "status", key)} /></article> : null}
           </div>
         </section>
@@ -117,8 +121,8 @@ export function DashboardPage() {
         <div className={styles.panelHeader}><div><span>{t("sections.departmentsEyebrow")}</span><h3>{t("sections.departments")}</h3></div></div>
         <div className={styles.moduleGrid}>
           {hasPermission("commercial:customers:read") ? <Link href="/customers" className={styles.moduleCard}><IconUsers size={23}/><div><h4>{t("modules.commercial.title")}</h4><p>{t("modules.commercial.description")}</p></div><span>{summary?.customers_count ?? t("noData")}</span></Link> : null}
-          <Link href="/production-orders" className={styles.moduleCard}><IconFactory size={23}/><div><h4>{t("modules.production.title")}</h4><p>{t("modules.production.description")}</p></div><span>{summary?.production_orders_count ?? t("noData")}</span></Link>
-          <Link href="/quality-checks" className={styles.moduleCard}><IconClipboardCheck size={23}/><div><h4>{t("modules.quality.title")}</h4><p>{t("modules.quality.description")}</p></div><span>{summary?.quality_checks_count ?? t("noData")}</span></Link>
+          {hasPermission(P.ORDERS_READ) ? <Link href="/production-orders" className={styles.moduleCard}><IconFactory size={23}/><div><h4>{t("modules.production.title")}</h4><p>{t("modules.production.description")}</p></div><span>{summary?.production_orders_count ?? t("noData")}</span></Link> : null}
+          {hasPermission(QUALITY_CHECKS_READ) ? <Link href="/quality-checks" className={styles.moduleCard}><IconClipboardCheck size={23}/><div><h4>{t("modules.quality.title")}</h4><p>{t("modules.quality.description")}</p></div><span>{summary?.quality_checks_count ?? t("noData")}</span></Link> : null}
           {hasPermission("workforce:members:read") ? <Link href="/workforce" className={styles.moduleCard}><IconIdCard size={23}/><div><h4>{t("modules.workforce.title")}</h4><p>{t("modules.workforce.description")}</p></div><span>{summary?.workforce_count ?? t("noData")}</span></Link> : null}
           {hasPermission("foundation:users:read") ? <Link href="/admin/users" className={styles.moduleCard}><IconShield size={23}/><div><h4>{t("modules.administration.title")}</h4><p>{t("modules.administration.description")}</p></div><span>{summary?.users_count ?? t("noData")}</span></Link> : null}
         </div>

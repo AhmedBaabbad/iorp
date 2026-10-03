@@ -29,6 +29,7 @@
     "administration": "Administration"
   },
   "links": {
+    "productionReports": "Report center",
     "users": "Users",
     "roles": "Roles",
     "adminUsers": "User Management",
@@ -58,7 +59,8 @@
     "correctiveActions": "Corrective Actions",
     "demands": "Customer Production Demands",
     "planning": "Production Planning",
-    "shiftRosters": "Shift Rosters"
+    "shiftRosters": "Shift Rosters",
+    "customerReports": "Customer reports"
   },
   "userMenu": {
     "changePassword": "Change Password",

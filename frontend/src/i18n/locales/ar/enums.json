@@ -153,16 +153,14 @@
   },
   "wasteRecord": {
     "wasteCategory": {
-      "startup_loss": "خسارة التشغيل",
-      "trim_loss": "خسارة القص",
-      "setup_loss": "خسارة الإعداد",
-      "rejected_output": "مخرج مرفوض",
-      "breakage": "كسر",
-      "rewinding_loss": "خسارة إعادة اللف",
-      "end_of_roll_loss": "خسارة نهاية اللفة",
-      "material_loss": "خسارة المادة",
-      "contamination_loss": "خسارة التلوث",
-      "other": "أخرى"
+      "startup_setup": "هالك بدء التشغيل والضبط",
+      "changeover": "هالك تغيير المنتج",
+      "process": "هالك العملية (قص وحواف)",
+      "material_defect": "هالك عيب المادة الخام",
+      "machine_fault": "هالك عطل الماكينة",
+      "handling_damage": "هالك المناولة والكسر",
+      "contamination": "هالك التلوث",
+      "other": "هالك آخر"
     }
   },
   "actionFollowUp": {
@@ -187,16 +185,19 @@
   "downtimeEvent": {
     "status": {
       "open": "مفتوح",
-      "closed": "مغلق"
+      "closed": "منتهٍ"
     },
     "category": {
-      "machine": "آلة",
-      "material": "مواد",
-      "manpower": "عمالة",
-      "quality": "جودة",
-      "utilities": "مرافق",
-      "setup": "إعداد",
-      "other": "أخرى"
+      "breakdown": "عطل",
+      "changeover_setup": "تغيير المنتج والضبط",
+      "material_shortage": "نقص المواد",
+      "waiting_labor": "انتظار المشغّل",
+      "quality_issue": "مشكلة جودة",
+      "utilities": "المرافق (كهرباء، هواء، ماء)",
+      "other": "أخرى",
+      "planned_maintenance": "صيانة مخططة",
+      "break_meeting": "استراحة أو اجتماع",
+      "no_orders": "لا يوجد عمل مجدول"
     }
   },
   "shiftDefinition": {
@@ -209,13 +210,6 @@
     "status": {
       "active": "نشط",
       "inactive": "غير نشط"
-    }
-  },
-  "productionOutput": {
-    "status": {
-      "recorded": "مسجل",
-      "verified": "محقق",
-      "posted": "مرحل"
     }
   },
   "workforceMember": {

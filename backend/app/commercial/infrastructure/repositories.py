@@ -709,12 +709,12 @@ class QuoteRepository:
             )
             highest = 0
             for quote_number in self.db.scalars(statement):
-                match = re.match(rf"^RFQ-{year}-([0-9]+)$", quote_number, re.IGNORECASE)
+                match = re.match(rf"^(?:RFQ|QT)-{year}-([0-9]+)$", quote_number, re.IGNORECASE)
                 if match:
                     highest = max(highest, int(match.group(1)))
             return highest
 
-        pattern = f"^RFQ-{year}-([0-9]+)$"
+        pattern = f"^(?:RFQ|QT)-{year}-([0-9]+)$"
         sequence_text = func.substring(Quote.quote_number, pattern)
         statement = select(func.coalesce(func.max(sequence_text.cast(Integer)), 0)).where(
             Quote.organization_id == organization_id,

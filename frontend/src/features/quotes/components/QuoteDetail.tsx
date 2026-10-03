@@ -18,6 +18,7 @@ import { sharedStyles } from "@/styles/shared-styles";
 import { getQuoteById } from "../api/quotes-api";
 import type { QuoteData } from "../types";
 import { QuoteItemsTable } from "./QuoteItemsTable";
+import { QuoteDocumentButtons } from "./QuoteDocumentButtons";
 import { QuoteStatusBadge } from "./QuoteStatusBadge";
 import { QuoteTotals } from "./QuoteTotals";
 import { formatCommercialCurrency } from "./quote-utils";
@@ -136,9 +137,12 @@ export function QuoteDetail() {
           : t("detailSubtitle")
       }
       action={
-        <Link href="/quotes" style={sharedStyles.secondaryButton}>
-          {t("backToList")}
-        </Link>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          {quote ? <QuoteDocumentButtons quoteId={quote.id} /> : null}
+          <Link href="/quotes" style={sharedStyles.secondaryButton}>
+            {t("backToList")}
+          </Link>
+        </div>
       }
     >
       {isLoading ? (
@@ -193,6 +197,8 @@ export function QuoteDetail() {
             <DetailItem label={t("fields.quoteDate")} value={fmt.date(quote.issue_date)} />
             <DetailItem label={t("fields.validUntil")} value={fmt.date(quote.valid_until)} />
             <DetailItem label={t("fields.currency")} value={quote.currency} />
+            <DetailItem label={t("document.attention")} value={quote.attention ?? null} />
+            <DetailItem label={t("document.subject")} value={quote.subject ?? null} />
             <DetailItem label={t("fields.notes")} value={quote.notes} />
           </section>
 

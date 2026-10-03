@@ -109,6 +109,16 @@ def _concurrently(fn, n=2):
         return list(pool.map(run, range(n)))
 
 
+def _race(*fns):
+    """Run different operations at the same moment."""
+    barrier = Barrier(len(fns))
+    def run(fn):
+        barrier.wait(timeout=10)
+        return fn()
+    with ThreadPoolExecutor(max_workers=len(fns)) as pool:
+        return list(pool.map(run, fns))
+
+
 def test_prod_plan_003_t21_concurrent_remaining_quantity(pg):
     """Remaining 400 after a 600 allocation: two planners race for it, only one wins."""
     isolated, ids = pg
@@ -310,3 +320,92 @@ def test_order_status_concurrent_transitions_apply_once(pg):
         order = db.get(ProductionOrder, order_id)
         history = db.scalar(sa.text("SELECT count(*) FROM production_order_status_history WHERE production_order_id = :o"), dict(o=order_id))
     assert order.status == "released" and order.status_version == 2 and history == 1
+
+
+def _completed_order(isolated, ids, tenant, quantity="400"):
+    from app.production.application.order_status_service import OrderStatusService
+    with Session(isolated) as db:
+        order = PlanningOrderService(db, tenant).create_order_from_planning(PlanningOrderCreate(
+            allocations=[{"production_demand_item_id": ids["item"], "allocated_quantity": quantity}], work_center_id=ids["center"],
+            planned_start_date=date.today(), planned_end_date=date.today()))
+        order_id = order.id
+        for action in ("release", "start", "complete"):
+            OrderStatusService(db, tenant).transition(order_id, action, can=lambda code: True)
+    return order_id
+
+
+def test_concurrent_customer_good_cannot_exceed_the_allocation(pg):
+    """400 kg allocated: two users record 250 kg customer_good at once; only one fits."""
+    from app.production.api.result_schemas import ResultEntryCreate
+    from app.production.application.result_service import OrderResultService
+    from app.production.domain.result_rules import ResultError
+    isolated, ids = pg
+    tenant = TenantContext(ids["user"], ids["org"])
+    order_id = _completed_order(isolated, ids, tenant)
+    payload = ResultEntryCreate(disposition="customer_good", quantity="250")
+    def record():
+        with Session(isolated) as db:
+            try:
+                OrderResultService(db, tenant).create(order_id, payload)
+                return "recorded"
+            except ResultError as exc:
+                return exc.code
+    assert sorted(_concurrently(record)) == ["CUSTOMER_GOOD_EXCEEDS_ALLOCATION", "recorded"]
+    with Session(isolated) as db:
+        assert db.scalar(sa.text("SELECT sum(quantity) FROM production_result_entries")) == Decimal("250")
+
+
+def test_close_and_result_write_cannot_interleave(pg):
+    """Closing (zero output) and a new entry race: either the entry lands and the zero-output close
+    is refused, or the order closes first and the entry is refused. Never both."""
+    from app.production.api.result_schemas import ResultEntryCreate
+    from app.production.application.order_status_service import OrderStatusService
+    from app.production.application.result_service import OrderResultService
+    from app.production.domain.order_lifecycle import TransitionError
+    from app.production.domain.result_rules import ResultError
+    isolated, ids = pg
+    tenant = TenantContext(ids["user"], ids["org"])
+    order_id = _completed_order(isolated, ids, tenant)
+    def close():
+        with Session(isolated) as db:
+            try:
+                OrderStatusService(db, tenant).transition(order_id, "close", can=lambda code: True, reason="nothing made", zero_output=True)
+                return "closed"
+            except TransitionError as exc:
+                return exc.code
+    def record():
+        with Session(isolated) as db:
+            try:
+                OrderResultService(db, tenant).create(order_id, ResultEntryCreate(disposition="scrap", quantity="5"))
+                return "recorded"
+            except ResultError as exc:
+                return exc.code
+    outcome = sorted(_race(close, record))
+    assert outcome in (["RESULT_LOCKED", "closed"], ["ZERO_OUTPUT_WITH_ENTRIES", "recorded"])
+    with Session(isolated) as db:
+        entries = db.scalar(sa.text("SELECT count(*) FROM production_result_entries"))
+        status = db.scalar(sa.text("SELECT status FROM production_orders WHERE id = :o"), dict(o=order_id))
+    assert (entries, status) in ((0, "closed"), (1, "completed"))
+
+
+def test_concurrent_downtime_on_one_machine_cannot_overlap(pg):
+    """Two operators record overlapping stops on the same machine at once; only one is kept."""
+    from datetime import datetime, timedelta, timezone
+    from app.production.api.downtime_schemas import DowntimeEventCreate
+    from app.production.application.downtime_service import DowntimeService
+    from app.production.domain.downtime_rules import DowntimeError
+    isolated, ids = pg
+    tenant = TenantContext(ids["user"], ids["org"])
+    start = datetime.now(timezone.utc) - timedelta(hours=2)
+    def record(offset):
+        payload = DowntimeEventCreate(work_center_id=ids["center"], start_time=start + timedelta(minutes=offset), end_time=start + timedelta(minutes=offset + 30),
+                                      category="breakdown")
+        with Session(isolated) as db:
+            try:
+                DowntimeService(db, tenant).create(payload)
+                return "recorded"
+            except DowntimeError as exc:
+                return exc.code
+    assert sorted(_race(lambda: record(0), lambda: record(10))) == ["DOWNTIME_OVERLAP", "recorded"]
+    with Session(isolated) as db:
+        assert db.scalar(sa.text("SELECT count(*) FROM production_downtime_events")) == 1

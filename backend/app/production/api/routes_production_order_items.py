@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, require_permission
+from app.production.domain import permissions as P
 from app.production.api.schemas import (
     ProductionOrderItemCreate,
     ProductionOrderItemListItem,
@@ -21,7 +22,7 @@ router = APIRouter(
 
 
 @router.post("", response_model=ProductionOrderItemRead, status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("production:production_orders:write"))])
+    dependencies=[Depends(require_permission(P.ORDERS_MANAGE_ITEMS))])
 def create_production_order_item(
     production_order_id: UUID,
     payload: ProductionOrderItemCreate,
@@ -39,7 +40,7 @@ def create_production_order_item(
 
 
 @router.get("", response_model=list[ProductionOrderItemListItem],
-    dependencies=[Depends(require_permission("production:production_orders:read"))])
+    dependencies=[Depends(require_permission(P.ORDERS_READ))])
 def list_production_order_items(
     production_order_id: UUID,
     tenant: TenantContext = Depends(get_current_tenant),
@@ -53,7 +54,7 @@ def list_production_order_items(
 
 
 @router.get("/{item_id}", response_model=ProductionOrderItemRead,
-    dependencies=[Depends(require_permission("production:production_orders:read"))])
+    dependencies=[Depends(require_permission(P.ORDERS_READ))])
 def get_production_order_item(
     production_order_id: UUID,
     item_id: UUID,
@@ -68,7 +69,7 @@ def get_production_order_item(
 
 
 @router.patch("/{item_id}", response_model=ProductionOrderItemRead,
-    dependencies=[Depends(require_permission("production:production_orders:write"))])
+    dependencies=[Depends(require_permission(P.ORDERS_MANAGE_ITEMS))])
 def update_production_order_item(
     production_order_id: UUID,
     item_id: UUID,
@@ -87,7 +88,7 @@ def update_production_order_item(
 
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("production:production_orders:write"))])
+    dependencies=[Depends(require_permission(P.ORDERS_MANAGE_ITEMS))])
 def delete_production_order_item(
     production_order_id: UUID,
     item_id: UUID,

@@ -41,7 +41,6 @@ Create a quality check. `inspection_code`, `status`, and `result` are always aut
   "qty_accepted": 85,
   "qty_rejected": 15,
   "production_order_id": "<uuid>",
-  "production_output_id": "<uuid>",
   "notes": "optional"
 }
 ```
@@ -126,8 +125,7 @@ Create a quality rejection. `disposition_status` is always auto-set to `pending`
   "quantity_rejected": 15,
   "unit": "pcs",
   "quality_check_id": "<uuid>",
-  "quality_defect_id": "<uuid>",
-  "production_output_id": "<uuid>"
+  "quality_defect_id": "<uuid>"
 }
 ```
 
@@ -142,7 +140,7 @@ Returns `201`.
 ### `GET /quality-rejections`
 List quality rejections.
 
-**Query filters:** `rejection_reason`, `disposition`, `disposition_status`, `quality_check_id`, `production_output_id`, `rejection_date`
+**Query filters:** `rejection_reason`, `disposition`, `disposition_status`, `quality_check_id`, `rejection_date`
 
 ### `GET /quality-rejections/{id}`
 Get a single rejection. Returns `404` if not found or belongs to a different org.

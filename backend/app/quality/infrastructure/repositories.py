@@ -189,7 +189,6 @@ class QualityRejectionRepository:
         disposition: Disposition | None = None,
         disposition_status: DispositionStatus | None = None,
         quality_check_id: UUID | None = None,
-        production_output_id: UUID | None = None,
         rejection_date: date | None = None,
     ) -> list[QualityRejection]:
         statement = select(QualityRejection).where(
@@ -203,8 +202,6 @@ class QualityRejectionRepository:
             statement = statement.where(QualityRejection.disposition_status == disposition_status)
         if quality_check_id is not None:
             statement = statement.where(QualityRejection.quality_check_id == quality_check_id)
-        if production_output_id is not None:
-            statement = statement.where(QualityRejection.production_output_id == production_output_id)
         if rejection_date is not None:
             statement = statement.where(QualityRejection.rejection_date == rejection_date)
         statement = statement.order_by(

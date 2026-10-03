@@ -13,6 +13,7 @@ Critical decisions verified here:
   D8 — ProductionOrder priority defaults to 'normal'
 """
 
+from decimal import Decimal
 from datetime import datetime, timezone
 
 
@@ -62,7 +63,7 @@ def _po(client, headers, wc_id, **kwargs):
     return resp.json()
 
 
-def _dt(client, headers, wc_id, start_iso, end_iso=None, category="machine"):
+def _dt(client, headers, wc_id, start_iso, end_iso=None, category="breakdown"):
     """Create a downtime event and return its JSON body."""
     payload = {
         "work_center_id": wc_id,
@@ -249,9 +250,9 @@ def test_downtime_event_closed_flow(client, auth_headers):
     assert updated["status"] == "closed", (
         "status must auto-derive to 'closed' when end_time is set (D4)"
     )
-    # duration_minutes must be auto-calculated as 45 (D3)
-    assert updated["duration_minutes"] == 45, (
-        "duration_minutes must equal int((end_time - start_time).total_seconds() // 60) = 45 (D3)"
+    # duration_minutes must be auto-calculated as 45 (D3), to the hundredth of a minute
+    assert Decimal(str(updated["duration_minutes"])) == Decimal("45"), (
+        "duration_minutes must equal (end_time - start_time) in minutes = 45 (D3)"
     )
 
 
@@ -313,29 +314,23 @@ def test_cross_tenant_isolation_work_center(client, db, auth_headers):
 def test_quantity_validation(client, auth_headers):
     """
     T8: Sprint 3 behaviors B8 and B9.
-    quantity_produced = 0 on ProductionOutput must be rejected.
+    quantity = 0 on a final result entry must be rejected.
     quantity_wasted = -5 on WasteRecord must be rejected.
     Both use Pydantic Field(gt=0) validated at schema level before reaching service.
     """
     wc = _wc(client, auth_headers, code="WC-T8-QTY")
     order = _po(client, auth_headers, wc["id"])
 
-    # ProductionOutput with quantity_produced = 0 must fail (B8)
+    # A final result entry with quantity = 0 must fail (B8; legacy outputs are read-only now).
     # Pydantic Field(gt=0) returns 422 Unprocessable Entity
     output_resp = client.post(
-        "/api/v1/production/production-outputs",
-        json={
-            "production_order_id": order["id"],
-            "work_center_id": wc["id"],
-            "output_date": "2026-07-02",
-            "quantity_produced": "0",
-            "unit": "kg",
-        },
+        f"/api/v1/production/production-orders/{order['id']}/result/entries",
+        json={"disposition": "stock_good", "quantity": "0"},
         headers=auth_headers,
     )
-    assert output_resp.status_code in (400, 422), (
-        "quantity_produced=0 must be rejected (B8)"
-    )
+    # Every other field is valid, so the 422 is about the quantity alone.
+    assert output_resp.status_code == 422, "quantity=0 must be rejected (B8)"
+    assert any(e["loc"][-1] == "quantity" for e in output_resp.json()["detail"])
 
     # WasteRecord with quantity_wasted = -5 must fail (B9)
     waste_resp = client.post(
@@ -346,10 +341,10 @@ def test_quantity_validation(client, auth_headers):
             "waste_date": "2026-07-02",
             "quantity_wasted": "-5",
             "unit": "kg",
-            "waste_category": "startup_loss",
+            "waste_category": "startup_setup",
         },
         headers=auth_headers,
     )
-    assert waste_resp.status_code in (400, 422), (
-        "quantity_wasted=-5 must be rejected (B9)"
-    )
+    # Every other field is valid, so the 422 is about the quantity alone.
+    assert waste_resp.status_code == 422, "quantity_wasted=-5 must be rejected (B9)"
+    assert any(e["loc"][-1] == "quantity_wasted" for e in waste_resp.json()["detail"])

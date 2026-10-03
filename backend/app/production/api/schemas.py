@@ -1,4 +1,4 @@
-from datetime import date, datetime, time
+from datetime import date, time
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -7,14 +7,10 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.core.types import ISODatetime
 from app.production.domain.enums import (
-    DowntimeCategory,
-    DowntimeStatus,
-    ProductionOutputStatus,
     ProductionOrderPriority,
     ProductionOrderStatus,
     ShiftDefinitionStatus,
     ShiftType,
-    WasteCategory,
     WorkCenterStatus,
     WorkCenterType,
 )
@@ -62,7 +58,7 @@ class WorkCenterDeleteSummary(BaseModel):
     shifts_count: int
     downtime_records_count: int
     waste_records_count: int
-    production_outputs_count: int
+    production_results_count: int = 0
 
 
 class ShiftDefinitionCreate(BaseModel):
@@ -209,146 +205,3 @@ class ProductionOrderItemRead(ProductionOrderItemListItem):
     notes: str | None
 
 
-class ProductionOutputCreate(BaseModel):
-    production_order_id: UUID
-    work_center_id: UUID
-    production_order_item_id: UUID | None = None
-    output_date: date
-    recorded_at: datetime | None = None
-    quantity_produced: Decimal = Field(gt=0)
-    unit: str = Field(min_length=1, max_length=32)
-    notes: str | None = None
-
-
-class ProductionOutputUpdate(BaseModel):
-    production_order_id: UUID | None = None
-    work_center_id: UUID | None = None
-    production_order_item_id: UUID | None = None
-    output_date: date | None = None
-    recorded_at: datetime | None = None
-    quantity_produced: Decimal | None = Field(default=None, gt=0)
-    unit: str | None = Field(default=None, min_length=1, max_length=32)
-    output_status: ProductionOutputStatus | None = None
-    notes: str | None = None
-
-
-class ProductionOutputListItem(BaseModel):
-    id: UUID
-    organization_id: UUID
-    production_order_id: UUID
-    work_center_id: UUID
-    production_order_item_id: UUID | None
-    output_date: date
-    recorded_at: ISODatetime | None
-    quantity_produced: Decimal
-    unit: str
-    output_status: ProductionOutputStatus
-    created_by_user_id: UUID
-    created_at: ISODatetime
-    updated_at: ISODatetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class ProductionOutputRead(ProductionOutputListItem):
-    notes: str | None
-
-
-class DowntimeEventCreate(BaseModel):
-    work_center_id: UUID
-    production_order_id: UUID | None = None
-    start_time: datetime
-    end_time: datetime | None = None
-    category: DowntimeCategory
-    reason_code: str = Field(min_length=1, max_length=255)
-    notes: str | None = None
-
-    @model_validator(mode="after")
-    def validate_time_window(self) -> "DowntimeEventCreate":
-        if self.end_time is not None and self.end_time <= self.start_time:
-            raise ValueError("end_time must be after start_time.")
-        return self
-
-
-class DowntimeEventUpdate(BaseModel):
-    work_center_id: UUID | None = None
-    production_order_id: UUID | None = None
-    start_time: datetime | None = None
-    end_time: datetime | None = None
-    category: DowntimeCategory | None = None
-    reason_code: str | None = Field(default=None, min_length=1, max_length=255)
-    notes: str | None = None
-
-    @model_validator(mode="after")
-    def validate_time_window(self) -> "DowntimeEventUpdate":
-        if self.start_time is not None and self.end_time is not None and self.end_time <= self.start_time:
-            raise ValueError("end_time must be after start_time.")
-        return self
-
-
-class DowntimeEventListItem(BaseModel):
-    id: UUID
-    organization_id: UUID
-    work_center_id: UUID
-    production_order_id: UUID | None
-    start_time: ISODatetime
-    end_time: ISODatetime | None
-    duration_minutes: int | None
-    category: DowntimeCategory
-    reason_code: str
-    status: DowntimeStatus
-    created_by_user_id: UUID
-    created_at: ISODatetime
-    updated_at: ISODatetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class DowntimeEventRead(DowntimeEventListItem):
-    notes: str | None
-
-
-class WasteRecordCreate(BaseModel):
-    production_order_id: UUID
-    work_center_id: UUID
-    production_order_item_id: UUID | None = None
-    waste_date: date
-    quantity_wasted: Decimal = Field(gt=0)
-    unit: str = Field(min_length=1, max_length=32)
-    waste_category: WasteCategory
-    reason_code: str | None = Field(default=None, max_length=255)
-    notes: str | None = None
-
-
-class WasteRecordUpdate(BaseModel):
-    production_order_id: UUID | None = None
-    work_center_id: UUID | None = None
-    production_order_item_id: UUID | None = None
-    waste_date: date | None = None
-    quantity_wasted: Decimal | None = Field(default=None, gt=0)
-    unit: str | None = Field(default=None, min_length=1, max_length=32)
-    waste_category: WasteCategory | None = None
-    reason_code: str | None = Field(default=None, max_length=255)
-    notes: str | None = None
-
-
-class WasteRecordListItem(BaseModel):
-    id: UUID
-    organization_id: UUID
-    production_order_id: UUID
-    work_center_id: UUID
-    production_order_item_id: UUID | None
-    waste_date: date
-    quantity_wasted: Decimal
-    unit: str
-    waste_category: WasteCategory
-    reason_code: str | None
-    created_by_user_id: UUID
-    created_at: ISODatetime
-    updated_at: ISODatetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class WasteRecordRead(WasteRecordListItem):
-    notes: str | None

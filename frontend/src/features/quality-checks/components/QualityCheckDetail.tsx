@@ -9,8 +9,6 @@ import { PageFrame } from "@/components/layout/page-frame";
 import { QualityDefectsList } from "@/features/quality-defects";
 import { getItemsByOrder } from "@/features/production-order-items";
 import type { ProductionOrderItemListItem } from "@/features/production-order-items";
-import { getProductionOutputById } from "@/features/production-outputs";
-import type { ProductionOutputData } from "@/features/production-outputs";
 import { getProductionOrders } from "@/features/production-orders";
 import { useFormatter } from "@/hooks/useFormatter";
 import { ApiClientError } from "@/lib/api-client";
@@ -92,7 +90,6 @@ export function QualityCheckDetail({ qualityCheckId }: QualityCheckDetailProps) 
   const fmt = useFormatter();
   const [check, setCheck] = useState<QualityCheckData | null>(null);
   const [productionOrders, setProductionOrders] = useState<ProductionOrderOption[]>([]);
-  const [productionOutput, setProductionOutput] = useState<ProductionOutputData | null>(null);
   const [orderItems, setOrderItems] = useState<ProductionOrderItemListItem[]>([]);
   const [selectedResult, setSelectedResult] = useState<"" | QualityCheckResult>("");
   const [isLoading, setIsLoading] = useState(true);
@@ -121,24 +118,18 @@ export function QualityCheckDetail({ qualityCheckId }: QualityCheckDetailProps) 
         const orderItemsPromise = checkResponse.production_order_id
           ? getItemsByOrder(checkResponse.production_order_id).catch(() => [])
           : Promise.resolve([]);
-        const productionOutputPromise = checkResponse.production_output_id
-          ? getProductionOutputById(checkResponse.production_output_id).catch(() => null)
-          : Promise.resolve(null);
 
         const [
           productionOrdersResponse,
           orderItemsResponse,
-          productionOutputResponse,
         ] = await Promise.all([
           productionOrdersPromise,
           orderItemsPromise,
-          productionOutputPromise,
         ]);
 
         if (isMounted) {
           setProductionOrders(productionOrdersResponse);
           setOrderItems(orderItemsResponse);
-          setProductionOutput(productionOutputResponse);
         }
       } catch (caughtError) {
         if (!isMounted) {
@@ -361,21 +352,6 @@ export function QualityCheckDetail({ qualityCheckId }: QualityCheckDetailProps) 
                       ? `Line ${orderItem.line_no}`
                       : shortId(check.production_order_item_id)
                     : null
-                }
-              />
-              <DetailItem
-                label={t("fields.productionOutput")}
-                value={
-                  check.production_output_id ? (
-                    <Link
-                      href={`/production-outputs/${check.production_output_id}`}
-                      style={{ color: "var(--accent-strong)" }}
-                    >
-                      {productionOutput
-                        ? `${fmt.date(productionOutput.output_date)} - ${fmt.quantity(productionOutput.quantity_produced, productionOutput.unit)}`
-                        : shortId(check.production_output_id)}
-                    </Link>
-                  ) : null
                 }
               />
             </section>

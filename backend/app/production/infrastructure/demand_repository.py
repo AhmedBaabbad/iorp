@@ -42,15 +42,9 @@ class ProductionDemandRepository:
             ProductionAllocation.status == "active").correlate(ProductionDemandItem).scalar_subquery()
         return ProductionDemand.items.any(ProductionDemandItem.required_quantity > active)
 
-    def list(self, org_id, filters, customer_ids=None, planning=False):
+    def list(self, org_id, filters, customer_ids=None, planning=False, statuses=None):
         d = ProductionDemand
         query = select(d).where(d.organization_id == org_id)
-        if planning:
-            # The planning queue is a derived view over demands; nothing is moved or deleted.
-            if filters.view == "active":
-                query = query.where(d.status.in_(PLANNABLE), self.has_remaining(org_id))
-            elif filters.view == "planned":
-                query = query.where(d.status == "planned")
         for name in ("customer_id", "quote_id", "status", "priority"):
             value = getattr(filters, name)
             if value is not None:
@@ -65,7 +59,21 @@ class ProductionDemandRepository:
             query = query.where(d.items.any(ProductionDemandItem.product_type == filters.product_type))
         if filters.search:
             query = query.where(or_(d.demand_number.icontains(filters.search, autoescape=True), d.customer_id.in_(customer_ids or [])))
+        hidden = None
+        if statuses:
+            # Statuses the user chose to show; the others (and anything outside the planning view) are
+            # counted so the screen can say how many are hidden.
+            unfiltered = self.db.scalar(select(func.count()).select_from(query.subquery()))
+            query = query.where(d.status.in_(statuses))
+        if planning:
+            # The planning queue is a derived view over demands; nothing is moved or deleted.
+            if filters.view == "active":
+                query = query.where(d.status.in_(PLANNABLE), self.has_remaining(org_id))
+            elif filters.view == "planned":
+                query = query.where(d.status == "planned")
         total = self.db.scalar(select(func.count()).select_from(query.subquery()))
+        if statuses:
+            hidden = unfiltered - total
         ordering = self.ordering() if planning and filters.view == "active" else (d.created_at.desc(), d.id.asc())
         if filters.sort_by != "planning_sequence" or filters.sort_order != "asc":
             column = getattr(d, filters.sort_by)
@@ -73,7 +81,7 @@ class ProductionDemandRepository:
                 column = case({"urgent": 0, "high": 1, "normal": 2, "low": 3}, value=d.priority)
             ordering = ((column.desc() if filters.sort_order == "desc" else column.asc()).nulls_last(), d.id.asc())
         rows = list(self.db.scalars(query.order_by(*ordering).offset((filters.page - 1) * filters.page_size).limit(filters.page_size)))
-        return rows, total
+        return rows, total, hidden
 
 
 class ProductionDemandCount:

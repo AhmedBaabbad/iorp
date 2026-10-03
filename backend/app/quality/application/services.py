@@ -60,7 +60,7 @@ class QualityCheckService:
         tenant: TenantContext,
         data: QualityCheckCreate,
     ) -> QualityCheck:
-        # Soft check: at least one of production_order_id / production_output_id
+        # Soft check: production_order_id
         # should be provided. Not enforced in v0.1 — promoted in QUAL-002.
         self._validate_production_refs(tenant.organization_id, data)
 
@@ -154,10 +154,6 @@ class QualityCheckService:
                     "production_order_item_id",
                     quality_check.production_order_item_id,
                 ),
-                production_output_id=payload.get(
-                    "production_output_id",
-                    quality_check.production_output_id,
-                ),
             ),
         )
 
@@ -211,13 +207,6 @@ class QualityCheckService:
                 data.production_order_id,
                 organization_id,
                 "production_order_id",
-            )
-        if data.production_output_id is not None:
-            self._assert_production_row_belongs_to_org(
-                "production_outputs",
-                data.production_output_id,
-                organization_id,
-                "production_output_id",
             )
         if data.production_order_item_id is not None:
             # Items are validated via their parent order's org — join needed.
@@ -404,7 +393,6 @@ class QualityRejectionService:
         disposition: Disposition | None = None,
         disposition_status: DispositionStatus | None = None,
         quality_check_id: UUID | None = None,
-        production_output_id: UUID | None = None,
         rejection_date: date | None = None,
     ) -> list[QualityRejection]:
         return self.rejections.list_by_organization(
@@ -413,7 +401,6 @@ class QualityRejectionService:
             disposition=disposition,
             disposition_status=disposition_status,
             quality_check_id=quality_check_id,
-            production_output_id=production_output_id,
             rejection_date=rejection_date,
         )
 

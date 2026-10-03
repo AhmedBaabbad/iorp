@@ -17,7 +17,7 @@ from app.production.infrastructure.models import ProductionAllocation, Productio
 ROOT = "/api/v1/production"
 PERMISSIONS = frozenset([
     "production:planning:read", "production:planning:allocate", "production:planning:release_allocation",
-    "production:orders:create", "production:orders:cancel", "production:production_orders:read", "production:production_orders:write",
+    "production:production_orders:create", "production:production_orders:cancel", "production:production_orders:read", "production:production_orders:update", "production:production_orders:manage_items",
 ] + [f"production:demands:{a}" for a in ("read", "create", "update")])
 ITEM = {"product_type": "film", "required_quantity": "1000", "unit": "kg", "target_spec_json": {"width": 12}}
 
@@ -316,6 +316,18 @@ def test_t29_active_planned_all_views(env):
     assert env.client.get(f"{ROOT}/planning/demands?view=bogus").status_code == 400
 
 
+def test_planning_statuses_narrow_the_view_and_count_the_hidden(env):
+    ready, partial, planned = env.demand(), env.demand(), env.demand()
+    env.order((item_id(partial), "10")); env.order((item_id(planned), "1000"))
+    env.client.post(f"{ROOT}/demands", json={"customer_id": str(env.customer.id), "items": [ITEM]})  # a draft
+    # The active queue with the matching statuses reports everything outside it as hidden.
+    body = env.client.get(f"{ROOT}/planning/demands", params=[("view", "active"), ("statuses", "ready_for_planning"), ("statuses", "partially_planned")]).json()
+    assert {d["id"] for d in body["items"]} == {ready["id"], partial["id"]} and body["hidden_by_status"] == 2
+    body = env.client.get(f"{ROOT}/planning/demands", params=[("view", "all"), ("statuses", "planned"), ("statuses", "ready_for_planning")]).json()
+    assert {d["id"] for d in body["items"]} == {ready["id"], planned["id"]} and body["hidden_by_status"] == 2
+    assert env.client.get(f"{ROOT}/planning/demands").json()["hidden_by_status"] is None
+
+
 def test_t30_demand_detail_includes_allocation_history(env):
     d = env.demand()
     keep, drop = env.order((item_id(d), "600")), env.order((item_id(d), "100"))
@@ -343,7 +355,7 @@ def test_release_reason_required(env):
 
 @pytest.mark.parametrize("missing,call", [
     ("production:planning:release_allocation", "release"),
-    ("production:orders:cancel", "cancel"),
+    ("production:production_orders:cancel", "cancel"),
 ])
 def test_release_and_cancel_permissions(env, missing, call):
     d = env.demand(); env.order((item_id(d), "100")); po = env.order((item_id(d), "100"))

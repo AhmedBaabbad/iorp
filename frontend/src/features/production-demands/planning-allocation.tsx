@@ -9,6 +9,7 @@ import type { Demand, Item } from "./api";
 import { Specs, priorities } from "./shared";
 import { ArrangementTable, type ArrangedLine } from "./arrangement-table";
 import s from "./demands.module.css";
+import { P } from "@/lib/production-permissions";
 
 // Integer thousandths avoid floating-point drift when summing decimal quantities.
 function milli(value: string): bigint | null {
@@ -25,8 +26,8 @@ export function PlanningAllocation({ demands, busy, onRefresh }: { demands: Dema
   const d = useTranslations("production.demands");
   const p = useTranslations("production.productionOrders");
   const common = useTranslations("common");
-  const canAllocate = usePermission("production:planning:allocate");
-  const canCreate = usePermission("production:orders:create");
+  const canAllocate = usePermission(P.PLANNING_ALLOCATE);
+  const canCreate = usePermission(P.ORDERS_CREATE);
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
   const [selected, setSelected] = useState<Record<string, Selection>>({});

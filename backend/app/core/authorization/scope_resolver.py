@@ -25,6 +25,7 @@ def resolve_effective_scope(
     organization_id: UUID,
     permission_code: str,
     is_organization_root: bool,
+    fallback: AccessScope = AccessScope.ORGANIZATION,
 ) -> AccessScope:
     """Determine the broadest scope the user has for a permission."""
     if is_organization_root:
@@ -51,7 +52,7 @@ def resolve_effective_scope(
     # rejected this request upstream. Fail open to the current v0.1 behavior
     # rather than silently hiding data behind an unexpected empty scope.
     logger.warning(
-        "No role-permission scope found for user %s, permission %s -- defaulting to organization",
-        user_id, permission_code,
+        "No role-permission scope found for user %s, permission %s -- defaulting to %s",
+        user_id, permission_code, fallback.value,
     )
-    return AccessScope.ORGANIZATION
+    return fallback

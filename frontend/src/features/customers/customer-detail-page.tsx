@@ -16,6 +16,7 @@ import { displayValue } from "@/lib/utils";
 import { sharedStyles } from "@/styles/shared-styles";
 import type { CustomerDeletionImpact, CustomerDetail, SalesOwnerSummary } from "@/types/customers";
 import { deleteCustomer, getCustomer, getCustomerDeletionImpact } from "./customer-api";
+import { CustomerReportButtons } from "@/features/reports/CustomerReportButtons";
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth";
 
@@ -232,6 +233,7 @@ export function CustomerDetailPage() {
         </div>
       }
     >
+      {customer && <CustomerReportButtons customerId={customer.id} />}
       {isConfirmPhase && deleteImpact ? (
         <div style={styles.overlay} role="dialog" aria-modal="true">
           <div style={styles.modal}>

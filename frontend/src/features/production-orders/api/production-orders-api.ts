@@ -36,10 +36,11 @@ export function getProductionOrderById(productionOrderId: string) {
 }
 
 // The only way to change an order's status. expectedVersion guards against a concurrent change.
-export function transitionProductionOrder(productionOrderId: string, action: OrderAction, options: { reason?: string; expectedVersion?: number } = {}) {
+// zeroOutput (close only): the order produced nothing; the reason is then mandatory.
+export function transitionProductionOrder(productionOrderId: string, action: OrderAction, options: { reason?: string; expectedVersion?: number; zeroOutput?: boolean } = {}) {
   return apiClient<ProductionOrderData>(`${PRODUCTION_ORDERS_PATH}/${productionOrderId}/transitions`, {
     method: "POST",
-    body: { action, reason: options.reason || null, expected_version: options.expectedVersion ?? null },
+    body: { action, reason: options.reason || null, expected_version: options.expectedVersion ?? null, ...(options.zeroOutput ? { zero_output: true } : {}) },
   });
 }
 

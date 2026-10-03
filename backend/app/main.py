@@ -17,6 +17,7 @@ from app.commercial.api.routes_followups import (
 from app.commercial.api.routes_interactions import router as interactions_router
 from app.commercial.api.routes_orders import router as orders_router
 from app.commercial.api.routes_quotes import router as quotes_router
+from app.commercial.api.routes_quote_settings import router as quote_settings_router
 from app.commercial.api.routes_sample_evaluations import router as sample_evaluations_router
 from app.commercial.api.routes_samples import router as samples_router
 from app.dashboard.api.routes_dashboard import router as dashboard_router
@@ -30,7 +31,7 @@ from app.foundation.api.routes_audit import router as tenant_audit_router
 from app.foundation.api.routes_logs import activity_router as tenant_activity_router, security_router as tenant_security_router
 from app.production.api.routes_downtime_events import router as downtime_events_router
 from app.production.api.routes_production_order_items import router as production_order_items_router
-from app.production.api.routes_production_outputs import router as production_outputs_router
+from app.production.api.routes_order_results import overview_router as result_overview_router, router as order_results_router
 from app.production.api.routes_production_orders import router as production_orders_router
 from app.production.api.routes_planning_orders import router as planning_orders_router
 from app.production.api.routes_shift_definitions import router as shift_definitions_router
@@ -52,6 +53,27 @@ from app.platform.api.routes_logs import activity_router as platform_activity_ro
 
 
 configure_logging()
+from app.foundation.api.routes_branding import router as branding_router
+from app.core.reporting.routes import router as reporting_router
+from app.production.reporting.routes import router as report_shortcuts_router
+from app.production.reporting.definitions import register_reports
+from app.core.reporting import providers as reporting_providers
+from app.foundation.application.branding_service import BrandingService
+register_reports()
+from app.commercial.reporting.customers.definitions import register_reports as register_customer_reports
+from app.commercial.reporting.customers import providers as customer_report_providers
+from app.commercial.reporting.customers.routes import router as customer_reports_router
+from app.commercial.application.report_queries import CommercialReportQueries
+from app.production.application.customer_report_queries import ProductionReportQueries
+from app.foundation.application.report_identity_queries import ReportIdentityQueries
+customer_report_providers.commercial_factory = CommercialReportQueries
+customer_report_providers.production_factory = ProductionReportQueries
+customer_report_providers.identity_factory = ReportIdentityQueries
+register_customer_reports()
+from app.commercial.reporting.quotation.definitions import register_quotation
+register_quotation()
+# Composition root: reporting reads the organization identity through this seam, never by importing foundation.
+reporting_providers.branding_provider = lambda db, organization_id: BrandingService(db).get_branding(organization_id)
 from app.core.interfaces.activity_log import register_activity_logger
 from app.foundation.application.activity_log import TenantActivityLogger
 register_activity_logger(TenantActivityLogger())
@@ -77,6 +99,10 @@ app = FastAPI(
 )
 
 register_middleware(app)
+app.include_router(branding_router, prefix=settings.api_prefix)
+app.include_router(reporting_router, prefix=settings.api_prefix)
+app.include_router(customer_reports_router, prefix=settings.api_prefix)
+app.include_router(report_shortcuts_router, prefix=settings.api_prefix)
 app.include_router(demands_router, prefix=f"{settings.api_prefix}/production")
 
 
@@ -108,13 +134,15 @@ app.include_router(followups_global_router, prefix=f"{settings.api_prefix}/comme
 app.include_router(samples_router, prefix=f"{settings.api_prefix}/commercial")
 app.include_router(sample_evaluations_router, prefix=f"{settings.api_prefix}/commercial")
 app.include_router(quotes_router, prefix=f"{settings.api_prefix}/commercial")
+app.include_router(quote_settings_router, prefix=f"{settings.api_prefix}/commercial")
 app.include_router(orders_router, prefix=f"{settings.api_prefix}/commercial")
 app.include_router(work_centers_router, prefix=f"{settings.api_prefix}/production")
 app.include_router(shift_definitions_router, prefix=f"{settings.api_prefix}/production")
 app.include_router(production_orders_router, prefix=f"{settings.api_prefix}/production")
 app.include_router(planning_orders_router, prefix=f"{settings.api_prefix}/production")
 app.include_router(production_order_items_router, prefix=f"{settings.api_prefix}/production")
-app.include_router(production_outputs_router, prefix=f"{settings.api_prefix}/production")
+app.include_router(order_results_router, prefix=f"{settings.api_prefix}/production")
+app.include_router(result_overview_router, prefix=f"{settings.api_prefix}/production")
 app.include_router(downtime_events_router, prefix=f"{settings.api_prefix}/production")
 app.include_router(waste_records_router, prefix=f"{settings.api_prefix}/production")
 app.include_router(quality_checks_router, prefix=f"{settings.api_prefix}/quality")

@@ -9,12 +9,13 @@ import { usePermission } from "@/features/auth/permission-hooks";
 import { demandsApi, type Demand, type DemandStatus } from "./api";
 import { Badge, ErrorMessage, errorKey, transitions, Specs } from "./shared";
 import s from "./demands.module.css";
+import { P } from "@/lib/production-permissions";
 
 export function DemandDetail({ id }: { id: string }) {
   const t = useTranslations("production.demands");
   const router = useRouter();
-  const canUpdate = usePermission("production:demands:update");
-  const canDelete = usePermission("production:demands:delete");
+  const canUpdate = usePermission(P.DEMANDS_UPDATE);
+  const canDelete = usePermission(P.DEMANDS_DELETE);
   const [d, setDemand] = useState<Demand | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);

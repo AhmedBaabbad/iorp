@@ -2,13 +2,16 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { usePermission } from "@/features/auth/permission-hooks";
 import { ReasonDialog } from "@/features/production-demands/reason-dialog";
+import { CloseResultDialog } from "@/features/production-results";
 import { lifecycleErrorCode } from "@/features/production-demands/planning-lifecycle";
 import { useFormatter } from "@/hooks/useFormatter";
 import { transitionProductionOrder } from "../api/production-orders-api";
 import type { OrderLifecycle, ProductionOrderData } from "../types";
 import { ProductionOrderStatusBadge } from "./ProductionOrderStatusBadge";
 import s from "@/features/production-demands/demands.module.css";
+import { P } from "@/lib/production-permissions";
 
 type LifecycleAction = OrderLifecycle["actions"][number];
 
@@ -20,11 +23,13 @@ export function OrderStatusPanel({ order, onChanged }: { order: ProductionOrderD
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const lifecycle = order.lifecycle;
+  // Closing shows the final result first when the user may read it; zero output is offered either way.
+  const canReadResult = usePermission(P.RESULTS_READ);
 
-  async function run(action: LifecycleAction, reason?: string) {
+  async function run(action: LifecycleAction, reason?: string, zeroOutput = false) {
     setBusy(true); setError("");
     try {
-      await transitionProductionOrder(order.id, action.action, { reason, expectedVersion: lifecycle?.status_version });
+      await transitionProductionOrder(order.id, action.action, { reason, expectedVersion: lifecycle?.status_version, zeroOutput });
       setPending(null);
       onChanged?.();
     } catch (e) {
@@ -58,7 +63,11 @@ export function OrderStatusPanel({ order, onChanged }: { order: ProductionOrderD
       </dl>
       {lifecycle?.terminal && <p className={s.muted} style={{ marginBottom: 0 }}>{t("terminalHint")}</p>}
       {error && <p role="alert" className={s.error}>{t(`errors.${t.has(`errors.${error}`) ? error : "request_failed"}`)}</p>}
-      {pending && (
+      {pending?.action === "close" && (
+        <CloseResultDialog orderId={order.id} orderNumber={order.production_order_number} busy={busy} error="" canReadResult={canReadResult}
+          onClose={() => setPending(null)} onConfirm={({ reason, zeroOutput }) => void run(pending, reason, zeroOutput)} />
+      )}
+      {pending && pending.action !== "close" && (
         <ReasonDialog
           title={t(`confirm.${pending.action}.title`, { order: order.production_order_number })}
           description={t(`confirm.${pending.action}.text`)}

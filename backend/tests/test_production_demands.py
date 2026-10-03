@@ -280,3 +280,19 @@ def test_item_patch_delete_and_parent_scope(env):
 
 def test_empty_cannot_be_ready(env):
     assert status(env, demand(env, items=[]), "ready_for_planning").status_code == 400
+
+
+def test_list_shows_only_chosen_statuses_and_counts_the_hidden(env):
+    draft, ready, cancelled = demand(env), demand(env), demand(env)
+    status(env, ready, "ready_for_planning")
+    status(env, cancelled, "cancelled")
+    body = env.client.get(f"{ROOT}/demands", params=[("statuses", "draft"), ("statuses", "ready_for_planning")]).json()
+    assert {d["id"] for d in body["items"]} == {draft["id"], ready["id"]}
+    assert body["total"] == 2 and body["hidden_by_status"] == 1
+    # Other filters still apply before counting what is hidden.
+    body = env.client.get(f"{ROOT}/demands", params=[("statuses", "draft"), ("search", draft["demand_number"])]).json()
+    assert body["total"] == 1 and body["hidden_by_status"] == 0
+    # Without statuses nothing is hidden.
+    body = env.client.get(f"{ROOT}/demands").json()
+    assert body["total"] == 3 and body["hidden_by_status"] is None
+    assert env.client.get(f"{ROOT}/demands", params={"statuses": "bogus"}).status_code in (400, 422)

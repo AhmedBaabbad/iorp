@@ -1,0 +1,103 @@
+/* Report print stylesheet: one formal layout for every module. --brand comes from the company identity. */
+*{box-sizing:border-box}
+:root{--brand:#24556b;--ink:#1c2b34;--muted:#5b6e78;--line:#d5dee2;--soft:#f3f6f7;--tint:#e9f0f2}
+/* Latin letters and digits from Noto Sans, Arabic script falls back to Noto Naskh Arabic: codes like PO-2026-000001 keep one weight. */
+body{font-family:'Noto Sans','Noto Naskh Arabic',sans-serif;font-size:9.5pt;line-height:1.55;color:var(--ink);margin:0;background:#fff}
+bdi{unicode-bidi:isolate}
+
+/* Corporate document identity (templates/identity), repeated by the renderer on every page.
+   Header (both variants): Arabic identity right, logo centre, English identity left.
+   Internal footer: one strip. External footer: legal · contact · bank columns, then the strip. */
+.id-header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;width:100%;padding:2px 4px 7px;border-bottom:2px solid var(--brand)}
+.id-side{display:flex;flex-direction:column;gap:1px;line-height:1.35;text-align:right}
+.id-side.id-en{text-align:left}
+.id-side strong{font-size:10.5pt;font-weight:700;color:var(--brand)}
+.id-side span{font-size:7.6pt;color:var(--muted)}
+.id-centre{display:flex;align-items:center;justify-content:center;gap:6px}
+.id-logo{max-height:46px;max-width:130px}
+.id-secondary{max-height:30px;max-width:40px}
+.id-external.id-header{align-items:start;border-bottom:0;box-shadow:0 2px 0 var(--brand),0 5px 0 #fff,0 6px 0 var(--line)}
+.id-external .id-centre{align-self:center}
+.id-legal{margin:4px 0 0;display:flex;flex-direction:column;gap:0;font-size:7.2pt;line-height:1.45}
+.id-legal div{display:flex;gap:6px}
+.id-legal dt{color:var(--muted);min-width:72px}
+.id-side.id-en .id-legal dt{min-width:64px}
+.id-legal dd{margin:0;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+
+.id-footer{width:100%;font-size:7.2pt;line-height:1.5;color:var(--muted)}
+.id-strip{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding-top:4px}
+.id-strip-start{text-align:start;color:var(--ink);font-weight:700}
+.id-strip-mid{text-align:center}
+.id-strip-end{text-align:end;font-variant-numeric:tabular-nums}
+.id-internal.id-footer{border-top:1px solid var(--line)}
+.id-external.id-footer{border-top:2px solid var(--brand);padding-top:5px}
+.id-contact,.id-bankline{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;padding-bottom:4px}
+.id-bankline{justify-content:flex-start;gap:4px 18px;border-top:1px dashed var(--line);padding-top:4px}
+.id-item{display:inline-flex;gap:5px;align-items:baseline;white-space:nowrap}
+.id-item em{font-style:normal;color:var(--muted)}
+.id-item bdi{color:var(--ink);font-weight:600}
+.id-address{white-space:normal}
+.id-external .id-strip{border-top:1px solid var(--line)}
+.id-footer b{color:var(--ink)}
+
+/* Document head: title and subject on one side, labelled report details on the other */
+.doc-head{display:flex;align-items:stretch;justify-content:space-between;gap:18px;margin:4px 0 14px;padding:0 0 12px;border-bottom:1px solid var(--line);break-inside:avoid}
+.doc-title{flex:1;display:flex;flex-direction:column;justify-content:center;gap:4px;border-inline-start:4px solid var(--brand);padding-inline-start:12px}
+h1{font-size:18pt;line-height:1.3;margin:0;color:var(--brand);font-weight:700}
+.doc-subject{font-size:12.5pt;font-weight:700;letter-spacing:.3px}
+.doc-flag{align-self:flex-start;margin-top:4px;padding:2px 10px;border:1px solid #b9862d;border-radius:12px;color:#8a6219;background:#fbf4e6;font-size:8pt}
+.doc-meta{flex:0 0 auto;width:auto;min-width:230px;border-collapse:collapse;font-size:8.5pt;background:var(--soft);border:1px solid var(--line)}
+.doc-meta th,.doc-meta td{padding:5px 10px;border-bottom:1px solid var(--line);text-align:start;white-space:nowrap}
+.doc-meta tr:last-child th,.doc-meta tr:last-child td{border-bottom:0}
+.doc-meta th{color:var(--muted);font-weight:400;background:transparent}
+.doc-meta td{font-weight:700}
+.doc-filters{margin:0 0 14px;padding:6px 10px;background:var(--soft);border-radius:4px;font-size:8.5pt;color:var(--muted)}
+.doc-filters span{font-weight:700;color:var(--ink);margin-inline-end:6px}
+.doc-end{margin:22px 0 0;text-align:center;color:var(--muted);font-size:8pt;letter-spacing:.5px}
+
+/* Sections */
+.block{margin:0 0 16px}
+h2{display:flex;align-items:center;gap:8px;font-size:11.5pt;margin:0 0 8px;padding-bottom:4px;border-bottom:1px solid var(--tint);color:var(--ink);break-after:avoid}
+.block-no{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;border-radius:4px;background:var(--brand);color:#fff;font-size:8.5pt;font-weight:700}
+.note{margin:0 0 8px;color:var(--muted);font-size:8.5pt}
+.empty{margin:0;padding:12px;background:var(--soft);color:var(--muted);text-align:center;font-size:9pt}
+
+/* Information panel: label/value pairs in two columns */
+.fields{display:grid;grid-template-columns:1fr 1fr;margin:0;border:1px solid var(--line);border-radius:4px;overflow:hidden;break-inside:avoid}
+.field{display:flex;border-bottom:1px solid var(--line)}
+.field:nth-child(odd){border-inline-end:1px solid var(--line)}
+.field:nth-last-child(-n+2):nth-child(odd),.field:last-child{border-bottom:0}
+.fields dt{flex:0 0 42%;padding:6px 10px;background:var(--soft);color:var(--muted);font-size:8.5pt}
+.fields dd{flex:1;margin:0;padding:6px 10px;font-weight:700}
+
+/* Data tables: the header row repeats on every page, rows never split, numbers line up */
+table{width:100%;border-collapse:collapse}
+.data{font-size:8.8pt;table-layout:auto;border:1px solid var(--line)}
+thead{display:table-header-group}
+tr{break-inside:avoid}
+.data th,.data td{padding:5px 8px;text-align:start;vertical-align:top;border-bottom:1px solid var(--line);overflow-wrap:anywhere;max-width:220px;white-space:pre-line}
+.data th{background:var(--tint);color:var(--ink);font-weight:700;font-size:8.3pt;white-space:nowrap;border-bottom:2px solid var(--brand)}
+.data tbody tr:nth-child(even){background:#fafbfc}
+.data td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* Key figures */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 10px;break-inside:avoid}
+.kpi{padding:8px 10px;background:var(--soft);border:1px solid var(--line);border-top:3px solid var(--brand);border-radius:4px}
+.kpi small{display:block;color:var(--muted);font-size:8pt}
+.kpi strong{display:block;font-size:15pt;line-height:1.3;font-variant-numeric:tabular-nums}
+
+/* Bars */
+.bars{font-size:8.5pt;margin-top:6px}
+.bars th{width:34%;padding:3px 8px;text-align:start;font-weight:400;color:var(--ink)}
+.bars td{padding:3px 0}
+.bar{display:block;height:12px;min-width:2px;background:var(--brand);border-radius:2px}
+
+.watermark{position:fixed;top:46%;left:12%;transform:rotate(-25deg);color:rgba(30,60,80,.07);font-size:34pt;pointer-events:none;z-index:0}
+main{position:relative}
+svg{max-width:100%}
+
+/* On-screen preview only */
+.preview-header,.preview-footer{margin:12px 20px}
+main{padding:0 20px}
+.preview-footer .pageNumber:empty::after,.preview-footer .totalPages:empty::after{content:"—"}
+@media print{.preview-header,.preview-footer{display:none}main{padding:0}body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}

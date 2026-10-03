@@ -27,7 +27,6 @@ type QualityDefectFormValues = {
   defect_count: string;
   description: string;
   production_order_id: string;
-  production_output_id: string;
   notes: string;
 };
 
@@ -61,7 +60,6 @@ function createDefaultValues(): QualityDefectFormValues {
     defect_count: "1",
     description: "",
     production_order_id: "",
-    production_output_id: "",
     notes: "",
   };
 }
@@ -217,16 +215,6 @@ export function QualityDefectForm({
             disabled={isSubmitting}
           />
         </label>
-
-        <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>{t("fields.productionOutputId")}</span>
-          <input
-            style={sharedStyles.input}
-            value={values.production_output_id}
-            onChange={(event) => updateField("production_output_id", event.target.value)}
-            disabled={isSubmitting}
-          />
-        </label>
       </div>
 
       <label style={sharedStyles.field}>
@@ -279,7 +267,6 @@ export function QualityDefectForm({
 function toCreateRequest(values: QualityDefectFormValues): CreateQualityDefectRequest {
   return {
     production_order_id: optionalText(values.production_order_id) ?? null,
-    production_output_id: optionalText(values.production_output_id) ?? null,
     defect_date: values.defect_date,
     defect_category: values.defect_category,
     severity: values.severity,

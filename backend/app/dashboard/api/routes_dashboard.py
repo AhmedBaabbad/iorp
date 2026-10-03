@@ -9,6 +9,7 @@ from app.core.permission import has_permission
 from app.dashboard.api.schemas import DashboardSummaryResponse
 from app.dependencies import CurrentUserContext, build_auth_context, get_authorization_policy, get_current_tenant, get_current_user, get_db
 from app.foundation.infrastructure.models import Role, User
+from app.production.domain import permissions as production_permissions
 from app.production.infrastructure.models import ProductionOrder
 from app.quality.infrastructure.models import QualityCheck
 from app.core.utils import utc_now
@@ -81,26 +82,31 @@ def get_dashboard_summary(
             select(func.count(Role.id)).where(Role.organization_id == org_id)
         ) or 0
 
-    # Quality and Production have no RBAC boundary yet anywhere in the app
-    # (matches the existing nav, which shows these sections unconditionally).
-    summary.quality_checks_count = db.scalar(
-        select(func.count(QualityCheck.id)).where(QualityCheck.organization_id == org_id)
-    ) or 0
-    summary.production_orders_count = db.scalar(
-        select(func.count(ProductionOrder.id)).where(ProductionOrder.organization_id == org_id)
-    ) or 0
-    production_rows = db.execute(
-        select(ProductionOrder.status, func.count(ProductionOrder.id))
-        .where(ProductionOrder.organization_id == org_id)
-        .group_by(ProductionOrder.status)
-    ).all()
-    summary.production_by_status = {status.value: count for status, count in production_rows}
-    quality_rows = db.execute(
-        select(QualityCheck.result, func.count(QualityCheck.id))
-        .where(QualityCheck.organization_id == org_id, QualityCheck.result.is_not(None))
-        .group_by(QualityCheck.result)
-    ).all()
-    summary.quality_checks_by_result = {result.value: count for result, count in quality_rows}
+    # Like require_permission, the organization root sees these sections without a role.
+    def section(code: str) -> bool:
+        return current.user.is_organization_root or has_permission(auth_user, code)
+
+    if section("quality:quality_checks:read"):
+        summary.quality_checks_count = db.scalar(
+            select(func.count(QualityCheck.id)).where(QualityCheck.organization_id == org_id)
+        ) or 0
+        quality_rows = db.execute(
+            select(QualityCheck.result, func.count(QualityCheck.id))
+            .where(QualityCheck.organization_id == org_id, QualityCheck.result.is_not(None))
+            .group_by(QualityCheck.result)
+        ).all()
+        summary.quality_checks_by_result = {result.value: count for result, count in quality_rows}
+
+    if section(production_permissions.ORDERS_READ):
+        summary.production_orders_count = db.scalar(
+            select(func.count(ProductionOrder.id)).where(ProductionOrder.organization_id == org_id)
+        ) or 0
+        production_rows = db.execute(
+            select(ProductionOrder.status, func.count(ProductionOrder.id))
+            .where(ProductionOrder.organization_id == org_id)
+            .group_by(ProductionOrder.status)
+        ).all()
+        summary.production_by_status = {status.value: count for status, count in production_rows}
 
     if has_permission(auth_user, "commercial:follow_ups:read"):
         follow_ups = FollowUpRepository(db)

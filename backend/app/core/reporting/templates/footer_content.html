@@ -1,0 +1,2 @@
+{#- Corporate document identity (DOC-IDENTITY-001): the only footer of every report and document. -#}
+{% include 'identity/footer_' ~ (classification or 'internal') ~ '.html' %}

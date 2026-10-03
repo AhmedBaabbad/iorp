@@ -38,7 +38,6 @@ def list_quality_rejections(
     disposition: Disposition | None = Query(default=None),
     disposition_status: DispositionStatus | None = Query(default=None),
     quality_check_id: UUID | None = Query(default=None),
-    production_output_id: UUID | None = Query(default=None),
     rejection_date: date | None = Query(default=None),
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
@@ -50,7 +49,6 @@ def list_quality_rejections(
         disposition=disposition,
         disposition_status=disposition_status,
         quality_check_id=quality_check_id,
-        production_output_id=production_output_id,
         rejection_date=rejection_date,
     )
 

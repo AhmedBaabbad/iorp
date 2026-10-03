@@ -7,6 +7,8 @@ type ApiClientOptions = {
   token?: string | null;
   headers?: HeadersInit;
   skipRefresh?: boolean;
+  // Return the Response itself (PDF, HTML) once it succeeds; errors and session refresh work as for JSON.
+  raw?: boolean;
 };
 
 export class ApiClientError extends Error {
@@ -163,8 +165,10 @@ export async function apiClient<TResponse>(
   const isPlatform = path.startsWith("/platform/");
   const token = options.token !== undefined ? options.token : isPlatform ? getStoredPlatformToken() : getStoredAccessToken();
   const headers = new Headers(options.headers);
+  // A FormData body (file upload) sets its own multipart content type.
+  const isForm = typeof FormData !== "undefined" && options.body instanceof FormData;
 
-  if (options.body !== undefined) {
+  if (options.body !== undefined && !isForm) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -175,7 +179,7 @@ export async function apiClient<TResponse>(
   const response = await fetch(buildUrl(path), {
     method: options.method ?? "GET",
     headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    body: options.body === undefined ? undefined : isForm ? (options.body as FormData) : JSON.stringify(options.body),
     cache: "no-store",
     credentials: "include",
   });
@@ -210,5 +214,6 @@ export async function apiClient<TResponse>(
   // A previous expired-session redirect must not leak into a newly
   // authenticated session and suppress later session handling.
   sessionRedirectInProgress = false;
+  if (options.raw) return response as unknown as TResponse;
   return data as TResponse;
 }

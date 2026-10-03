@@ -209,9 +209,10 @@ class ProductionDemandService:
             result["spec_summary"] = row.items[0].target_spec_json if row.items else None
         return result
 
-    def list(self, filters, planning=False):
+    def list(self, filters, planning=False, statuses=None):
         if filters.requested_delivery_from and filters.requested_delivery_to and filters.requested_delivery_from > filters.requested_delivery_to:
             raise DemandError("invalid_date_range")
         customers = self.customers.find_customers(self.db, self.org_id, filters.search, active_only=False) if filters.search else []
-        rows, total = self.repo.list(self.org_id, filters, [c.id for c in customers], planning)
-        return {"items": [self.response(row, planning=planning) for row in rows], "total": total, "page": filters.page, "page_size": filters.page_size}
+        rows, total, hidden = self.repo.list(self.org_id, filters, [c.id for c in customers], planning, statuses)
+        return {"items": [self.response(row, planning=planning) for row in rows], "total": total, "page": filters.page, "page_size": filters.page_size,
+                "hidden_by_status": hidden}

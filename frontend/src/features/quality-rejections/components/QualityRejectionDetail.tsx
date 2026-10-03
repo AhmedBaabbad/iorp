@@ -264,19 +264,6 @@ export function QualityRejectionDetail({ rejectionId }: QualityRejectionDetailPr
             <h2 style={styles.sectionTitle}>{t("productionContextSection")}</h2>
             <section style={styles.detailGrid}>
               <DetailItem
-                label={t("fields.productionOutput")}
-                value={
-                  rejection.production_output_id ? (
-                    <Link
-                      href={`/production-outputs/${rejection.production_output_id}`}
-                      style={{ color: "var(--accent-strong)" }}
-                    >
-                      {shortId(rejection.production_output_id)}
-                    </Link>
-                  ) : null
-                }
-              />
-              <DetailItem
                 label={t("fields.productionOrderItem")}
                 value={
                   rejection.production_order_item_id

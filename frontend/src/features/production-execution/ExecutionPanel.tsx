@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { apiClient } from "@/lib/api-client";
 import { hasPermission, useAuth } from "@/features/auth/auth-context";
 import { sharedStyles as styles } from "@/styles/shared-styles";
+import { P } from "@/lib/production-permissions";
 
 type Member = { id?: string; workforce_member_id: string; workforce_name?: string; employee_code?: string; role_code?: string; role_note?: string | null; is_lead?: boolean; is_shift_lead?: boolean; started_at?: string | null; ended_at?: string | null; notes?: string | null };
 type RecordData = { members_editable?: boolean; period_state?: "upcoming" | "current" | "ended"; id: string; name?: string | null; shift_definition_id: string | null; shift_roster_id?: string | null; shift_name: string | null; work_center_name?: string; run_date?: string; effective_from?: string; effective_to?: string | null; started_at?: string | null; ended_at?: string | null; status: string; team_count: number; members: Member[] };
@@ -69,10 +70,10 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
   useEffect(() => {
     if (!can("read")) return;
     const requests: Promise<void>[] = [];
-    if (hasPermission(permissions, "production:shifts:read")) requests.push(apiClient<Option[]>(base + "shift-definitions").then(setShifts));
+    if (hasPermission(permissions, P.SHIFTS_READ)) requests.push(apiClient<Option[]>(base + "shift-definitions").then(setShifts));
     if (hasPermission(permissions, "workforce:members:read")) requests.push(apiClient<Worker[]>("/workforce-members").then(setWorkers));
-    if (orderId && hasPermission(permissions, "production:work_centers:read")) requests.push(apiClient<Option[]>(base + "work-centers").then(setCenters));
-    if (orderId && hasPermission(permissions, "production:shift_rosters:read")) requests.push(apiClient<RecordData[]>(base + "shift-rosters").then(setRosters));
+    if (orderId && hasPermission(permissions, P.WORK_CENTERS_READ)) requests.push(apiClient<Option[]>(base + "work-centers").then(setCenters));
+    if (orderId && hasPermission(permissions, P.ROSTERS_READ)) requests.push(apiClient<RecordData[]>(base + "shift-rosters").then(setRosters));
     Promise.all(requests).catch(e => setError(String(e.message)));
   }, [can, orderId, permissions]);
 

@@ -12,6 +12,8 @@ export type QuoteItem = {
   unit: string;
   unit_price: string;
   line_total: string;
+  description_ar?: string | null;
+  description_en?: string | null;
 };
 
 export type QuoteSampleOption = {
@@ -42,6 +44,9 @@ export type QuoteListItem = {
 
 export type QuoteData = QuoteListItem & {
   notes: string | null;
+  tax_rate?: string | null;
+  attention?: string | null;
+  subject?: string | null;
   items: QuoteItem[];
 };
 
@@ -52,6 +57,8 @@ export type CreateQuoteItemRequest = {
   quantity: number;
   unit: string;
   unit_price: number;
+  description_ar?: string | null;
+  description_en?: string | null;
 };
 
 export type CreateQuoteRequest = {
@@ -61,7 +68,11 @@ export type CreateQuoteRequest = {
   valid_until: string;
   currency: string;
   discount_amount: number;
+  // The server computes the VAT amount from the rate.
+  tax_rate: number;
   tax_amount: number;
+  attention?: string | null;
+  subject?: string | null;
   notes?: string | null;
   items: CreateQuoteItemRequest[];
 };
@@ -73,9 +84,21 @@ export type UpdateQuoteRequest = {
   status?: QuoteStatus;
   currency?: string;
   discount_amount?: number;
+  tax_rate?: number;
   tax_amount?: number;
+  attention?: string | null;
+  subject?: string | null;
   notes?: string | null;
   items?: CreateQuoteItemRequest[];
+};
+
+export type QuoteTerm = { title_ar: string; title_en: string | null; body_ar: string; body_en: string | null; is_active: boolean };
+
+export type QuoteSettings = {
+  signature_title_ar: string | null;
+  signature_title_en: string | null;
+  show_preparer_name: boolean;
+  terms: QuoteTerm[];
 };
 
 export type QuoteTotalsData = {

@@ -13,7 +13,7 @@ from app.foundation.infrastructure.models import Organization
 from app.production.infrastructure.models import ProductionDemand, ProductionDemandItem, ProductionOrder, ProductionAllocation, WorkCenter
 
 ROOT = "/api/v1/production"
-PERMISSIONS = frozenset(["production:planning:allocate", "production:orders:create", "production:planning:read", "production:production_orders:read", "production:production_orders:write", "production:work_centers:write"] + [f"production:demands:{a}" for a in ("read", "create", "update")])
+PERMISSIONS = frozenset(["production:planning:allocate", "production:production_orders:create", "production:planning:read", "production:production_orders:read", "production:production_orders:update", "production:production_orders:manage_items", "production:work_centers:create", "production:work_centers:update", "production:work_centers:delete"] + [f"production:demands:{a}" for a in ("read", "create", "update")])
 ITEM = {"product_type": "film", "required_quantity": "1000", "unit": "kg", "target_spec_json": {"width": 12, "color": "blue"}}
 
 
@@ -131,7 +131,7 @@ def test_t28_t29_foreign_item(env):
     assert env.create({"items": [{"id": str(d.items[0].id)}]}).status_code == 404
 
 
-@pytest.mark.parametrize("missing", ["production:planning:allocate", "production:orders:create"])
+@pytest.mark.parametrize("missing", ["production:planning:allocate", "production:production_orders:create"])
 def test_t30_t31_permissions(env, missing):
     d = env.demand(); env.ctx.auth_user.permissions = PERMISSIONS - {missing}
     assert env.create(d).status_code == 403

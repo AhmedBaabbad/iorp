@@ -18,6 +18,8 @@ import {
   statusBadgeStyle,
   typeBadgeStyle,
 } from "./work-center-utils";
+import { usePermission } from "@/features/auth/permission-hooks";
+import { P } from "@/lib/production-permissions";
 
 const styles: Record<string, CSSProperties> = {
   panel: {
@@ -178,6 +180,9 @@ type DeleteTarget = { id: string; name: string };
 
 export function WorkCentersList() {
   const t = useTranslations("production.workCenters");
+  const canCreate = usePermission(P.WORK_CENTERS_CREATE);
+  const canUpdate = usePermission(P.WORK_CENTERS_UPDATE);
+  const canDelete = usePermission(P.WORK_CENTERS_DELETE);
   const tEnums = useTranslations();
   const common = useTranslations("common");
   const messages = useTranslations("messages");
@@ -263,8 +268,11 @@ export function WorkCentersList() {
       deleteSummary.shifts_count > 0 ||
       deleteSummary.downtime_records_count > 0 ||
       deleteSummary.waste_records_count > 0 ||
-      deleteSummary.production_outputs_count > 0
+      (deleteSummary.production_results_count ?? 0) > 0
     : false;
+  // Final results, waste and downtime are kept as records, so the server refuses the delete; say so up front.
+  const deleteBlocked = Boolean(deleteSummary && ((deleteSummary.production_results_count ?? 0) > 0 || deleteSummary.waste_records_count > 0
+    || deleteSummary.downtime_records_count > 0));
 
   return (
     <>
@@ -295,17 +303,17 @@ export function WorkCentersList() {
                     ) : null}
                     {deleteSummary.downtime_records_count > 0 ? (
                       <p style={styles.modalSummaryItem}>
-                        {t("deleteRelatedDowntime", { count: deleteSummary.downtime_records_count })}
+                        {t("deleteBlockedByDowntime", { count: deleteSummary.downtime_records_count })}
                       </p>
                     ) : null}
                     {deleteSummary.waste_records_count > 0 ? (
                       <p style={styles.modalSummaryItem}>
-                        {t("deleteRelatedWaste", { count: deleteSummary.waste_records_count })}
+                        {t("deleteBlockedByWaste", { count: deleteSummary.waste_records_count })}
                       </p>
                     ) : null}
-                    {deleteSummary.production_outputs_count > 0 ? (
-                      <p style={styles.modalSummaryItem}>
-                        {t("deleteRelatedOutputs", { count: deleteSummary.production_outputs_count })}
+                    {(deleteSummary.production_results_count ?? 0) > 0 ? (
+                      <p style={styles.modalSummaryItem} role="alert">
+                        {t("deleteBlockedByResults", { count: deleteSummary.production_results_count ?? 0 })}
                       </p>
                     ) : null}
                   </div>
@@ -332,7 +340,7 @@ export function WorkCentersList() {
                 type="button"
                 style={styles.modalDeleteButton}
                 onClick={() => void handleConfirmDelete()}
-                disabled={isSummaryLoading || isDeleting}
+                disabled={isSummaryLoading || isDeleting || deleteBlocked}
               >
                 {isDeleting ? messages("loading.deleting") : t("deleteConfirmButton")}
               </button>
@@ -345,11 +353,11 @@ export function WorkCentersList() {
         section="Production"
         title={t("listTitle")}
         subtitle={t("subtitle")}
-        action={
+        action={canCreate ? (
           <Link href="/work-centers/new" style={sharedStyles.button}>
             {t("newButton")}
           </Link>
-        }
+        ) : undefined}
       >
         {isLoading ? (
           <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
@@ -377,10 +385,12 @@ export function WorkCentersList() {
         {!isLoading && !error && workCenters.length === 0 ? (
           <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
             <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("empty")}</h2>
-            <p style={{ margin: "0 0 18px" }}>{t("createFirst")}</p>
-            <Link href="/work-centers/new" style={sharedStyles.button}>
-              {t("createButton")}
-            </Link>
+            {canCreate ? <p style={{ margin: "0 0 18px" }}>{t("createFirst")}</p> : null}
+            {canCreate ? (
+              <Link href="/work-centers/new" style={sharedStyles.button}>
+                {t("createButton")}
+              </Link>
+            ) : null}
           </section>
         ) : null}
 
@@ -424,20 +434,24 @@ export function WorkCentersList() {
                       </td>
                       <td style={styles.td}>
                         <div style={styles.actions}>
-                          <Link
-                            href={`/work-centers/${wc.id}/edit`}
-                            style={styles.actionButton}
-                          >
-                            {common("actions.edit")}
-                          </Link>
-                          <button
-                            type="button"
-                            style={styles.deleteButton}
-                            disabled={isDeleting && deleteTarget?.id === wc.id}
-                            onClick={() => void handleDeleteClick(wc.id, wc.name)}
-                          >
-                            {common("actions.delete")}
-                          </button>
+                          {canUpdate ? (
+                            <Link
+                              href={`/work-centers/${wc.id}/edit`}
+                              style={styles.actionButton}
+                            >
+                              {common("actions.edit")}
+                            </Link>
+                          ) : null}
+                          {canDelete ? (
+                            <button
+                              type="button"
+                              style={styles.deleteButton}
+                              disabled={isDeleting && deleteTarget?.id === wc.id}
+                              onClick={() => void handleDeleteClick(wc.id, wc.name)}
+                            >
+                              {common("actions.delete")}
+                            </button>
+                          ) : null}
                         </div>
                       </td>
                     </tr>

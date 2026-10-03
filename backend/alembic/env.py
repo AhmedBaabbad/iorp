@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.db import Base
 import app.commercial.infrastructure.models  # noqa: F401
 import app.foundation.infrastructure.models  # noqa: F401
+import app.foundation.infrastructure.branding_models  # noqa: F401
 import app.production.infrastructure.models  # noqa: F401
 import app.quality.infrastructure.models  # noqa: F401
 import app.platform.infrastructure.models  # noqa: F401

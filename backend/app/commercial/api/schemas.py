@@ -329,8 +329,10 @@ class QuoteItemCreate(BaseModel):
     product_type: str = Field(min_length=1, max_length=120)
     requested_spec_json: dict[str, Any] | None = None
     quantity: Decimal = Field(gt=0)
-    unit: str = Field(min_length=1, max_length=32)
+    unit: str = Field(min_length=1, max_length=32)  # a code from commercial/domain/units.py (older free text is kept)
     unit_price: Decimal = Field(ge=0)
+    description_ar: str | None = Field(default=None, max_length=1000)
+    description_en: str | None = Field(default=None, max_length=1000)
 
 
 class QuoteItemRead(BaseModel):
@@ -343,6 +345,8 @@ class QuoteItemRead(BaseModel):
     unit: str
     unit_price: Decimal
     line_total: Decimal
+    description_ar: str | None = None
+    description_en: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -353,7 +357,11 @@ class QuoteCreate(BaseModel):
     valid_until: AwareDatetime
     currency: str = Field(default="SAR", pattern="^(SAR|USD)$")
     discount_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    # With tax_rate (VAT %), the server computes tax_amount and ignores the one sent.
+    tax_rate: Decimal | None = Field(default=None, ge=0, le=100)
     tax_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    attention: str | None = Field(default=None, max_length=255)
+    subject: str | None = Field(default=None, max_length=255)
     notes: str | None = None
     items: list[QuoteItemCreate] = Field(min_length=1)
 
@@ -365,7 +373,10 @@ class QuoteUpdate(BaseModel):
     status: QuoteStatus | None = None
     currency: str | None = Field(default=None, pattern="^(SAR|USD)$")
     discount_amount: Decimal | None = Field(default=None, ge=0)
+    tax_rate: Decimal | None = Field(default=None, ge=0, le=100)
     tax_amount: Decimal | None = Field(default=None, ge=0)
+    attention: str | None = Field(default=None, max_length=255)
+    subject: str | None = Field(default=None, max_length=255)
     notes: str | None = None
     items: list[QuoteItemCreate] | None = Field(default=None, min_length=1)
 
@@ -393,6 +404,9 @@ class QuoteListItem(BaseModel):
 
 class QuoteRead(QuoteListItem):
     notes: str | None
+    tax_rate: Decimal | None = None
+    attention: str | None = None
+    subject: str | None = None
     items: list[QuoteItemRead]
 
 

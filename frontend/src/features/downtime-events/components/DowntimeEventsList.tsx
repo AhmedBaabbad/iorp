@@ -1,314 +1,122 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import type { CSSProperties } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
-import { getProductionOrders } from "@/features/production-orders";
+import { usePermission } from "@/features/auth/permission-hooks";
+import s from "@/features/production-demands/demands.module.css";
+import { getProductionOrders } from "@/features/production-orders/api/production-orders-api";
+import type { ProductionOrderListItem } from "@/features/production-orders/types";
 import { getWorkCenters } from "@/features/work-centers";
 import { useFormatter } from "@/hooks/useFormatter";
-import { getApiErrorMessage } from "@/lib/api-error-handler";
-import { sharedStyles } from "@/styles/shared-styles";
-import { getDowntimeEvents } from "../api/downtime-events-api";
-import type {
-  DowntimeCategory,
-  DowntimeEventListFilters,
-  DowntimeEventListItem,
-  DowntimeStatus,
-} from "../types";
-import { DowntimeCategoryBadge } from "./DowntimeCategoryBadge";
-import { DowntimeStatusBadge } from "./DowntimeStatusBadge";
-import {
-  downtimeCategories,
-  formatCategory,
-  formatWorkCenterLabel,
-  type ProductionOrderOption,
-  type WorkCenterOption,
-} from "./downtime-events-utils";
+import { getDowntimeEvents, getDowntimeSummary } from "../api";
+import { ALL_CATEGORIES } from "../downtime-rules";
+import type { DowntimeEvent, DowntimeFilters, DowntimeSummary } from "../types";
+import { DowntimeCategoryBadge, DowntimeStatusBadge, DowntimeTypeBadge } from "./DowntimeBadges";
+import { DowntimeSummaryCards } from "./DowntimeSummaryCards";
+import { downtimeErrorMessage } from "./downtime-errors";
+import { P } from "@/lib/production-permissions";
 
-type FilterValues = {
-  work_center_id: string;
-  production_order_id: string;
-  status: "" | DowntimeStatus;
-  category: "" | DowntimeCategory;
-};
+type Filters = Required<{ [K in keyof DowntimeFilters]: string }>;
+const EMPTY: Filters = { work_center_id: "", production_order_id: "", production_run_id: "", category: "", planned: "", status: "", date_from: "", date_to: "" };
 
-const styles: Record<string, CSSProperties> = {
-  panel: {
-    background: "var(--surface)",
-    border: "1px solid var(--border-strong)",
-    borderRadius: "8px",
-    boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
-  },
-  filters: {
-    display: "grid",
-    gap: "14px",
-    gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-    marginBottom: "18px",
-  },
-  tableWrap: {
-    overflowX: "auto",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-  th: {
-    borderBottom: "1px solid var(--border)",
-    color: "var(--text-muted)",
-    fontSize: "13px",
-    padding: "14px 16px",
-    textAlign: "left",
-  },
-  td: {
-    borderBottom: "1px solid var(--border)",
-    padding: "14px 16px",
-    verticalAlign: "middle",
-  },
-  link: {
-    color: "var(--accent-strong)",
-    fontWeight: 700,
-    textDecoration: "none",
-  },
-};
-
-const defaultFilters: FilterValues = {
-  work_center_id: "",
-  production_order_id: "",
-  status: "",
-  category: "",
-};
-
+// "أحداث التوقف": when, where and why machines stopped, with the report figures for the same filters.
 export function DowntimeEventsList() {
-  const tEnums = useTranslations();
-  const messages = useTranslations("messages");
+  const t = useTranslations("production.downtimeEvents");
+  const categories = useTranslations("enums.downtimeEvent.category");
+  const statuses = useTranslations("enums.downtimeEvent.status");
   const common = useTranslations("common");
+  const messages = useTranslations("messages");
   const fmt = useFormatter();
-  const [events, setEvents] = useState<DowntimeEventListItem[]>([]);
-  const [workCenters, setWorkCenters] = useState<WorkCenterOption[]>([]);
-  const [productionOrders, setProductionOrders] = useState<ProductionOrderOption[]>([]);
-  const [filters, setFilters] = useState<FilterValues>(defaultFilters);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const isMountedRef = useRef(true);
-
-  const loadDowntimeEvents = useCallback(async () => {
-    if (!isMountedRef.current) {
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const [eventsResponse, workCentersResponse, productionOrdersResponse] =
-        await Promise.all([
-          getDowntimeEvents(toApiFilters(filters)),
-          getWorkCenters().catch(() => []),
-          getProductionOrders().catch(() => []),
-        ]);
-
-      if (isMountedRef.current) {
-        setEvents(eventsResponse);
-        setWorkCenters(workCentersResponse);
-        setProductionOrders(productionOrdersResponse);
-      }
-    } catch (caughtError) {
-      if (isMountedRef.current) {
-        setError(getApiErrorMessage(caughtError, messages));
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [filters]);
+  const params = useSearchParams();
+  const canWrite = usePermission(P.DOWNTIME_CREATE);
+  const [filters, setFilters] = useState<Filters>(() => ({ ...EMPTY, production_order_id: params.get("order") ?? "", work_center_id: params.get("work_center") ?? "" }));
+  const [events, setEvents] = useState<DowntimeEvent[] | null>(null);
+  const [summary, setSummary] = useState<DowntimeSummary | null>(null);
+  const [orders, setOrders] = useState<ProductionOrderListItem[]>([]);
+  const [centers, setCenters] = useState<{ id: string; code: string; name: string }[]>([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    isMountedRef.current = true;
-    void loadDowntimeEvents();
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, [loadDowntimeEvents]);
+    getProductionOrders().then(setOrders).catch(() => setOrders([]));
+    getWorkCenters().then(setCenters).catch(() => setCenters([]));
+  }, []);
+  const load = useCallback(async () => {
+    setError("");
+    const query = Object.fromEntries(Object.entries(filters).filter(([, v]) => v)) as DowntimeFilters;
+    try {
+      const [list, totals] = await Promise.all([getDowntimeEvents(query), getDowntimeSummary(query)]);
+      setEvents(list); setSummary(totals);
+    } catch (e) { setError(downtimeErrorMessage(e, t)); }
+  }, [filters, t]);
+  useEffect(() => { void load(); }, [load]);
 
-  function updateFilter<TField extends keyof FilterValues>(
-    field: TField,
-    value: FilterValues[TField],
-  ) {
-    setFilters((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  }
+  const set = (field: keyof Filters, value: string) => setFilters(old => ({ ...old, [field]: value }));
+  const newQuery = new URLSearchParams(Object.entries({ order: filters.production_order_id, work_center: filters.work_center_id }).filter(([, v]) => v)).toString();
+  const minutes = (value: string | null) => (value === null ? "—" : fmt.duration(Math.round(Number(value))));
 
-  return (
-    <PageFrame
-      section="Production"
-      title="Downtime Events"
-      subtitle="Track machine and process stoppages by work center and production context."
-      action={
-        <Link href="/downtime-events/new" style={sharedStyles.button}>
-          New Downtime Event
-        </Link>
-      }
-    >
-      <section style={styles.filters} aria-label="Downtime event filters">
-        <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>Status</span>
-          <select
-            style={sharedStyles.input}
-            value={filters.status}
-            onChange={(event) =>
-              updateFilter("status", event.target.value as FilterValues["status"])
-            }
-          >
-            <option value="">All statuses</option>
-            <option value="open">Open</option>
-            <option value="closed">Closed</option>
-          </select>
-        </label>
-
-        <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>Category</span>
-          <select
-            style={sharedStyles.input}
-            value={filters.category}
-            onChange={(event) =>
-              updateFilter("category", event.target.value as FilterValues["category"])
-            }
-          >
-            <option value="">All categories</option>
-            {downtimeCategories.map((category) => (
-              <option key={category} value={category}>
-                {formatCategory(category, tEnums)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>Work Center</span>
-          <select
-            style={sharedStyles.input}
-            value={filters.work_center_id}
-            onChange={(event) => updateFilter("work_center_id", event.target.value)}
-          >
-            <option value="">All work centers</option>
-            {workCenters.map((workCenter) => (
-              <option key={workCenter.id} value={workCenter.id}>
-                {workCenter.code} - {workCenter.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>Production Order</span>
-          <select
-            style={sharedStyles.input}
-            value={filters.production_order_id}
-            onChange={(event) => updateFilter("production_order_id", event.target.value)}
-          >
-            <option value="">All production orders</option>
-            {productionOrders.map((order) => (
-              <option key={order.id} value={order.id}>
-                {order.production_order_number} - {order.product_type}
-              </option>
-            ))}
-          </select>
-        </label>
-
-      </section>
-
-      {isLoading ? (
-        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
-          {messages("loading.default")}
-        </div>
-      ) : null}
-
-      {!isLoading && error ? (
-        <div style={{ display: "grid", gap: "12px" }}>
-          <div style={sharedStyles.error} role="alert">
-            {error}
-          </div>
-          <button
-            style={{ ...sharedStyles.secondaryButton, width: "fit-content" }}
-            type="button"
-            onClick={() => void loadDowntimeEvents()}
-          >
-            {common("actions.retry")}
-          </button>
-        </div>
-      ) : null}
-
-      {!isLoading && !error && events.length === 0 ? (
-        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
-          <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>
-            No downtime events found
-          </h2>
-          <p style={{ margin: "0 0 18px" }}>
-            Record a downtime event, or adjust the filters.
-          </p>
-          <Link href="/downtime-events/new" style={sharedStyles.button}>
-            Record downtime event
-          </Link>
-        </section>
-      ) : null}
-
-      {!isLoading && !error && events.length > 0 ? (
-        <section style={styles.panel} aria-label="Downtime events list">
-          <div style={styles.tableWrap}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>Start Time</th>
-                  <th style={styles.th}>End Time</th>
-                  <th style={styles.th}>Duration</th>
-                  <th style={styles.th}>Category</th>
-                  <th style={styles.th}>Status</th>
-                  <th style={styles.th}>Work Center</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((event) => (
-                  <tr key={event.id}>
-                    <td style={styles.td}>
-                      <Link href={`/downtime-events/${event.id}`} style={styles.link}>
-                        {fmt.dateTime(event.start_time)}
-                      </Link>
-                    </td>
-                    <td style={styles.td}>
-                      {event.end_time ? fmt.dateTime(event.end_time) : "Ongoing"}
-                    </td>
-                    <td style={styles.td}>{fmt.duration(event.duration_minutes)}</td>
-                    <td style={styles.td}>
-                      <DowntimeCategoryBadge category={event.category} />
-                    </td>
-                    <td style={styles.td}>
-                      <DowntimeStatusBadge status={event.status} />
-                    </td>
-                    <td style={styles.td}>
-                      {formatWorkCenterLabel(workCenters, event.work_center_id)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      ) : null}
-    </PageFrame>
-  );
-}
-
-function toApiFilters(filters: FilterValues): DowntimeEventListFilters {
-  return {
-    work_center_id: filters.work_center_id || undefined,
-    production_order_id: filters.production_order_id || undefined,
-    status: filters.status || undefined,
-    category: filters.category || undefined,
-  };
+  return <PageFrame title={t("listTitle")} subtitle={t("listSubtitle")}
+    action={canWrite ? <Link href={`/downtime-events/new${newQuery ? `?${newQuery}` : ""}`} className={`${s.button} ${s.primary}`}>{t("actions.record")}</Link> : undefined}>
+    <section className={s.toolbar} aria-label={t("filtersLabel")}>
+      <label className={s.field}>{t("fields.workCenter")}
+        <select value={filters.work_center_id} onChange={e => set("work_center_id", e.target.value)}>
+          <option value="">{t("filters.allWorkCenters")}</option>
+          {centers.map(c => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
+        </select>
+      </label>
+      <label className={s.field}>{t("fields.productionOrder")}
+        <select value={filters.production_order_id} onChange={e => set("production_order_id", e.target.value)}>
+          <option value="">{t("filters.allOrders")}</option>
+          {orders.map(o => <option key={o.id} value={o.id}>{o.production_order_number} — {o.product_type}</option>)}
+        </select>
+      </label>
+      <label className={s.field}>{t("fields.category")}
+        <select value={filters.category} onChange={e => set("category", e.target.value)}>
+          <option value="">{t("filters.allCategories")}</option>
+          {ALL_CATEGORIES.map(c => <option key={c} value={c}>{categories(c)}</option>)}
+        </select>
+      </label>
+      <label className={s.field}>{t("fields.type")}
+        <select value={filters.planned} onChange={e => set("planned", e.target.value)}>
+          <option value="">{t("filters.allTypes")}</option>
+          <option value="false">{t("types.loss")}</option>
+          <option value="true">{t("types.planned")}</option>
+        </select>
+      </label>
+      <label className={s.field}>{t("fields.status")}
+        <select value={filters.status} onChange={e => set("status", e.target.value)}>
+          <option value="">{t("filters.allStatuses")}</option>
+          <option value="open">{statuses("open")}</option>
+          <option value="closed">{statuses("closed")}</option>
+        </select>
+      </label>
+      <label className={s.field}>{t("filters.dateFrom")}<input type="date" value={filters.date_from} onChange={e => set("date_from", e.target.value)} /></label>
+      <label className={s.field}>{t("filters.dateTo")}<input type="date" value={filters.date_to} min={filters.date_from || undefined} onChange={e => set("date_to", e.target.value)} /></label>
+      <button type="button" className={s.button} onClick={() => setFilters(EMPTY)}>{t("filters.clear")}</button>
+    </section>
+    {error && <div className={s.actions}><p role="alert" className={s.error}>{error}</p>
+      <button type="button" className={s.button} onClick={() => void load()}>{common("actions.retry")}</button></div>}
+    {!error && events === null && <p className={s.muted}>{messages("loading.default")}</p>}
+    {!error && summary && events && events.length > 0 && <section className={s.panel}><DowntimeSummaryCards summary={summary} /></section>}
+    {!error && events?.length === 0 && <section className={s.panel}><h2 style={{ marginTop: 0 }}>{t("empty")}</h2><p className={s.muted} style={{ margin: 0 }}>{t("emptyHint")}</p></section>}
+    {!error && events && events.length > 0 && <section className={s.panel}>
+      <div className={s.tableWrap}><table className={s.table} aria-label={t("listLabel")}>
+        <thead><tr>{["startTime", "endTime", "duration", "workCenter", "category", "type", "status", "productionOrder", "reasonCode"].map(c => <th key={c}>{t(`fields.${c}`)}</th>)}</tr></thead>
+        <tbody>{events.map(e => <tr key={e.id}>
+          <td><Link href={`/downtime-events/${e.id}`}>{fmt.dateTime(e.start_time)}</Link></td>
+          <td>{e.end_time ? fmt.dateTime(e.end_time) : "—"}</td>
+          <td>{e.status === "open" ? t("elapsed", { minutes: minutes(e.labels?.elapsed_minutes ?? null) }) : minutes(e.duration_minutes)}</td>
+          <td>{e.labels?.work_center_name ?? "—"}</td>
+          <td><DowntimeCategoryBadge category={e.category} /></td>
+          <td><DowntimeTypeBadge planned={e.planned} /></td>
+          <td><DowntimeStatusBadge status={e.status} /></td>
+          <td>{e.production_order_id && e.labels?.order_number ? <Link href={`/production-orders/${e.production_order_id}`}>{e.labels.order_number}</Link> : "—"}</td>
+          <td>{e.reason_code ?? "—"}</td>
+        </tr>)}</tbody>
+      </table></div>
+    </section>}
+  </PageFrame>;
 }

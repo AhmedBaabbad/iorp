@@ -19,7 +19,6 @@ export type QualityDefectListItem = {
   quality_check_id: string;
   production_order_id: string | null;
   production_order_item_id: string | null;
-  production_output_id: string | null;
   defect_date: string;
   defect_category: DefectCategory;
   severity: DefectSeverity;
@@ -36,7 +35,6 @@ export type QualityDefectData = QualityDefectListItem & {
 
 export type CreateQualityDefectRequest = {
   production_order_id?: string | null;
-  production_output_id?: string | null;
   defect_date: string;
   defect_category: DefectCategory;
   severity: DefectSeverity;

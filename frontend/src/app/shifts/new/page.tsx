@@ -1,5 +1,7 @@
 import { ShiftForm } from "@/features/shifts";
+import { PermissionGate } from "@/features/auth/permission-gate";
+import { P } from "@/lib/production-permissions";
 
 export default function Page() {
-  return <ShiftForm />;
+  return <PermissionGate code={P.SHIFTS_CREATE}><ShiftForm /></PermissionGate>;
 }

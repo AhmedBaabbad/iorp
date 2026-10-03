@@ -8,6 +8,7 @@ import { usePermission } from "@/features/auth/permission-hooks";
 import { demandsApi, type Customer, type Quote, type Item, type DemandPriority, type DemandStatus } from "./api";
 import { ErrorMessage, errorKey, priorities, today } from "./shared";
 import s from "./demands.module.css";
+import { P } from "@/lib/production-permissions";
 
 type Row = Item & { key: string; specText: string };
 const newRow = (item?: Item): Row => ({ product_type: "", target_spec_json: null, required_quantity: "", unit: "", notes: "", ...item, key: crypto.randomUUID(), specText: JSON.stringify(item?.target_spec_json ?? {}, null, 2) });
@@ -17,7 +18,7 @@ export function DemandForm({ id }: { id?: string }) {
   const t = useTranslations("production.demands");
   const p = useTranslations("production.planning");
   const router = useRouter();
-  const canUpdate = usePermission("production:demands:update");
+  const canUpdate = usePermission(P.DEMANDS_UPDATE);
   const [savedId, setSavedId] = useState<string | undefined>(id);
   const [customerId, setCustomer] = useState("");
   const [quoteId, setQuote] = useState("");

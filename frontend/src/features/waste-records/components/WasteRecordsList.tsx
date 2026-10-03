@@ -1,314 +1,102 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import type { CSSProperties } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
-import { getProductionOrders } from "@/features/production-orders";
+import { usePermission } from "@/features/auth/permission-hooks";
+import s from "@/features/production-demands/demands.module.css";
+import { getProductionOrders } from "@/features/production-orders/api/production-orders-api";
+import type { ProductionOrderListItem } from "@/features/production-orders/types";
 import { getWorkCenters } from "@/features/work-centers";
 import { useFormatter } from "@/hooks/useFormatter";
-import { getApiErrorMessage } from "@/lib/api-error-handler";
-import { sharedStyles } from "@/styles/shared-styles";
-import { getWasteRecords } from "../api/waste-records-api";
-import type {
-  WasteCategory,
-  WasteRecordListFilters,
-  WasteRecordListItem,
-} from "../types";
+import { getWasteRecords } from "../api";
+import type { WasteCategory, WasteRecordListFilters, WasteRecordListItem } from "../types";
+import { WASTE_CATEGORIES } from "../waste-rules";
 import { WasteCategoryBadge } from "./WasteCategoryBadge";
-import {
-  formatProductionOrderLabel,
-  formatWasteCategory,
-  formatWorkCenterLabel,
-  truncateText,
-  wasteCategories,
-  type ProductionOrderOption,
-  type WorkCenterOption,
-} from "./waste-records-utils";
+import { wasteErrorMessage } from "./waste-errors";
+import { P } from "@/lib/production-permissions";
 
-type FilterValues = {
-  production_order_id: string;
-  work_center_id: string;
-  waste_category: "" | WasteCategory;
-  waste_date: string;
-};
+type Filters = { production_order_id: string; work_center_id: string; waste_category: "" | WasteCategory; date_from: string; date_to: string };
+const EMPTY: Filters = { production_order_id: "", work_center_id: "", waste_category: "", date_from: "", date_to: "" };
 
-const styles: Record<string, CSSProperties> = {
-  panel: {
-    background: "var(--surface)",
-    border: "1px solid var(--border-strong)",
-    borderRadius: "8px",
-    boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
-  },
-  filters: {
-    display: "grid",
-    gap: "14px",
-    gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-    marginBottom: "18px",
-  },
-  tableWrap: {
-    overflowX: "auto",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-  th: {
-    borderBottom: "1px solid var(--border)",
-    color: "var(--text-muted)",
-    fontSize: "13px",
-    padding: "14px 16px",
-    textAlign: "left",
-  },
-  td: {
-    borderBottom: "1px solid var(--border)",
-    padding: "14px 16px",
-    verticalAlign: "middle",
-  },
-  link: {
-    color: "var(--accent-strong)",
-    fontWeight: 700,
-    textDecoration: "none",
-  },
-};
-
-const defaultFilters: FilterValues = {
-  production_order_id: "",
-  work_center_id: "",
-  waste_category: "",
-  waste_date: "",
-};
-
+// "سجلات الهدر": material lost while orders run, by order, cause and place.
 export function WasteRecordsList() {
-  const tEnums = useTranslations();
-  const messages = useTranslations("messages");
+  const t = useTranslations("production.wasteRecords");
+  const categories = useTranslations("enums.wasteRecord.wasteCategory");
   const common = useTranslations("common");
+  const messages = useTranslations("messages");
   const fmt = useFormatter();
-  const [records, setRecords] = useState<WasteRecordListItem[]>([]);
-  const [workCenters, setWorkCenters] = useState<WorkCenterOption[]>([]);
-  const [productionOrders, setProductionOrders] = useState<ProductionOrderOption[]>([]);
-  const [filters, setFilters] = useState<FilterValues>(defaultFilters);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const isMountedRef = useRef(true);
-
-  const loadWasteRecords = useCallback(async () => {
-    if (!isMountedRef.current) {
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const [recordsResponse, workCentersResponse, productionOrdersResponse] =
-        await Promise.all([
-          getWasteRecords(toApiFilters(filters)),
-          getWorkCenters().catch(() => []),
-          getProductionOrders().catch(() => []),
-        ]);
-
-      if (isMountedRef.current) {
-        setRecords(recordsResponse);
-        setWorkCenters(workCentersResponse);
-        setProductionOrders(productionOrdersResponse);
-      }
-    } catch (caughtError) {
-      if (isMountedRef.current) {
-        setError(getApiErrorMessage(caughtError, messages));
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [filters]);
+  const params = useSearchParams();
+  const canWrite = usePermission(P.WASTE_CREATE);
+  const [filters, setFilters] = useState<Filters>(() => ({ ...EMPTY, production_order_id: params.get("order") ?? "" }));
+  const [records, setRecords] = useState<WasteRecordListItem[] | null>(null);
+  const [orders, setOrders] = useState<ProductionOrderListItem[]>([]);
+  const [centers, setCenters] = useState<{ id: string; code: string; name: string }[]>([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    isMountedRef.current = true;
-    void loadWasteRecords();
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, [loadWasteRecords]);
+    getProductionOrders().then(setOrders).catch(() => setOrders([]));
+    getWorkCenters().then(setCenters).catch(() => setCenters([]));
+  }, []);
+  const load = useCallback(async () => {
+    setError("");
+    try { setRecords(await getWasteRecords(Object.fromEntries(Object.entries(filters).filter(([, v]) => v)) as WasteRecordListFilters)); }
+    catch (e) { setError(wasteErrorMessage(e, t)); }
+  }, [filters, t]);
+  useEffect(() => { void load(); }, [load]);
 
-  function updateFilter<TField extends keyof FilterValues>(
-    field: TField,
-    value: FilterValues[TField],
-  ) {
-    setFilters((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  }
+  const set = (field: keyof Filters, value: string) => setFilters(old => ({ ...old, [field]: value }));
+  const newHref = filters.production_order_id ? `/waste-records/new?order=${filters.production_order_id}` : "/waste-records/new";
 
-  return (
-    <PageFrame
-      section="Production"
-      title="Waste Records"
-      subtitle="Track recorded production waste by order, work center, and category."
-      action={
-        <Link href="/waste-records/new" style={sharedStyles.button}>
-          New Waste Record
-        </Link>
-      }
-    >
-      <section style={styles.filters} aria-label="Waste record filters">
-        <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>Waste Category</span>
-          <select
-            style={sharedStyles.input}
-            value={filters.waste_category}
-            onChange={(event) =>
-              updateFilter(
-                "waste_category",
-                event.target.value as FilterValues["waste_category"],
-              )
-            }
-          >
-            <option value="">All categories</option>
-            {wasteCategories.map((category) => (
-              <option key={category} value={category}>
-                {formatWasteCategory(category, tEnums)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>Work Center</span>
-          <select
-            style={sharedStyles.input}
-            value={filters.work_center_id}
-            onChange={(event) => updateFilter("work_center_id", event.target.value)}
-          >
-            <option value="">All work centers</option>
-            {workCenters.map((workCenter) => (
-              <option key={workCenter.id} value={workCenter.id}>
-                {workCenter.code} - {workCenter.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>Production Order</span>
-          <select
-            style={sharedStyles.input}
-            value={filters.production_order_id}
-            onChange={(event) => updateFilter("production_order_id", event.target.value)}
-          >
-            <option value="">All production orders</option>
-            {productionOrders.map((order) => (
-              <option key={order.id} value={order.id}>
-                {order.production_order_number} - {order.product_type}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>Waste Date</span>
-          <input
-            style={sharedStyles.input}
-            type="date"
-            value={filters.waste_date}
-            onChange={(event) => updateFilter("waste_date", event.target.value)}
-          />
-        </label>
-      </section>
-
-      {isLoading ? (
-        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
-          {messages("loading.default")}
-        </div>
-      ) : null}
-
-      {!isLoading && error ? (
-        <div style={{ display: "grid", gap: "12px" }}>
-          <div style={sharedStyles.error} role="alert">
-            {error}
-          </div>
-          <button
-            style={{ ...sharedStyles.secondaryButton, width: "fit-content" }}
-            type="button"
-            onClick={() => void loadWasteRecords()}
-          >
-            {common("actions.retry")}
-          </button>
-        </div>
-      ) : null}
-
-      {!isLoading && !error && records.length === 0 ? (
-        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
-          <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>
-            No waste records found
-          </h2>
-          <p style={{ margin: "0 0 18px" }}>
-            Record production waste, or adjust the filters.
-          </p>
-          <Link href="/waste-records/new" style={sharedStyles.button}>
-            Record waste
-          </Link>
-        </section>
-      ) : null}
-
-      {!isLoading && !error && records.length > 0 ? (
-        <section style={styles.panel} aria-label="Waste records list">
-          <div style={styles.tableWrap}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>Waste Date</th>
-                  <th style={styles.th}>Quantity</th>
-                  <th style={styles.th}>Category</th>
-                  <th style={styles.th}>Work Center</th>
-                  <th style={styles.th}>Production Order</th>
-                  <th style={styles.th}>Reason</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.map((record) => (
-                  <tr key={record.id}>
-                    <td style={styles.td}>
-                      <Link href={`/waste-records/${record.id}`} style={styles.link}>
-                        {fmt.date(record.waste_date)}
-                      </Link>
-                    </td>
-                    <td style={styles.td}>
-                      {fmt.quantity(record.quantity_wasted, record.unit)}
-                    </td>
-                    <td style={styles.td}>
-                      <WasteCategoryBadge category={record.waste_category} />
-                    </td>
-                    <td style={styles.td}>
-                      {formatWorkCenterLabel(workCenters, record.work_center_id)}
-                    </td>
-                    <td style={styles.td}>
-                      {formatProductionOrderLabel(
-                        productionOrders,
-                        record.production_order_id,
-                      )}
-                    </td>
-                    <td style={styles.td}>{truncateText(record.reason_code || "-", 46)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      ) : null}
-    </PageFrame>
-  );
-}
-
-function toApiFilters(filters: FilterValues): WasteRecordListFilters {
-  return {
-    production_order_id: filters.production_order_id || undefined,
-    work_center_id: filters.work_center_id || undefined,
-    waste_category: filters.waste_category || undefined,
-    waste_date: filters.waste_date || undefined,
-  };
+  return <PageFrame title={t("listTitle")} subtitle={t("listSubtitle")}
+    action={canWrite ? <Link href={newHref} className={`${s.button} ${s.primary}`}>{t("actions.record")}</Link> : undefined}>
+    <section className={s.toolbar} aria-label={t("filtersLabel")}>
+      <label className={s.field}>{t("fields.productionOrder")}
+        <select value={filters.production_order_id} onChange={e => set("production_order_id", e.target.value)}>
+          <option value="">{t("filters.allOrders")}</option>
+          {orders.map(o => <option key={o.id} value={o.id}>{o.production_order_number} — {o.product_type}</option>)}
+        </select>
+      </label>
+      <label className={s.field}>{t("fields.wasteCategory")}
+        <select value={filters.waste_category} onChange={e => set("waste_category", e.target.value)}>
+          <option value="">{t("filters.allCategories")}</option>
+          {WASTE_CATEGORIES.map(c => <option key={c} value={c}>{categories(c)}</option>)}
+        </select>
+      </label>
+      <label className={s.field}>{t("fields.workCenter")}
+        <select value={filters.work_center_id} onChange={e => set("work_center_id", e.target.value)}>
+          <option value="">{t("filters.allWorkCenters")}</option>
+          {centers.map(c => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
+        </select>
+      </label>
+      <label className={s.field}>{t("filters.dateFrom")}<input type="date" value={filters.date_from} onChange={e => set("date_from", e.target.value)} /></label>
+      <label className={s.field}>{t("filters.dateTo")}<input type="date" value={filters.date_to} min={filters.date_from || undefined} onChange={e => set("date_to", e.target.value)} /></label>
+      <button type="button" className={s.button} onClick={() => setFilters(EMPTY)}>{t("filters.clear")}</button>
+    </section>
+    {error && <div className={s.actions}><p role="alert" className={s.error}>{error}</p>
+      <button type="button" className={s.button} onClick={() => void load()}>{common("actions.retry")}</button></div>}
+    {!error && records === null && <p className={s.muted}>{messages("loading.default")}</p>}
+    {!error && records?.length === 0 && <section className={s.panel}><h2 style={{ marginTop: 0 }}>{t("empty")}</h2><p className={s.muted} style={{ margin: 0 }}>{t("emptyHint")}</p></section>}
+    {!error && records && records.length > 0 && <section className={s.panel}>
+      <div className={s.tableWrap}><table className={s.table} aria-label={t("listLabel")}>
+        <thead><tr>
+          {["wasteDate", "productionOrder", "line", "wasteCategory", "quantityWasted", "workCenter", "run", "reasonCode", "recordedBy"].map(c => <th key={c}>{t(`fields.${c}`)}</th>)}
+        </tr></thead>
+        <tbody>{records.map(r => <tr key={r.id}>
+          <td><Link href={`/waste-records/${r.id}`}>{fmt.date(r.waste_date)}</Link></td>
+          <td>{r.labels?.order_number ? <Link href={`/production-orders/${r.production_order_id}`}>{r.labels.order_number}</Link> : "—"}</td>
+          <td>{r.labels?.line_no ?? "—"}</td>
+          <td><WasteCategoryBadge category={r.waste_category} /></td>
+          <td><bdi>{fmt.quantity(r.quantity_wasted, r.unit)}</bdi></td>
+          <td>{r.labels?.work_center_name ?? "—"}</td>
+          <td>{r.labels?.run_date ? fmt.date(r.labels.run_date) : "—"}</td>
+          <td>{r.reason_code ?? "—"}</td>
+          <td>{r.labels?.created_by_name ?? "—"}</td>
+        </tr>)}</tbody>
+      </table></div>
+    </section>}
+  </PageFrame>;
 }

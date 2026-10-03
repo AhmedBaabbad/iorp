@@ -21,6 +21,8 @@ import {
   statusBadgeStyle,
   typeBadgeStyle,
 } from "./work-center-utils";
+import { usePermission } from "@/features/auth/permission-hooks";
+import { P } from "@/lib/production-permissions";
 
 const styles: Record<string, CSSProperties> = {
   backdrop: {
@@ -129,6 +131,8 @@ export function WorkCenterDetail() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const t = useTranslations("production.workCenters");
+  const canUpdate = usePermission(P.WORK_CENTERS_UPDATE);
+  const canDelete = usePermission(P.WORK_CENTERS_DELETE);
   const tEnums = useTranslations();
   const common = useTranslations("common");
   const messages = useTranslations("messages");
@@ -229,7 +233,7 @@ export function WorkCenterDetail() {
         subtitle={workCenter ? workCenter.code : t("detailSubtitle")}
         action={
           <div style={styles.headerActions}>
-            {workCenter ? (
+            {workCenter && canUpdate ? (
               <Link
                 href={`/work-centers/${workCenterId}/edit`}
                 style={sharedStyles.secondaryButton}
@@ -237,7 +241,7 @@ export function WorkCenterDetail() {
                 {common("actions.edit")}
               </Link>
             ) : null}
-            {workCenter ? (
+            {workCenter && canDelete ? (
               <button
                 type="button"
                 style={styles.deleteButton}

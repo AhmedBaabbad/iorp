@@ -6,6 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    report_renderer_url: str = Field(default="http://127.0.0.1:3005", alias="REPORT_RENDERER_URL")
     app_name: str = Field(default="IORP Backend", alias="APP_NAME")
     app_env: Literal["development", "test", "staging", "production"] = Field(
         default="development",

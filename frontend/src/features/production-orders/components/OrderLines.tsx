@@ -9,6 +9,7 @@ import { ReasonDialog } from "@/features/production-demands/reason-dialog";
 import { addOrderAllocation, changeAllocationQuantity } from "../api/production-orders-api";
 import type { ProductionOrderData } from "../types";
 import s from "@/features/production-demands/demands.module.css";
+import { P } from "@/lib/production-permissions";
 
 type Allocation = ProductionOrderData["allocations"][number];
 const QUANTITY = /^\d+(\.\d{1,3})?$/;
@@ -17,8 +18,8 @@ const QUANTITY = /^\d+(\.\d{1,3})?$/;
 export function OrderLines({ order, onChanged }: { order: ProductionOrderData; onChanged?: () => void }) {
   const t = useTranslations("production.allocation");
   const d = useTranslations("production.demands");
-  const canAllocate = usePermission("production:planning:allocate");
-  const canRelease = usePermission("production:planning:release_allocation");
+  const canAllocate = usePermission(P.PLANNING_ALLOCATE);
+  const canRelease = usePermission(P.PLANNING_RELEASE_ALLOCATION);
   const editing = Boolean(order.editable && canAllocate);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);

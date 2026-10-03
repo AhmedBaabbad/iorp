@@ -3,8 +3,12 @@
 import Link from "next/link";
 import { OrderAllocations } from "./OrderAllocations";
 import { OrderLines } from "./OrderLines";
+import { OrderReportButton } from '@/features/reports/OrderReportButton';
 import { OrderStatusPanel } from "./OrderStatusPanel";
 import { OrderStatusTimeline } from "./OrderStatusTimeline";
+import { OrderResultSection } from "@/features/production-results";
+import { OrderWasteSection } from "@/features/waste-records";
+import { OrderDowntimeSection } from "@/features/downtime-events";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import type { CSSProperties, ReactNode } from "react";
@@ -223,7 +227,11 @@ export function ProductionOrderDetail() {
           </section>
 
           <OrderStatusPanel order={order} onChanged={() => setRevision((value) => value + 1)} />
+          <OrderReportButton orderId={order.id}/>
           <OrderLines order={order} onChanged={() => setRevision((value) => value + 1)} />
+          <OrderResultSection order={order} revision={revision} />
+          <OrderWasteSection order={order} revision={revision} />
+          <OrderDowntimeSection order={order} revision={revision} />
           <OrderAllocations order={order} />
           {/* Planning orders show their lines above; manual items remain for orders without allocations. */}
           {order.allocations.length === 0 && (

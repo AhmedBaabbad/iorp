@@ -17,6 +17,7 @@ import { deleteQuote, getQuoteDeletionImpact, listQuotes } from "../api/quotes-a
 import type { QuoteDeletionImpact, QuoteListItem } from "../types";
 import { QuoteStatusBadge } from "./QuoteStatusBadge";
 import { formatCommercialCurrency } from "./quote-utils";
+import { usePermission } from "@/features/auth/permission-hooks";
 
 const styles: Record<string, CSSProperties> = {
   panel: {
@@ -152,6 +153,7 @@ export function QuotesList() {
   const messages = useTranslations("messages");
   const common = useTranslations("common");
   const t = useTranslations("commercial.quotes");
+  const canSettings = usePermission("commercial:quote_settings:read");
   const locale = useLocale() as Locale;
   const fmt = useFormatter();
   const [quotes, setQuotes] = useState<QuoteListItem[]>([]);
@@ -254,9 +256,12 @@ export function QuotesList() {
       title={t("listTitle")}
       subtitle={t("subtitle")}
       action={
-        <Link href="/quotes/new" style={sharedStyles.button}>
-          {t("newButton")}
-        </Link>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          {canSettings ? <Link href="/quotes/settings" style={sharedStyles.secondaryButton}>{t("settings.link")}</Link> : null}
+          <Link href="/quotes/new" style={sharedStyles.button}>
+            {t("newButton")}
+          </Link>
+        </div>
       }
     >
       {pendingDelete ? (

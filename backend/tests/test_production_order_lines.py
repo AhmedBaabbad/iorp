@@ -16,7 +16,7 @@ from tests.test_production_allocation_lifecycle import other_org_demand
 ROOT = "/api/v1/production"
 PERMISSIONS = frozenset([
     "production:planning:read", "production:planning:allocate", "production:planning:release_allocation",
-    "production:orders:create", "production:orders:cancel", "production:production_orders:read", "production:production_orders:write",
+    "production:production_orders:create", "production:production_orders:cancel", "production:production_orders:read", "production:production_orders:update", "production:production_orders:manage_items",
 ] + [f"production:demands:{a}" for a in ("read", "create", "update")])
 
 

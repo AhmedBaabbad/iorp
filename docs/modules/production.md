@@ -195,11 +195,50 @@ Records scrapped material during production. Static fact record — no status fi
 - Participation times are recorded once a run starts: members are stamped with the run start, cannot start before it, and open participations are closed when the run completes or is cancelled. A replacement is recorded by ending one participation and adding another; a worker may rejoin later with a new, non-overlapping participation (at most one open participation per worker per run).
 - Every roster and run mutation writes a tenant activity-log entry (`shift_roster.*`, `production_run.*`) with the acting User as `actor_id`.
 
-**Permissions.** `production:shifts:{read,create,update,delete}`, `production:shift_rosters:{read,create,update,manage_members}`, `production:runs:{read,create,update,start,pause,complete,cancel,manage_members}`. Migrations copy existing grants: `shift_definitions:read` → `shifts:read`, `shift_definitions:write` → `shifts:create/update/delete`, `runs:update` → `runs:pause/cancel`. **Roster and run permissions are not granted to any role by migration** — organization administrators must assign them after upgrading.
+**Permissions.** `production:shifts:{read,create,update,delete}`, `production:shift_rosters:{read,create,update,manage_members}`, `production:runs:{read,create,update,start,pause,complete,cancel,manage_members}`. Migrations copy existing grants: `shift_definitions:read` → `shifts:read`, `shift_definitions:write` → `shifts:create/update/delete`, `runs:update` → `runs:pause/cancel`. Migration `f6a1b2i0` later granted roster and run permissions to the organization administrator, factory manager and production manager system roles (and read to viewer); custom roles keep what an administrator gave them.
 
 **Database-level guarantees.** Same-organization links and roster-period overlap are enforced in the service layer (tenant-scoped lookups, shift row lock), not by composite foreign keys or an `EXCLUDE` constraint. That keeps the schema portable to SQLite test runs; revisit if other writers bypass the service.
 
 ---
+
+## Permissions (PROD-RBAC-001)
+
+`app/production/domain/permissions.py` is the only place a production permission code is written. The catalog, the system roles, routes, services and the frontend (`frontend/src/lib/production-permissions.ts`, kept identical by a test) use its names.
+
+| Resource | Actions |
+|---|---|
+| work_centers | read, create, update, delete |
+| shifts | read, create, update, delete |
+| shift_rosters | read, create, update, manage_members |
+| demands | read, create, update, delete |
+| planning | read, sequence, allocate, release_allocation |
+| production_orders | read, update, manage_items, create, release, start, hold, complete, close, cancel |
+| runs | read, create, update, start, pause, complete, cancel, manage_members |
+| results | read, create, update, delete, correct |
+| downtime_events | read, create, update, delete, close |
+| waste_records | read, create, update, delete |
+
+Reports: `reports:production:{order_full,orders_summary,results_analysis,shift_workforce}`. There is no export history screen; each report prints who prepared it.
+
+- **Order actions.** `ORDER_TRANSITIONS` maps each lifecycle action to a permission. `return_to_draft` needs `release`, and `resume` needs `start`.
+- **Per-entity actions.** The `actions` lists returned for results, downtime and waste are computed one permission at a time. A user with only `update` sees `edit` and nothing else.
+- **Production manager.** This role holds all 52 production codes and the 5 report codes, listed explicitly; no system role uses a production wildcard. To give a person part of production, create a role in the admin roles screen and tick the actions they need.
+- **Every route declares its permission.** It uses `require_permission`, `require_any_permission`, or `permission_checked_in_handler` when the code depends on the request (an order action, a report). A test fails on any production or report route without one.
+- **Lookups.** A report lookup needs a report permission plus the read permission of the entity it lists: `production_orders:read` for orders and products, `work_centers:read` for centers, `commercial:customers:read` for customers.
+- **Dashboard.** It returns production counts only with `production_orders:read`, and quality counts only with `quality:quality_checks:read`.
+- **Migration `f6a1b2h9`.** It replaced the bundled codes; each holder got every replacement with the same scope:
+
+  | Old code | Replaced by |
+  |---|---|
+  | `work_centers:write` | create, update, delete |
+  | `production_orders:write` | update, manage_items |
+  | `orders:<action>` | `production_orders:<action>` |
+  | `results:write` | create, update, delete |
+  | `downtime_events:write` | create, update, delete, close |
+  | `waste_records:write` | create, update, delete |
+  | `shift_definitions:*` | removed (no route used it) |
+
+  Its backup table makes the downgrade exact.
 
 ## Tenant isolation pattern
 
