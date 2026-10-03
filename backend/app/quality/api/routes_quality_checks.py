@@ -1,3 +1,4 @@
+"""Quality checks (QUAL-001): one permission per action; lifecycle actions are explicit endpoints."""
 from datetime import date
 from uuid import UUID
 
@@ -5,89 +6,108 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.tenancy import TenantContext
-from app.dependencies import get_current_tenant, get_db
-from app.quality.api.schemas import (
-    QualityCheckCreate,
-    QualityCheckListItem,
-    QualityCheckRead,
-    QualityCheckUpdate,
+from app.dependencies import get_current_tenant, get_db, permission_check, require_any_permission, require_permission
+from app.quality.api.inspection_schemas import (
+    InspectableOrder, QualityCheckClose, QualityCheckCreate, QualityCheckListItem, QualityCheckRead, QualityCheckUpdate, ReasonInput, SampleOption,
 )
-from app.quality.application.services import QualityCheckService
-from app.quality.domain.enums import (
-    QualityCheckResult,
-    QualityCheckStatus,
-    QualityCheckType,
-)
-
+from app.quality.application.check_service import QualityCheckService
+from app.quality.domain import permissions as Q
+from app.quality.domain.enums import QualityCheckResult, QualityCheckStatus, QualityCheckType
+from app.quality.domain.rules import QualityError
 
 router = APIRouter(prefix="/quality-checks", tags=["quality-checks"])
 
 
-@router.post("", response_model=QualityCheckRead, status_code=status.HTTP_201_CREATED)
-def create_quality_check(
-    payload: QualityCheckCreate,
-    tenant: TenantContext = Depends(get_current_tenant),
-    db: Session = Depends(get_db),
-) -> QualityCheckRead:
-    service = QualityCheckService(db)
+def _error(exc: QualityError):
+    return HTTPException(status_code=exc.status, detail={"code": exc.code, **exc.detail})
+
+
+def _read(service, check, can):
+    # Validated as a whole, so the nested history and rejection rows are typed.
+    return QualityCheckRead.model_validate({**QualityCheckRead.model_validate(check).model_dump(), **service.views([check], can, detail=True)[0]})
+
+
+@router.post("", response_model=QualityCheckRead, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission(Q.CHECKS_CREATE))])
+def create_quality_check(payload: QualityCheckCreate, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db),
+                         can=Depends(permission_check)):
+    """Opens an inspection (code QI-YYYY-NNNN). Production lots need a running, held or completed order."""
+    service = QualityCheckService(db, tenant)
     try:
-        return service.create_quality_check(tenant, payload)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        return _read(service, service.create(payload), can)
+    except QualityError as exc:
+        raise _error(exc) from exc
 
 
-@router.get("", response_model=list[QualityCheckListItem])
+@router.get("", response_model=list[QualityCheckListItem], dependencies=[Depends(require_permission(Q.CHECKS_READ))])
 def list_quality_checks(
-    check_type: QualityCheckType | None = Query(default=None),
-    check_status: QualityCheckStatus | None = Query(default=None),
-    result: QualityCheckResult | None = Query(default=None),
-    production_order_id: UUID | None = Query(default=None),
-    check_date: date | None = Query(default=None),
-    tenant: TenantContext = Depends(get_current_tenant),
-    db: Session = Depends(get_db),
-) -> list[QualityCheckListItem]:
-    service = QualityCheckService(db)
-    return service.list_quality_checks(
-        tenant,
-        check_type=check_type,
-        status=check_status,
-        result=result,
-        production_order_id=production_order_id,
-        check_date=check_date,
-    )
+    production_order_id: UUID | None = Query(default=None), check_type: QualityCheckType | None = Query(default=None),
+    status_filter: QualityCheckStatus | None = Query(default=None, alias="status"), result: QualityCheckResult | None = Query(default=None),
+    date_from: date | None = Query(default=None), date_to: date | None = Query(default=None), search: str | None = Query(default=None, max_length=60),
+    tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check),
+):
+    service = QualityCheckService(db, tenant)
+    checks = service.list(production_order_id=production_order_id, check_type=check_type, status=status_filter, result=result,
+                          date_from=date_from, date_to=date_to, search=search)
+    return [QualityCheckListItem.model_validate(c).model_copy(update=v) for c, v in zip(checks, service.views(checks, can))]
 
 
-@router.get("/{check_id}", response_model=QualityCheckRead)
-def get_quality_check(
-    check_id: UUID,
-    tenant: TenantContext = Depends(get_current_tenant),
-    db: Session = Depends(get_db),
-) -> QualityCheckRead:
-    service = QualityCheckService(db)
-    quality_check = service.get_quality_check(tenant, check_id)
-    if quality_check is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Quality check not found.",
-        )
-    return quality_check
+# Lookups before /{check_id}: the orders and samples a check may be opened on.
+@router.get("/lookups/orders", response_model=list[InspectableOrder],
+            dependencies=[Depends(require_any_permission([Q.CHECKS_CREATE, Q.REJECTIONS_CREATE]))])
+def inspectable_orders(q: str = Query(default="", max_length=60), tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
+    return QualityCheckService(db, tenant).inspectable_orders(q)
 
 
-@router.patch("/{check_id}", response_model=QualityCheckRead)
-def update_quality_check(
-    check_id: UUID,
-    payload: QualityCheckUpdate,
-    tenant: TenantContext = Depends(get_current_tenant),
-    db: Session = Depends(get_db),
-) -> QualityCheckRead:
-    service = QualityCheckService(db)
+@router.get("/lookups/samples", response_model=list[SampleOption], dependencies=[Depends(require_permission(Q.CHECKS_CREATE))])
+def inspectable_samples(q: str = Query(default="", max_length=60), tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
+    return QualityCheckService(db, tenant).samples(q)
+
+
+@router.get("/{check_id}", response_model=QualityCheckRead, dependencies=[Depends(require_permission(Q.CHECKS_READ))])
+def get_quality_check(check_id: UUID, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
+    service = QualityCheckService(db, tenant)
     try:
-        quality_check = service.update_quality_check(tenant, check_id, payload)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    if quality_check is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Quality check not found.",
-        )
-    return quality_check
+        return _read(service, service.get(check_id), can)
+    except QualityError as exc:
+        raise _error(exc) from exc
+
+
+@router.patch("/{check_id}", response_model=QualityCheckRead, dependencies=[Depends(require_permission(Q.CHECKS_UPDATE))])
+def update_quality_check(check_id: UUID, payload: QualityCheckUpdate, tenant: TenantContext = Depends(get_current_tenant),
+                         db: Session = Depends(get_db), can=Depends(permission_check)):
+    """Details while the check is open or under inspection; status and result change only through the actions."""
+    service = QualityCheckService(db, tenant)
+    try:
+        return _read(service, service.update(check_id, payload), can)
+    except QualityError as exc:
+        raise _error(exc) from exc
+
+
+@router.post("/{check_id}/start", response_model=QualityCheckRead, dependencies=[Depends(require_permission(Q.CHECKS_START))])
+def start_quality_check(check_id: UUID, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
+    service = QualityCheckService(db, tenant)
+    try:
+        return _read(service, service.start(check_id), can)
+    except QualityError as exc:
+        raise _error(exc) from exc
+
+
+@router.post("/{check_id}/close", response_model=QualityCheckRead, dependencies=[Depends(require_permission(Q.CHECKS_CLOSE))])
+def close_quality_check(check_id: UUID, payload: QualityCheckClose, tenant: TenantContext = Depends(get_current_tenant),
+                        db: Session = Depends(get_db), can=Depends(permission_check)):
+    """Records the result and quantities; a rejected quantity opens a rejection awaiting a decision."""
+    service = QualityCheckService(db, tenant)
+    try:
+        return _read(service, service.close(check_id, payload), can)
+    except QualityError as exc:
+        raise _error(exc) from exc
+
+
+@router.post("/{check_id}/cancel", response_model=QualityCheckRead, dependencies=[Depends(require_permission(Q.CHECKS_CANCEL))])
+def cancel_quality_check(check_id: UUID, payload: ReasonInput, tenant: TenantContext = Depends(get_current_tenant),
+                         db: Session = Depends(get_db), can=Depends(permission_check)):
+    service = QualityCheckService(db, tenant)
+    try:
+        return _read(service, service.cancel(check_id, payload.reason), can)
+    except QualityError as exc:
+        raise _error(exc) from exc

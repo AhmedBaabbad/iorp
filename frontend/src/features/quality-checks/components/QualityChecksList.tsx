@@ -1,314 +1,100 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import type { CSSProperties } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
+import { usePermission } from "@/features/auth/permission-hooks";
+import s from "@/features/production-demands/demands.module.css";
 import { useFormatter } from "@/hooks/useFormatter";
-import { getApiErrorMessage } from "@/lib/api-error-handler";
-import { sharedStyles } from "@/styles/shared-styles";
+import { Q } from "@/lib/quality-permissions";
 import { getQualityChecks } from "../api/quality-checks-api";
-import type {
-  QualityCheckListFilters,
-  QualityCheckListItem,
-  QualityCheckResult,
-  QualityCheckStatus,
-  QualityCheckType,
-} from "../types";
+import { CHECK_RESULTS, CHECK_STATUSES, CHECK_TYPES, type QualityCheckListFilters, type QualityCheckListItem } from "../types";
 import { QualityCheckResultBadge } from "./QualityCheckResultBadge";
 import { QualityCheckStatusBadge } from "./QualityCheckStatusBadge";
-import { formatCheckType, shortId } from "./quality-check-utils";
+import { qualityErrorMessage } from "./quality-errors";
 
-type FilterValues = {
-  check_type: "" | QualityCheckType;
-  status: "" | QualityCheckStatus;
-  result: "" | QualityCheckResult;
-  production_order_id: string;
-};
+type Filters = Required<{ [K in keyof QualityCheckListFilters]: string }>;
+const EMPTY: Filters = { production_order_id: "", check_type: "", status: "", result: "", date_from: "", date_to: "", search: "" };
 
-const defaultFilters: FilterValues = {
-  check_type: "",
-  status: "",
-  result: "",
-  production_order_id: "",
-};
-
-const styles: Record<string, CSSProperties> = {
-  filters: {
-    display: "grid",
-    gap: "14px",
-    gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-    marginBottom: "18px",
-  },
-  panel: {
-    background: "var(--surface)",
-    border: "1px solid var(--border-strong)",
-    borderRadius: "8px",
-    boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
-  },
-  tableWrap: {
-    overflowX: "auto",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-  th: {
-    borderBottom: "1px solid var(--border)",
-    color: "var(--text-muted)",
-    fontSize: "13px",
-    padding: "14px 16px",
-    textAlign: "left",
-  },
-  td: {
-    borderBottom: "1px solid var(--border)",
-    padding: "14px 16px",
-    verticalAlign: "middle",
-  },
-  link: {
-    color: "var(--accent-strong)",
-    fontWeight: 700,
-    textDecoration: "none",
-  },
-};
-
+// "فحوصات الجودة": inspections of production lots and samples, newest first.
 export function QualityChecksList() {
   const t = useTranslations("quality.qualityChecks");
-  const tEnums = useTranslations();
+  const errors = useTranslations("quality.errors");
+  const enums = useTranslations("enums.qualityCheck");
   const common = useTranslations("common");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
-  const [checks, setChecks] = useState<QualityCheckListItem[]>([]);
-  const [filters, setFilters] = useState<FilterValues>(defaultFilters);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const isMountedRef = useRef(true);
+  const params = useSearchParams();
+  const canCreate = usePermission(Q.CHECKS_CREATE);
+  const [filters, setFilters] = useState<Filters>(() => ({ ...EMPTY, production_order_id: params.get("order") ?? "", status: params.get("status") ?? "" }));
+  const [checks, setChecks] = useState<QualityCheckListItem[] | null>(null);
+  const [error, setError] = useState("");
 
-  const loadQualityChecks = useCallback(async () => {
-    if (!isMountedRef.current) {
-      return;
-    }
+  const load = useCallback(async () => {
+    setError("");
+    try { setChecks(await getQualityChecks(filters as QualityCheckListFilters)); }
+    catch (e) { setError(qualityErrorMessage(e, errors)); }
+  }, [filters, errors]);
+  useEffect(() => { void load(); }, [load]);
 
-    setIsLoading(true);
-    setError(null);
+  const set = (field: keyof Filters, value: string) => setFilters(old => ({ ...old, [field]: value }));
+  const newHref = filters.production_order_id ? `/quality-checks/new?order=${filters.production_order_id}` : "/quality-checks/new";
 
-    try {
-      const response = await getQualityChecks(toApiFilters(filters));
-
-      if (isMountedRef.current) {
-        setChecks(response);
-      }
-    } catch (caughtError) {
-      if (isMountedRef.current) {
-        setError(getApiErrorMessage(caughtError, messages));
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [filters, t]);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    void loadQualityChecks();
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, [loadQualityChecks]);
-
-  function updateFilter<TField extends keyof FilterValues>(
-    field: TField,
-    value: FilterValues[TField],
-  ) {
-    setFilters((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  }
-
-  return (
-    <PageFrame
-      section="Quality"
-      title={t("listTitle")}
-      subtitle={t("subtitle")}
-      action={
-        <Link href="/quality-checks/new" style={sharedStyles.button}>
-          {t("newButton")}
-        </Link>
-      }
-    >
-      <section style={styles.filters} aria-label={t("filtersAria")}>
-        <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>{t("fields.checkType")}</span>
-          <select
-            style={sharedStyles.input}
-            value={filters.check_type}
-            onChange={(event) =>
-              updateFilter("check_type", event.target.value as FilterValues["check_type"])
-            }
-          >
-            <option value="">All types</option>
-            <option value="in_process_inspection">In-Process Inspection</option>
-            <option value="finished_product_inspection">Finished Product Inspection</option>
-            <option value="sample_inspection">Sample Inspection</option>
-            <option value="reinspection">Re-inspection</option>
-            <option value="issue_triggered">Issue Triggered</option>
-            <option value="general">General</option>
-          </select>
-        </label>
-
-        <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>{t("fields.status")}</span>
-          <select
-            style={sharedStyles.input}
-            value={filters.status}
-            onChange={(event) =>
-              updateFilter("status", event.target.value as FilterValues["status"])
-            }
-          >
-            <option value="">All statuses</option>
-            <option value="open">Open</option>
-            <option value="under_inspection">Under Inspection</option>
-            <option value="closed">Closed</option>
-          </select>
-        </label>
-
-        <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>{t("fields.result")}</span>
-          <select
-            style={sharedStyles.input}
-            value={filters.result}
-            onChange={(event) =>
-              updateFilter("result", event.target.value as FilterValues["result"])
-            }
-          >
-            <option value="">All results</option>
-            <option value="accepted">Accepted</option>
-            <option value="rejected">Rejected</option>
-            <option value="conditional_accept">Conditional Accept</option>
-            <option value="needs_reinspection">Needs Reinspection</option>
-          </select>
-        </label>
-
-        <label style={sharedStyles.field}>
-          <span style={sharedStyles.label}>{t("fields.productionOrderId")}</span>
-          <input
-            style={sharedStyles.input}
-            value={filters.production_order_id}
-            onChange={(event) => updateFilter("production_order_id", event.target.value)}
-          />
-        </label>
-
-      </section>
-
-      {isLoading ? (
-        <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
-          {t("loading")}
-        </div>
-      ) : null}
-
-      {!isLoading && error ? (
-        <div style={{ display: "grid", gap: "12px" }}>
-          <div style={sharedStyles.error} role="alert">
-            {error}
-          </div>
-          <button
-            style={{ ...sharedStyles.secondaryButton, width: "fit-content" }}
-            type="button"
-            onClick={() => void loadQualityChecks()}
-          >
-            {common("actions.retry")}
-          </button>
-        </div>
-      ) : null}
-
-      {!isLoading && !error && checks.length === 0 ? (
-        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
-          <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>
-            {t("empty")}
-          </h2>
-          <p style={{ margin: "0 0 18px" }}>
-            {t("createFirst")}
-          </p>
-          <Link href="/quality-checks/new" style={sharedStyles.button}>
-            {t("createButton")}
-          </Link>
-        </section>
-      ) : null}
-
-      {!isLoading && !error && checks.length > 0 ? (
-        <section style={styles.panel} aria-label={t("listAria")}>
-          <div style={styles.tableWrap}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>{t("fields.inspectionCode")}</th>
-                  <th style={styles.th}>{t("fields.checkDate")}</th>
-                  <th style={styles.th}>{t("fields.checkType")}</th>
-                  <th style={styles.th}>{t("fields.status")}</th>
-                  <th style={styles.th}>{t("fields.result")}</th>
-                  <th style={styles.th}>{t("fields.qtyInspected")}</th>
-                  <th style={styles.th}>{t("fields.productionOrder")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {checks.map((check) => (
-                  <tr key={check.id}>
-                    <td style={styles.td}>
-                      <Link href={`/quality-checks/${check.id}`} style={styles.link}>
-                        {check.inspection_code}
-                      </Link>
-                    </td>
-                    <td style={styles.td}>{fmt.dateTime(check.check_datetime)}</td>
-                    <td style={styles.td}>
-                      <span style={checkTypeBadgeStyle}>
-                        {formatCheckType(check.check_type, tEnums)}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      <QualityCheckStatusBadge status={check.status} />
-                    </td>
-                    <td style={styles.td}>
-                      <QualityCheckResultBadge result={check.result} />
-                    </td>
-                    <td style={styles.td}>{fmt.number(check.qty_inspected)}</td>
-                    <td style={styles.td}>
-                      {check.production_order_id ? (
-                        <Link
-                          href={`/production-orders/${check.production_order_id}`}
-                          style={styles.link}
-                        >
-                          {shortId(check.production_order_id)}
-                        </Link>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      ) : null}
-    </PageFrame>
-  );
+  return <PageFrame title={t("listTitle")} subtitle={t("subtitle")}
+    action={canCreate ? <Link href={newHref} className={`${s.button} ${s.primary}`}>{t("newButton")}</Link> : undefined}>
+    <section className={s.toolbar} aria-label={t("filtersAria")}>
+      <label className={s.field}>{t("filters.search")}
+        <input type="search" value={filters.search} placeholder={t("filters.searchPlaceholder")} onChange={e => set("search", e.target.value)} />
+      </label>
+      <label className={s.field}>{t("fields.status")}
+        <select value={filters.status} onChange={e => set("status", e.target.value)}>
+          <option value="">{t("filters.allStatuses")}</option>
+          {CHECK_STATUSES.map(v => <option key={v} value={v}>{enums(`status.${v}`)}</option>)}
+        </select>
+      </label>
+      <label className={s.field}>{t("fields.checkType")}
+        <select value={filters.check_type} onChange={e => set("check_type", e.target.value)}>
+          <option value="">{t("filters.allTypes")}</option>
+          {CHECK_TYPES.map(v => <option key={v} value={v}>{enums(`checkType.${v}`)}</option>)}
+        </select>
+      </label>
+      <label className={s.field}>{t("fields.result")}
+        <select value={filters.result} onChange={e => set("result", e.target.value)}>
+          <option value="">{t("filters.allResults")}</option>
+          {CHECK_RESULTS.map(v => <option key={v} value={v}>{enums(`result.${v}`)}</option>)}
+        </select>
+      </label>
+      <label className={s.field}>{t("filters.dateFrom")}<input type="date" value={filters.date_from} onChange={e => set("date_from", e.target.value)} /></label>
+      <label className={s.field}>{t("filters.dateTo")}<input type="date" value={filters.date_to} min={filters.date_from || undefined} onChange={e => set("date_to", e.target.value)} /></label>
+      <button type="button" className={s.button} onClick={() => setFilters(EMPTY)}>{t("filters.clear")}</button>
+    </section>
+    {filters.production_order_id && checks?.[0]?.order_number && <p className={s.muted}>{t("filters.forOrder", { number: checks[0].order_number })}</p>}
+    {error && <div className={s.actions}><p role="alert" className={s.error}>{error}</p>
+      <button type="button" className={s.button} onClick={() => void load()}>{common("actions.retry")}</button></div>}
+    {!error && checks === null && <p className={s.muted}>{messages("loading.default")}</p>}
+    {!error && checks?.length === 0 && <section className={s.panel}><h2 style={{ marginTop: 0 }}>{t("empty")}</h2><p className={s.muted} style={{ margin: 0 }}>{t("createFirst")}</p></section>}
+    {!error && checks && checks.length > 0 && <section className={s.panel}>
+      <div className={s.tableWrap}><table className={s.table} aria-label={t("listAria")}>
+        <thead><tr>
+          {["inspectionCode", "checkDate", "checkType", "subject", "line", "qtyInspected", "qtyAccepted", "qtyRejected", "status", "result", "inspector"].map(c => <th key={c}>{t(`fields.${c}`)}</th>)}
+        </tr></thead>
+        <tbody>{checks.map(c => <tr key={c.id}>
+          <td><Link href={`/quality-checks/${c.id}`}><bdi>{c.inspection_code}</bdi></Link></td>
+          <td>{fmt.dateTime(c.check_datetime)}</td>
+          <td>{enums(`checkType.${c.check_type}`)}</td>
+          <td>{c.order_number ? <Link href={`/production-orders/${c.production_order_id}`}><bdi>{c.order_number}</bdi></Link> : c.sample_code ? <bdi>{c.sample_code}</bdi> : "—"}</td>
+          <td>{c.item_line_no ?? "—"}</td>
+          <td><bdi>{fmt.quantity(c.qty_inspected, c.unit ?? "")}</bdi></td>
+          <td><bdi>{c.status === "closed" ? fmt.quantity(c.qty_accepted, c.unit ?? "") : "—"}</bdi></td>
+          <td><bdi>{c.status === "closed" ? fmt.quantity(c.qty_rejected, c.unit ?? "") : "—"}</bdi></td>
+          <td><QualityCheckStatusBadge status={c.status} /></td>
+          <td><QualityCheckResultBadge result={c.result} /></td>
+          <td>{c.checked_by_name ?? "—"}</td>
+        </tr>)}</tbody>
+      </table></div>
+    </section>}
+  </PageFrame>;
 }
-
-function toApiFilters(filters: FilterValues): QualityCheckListFilters {
-  return {
-    check_type: filters.check_type || undefined,
-    status: filters.status || undefined,
-    result: filters.result || undefined,
-    production_order_id: filters.production_order_id.trim() || undefined,
-  };
-}
-
-const checkTypeBadgeStyle: CSSProperties = {
-  ...sharedStyles.badge,
-  background: "var(--accent-soft)",
-  color: "var(--accent-strong)",
-};

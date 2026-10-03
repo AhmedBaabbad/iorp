@@ -29,45 +29,22 @@ The following fields are **never accepted in request bodies**. They are set by t
 
 ## Quality Checks
 
-### `POST /quality-checks`
-Create a quality check. `inspection_code`, `status`, and `result` are always auto-set.
+Prefix `/api/v1/quality/quality-checks`. Errors are `{"detail": {"code": ...}}`.
 
-**Body:**
-```json
-{
-  "check_datetime": "2026-07-03T08:00:00Z",
-  "check_type": "in_process_inspection",
-  "qty_inspected": 100,
-  "qty_accepted": 85,
-  "qty_rejected": 15,
-  "production_order_id": "<uuid>",
-  "notes": "optional"
-}
-```
+| Method | Path | Permission | Notes |
+|--------|------|------------|-------|
+| POST | `` | checks:create | `check_type`, `check_datetime`, order (+line) or `sample_id`, optional `qty_inspected`, `notes` |
+| GET | `` | checks:read | Filters: `production_order_id`, `check_type`, `status`, `result`, `date_from`, `date_to`, `search` |
+| GET | `/lookups/orders` | checks:create or rejections:create | Orders that can be inspected, with their lines |
+| GET | `/lookups/samples` | checks:create | Samples |
+| GET | `/{id}` | checks:read | With `history`, `rejections`, `actions` |
+| PATCH | `/{id}` | checks:update | While open / under inspection |
+| POST | `/{id}/start` | checks:start | open → under_inspection |
+| POST | `/{id}/close` | checks:close | `result`, the three quantities, `notes`, `rejection_reason`; opens a pending rejection for a rejected quantity |
+| POST | `/{id}/cancel` | checks:cancel | `reason` required |
 
-`check_type` must be one of: `in_process_inspection` / `finished_product_inspection` / `sample_inspection` / `reinspection` / `issue_triggered` / `general`. **Do not use measurement method names** (visual, dimension, tensile, weight) — these are not valid values (D4).
-
-`qty_accepted + qty_rejected` must equal `qty_inspected` — returns `422` if not satisfied (D2).
-
-All three quantity fields are required and must be `>= 0` with `qty_inspected > 0`.
-
-Returns `201`.
-
-### `GET /quality-checks`
-List quality checks for the current org.
-
-**Query filters:** `check_type`, `check_status`, `result`, `production_order_id`, `check_date`
-
-### `GET /quality-checks/{id}`
-Get a single quality check. Returns `404` if not found or belongs to a different org.
-
-### `PATCH /quality-checks/{id}`
-Update a quality check. All fields optional. Partial quantity updates (e.g., only `qty_accepted`) are re-validated by the service after merging with existing values.
-
-**Closing a check (setting `status = "closed"`):**
-`result` must be set — either in this PATCH or already set from a prior update. Returns `400` if closing without a result. This is enforced in the service, not the schema, because the schema cannot see existing state.
-
----
+Codes: `PRODUCTION_ORDER_REQUIRED`, `SAMPLE_REQUIRED`, `ORDER_NOT_INSPECTABLE`, `ORDER_ITEM_NOT_FOUND`, `CHECK_IS_FINAL`, `CHECK_NOT_OPEN`,
+`QUANTITY_INSPECTED_REQUIRED`, `QUANTITY_NEGATIVE`, `QUANTITY_BALANCE`, `ACCEPTED_WITH_REJECTED_QUANTITY`, `REJECTED_WITHOUT_QUANTITY`, `REASON_REQUIRED`.
 
 ## Quality Defects
 
@@ -112,47 +89,19 @@ Update a defect. All fields optional.
 
 ## Quality Rejections
 
-### `POST /quality-rejections`
-Create a quality rejection. `disposition_status` is always auto-set to `pending` — do not include it in the body.
+Prefix `/api/v1/quality/quality-rejections`.
 
-**Body:**
-```json
-{
-  "rejection_date": "2026-07-03",
-  "rejection_reason": "dimension_failure",
-  "rejection_notes": "Batch rejected — thickness deviation exceeds tolerance.",
-  "disposition": "rework",
-  "quantity_rejected": 15,
-  "unit": "pcs",
-  "quality_check_id": "<uuid>",
-  "quality_defect_id": "<uuid>"
-}
-```
+| Method | Path | Permission | Notes |
+|--------|------|------------|-------|
+| POST | `` | rejections:create | From a closed check (`quality_check_id`) or for an order (`production_order_id`, optional line) |
+| GET | `` | rejections:read | Filters: `production_order_id`, `quality_check_id`, `rejection_reason`, `disposition`, `disposition_status`, dates, `search`; each row has `unresolved` |
+| GET | `/{id}` | rejections:read | With `history`, `actions` |
+| PATCH | `/{id}` | rejections:update | While pending |
+| POST | `/{id}/decide` | rejections:decide | `disposition`, `decision_notes`, `concession_approved_by` (both required for `use_as_is`) |
+| POST | `/{id}/execute` | rejections:execute | Optional `execution_notes`; not for `hold` |
 
-`rejection_notes` is **required** (`Field(min_length=1)`) — returns `422` if absent, `400` if whitespace-only (D8 — Quality PRD BR-02).
-
-`quality_check_id` and `quality_defect_id` are both optional. If both are provided, `quality_defect_id` must belong to `quality_check_id` — returns `400` if not.
-
-`disposition_status` is absent from this schema — the service auto-sets it to `pending`.
-
-Returns `201`.
-
-### `GET /quality-rejections`
-List quality rejections.
-
-**Query filters:** `rejection_reason`, `disposition`, `disposition_status`, `quality_check_id`, `rejection_date`
-
-### `GET /quality-rejections/{id}`
-Get a single rejection. Returns `404` if not found or belongs to a different org.
-
-### `PATCH /quality-rejections/{id}`
-Update a rejection. To mark the disposition as executed:
-
-```json
-{ "disposition_status": "executed" }
-```
-
----
+Codes: `CHECK_HAS_NO_REJECTED_QUANTITY`, `QUANTITY_REQUIRED`, `QUANTITY_EXCEEDS_CHECK` (with `available`), `NOTES_REQUIRED`, `DEFECT_NOT_FOUND`,
+`REJECTION_ALREADY_DECIDED`, `REJECTION_IS_FINAL`, `CONCESSION_DETAILS_REQUIRED`, `DECISION_REQUIRED`, `HOLD_IS_NOT_FINAL`.
 
 ## Non-Conformance Reports
 

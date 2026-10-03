@@ -22,18 +22,21 @@ export function OrderStatusPanel({ order, onChanged }: { order: ProductionOrderD
   const [pending, setPending] = useState<LifecycleAction | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // CLOSE_BLOCKED lists what other modules still need done (quality checks open, rejections undecided).
+  const [blockers, setBlockers] = useState<{ code: string; count: number }[]>([]);
   const lifecycle = order.lifecycle;
   // Closing shows the final result first when the user may read it; zero output is offered either way.
   const canReadResult = usePermission(P.RESULTS_READ);
 
   async function run(action: LifecycleAction, reason?: string, zeroOutput = false) {
-    setBusy(true); setError("");
+    setBusy(true); setError(""); setBlockers([]);
     try {
       await transitionProductionOrder(order.id, action.action, { reason, expectedVersion: lifecycle?.status_version, zeroOutput });
       setPending(null);
       onChanged?.();
     } catch (e) {
       setError(lifecycleErrorCode(e));
+      setBlockers((e as { details?: { detail?: { blockers?: { code: string; count: number }[] } } }).details?.detail?.blockers ?? []);
       setPending(null);
     } finally { setBusy(false); }
   }
@@ -62,7 +65,12 @@ export function OrderStatusPanel({ order, onChanged }: { order: ProductionOrderD
         <div><dt className={s.muted}>{t("actualEnd")}</dt><dd style={{ margin: "4px 0" }}>{lifecycle?.actual_end_at ? fmt.dateTime(lifecycle.actual_end_at) : "—"}</dd></div>
       </dl>
       {lifecycle?.terminal && <p className={s.muted} style={{ marginBottom: 0 }}>{t("terminalHint")}</p>}
-      {error && <p role="alert" className={s.error}>{t(`errors.${t.has(`errors.${error}`) ? error : "request_failed"}`)}</p>}
+      {error && <div role="alert" className={s.error}>
+        {t(`errors.${t.has(`errors.${error}`) ? error : "request_failed"}`)}
+        {blockers.length > 0 && <ul style={{ margin: "6px 0 0" }}>{blockers.map(b => <li key={b.code}>
+          {t.has(`blockers.${b.code}`) ? t(`blockers.${b.code}`, { count: String(b.count) }) : b.code}
+        </li>)}</ul>}
+      </div>}
       {pending?.action === "close" && (
         <CloseResultDialog orderId={order.id} orderNumber={order.production_order_number} busy={busy} error="" canReadResult={canReadResult}
           onClose={() => setPending(null)} onConfirm={({ reason, zeroOutput }) => void run(pending, reason, zeroOutput)} />

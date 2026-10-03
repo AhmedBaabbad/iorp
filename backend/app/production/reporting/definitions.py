@@ -18,6 +18,9 @@ def register_reports():
         Section('downtime','التوقفات','Downtime',available=b.has_data(b.DowntimeEvent,'production_order_id')),
         Section('waste','الهدر التشغيلي','Operational waste',available=b.has_data(b.WasteRecord,'production_order_id')),
         Section('result','النتيجة النهائية','Final result',available=b.result_available),
+        # Quality's inspections and rejections of the order, for users who may read them (QUAL-REPORT-001).
+        Section('quality_checks','فحوصات الجودة','Quality checks',requires_permission='quality:quality_checks:read',available=b.quality_rows('quality_checks')),
+        Section('quality_rejections','حالات رفض الجودة','Quality rejections',requires_permission='quality:rejections:read',available=b.quality_rows('quality_rejections')),
         Section('notes','الملاحظات','Notes'),Section('signatures','التوقيعات','Signatures'))
     for key,ar,en,schema,sections,builder,orientation,available in [
         ('order_full','تقرير أمر الإنتاج','Production order report',OrderParams,order_sections,b.order_full,'portrait',None),

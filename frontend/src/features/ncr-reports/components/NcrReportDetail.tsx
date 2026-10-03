@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import { usePermission } from "@/features/auth/permission-hooks";
+import { Q } from "@/lib/quality-permissions";
 import { PageFrame } from "@/components/layout/page-frame";
 import { NcrItemsList } from "@/features/ncr-items";
 import { useFormatter } from "@/hooks/useFormatter";
@@ -81,6 +83,7 @@ const styles: Record<string, CSSProperties> = {
 
 export function NcrReportDetail({ ncrReportId }: NcrReportDetailProps) {
   const t = useTranslations("ncr.ncrReports");
+  const canUpdate = usePermission(Q.NCR_UPDATE);
   const tEnums = useTranslations();
   const messages = useTranslations("messages");
   const fmt = useFormatter();
@@ -185,7 +188,7 @@ export function NcrReportDetail({ ncrReportId }: NcrReportDetailProps) {
       {!isLoading && !error && !isNotFound && report ? (
         <>
           <div style={styles.actions}>
-            {report.status === "draft" ? (
+            {canUpdate && report.status === "draft" ? (
               <button
                 style={sharedStyles.button}
                 type="button"
@@ -196,7 +199,7 @@ export function NcrReportDetail({ ncrReportId }: NcrReportDetailProps) {
               </button>
             ) : null}
 
-            {report.status === "open" ? (
+            {canUpdate && report.status === "open" ? (
               <button
                 style={sharedStyles.button}
                 type="button"
@@ -207,7 +210,7 @@ export function NcrReportDetail({ ncrReportId }: NcrReportDetailProps) {
               </button>
             ) : null}
 
-            {report.status === "under_review" ? (
+            {canUpdate && report.status === "under_review" ? (
               <button
                 style={sharedStyles.button}
                 type="button"

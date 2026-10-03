@@ -83,6 +83,11 @@
       }
     },
     "empty": "No non-conformance reports yet",
-    "notFound": "Non-conformance report not found"
+    "notFound": "Non-conformance report not found",
+    "filters": {
+      "allSources": "All sources",
+      "allReportTypes": "All report types",
+      "allStatuses": "All statuses"
+    }
   }
 }

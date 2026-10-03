@@ -6,12 +6,11 @@ Each test is fully independent and uses the shared conftest fixtures
 
 Critical decisions verified here:
   D1  — status and result are TWO SEPARATE fields in QualityCheck
-  D2  — qty_inspected/accepted/rejected all required; accepted + rejected = inspected
+  D2  — quantities balance (accepted + rejected = inspected) when the check closes: tests/quality/test_quality_inspections.py
   D3  — inspection_code auto-generated as QI-YYYY-NNNN, never a caller input
   D5  — quality_check_id REQUIRED in QualityDefect (enforced via nested route path)
   D6  — defect_count defaults to 1 when not provided
-  D8  — rejection_notes REQUIRED in QualityRejection (Quality PRD BR-02)
-  D9  — disposition_status auto-set to 'pending' on creation, never a caller input
+  D8/D9 — rejections (notes required, pending until a disposition is decided): tests/quality/test_quality_inspections.py
   D11 — report_number auto-generated as NCR-YYYY-NNNN, never a caller input
   D12 — NCR items cannot be created or modified on CLOSED reports
 """
@@ -27,10 +26,8 @@ NCR_BASE    = "/api/v1/quality/non-conformance-reports"
 def _base_check(**overrides) -> dict:
     payload = {
         "check_datetime": "2026-07-03T08:00:00+00:00",
-        "check_type": "in_process_inspection",   # D4: business type — not visual/dimension
+        "check_type": "general",   # D4: business type — not visual/dimension
         "qty_inspected": 100,
-        "qty_accepted": 85,
-        "qty_rejected": 15,                       # D2: 85 + 15 = 100 ✓
     }
     payload.update(overrides)
     return payload
@@ -62,34 +59,6 @@ def _base_report(**overrides) -> dict:
     }
     payload.update(overrides)
     return payload
-
-
-# ── T1 — Quantity Constraint Validation (D2) ──────────────────────────────────
-
-def test_quantity_constraint_validation(client, auth_headers):
-    """
-    T1: CRITICAL — Sprint 4 decision D2.
-    qty_accepted + qty_rejected MUST equal qty_inspected.
-    Imbalanced quantities must be rejected (422 — schema-level guard).
-    Correct quantities must succeed (201).
-    """
-    # Imbalanced: 80 + 30 = 110 ≠ 100 — must fail at schema level
-    resp_bad = client.post(
-        CHECKS_BASE,
-        json=_base_check(qty_inspected=100, qty_accepted=80, qty_rejected=30),
-        headers=auth_headers,
-    )
-    assert resp_bad.status_code == 422, (
-        "qty_accepted=80 + qty_rejected=30 = 110 ≠ 100 must return 422 (D2)"
-    )
-
-    # Balanced: 80 + 20 = 100 — must succeed
-    resp_ok = client.post(
-        CHECKS_BASE,
-        json=_base_check(qty_inspected=100, qty_accepted=80, qty_rejected=20),
-        headers=auth_headers,
-    )
-    assert resp_ok.status_code == 201, "Balanced qty (80+20=100) must succeed (D2)"
 
 
 # ── T2 — status/result Auto-Set and Separation (D1) ──────────────────────────
@@ -193,50 +162,6 @@ def test_quality_defect_requires_check_id(client, auth_headers):
     )
     assert resp_ok.json()["quality_check_id"] == check_id, (
         "quality_check_id in response must match the URL path parameter (D5)"
-    )
-
-
-# ── T5 — rejection_notes Required and disposition_status Auto-Set (D8 / D9) ──
-
-def test_rejection_notes_required_and_disposition_auto_set(client, auth_headers):
-    """
-    T5: CRITICAL — Sprint 4 decisions D8 and D9.
-    D8 — rejection_notes is required (Quality PRD BR-02).
-         Missing rejection_notes must return 422 (Pydantic schema guard).
-    D9 — disposition_status is auto-set to 'pending' on creation.
-         It must NOT be present in the create request body — the schema rejects it.
-    """
-    # Missing rejection_notes must fail at schema level (D8)
-    resp_no_notes = client.post(
-        "/api/v1/quality/quality-rejections",
-        json={
-            "rejection_date": "2026-07-03",
-            "rejection_reason": "dimension_failure",
-            "disposition": "rework",
-            "quantity_rejected": 15,
-            "unit": "pcs",
-            # rejection_notes intentionally absent
-        },
-        headers=auth_headers,
-    )
-    assert resp_no_notes.status_code == 422, (
-        "rejection_notes absent must return 422 (D8 — Quality PRD BR-02)"
-    )
-
-    # Valid rejection — disposition_status must auto-set to 'pending' (D9)
-    resp_ok = client.post(
-        "/api/v1/quality/quality-rejections",
-        json=_base_rejection(),
-        headers=auth_headers,
-    )
-    assert resp_ok.status_code == 201
-    data = resp_ok.json()
-
-    assert data["disposition_status"] == "pending", (
-        "disposition_status must auto-set to 'pending' on creation (D9)"
-    )
-    assert "disposition_status" not in _base_rejection(), (
-        "disposition_status must NOT appear in the create payload (D9)"
     )
 
 

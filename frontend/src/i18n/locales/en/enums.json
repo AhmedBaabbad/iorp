@@ -10,7 +10,8 @@
     "status": {
       "open": "Open",
       "under_inspection": "Under Inspection",
-      "closed": "Closed"
+      "closed": "Closed",
+      "cancelled": "Cancelled"
     },
     "result": {
       "accepted": "Accepted",
@@ -39,14 +40,16 @@
       "other": "Other"
     },
     "disposition": {
-      "hold": "Hold",
+      "hold": "Hold (quarantine)",
       "scrap": "Scrap",
       "rework": "Rework",
-      "return_to_process": "Return to Process"
+      "return_to_process": "Return to process",
+      "use_as_is": "Use as is (concession)"
     },
     "dispositionStatus": {
-      "pending": "Pending",
-      "executed": "Executed"
+      "pending": "Awaiting decision",
+      "executed": "Executed",
+      "decided": "Decided"
     }
   },
   "ncrReport": {

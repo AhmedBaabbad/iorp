@@ -27,6 +27,7 @@ import {
   IconX,
 } from "./nav-icons";
 import { P, PRODUCTION_REPORTS } from "@/lib/production-permissions";
+import { Q, QUALITY_REPORTS } from "@/lib/quality-permissions";
 
 type PageFrameProps = {
   title: string;
@@ -296,15 +297,16 @@ const staticNavGroups: StaticNavGroup[] = [
     labelKey: "sections.quality",
     icon: IconClipboardCheck,
     links: [
-      { href: "/quality-checks", labelKey: "links.qualityChecks" },
-      { href: "/quality-rejections", labelKey: "links.qualityRejections" },
+      { href: "/quality-checks", labelKey: "links.qualityChecks", permission: Q.CHECKS_READ },
+      { href: "/quality-rejections", labelKey: "links.qualityRejections", permission: Q.REJECTIONS_READ },
+      { href: "/quality-reports", labelKey: "links.qualityReports", anyPermissions: QUALITY_REPORTS },
     ],
   },
   {
     labelKey: "sections.ncr",
     icon: IconAlertTriangle,
     links: [
-      { href: "/non-conformance-reports", labelKey: "links.ncrReports" },
+      { href: "/non-conformance-reports", labelKey: "links.ncrReports", permission: Q.NCR_READ },
     ],
   },
   {

@@ -63,6 +63,7 @@ export function ActionFollowUpForm({
   onCancel,
 }: ActionFollowUpFormProps) {
   const t = useTranslations("capa.correctiveActions.followUps");
+  const enumT = useTranslations("enums");
   const messages = useTranslations("messages");
   const common = useTranslations("common");
   const [values, setValues] = useState<ActionFollowUpFormValues>(createDefaultValues);
@@ -150,10 +151,10 @@ export function ActionFollowUpForm({
             disabled={isSubmitting}
             required
           >
-            <option value="on_track">On Track</option>
-            <option value="delayed">Delayed</option>
-            <option value="blocked">Blocked (Needs Attention)</option>
-            <option value="completed">Completed</option>
+            <option value="on_track">{enumT("actionFollowUp.status.on_track")}</option>
+            <option value="delayed">{enumT("actionFollowUp.status.delayed")}</option>
+            <option value="blocked">{enumT("actionFollowUp.status.blocked")}</option>
+            <option value="completed">{enumT("actionFollowUp.status.completed")}</option>
           </select>
         </label>
       </div>

@@ -330,6 +330,11 @@ def require_any_permission(permission_codes: list[str]):
     return dependency
 
 
+def permission_check(current: CurrentUserContext = Depends(get_current_user)):
+    """A per-record permission test (allowed actions on each record); the organization root may do everything."""
+    return lambda code: current.user.is_organization_root or has_permission(current.auth_user, code)
+
+
 def permission_checked_in_handler(*permission_codes: str):
     """Declares a route whose permission depends on the request (an action, a report, a section).
 

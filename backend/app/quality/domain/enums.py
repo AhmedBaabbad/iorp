@@ -23,6 +23,8 @@ class QualityCheckStatus(str, Enum):
     UNDER_INSPECTION = "under_inspection"
     # Inspection is concluded and result has been recorded.
     CLOSED = "closed"
+    # Withdrawn before a result (created by mistake, lot no longer available); a reason is kept.
+    CANCELLED = "cancelled"
 
 
 class QualityCheckResult(str, Enum):
@@ -98,12 +100,16 @@ class Disposition(str, Enum):
     REWORK = "rework"
     # Reintroduce into the production process.
     RETURN_TO_PROCESS = "return_to_process"
+    # Accepted as it is under an approved concession (e.g. the customer accepts a minor deviation).
+    USE_AS_IS = "use_as_is"
 
 
 class DispositionStatus(str, Enum):
-    # Disposition decision made but not yet executed.
+    # Rejected quantity awaiting a disposition decision.
     PENDING = "pending"
-    # Disposition has been carried out.
+    # Disposition decided (hold, scrap, rework, return to process or use as is), not yet carried out.
+    DECIDED = "decided"
+    # Decision carried out; the rejection is final.
     EXECUTED = "executed"
 
 

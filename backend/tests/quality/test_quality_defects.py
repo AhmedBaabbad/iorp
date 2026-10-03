@@ -46,10 +46,8 @@ def _login(client, email, password="Other1234!") -> dict[str, str]:
 def _base_quality_check(**overrides) -> dict:
     payload = {
         "check_datetime": "2026-07-02T08:00:00+00:00",
-        "check_type": "in_process_inspection",
+        "check_type": "general",
         "qty_inspected": 10,
-        "qty_accepted": 8,
-        "qty_rejected": 2,
     }
     payload.update(overrides)
     return payload

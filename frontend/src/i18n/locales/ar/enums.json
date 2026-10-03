@@ -10,7 +10,8 @@
     "status": {
       "open": "مفتوح",
       "under_inspection": "قيد الفحص",
-      "closed": "مغلق"
+      "closed": "مغلق",
+      "cancelled": "ملغى"
     },
     "result": {
       "accepted": "مقبول",
@@ -39,14 +40,16 @@
       "other": "أخرى"
     },
     "disposition": {
-      "hold": "تعليق",
-      "scrap": "إتلاف",
-      "rework": "إعادة تصنيع",
-      "return_to_process": "إعادة للعملية"
+      "hold": "حجز (عزل)",
+      "scrap": "هالك (إتلاف)",
+      "rework": "إعادة تشغيل",
+      "return_to_process": "إعادة إلى العملية",
+      "use_as_is": "استخدام كما هو بموافقة"
     },
     "dispositionStatus": {
-      "pending": "قيد التنفيذ",
-      "executed": "منفذ"
+      "pending": "بانتظار القرار",
+      "executed": "منفَّذ",
+      "decided": "مقرَّر"
     }
   },
   "ncrReport": {

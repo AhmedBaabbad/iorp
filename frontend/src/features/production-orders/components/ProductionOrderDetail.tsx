@@ -9,6 +9,7 @@ import { OrderStatusTimeline } from "./OrderStatusTimeline";
 import { OrderResultSection } from "@/features/production-results";
 import { OrderWasteSection } from "@/features/waste-records";
 import { OrderDowntimeSection } from "@/features/downtime-events";
+import { OrderQualitySection } from "@/features/order-quality";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import type { CSSProperties, ReactNode } from "react";
@@ -232,6 +233,7 @@ export function ProductionOrderDetail() {
           <OrderResultSection order={order} revision={revision} />
           <OrderWasteSection order={order} revision={revision} />
           <OrderDowntimeSection order={order} revision={revision} />
+          <OrderQualitySection order={order} revision={revision} />
           <OrderAllocations order={order} />
           {/* Planning orders show their lines above; manual items remain for orders without allocations. */}
           {order.allocations.length === 0 && (

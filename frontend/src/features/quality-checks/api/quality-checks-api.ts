@@ -1,54 +1,46 @@
 import { apiClient } from "@/lib/api-client";
 import type {
-  CreateQualityCheckRequest,
-  QualityCheckData,
-  QualityCheckListFilters,
-  QualityCheckListItem,
-  UpdateQualityCheckStatusRequest,
+  CloseQualityCheckRequest, CreateQualityCheckRequest, InspectableOrder, QualityCheckData, QualityCheckListFilters, QualityCheckListItem,
+  SampleOption, UpdateQualityCheckRequest,
 } from "../types";
 
-const QUALITY_CHECKS_PATH = "/quality-checks";
+const PATH = "/quality/quality-checks";
 
 export function getQualityChecks(filters: QualityCheckListFilters = {}) {
-  const query = new URLSearchParams();
-
-  if (filters.check_type) {
-    query.set("check_type", filters.check_type);
-  }
-
-  if (filters.status) {
-    query.set("check_status", filters.status);
-  }
-
-  if (filters.result) {
-    query.set("result", filters.result);
-  }
-
-  if (filters.production_order_id) {
-    query.set("production_order_id", filters.production_order_id);
-  }
-
-  const suffix = query.size > 0 ? `?${query.toString()}` : "";
-  return apiClient<QualityCheckListItem[]>(`${QUALITY_CHECKS_PATH}${suffix}`);
+  const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => Boolean(value)) as [string, string][]);
+  return apiClient<QualityCheckListItem[]>(`${PATH}${query.size ? `?${query}` : ""}`);
 }
 
-export function getQualityCheckById(qualityCheckId: string) {
-  return apiClient<QualityCheckData>(`${QUALITY_CHECKS_PATH}/${qualityCheckId}`);
+export function getQualityCheckById(id: string) {
+  return apiClient<QualityCheckData>(`${PATH}/${id}`);
 }
 
-export function createQualityCheck(payload: CreateQualityCheckRequest) {
-  return apiClient<QualityCheckData>(QUALITY_CHECKS_PATH, {
-    method: "POST",
-    body: payload,
-  });
+// Opens an inspection; a production lot needs its order running, held or completed.
+export function createQualityCheck(body: CreateQualityCheckRequest) {
+  return apiClient<QualityCheckData>(PATH, { method: "POST", body });
 }
 
-export function updateQualityCheckStatus(
-  qualityCheckId: string,
-  payload: UpdateQualityCheckStatusRequest,
-) {
-  return apiClient<QualityCheckData>(`${QUALITY_CHECKS_PATH}/${qualityCheckId}`, {
-    method: "PATCH",
-    body: payload,
-  });
+export function updateQualityCheck(id: string, body: UpdateQualityCheckRequest) {
+  return apiClient<QualityCheckData>(`${PATH}/${id}`, { method: "PATCH", body });
+}
+
+export function startQualityCheck(id: string) {
+  return apiClient<QualityCheckData>(`${PATH}/${id}/start`, { method: "POST" });
+}
+
+// Result and quantities; a rejected quantity opens a rejection awaiting a decision.
+export function closeQualityCheck(id: string, body: CloseQualityCheckRequest) {
+  return apiClient<QualityCheckData>(`${PATH}/${id}/close`, { method: "POST", body });
+}
+
+export function cancelQualityCheck(id: string, reason: string) {
+  return apiClient<QualityCheckData>(`${PATH}/${id}/cancel`, { method: "POST", body: { reason } });
+}
+
+export function getInspectableOrders(search = "") {
+  return apiClient<InspectableOrder[]>(`${PATH}/lookups/orders?q=${encodeURIComponent(search)}`);
+}
+
+export function getInspectableSamples(search = "") {
+  return apiClient<SampleOption[]>(`${PATH}/lookups/samples?q=${encodeURIComponent(search)}`);
 }

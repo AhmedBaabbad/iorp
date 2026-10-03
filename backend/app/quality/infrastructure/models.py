@@ -3,8 +3,10 @@ from decimal import Decimal
 import uuid
 
 from sqlalchemy import (
+    JSON,
     Enum as SqlEnum,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -138,11 +140,18 @@ class QualityCheck(Base):
         nullable=True,
     )
 
-    # Quantity tracking — required for FPY and rejection-rate calculations.
-    # Constraint: qty_accepted + qty_rejected == qty_inspected (enforced in service).
-    qty_inspected: Mapped[int] = mapped_column(Integer, nullable=False)
-    qty_accepted: Mapped[int] = mapped_column(Integer, nullable=False)
-    qty_rejected: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Quantity tracking — required for FPY and rejection-rate calculations. Decimals in the inspected
+    # line's unit (kg, roll...). Constraint: qty_accepted + qty_rejected == qty_inspected (domain/rules.py).
+    qty_inspected: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False)
+    qty_accepted: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False)
+    qty_rejected: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False)
+    unit: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # A sample inspection refers to a commercial sample instead of a production order (plain UUID, no FK).
+    sample_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    started_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    closed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -284,6 +293,7 @@ class QualityRejection(Base):
     """
 
     __tablename__ = "quality_rejections"
+    __table_args__ = (UniqueConstraint("organization_id", "rejection_code", name="uq_quality_rejections_org_code"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -309,7 +319,11 @@ class QualityRejection(Base):
         index=True,
     )
 
-    # Optional Production context references: plain UUIDs, no FK constraints.
+    # Generated QR-YYYY-NNNN, never caller input.
+    rejection_code: Mapped[str] = mapped_column(String(32), nullable=False)
+    # Production context references: plain UUIDs, no FK constraints (ADR-004). The order is taken
+    # from the check (or chosen for a manual rejection) so the order page and close gate find it.
+    production_order_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     production_order_item_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         nullable=True,
@@ -326,13 +340,14 @@ class QualityRejection(Base):
         index=True,
     )
     rejection_notes: Mapped[str] = mapped_column(Text, nullable=False)
-    disposition: Mapped[Disposition] = mapped_column(
+    # NULL while pending: the disposition is a decision taken after the rejection is recorded.
+    disposition: Mapped[Disposition | None] = mapped_column(
         SqlEnum(
             Disposition,
             name="quality_disposition",
             values_callable=enum_values,
         ),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     disposition_status: Mapped[DispositionStatus] = mapped_column(
@@ -345,8 +360,16 @@ class QualityRejection(Base):
         default=DispositionStatus.PENDING,
         index=True,
     )
-    quantity_rejected: Mapped[int] = mapped_column(Integer, nullable=False)
+    quantity_rejected: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False)
     unit: Mapped[str] = mapped_column(String(32), nullable=False)
+    decided_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    decided_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
+    decision_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # use_as_is only: who approved the concession (e.g. the customer's representative).
+    concession_approved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    executed_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    executed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
+    execution_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     rejected_by_user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -526,3 +549,29 @@ class NonConformanceItem(Base):
         default=utc_now,
         onupdate=utc_now,
     )
+
+
+class QualityCodeCounter(Base):
+    """Per organization, kind (QI checks, QR rejections) and year: the last number issued. Locked while numbering."""
+    __tablename__ = "quality_code_counters"
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(8), primary_key=True)
+    year: Mapped[int] = mapped_column(Integer, primary_key=True)
+    value: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class QualityStatusHistory(Base):
+    """Every lifecycle step of a check or a rejection: who, when, from/to, and the reason or decision."""
+    __tablename__ = "quality_status_history"
+    __table_args__ = (Index("ix_quality_history_entity", "organization_id", "entity_type", "entity_id"),)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(20), nullable=False)  # "check" | "rejection"
+    entity_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    action: Mapped[str] = mapped_column(String(30), nullable=False)
+    from_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(30), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    detail: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)

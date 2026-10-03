@@ -27,6 +27,7 @@ export const qualityCheckStatusColors: Record<QualityCheckStatus, BadgeColor> = 
   open: { background: "var(--surface-muted)", color: "var(--text-muted)" },
   under_inspection: { background: "var(--warning-soft)", color: "var(--warning)" },
   closed: { background: "var(--success-soft)", color: "var(--success)" },
+  cancelled: { background: "var(--surface-muted)", color: "var(--text-muted)" },
 };
 
 export const qualityCheckResultColors: Record<QualityCheckResult | "pending", BadgeColor> = {
@@ -62,10 +63,12 @@ export const qualityRejectionDispositionColors: Record<Disposition, BadgeColor> 
   scrap: { background: "var(--danger-soft)", color: "var(--danger)" },
   rework: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
   return_to_process: { background: "var(--surface-muted)", color: "var(--text-muted)" },
+  use_as_is: { background: "var(--teal-soft)", color: "var(--teal)" },
 };
 
 export const qualityRejectionDispositionStatusColors: Record<DispositionStatus, BadgeColor> = {
   pending: { background: "var(--warning-soft)", color: "var(--warning)" },
+  decided: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
   executed: { background: "var(--success-soft)", color: "var(--success)" },
 };
 

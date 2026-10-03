@@ -1,6 +1,6 @@
 # Quality Module
 
-**Status:** Sprint 4 — Baseline Complete (5 entities)
+**Status:** QUAL-001 — checks and rejections redesigned (lifecycle, close gate, per-action permissions); defects and NCR unchanged
 
 The quality module owns the inspection and non-conformance chain: recording quality checks, logging defects, formalizing rejections, and opening non-conformance cases with line items. All data is org-scoped via `TenantContext` (ADR-001). No imports from `app.production`, `app.commercial`, or `app.foundation` models are allowed — only `app.core.*` and `app.quality.*` (ADR-004).
 
@@ -10,45 +10,29 @@ The quality module owns the inspection and non-conformance chain: recording qual
 
 ## Entities and domain objects
 
-### QualityCheck
-An inspection event. The root entity of the quality chain.
+### QualityCheck (QUAL-001)
+An inspection of a production lot (an order, optionally one line) or of a commercial sample.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| id | UUID PK | |
-| organization_id | UUID FK → foundation_organizations | Tenant scope |
-| inspection_code | String(32) | Auto-generated `QI-YYYY-NNNN` — never a caller input (D3) |
-| check_datetime | DateTime(tz) | When the inspection occurred |
-| check_type | Enum | Business type — see approved values below (D4) |
-| status | Enum `open/under_inspection/closed` | Lifecycle state — default `open` (D1) |
-| result | Enum `accepted/rejected/conditional_accept/needs_reinspection` nullable | Inspection outcome — null until set (D1) |
-| qty_inspected | Integer | Total units submitted — must be `> 0` |
-| qty_accepted | Integer | Units that passed — must be `>= 0` |
-| qty_rejected | Integer | Units that failed — must be `>= 0` |
-| production_order_id | UUID nullable | Plain UUID ref — no FK (ADR-004) |
-| production_order_item_id | UUID nullable | Plain UUID ref — no FK |
-| shift_report_id | UUID nullable | Plain UUID ref — no FK |
-| notes | Text nullable | |
-| checked_by_user_id | UUID FK → foundation_users (DB-level only) | |
+| inspection_code | String(32) | `QI-YYYY-NNNN` from the locked `quality_code_counters` row — never a caller input |
+| check_type | Enum | `in_process_inspection` / `finished_product_inspection` / `reinspection` need an order; `sample_inspection` needs a sample; `issue_triggered` / `general` may name an order |
+| status | Enum `open/under_inspection/closed/cancelled` | `closed` and `cancelled` are final |
+| result | Enum nullable | Set only by closing |
+| qty_inspected / qty_accepted / qty_rejected | Numeric(14,3) | In `unit`; accepted + rejected = inspected when closing |
+| unit | String nullable | Taken from the order line, the order or the sample |
+| production_order_id / production_order_item_id | UUID nullable | Order must be `in_progress`, `on_hold` or `completed` |
+| sample_id | UUID nullable | Commercial sample, read through the shared table |
+| started_at, closed_at, closed_by_user_id, cancel_reason | | Lifecycle facts |
 
-**D1 — status vs result (two separate fields):**
-- `status` tracks the inspection lifecycle: `open` → `under_inspection` → `closed`
-- `result` records the inspection outcome: `accepted` / `rejected` / `conditional_accept` / `needs_reinspection`
-- Setting status to `closed` requires `result` to be set (enforced in service — returns 400 if missing)
-- These are never combined into a single `result_status` field
+**Lifecycle** (rules in `quality/domain/rules.py`, single writer `application/check_service.py`):
+`open` → start → `under_inspection` → close(result, quantities) → `closed`; `open`/`under_inspection` → cancel(reason) → `cancelled`.
+Closing may skip the start. Edits are allowed only while the check is open or under inspection; the order cannot change once set.
 
-**D2 — Quantity constraint:**
-`qty_accepted + qty_rejected = qty_inspected` must hold at all times.
-- Enforced on create by Pydantic `model_validator(mode="after")` → 422
-- Enforced on update by service after merging partial values → 400
+**Closing rules:** inspected > 0; no negative quantity; accepted + rejected = inspected; `accepted` cannot carry a rejected quantity and `rejected` needs one.
+A rejected quantity above zero opens a **pending QualityRejection** for it in the same transaction (reason given by the inspector, default `failed_quality_check`).
 
-**D3 — inspection_code auto-generation:**
-Service generates `QI-{year}-{sequence:04d}`. The field is absent from the create schema. A 20-attempt retry loop handles race conditions. Unique per org: `UNIQUE(organization_id, inspection_code)` at DB level.
-
-**D4 — check_type approved values (business types, NOT measurement methods):**
-`in_process_inspection` / `finished_product_inspection` / `sample_inspection` / `reinspection` / `issue_triggered` / `general`
-
-Do NOT use: `visual`, `dimension`, `tensile`, `weight`. Those describe measurement methods and belong in a future measurement-detail table, not in the check type.
+Every transition writes `quality_status_history` (entity, action, from/to, reason, actor) and the tenant activity log.
 
 ### QualityDefect
 A specific defect found during a quality check. Requires a parent check.
@@ -78,34 +62,23 @@ Defaults to 1 (`Field(default=1, gt=0)`). Omitting it from the create body produ
 **Isolation note:**
 `QualityDefect` has BOTH `organization_id` (direct) AND a parent JOIN check in `get_by_id`. This is dual isolation — more secure than strictly required, but correct.
 
-### QualityRejection
-A formal rejection decision following an inspection or defect finding.
+### QualityRejection (QUAL-001)
+A rejected quantity and the decision on what to do with it.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| id | UUID PK | |
-| organization_id | UUID FK | Tenant scope |
-| quality_check_id | UUID nullable | Optional reference to the triggering check |
-| quality_defect_id | UUID nullable | Optional reference to the triggering defect |
-| production_order_item_id | UUID nullable | Plain UUID ref — no FK |
-| rejection_date | Date | |
-| rejection_reason | Enum (8 values) | |
-| rejection_notes | String(min=1) | **Required** — Quality PRD BR-02 (D8) |
-| disposition | Enum `hold/scrap/rework/return_to_process` | Required |
-| disposition_status | Enum `pending/executed` | Auto-set to `pending` (D9) |
-| quantity_rejected | Integer | Must be `> 0` |
-| unit | String(min=1) | |
-| rejected_by_user_id | UUID FK → foundation_users (DB-level only) | |
+| rejection_code | String(32) | `QR-YYYY-NNNN`, unique per organization |
+| quality_check_id | UUID nullable | The closed check it came from |
+| production_order_id / production_order_item_id | UUID | Copied from the check, or named for a manual rejection |
+| quantity_rejected | Numeric(14,3) | > 0; the rejections of one check never exceed its rejected quantity |
+| rejection_reason, rejection_notes | | Notes required (BR-02) |
+| disposition | Enum nullable | `hold` / `scrap` / `rework` / `return_to_process` / `use_as_is`; null until decided |
+| disposition_status | Enum `pending/decided/executed` | |
+| decided_*, decision_notes, concession_approved_by | | `use_as_is` needs both the approver and the justification |
+| executed_*, execution_notes | | |
 
-**D8 — rejection_notes required:**
-`rejection_notes = Field(min_length=1)`. Empty string returns 422. Whitespace-only string (`"   "`) is caught in the service layer and returns 400. This rule is Quality PRD BR-02.
-
-**D9 — disposition vs disposition_status (two separate fields):**
-- `disposition` = the decided action (`hold`, `scrap`, `rework`, `return_to_process`) — required on create
-- `disposition_status` = whether the action has been carried out (`pending`, `executed`) — auto-set to `pending` on creation, updateable via PATCH
-
-**Coherence rule:**
-If both `quality_check_id` and `quality_defect_id` are provided, the defect must belong to the referenced check. This prevents cross-check incoherent references within the same org.
+**Lifecycle:** `pending` → decide → `decided` → execute → `executed` (final). The decision may change while `decided`.
+`hold` is a quarantine, not a final decision: it cannot be executed and must be changed first. Editing (date, reason, notes, quantity) is allowed only while `pending`.
 
 ### NonConformanceReport
 A formal non-conformance case. Header entity for NCR items.
@@ -171,18 +144,55 @@ A line item within an NCR case. Represents a specific material, product batch, o
 | Enum | Values |
 |------|--------|
 | QualityCheckType | `in_process_inspection` / `finished_product_inspection` / `sample_inspection` / `reinspection` / `issue_triggered` / `general` |
-| QualityCheckStatus | `open` / `under_inspection` / `closed` |
+| QualityCheckStatus | `open` / `under_inspection` / `closed` / `cancelled` |
 | QualityCheckResult | `accepted` / `rejected` / `conditional_accept` / `needs_reinspection` |
 | DefectCategory (11) | `dimension` / `thickness` / `surface` / `color` / `strength` / `winding` / `weight` / `packaging` / `labeling` / `finish` / `other` |
 | DefectSeverity | `minor` / `major` / `critical` |
 | RejectionReason | `failed_quality_check` / `critical_defect` / `out_of_spec` / `dimension_failure` / `surface_failure` / `packaging_failure` / `labeling_issue` / `other` |
-| Disposition | `hold` / `scrap` / `rework` / `return_to_process` |
-| DispositionStatus | `pending` / `executed` |
+| Disposition | `hold` / `scrap` / `rework` / `return_to_process` / `use_as_is` |
+| DispositionStatus | `pending` / `decided` / `executed` |
 | NCRSourceType | `internal_production` / `incoming_material` / `supplier` / `warehouse` / `customer_return` / `other` |
 | NCRReportType | `material_non_conformance` / `product_non_conformance` / `process_non_conformance` / `packaging_non_conformance` / `documentation_non_conformance` / `other` |
 | NCRStatus | `draft` / `open` / `under_review` / `closed` |
 
 ---
+
+## Production order close gate (QUAL-001)
+
+Production asks the composition-root guards before closing an order (`app/core/interfaces/order_close_guards.py`; quality registers
+`rejection_service.close_blockers` in `main.py`, so production never imports quality). Under the order lock it raises
+`409 {"code": "CLOSE_BLOCKED", "blockers": [{"code", "count"}]}` when the order has:
+
+- checks still `open` or `under_inspection` → `QUALITY_CHECKS_OPEN`
+- rejections `pending`, or `decided` as `hold` → `QUALITY_REJECTIONS_UNRESOLVED`
+
+The order page shows a quality section with these counts, and the status panel lists the blockers.
+
+## Permissions
+
+Per action, one source: `quality/domain/permissions.py`, mirrored by `frontend/src/lib/quality-permissions.ts`
+(`tests/quality-permissions.test.mjs` keeps them identical). Every quality route declares one; screens hide what the user cannot do.
+
+| Resource | Actions |
+|----------|---------|
+| `quality:quality_checks` | read, create, update, start, close, cancel |
+| `quality:rejections` | read, create, update, decide, execute |
+| `quality:quality_defects` | read, create, update |
+| `quality:ncr_reports` | read, create, update (NCR items use update) |
+
+Migration `f6a1b2i6` split the old `write` grants into these actions (backup `quality_rbac_i6_backup`) and gave `quality_manager`
+`production:production_orders:read`. Records carry an `actions` list computed by the server for the current user.
+
+---
+
+## Quality report center (QUAL-REPORT-001)
+
+`/quality-reports` uses the shared reporting core (same layout, identity, languages and "nothing is stored" rule as production).
+`app/quality/reporting` registers four reports — Q1 check report, Q2 checks summary, Q3 rejections and dispositions, Q4 defects —
+each behind `reports:quality:<key>` (`quality/domain/report_permissions.py`) plus the read permission of its data.
+Lookups (`/reports/quality/lookups/{checks,orders,products}`) need the data's read permission. Production orders are read through
+the shared metadata. Migration `f6a1b2i7` adds the permissions and grants them to organization_admin, factory_manager, quality_manager
+and viewer. The check page opens Q1 with the check fixed; R1 includes the order's checks and rejections.
 
 ## Tenant isolation pattern
 
@@ -200,7 +210,7 @@ Three levels of isolation enforce ADR-001 across all 5 entities:
 
 - No Python imports from `app.production.*`, `app.commercial.*`, or `app.foundation.infrastructure.models`
 - Production references (`production_order_id`, `production_order_item_id`) are plain `UUID` columns with no FK constraints. `production_output_id` was removed with the legacy production outputs (migration `f6a1b2h5`).
-- Cross-module existence checks use raw `text()` SQL — no Production model imports
+- Cross-module reads (orders, lines, samples, user names) go through `Base.metadata.tables` in `application/support.py` — no Production or Commercial model imports
 - `created_by_user_id` / `checked_by_user_id` / `detected_by_user_id` / `rejected_by_user_id` use `ForeignKey("foundation_users.id")` at DB level only — no import of the Foundation `User` model into Quality code
 
 ---

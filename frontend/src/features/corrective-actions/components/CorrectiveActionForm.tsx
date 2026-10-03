@@ -84,6 +84,7 @@ const styles: Record<string, CSSProperties> = {
 export function CorrectiveActionForm() {
   const router = useRouter();
   const t = useTranslations("capa.correctiveActions");
+  const enumT = useTranslations("enums");
   const messages = useTranslations("messages");
   const common = useTranslations("common");
   const [values, setValues] = useState<CorrectiveActionFormValues>(defaultValues);
@@ -193,10 +194,10 @@ export function CorrectiveActionForm() {
                 disabled={isSubmitting}
                 required
               >
-                <option value="corrective">Corrective (Fix after problem)</option>
-                <option value="preventive">Preventive (Prevent recurrence)</option>
-                <option value="improvement">Improvement (Process improvement)</option>
-                <option value="containment">Containment (Immediate containment)</option>
+                <option value="corrective">{enumT("correctiveAction.actionType.corrective")}</option>
+                <option value="preventive">{enumT("correctiveAction.actionType.preventive")}</option>
+                <option value="improvement">{enumT("correctiveAction.actionType.improvement")}</option>
+                <option value="containment">{enumT("correctiveAction.actionType.containment")}</option>
               </select>
             </label>
 
@@ -214,10 +215,10 @@ export function CorrectiveActionForm() {
                 disabled={isSubmitting}
                 required
               >
-                <option value="urgent">Urgent</option>
-                <option value="high">High</option>
-                <option value="normal">Normal</option>
-                <option value="low">Low</option>
+                <option value="urgent">{enumT("correctiveAction.priority.urgent")}</option>
+                <option value="high">{enumT("correctiveAction.priority.high")}</option>
+                <option value="normal">{enumT("correctiveAction.priority.normal")}</option>
+                <option value="low">{enumT("correctiveAction.priority.low")}</option>
               </select>
             </label>
 
@@ -262,12 +263,12 @@ export function CorrectiveActionForm() {
                 }
                 disabled={isSubmitting}
               >
-                <option value="">No source selected</option>
-                <option value="quality_rejection">Quality Rejection</option>
-                <option value="ncr_report">NCR Report</option>
-                <option value="quality_defect">Quality Defect</option>
-                <option value="ncr_item">NCR Item</option>
-                <option value="manual">Manual (No source)</option>
+                <option value="">{t("noSourceSelected")}</option>
+                <option value="quality_rejection">{enumT("correctiveAction.sourceType.quality_rejection")}</option>
+                <option value="ncr_report">{enumT("correctiveAction.sourceType.ncr_report")}</option>
+                <option value="quality_defect">{enumT("correctiveAction.sourceType.quality_defect")}</option>
+                <option value="ncr_item">{enumT("correctiveAction.sourceType.ncr_item")}</option>
+                <option value="manual">{enumT("correctiveAction.sourceType.manual")}</option>
               </select>
             </label>
 

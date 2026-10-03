@@ -259,7 +259,12 @@
         "RESULT_REQUIRED_TO_CLOSE": "Record the final result before closing, or close it as zero output with a reason.",
         "RESULT_MISSING_FOR_ITEMS": "Every item of this order needs a result entry before closing.",
         "ZERO_OUTPUT_WITH_ENTRIES": "This order has result entries, so it cannot be closed as zero output.",
-        "ZERO_OUTPUT_ONLY_ON_CLOSE": "Zero output applies only when closing."
+        "ZERO_OUTPUT_ONLY_ON_CLOSE": "Zero output applies only when closing.",
+        "CLOSE_BLOCKED": "The order cannot close yet:"
+      },
+      "blockers": {
+        "QUALITY_CHECKS_OPEN": "Quality checks open or in inspection: {count}",
+        "QUALITY_REJECTIONS_UNRESOLVED": "Rejections without a final decision (pending or on hold): {count}"
       }
     }
   },

@@ -78,6 +78,7 @@ const styles: Record<string, CSSProperties> = {
 
 export function CorrectiveActionsList() {
   const t = useTranslations("capa.correctiveActions");
+  const enumT = useTranslations("enums");
   const tEnums = useTranslations();
   const common = useTranslations("common");
   const messages = useTranslations("messages");
@@ -151,11 +152,11 @@ export function CorrectiveActionsList() {
               updateFilter("action_type", event.target.value as FilterValues["action_type"])
             }
           >
-            <option value="">All types</option>
-            <option value="corrective">Corrective</option>
-            <option value="preventive">Preventive</option>
-            <option value="improvement">Improvement</option>
-            <option value="containment">Containment</option>
+            <option value="">{t("filters.allTypes")}</option>
+            <option value="corrective">{enumT("correctiveAction.actionType.corrective")}</option>
+            <option value="preventive">{enumT("correctiveAction.actionType.preventive")}</option>
+            <option value="improvement">{enumT("correctiveAction.actionType.improvement")}</option>
+            <option value="containment">{enumT("correctiveAction.actionType.containment")}</option>
           </select>
         </label>
 
@@ -168,11 +169,11 @@ export function CorrectiveActionsList() {
               updateFilter("status", event.target.value as FilterValues["status"])
             }
           >
-            <option value="">All statuses</option>
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="completed">Completed</option>
-            <option value="closed">Closed</option>
+            <option value="">{t("filters.allStatuses")}</option>
+            <option value="open">{enumT("correctiveAction.status.open")}</option>
+            <option value="in_progress">{enumT("correctiveAction.status.in_progress")}</option>
+            <option value="completed">{enumT("correctiveAction.status.completed")}</option>
+            <option value="closed">{enumT("correctiveAction.status.closed")}</option>
           </select>
         </label>
 
@@ -185,11 +186,11 @@ export function CorrectiveActionsList() {
               updateFilter("priority", event.target.value as FilterValues["priority"])
             }
           >
-            <option value="">All priorities</option>
-            <option value="urgent">Urgent</option>
-            <option value="high">High</option>
-            <option value="normal">Normal</option>
-            <option value="low">Low</option>
+            <option value="">{t("filters.allPriorities")}</option>
+            <option value="urgent">{enumT("correctiveAction.priority.urgent")}</option>
+            <option value="high">{enumT("correctiveAction.priority.high")}</option>
+            <option value="normal">{enumT("correctiveAction.priority.normal")}</option>
+            <option value="low">{enumT("correctiveAction.priority.low")}</option>
           </select>
         </label>
 
@@ -202,12 +203,12 @@ export function CorrectiveActionsList() {
               updateFilter("source_type", event.target.value as FilterValues["source_type"])
             }
           >
-            <option value="">All sources</option>
-            <option value="quality_rejection">Quality Rejection</option>
-            <option value="ncr_report">NCR Report</option>
-            <option value="quality_defect">Quality Defect</option>
-            <option value="ncr_item">NCR Item</option>
-            <option value="manual">Manual</option>
+            <option value="">{t("filters.allSources")}</option>
+            <option value="quality_rejection">{enumT("correctiveAction.sourceType.quality_rejection")}</option>
+            <option value="ncr_report">{enumT("correctiveAction.sourceType.ncr_report")}</option>
+            <option value="quality_defect">{enumT("correctiveAction.sourceType.quality_defect")}</option>
+            <option value="ncr_item">{enumT("correctiveAction.sourceType.ncr_item")}</option>
+            <option value="manual">{enumT("correctiveAction.sourceType.manual")}</option>
           </select>
         </label>
       </section>

@@ -17,6 +17,7 @@ from app.production.domain.enums import OrderTransitionTrigger as Trigger, Produ
 from app.production.domain.order_lifecycle import TransitionError
 from app.production.infrastructure.demand_repository import ProductionDemandRepository
 from app.production.application.result_service import close_readiness
+from app.core.interfaces.order_close_guards import close_blockers
 from app.production.infrastructure.models import ProductionOrder, ProductionOrderStatusHistory
 
 PermissionCheck = Callable[[str], bool]
@@ -151,6 +152,10 @@ class OrderStatusService:
     def _close_guard(self, order, reason, zero_output):
         """Closing freezes the final result: it needs result entries (one per item for multi-item
         orders), or an explicit zero-output confirmation with a reason. Runs under the order lock."""
+        # Other modules' blockers first (e.g. quality checks still open, rejections without a decision).
+        blockers = close_blockers(self.db, self.org_id, order.id)
+        if blockers:
+            raise TransitionError("CLOSE_BLOCKED", 409, blockers=[dict(code=b.code, count=b.count, **b.detail) for b in blockers])
         readiness = close_readiness(self.db, self.org_id, order)
         if zero_output:
             if readiness["has_entries"]:

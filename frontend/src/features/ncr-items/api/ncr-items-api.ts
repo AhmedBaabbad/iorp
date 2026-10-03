@@ -6,7 +6,7 @@ import type {
 } from "../types";
 
 function ncrReportItemsPath(reportId: string) {
-  return `/non-conformance-reports/${reportId}/items`;
+  return `/quality/non-conformance-reports/${reportId}/items`;
 }
 
 export function getItemsByReport(reportId: string) {
@@ -21,5 +21,5 @@ export function createItem(reportId: string, payload: CreateNcrItemRequest) {
 }
 
 export function getItemById(itemId: string) {
-  return apiClient<NcrItemData>(`/non-conformance-items/${itemId}`);
+  return apiClient<NcrItemData>(`/quality/non-conformance-items/${itemId}`);
 }

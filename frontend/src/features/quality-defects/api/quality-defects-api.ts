@@ -6,7 +6,7 @@ import type {
 } from "../types";
 
 function qualityCheckDefectsPath(qualityCheckId: string) {
-  return `/quality-checks/${qualityCheckId}/defects`;
+  return `/quality/quality-checks/${qualityCheckId}/defects`;
 }
 
 export function getDefectsByCheck(qualityCheckId: string) {
@@ -24,5 +24,5 @@ export function createDefect(
 }
 
 export function getDefectById(defectId: string) {
-  return apiClient<QualityDefectData>(`/quality-defects/${defectId}`);
+  return apiClient<QualityDefectData>(`/quality/quality-defects/${defectId}`);
 }

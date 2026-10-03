@@ -1,9 +1,6 @@
 from datetime import date
-from types import SimpleNamespace
-from typing import Any
 from uuid import UUID
 
-from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -14,30 +11,21 @@ from app.quality.api.schemas import (
     NonConformanceItemUpdate,
     NonConformanceReportCreate,
     NonConformanceReportUpdate,
-    QualityCheckCreate,
-    QualityCheckUpdate,
     QualityDefectCreate,
     QualityDefectUpdate,
-    QualityRejectionCreate,
-    QualityRejectionUpdate,
 )
 from app.quality.domain.enums import (
     DefectCategory,
     DefectSeverity,
-    Disposition,
-    DispositionStatus,
     NCRReportType,
     NCRSourceType,
     NCRStatus,
-    QualityCheckStatus,
-    RejectionReason,
 )
 from app.quality.infrastructure.models import (
     NonConformanceItem,
     NonConformanceReport,
     QualityCheck,
     QualityDefect,
-    QualityRejection,
 )
 from app.quality.infrastructure.repositories import (
     NonConformanceItemRepository,
@@ -46,214 +34,6 @@ from app.quality.infrastructure.repositories import (
     QualityDefectRepository,
     QualityRejectionRepository,
 )
-
-
-class QualityCheckService:
-    def __init__(self, db: Session) -> None:
-        self.db = db
-        self.checks = QualityCheckRepository(db)
-
-    # ── Public API ─────────────────────────────────────────────────────────────
-
-    def create_quality_check(
-        self,
-        tenant: TenantContext,
-        data: QualityCheckCreate,
-    ) -> QualityCheck:
-        # Soft check: production_order_id
-        # should be provided. Not enforced in v0.1 — promoted in QUAL-002.
-        self._validate_production_refs(tenant.organization_id, data)
-
-        inspection_code = self._generate_inspection_code(tenant.organization_id)
-
-        quality_check = QualityCheck(
-            organization_id=tenant.organization_id,
-            inspection_code=inspection_code,
-            status=QualityCheckStatus.OPEN,  # always open on creation — never caller input
-            checked_by_user_id=tenant.user_id,
-            **data.model_dump(),
-        )
-
-        try:
-            self.checks.add(quality_check)
-            self.db.commit()
-        except IntegrityError as exc:
-            self.db.rollback()
-            raise ValueError(
-                "Quality check could not be saved due to a conflict or invalid data."
-            ) from exc
-
-        self.db.refresh(quality_check)
-        return quality_check
-
-    def list_quality_checks(
-        self,
-        tenant: TenantContext,
-        *,
-        check_type=None,
-        status=None,
-        result=None,
-        production_order_id: UUID | None = None,
-        check_date: date | None = None,
-    ) -> list[QualityCheck]:
-        return self.checks.list_by_organization(
-            tenant.organization_id,
-            check_type=check_type,
-            status=status,
-            result=result,
-            production_order_id=production_order_id,
-            check_date=check_date,
-        )
-
-    def get_quality_check(
-        self,
-        tenant: TenantContext,
-        check_id: UUID,
-    ) -> QualityCheck | None:
-        return self.checks.get_by_id(tenant.organization_id, check_id)
-
-    def update_quality_check(
-        self,
-        tenant: TenantContext,
-        check_id: UUID,
-        data: QualityCheckUpdate,
-    ) -> QualityCheck | None:
-        quality_check = self.checks.get_by_id(tenant.organization_id, check_id)
-        if quality_check is None:
-            return None
-
-        payload = data.model_dump(exclude_unset=True)
-
-        # Re-validate quantity balance after merging incoming partial values
-        # with existing values, so callers can update only one or two fields.
-        merged_inspected = payload.get("qty_inspected", quality_check.qty_inspected)
-        merged_accepted  = payload.get("qty_accepted",  quality_check.qty_accepted)
-        merged_rejected  = payload.get("qty_rejected",  quality_check.qty_rejected)
-        if merged_accepted + merged_rejected != merged_inspected:
-            raise ValueError(
-                "qty_accepted + qty_rejected must equal qty_inspected "
-                f"({merged_accepted} + {merged_rejected} ≠ {merged_inspected})."
-            )
-
-        # Validate that result is present when transitioning to closed.
-        incoming_status = payload.get("status")
-        incoming_result = payload.get("result", quality_check.result)
-        if incoming_status == QualityCheckStatus.CLOSED and incoming_result is None:
-            raise ValueError(
-                "result must be set when transitioning status to 'closed'."
-            )
-
-        self._validate_production_refs(
-            tenant.organization_id,
-            SimpleNamespace(
-                production_order_id=payload.get(
-                    "production_order_id",
-                    quality_check.production_order_id,
-                ),
-                production_order_item_id=payload.get(
-                    "production_order_item_id",
-                    quality_check.production_order_item_id,
-                ),
-            ),
-        )
-
-        for field, value in payload.items():
-            setattr(quality_check, field, value)
-
-        try:
-            self.db.commit()
-        except IntegrityError as exc:
-            self.db.rollback()
-            raise ValueError(
-                "Quality check could not be saved due to a conflict or invalid data."
-            ) from exc
-
-        self.db.refresh(quality_check)
-        return quality_check
-
-    # ── Private helpers ────────────────────────────────────────────────────────
-
-    def _generate_inspection_code(self, organization_id: UUID) -> str:
-        """Auto-generate QI-YYYY-NNNN, unique within the organization.
-
-        Sequence is derived from the count of existing checks in the current
-        year for this org, incremented until a free slot is found. A retry
-        loop guards against race conditions in low-concurrency scenarios.
-        """
-        year = utc_now().year
-        for attempt in range(20):
-            count = self.checks.count_for_year(organization_id, year)
-            candidate = f"QI-{year}-{(count + 1 + attempt):04d}"
-            if self.checks.get_by_code(organization_id, candidate) is None:
-                return candidate
-        raise ValueError(
-            "Could not generate a unique inspection code. Please try again."
-        )
-
-    def _validate_production_refs(
-        self,
-        organization_id: UUID,
-        data: Any,
-    ) -> None:
-        """Validate that provided production reference IDs belong to this org.
-
-        Uses raw SQL select against production tables to avoid importing any
-        Production model into Quality code (ADR-004 module boundary rule).
-        Only validates non-None references.
-        """
-        if data.production_order_id is not None:
-            self._assert_production_row_belongs_to_org(
-                "production_orders",
-                data.production_order_id,
-                organization_id,
-                "production_order_id",
-            )
-        if data.production_order_item_id is not None:
-            # Items are validated via their parent order's org — join needed.
-            self._assert_order_item_belongs_to_org(
-                data.production_order_item_id,
-                organization_id,
-            )
-
-    def _assert_production_row_belongs_to_org(
-        self,
-        table: str,
-        row_id: UUID,
-        organization_id: UUID,
-        field_name: str,
-    ) -> None:
-        stmt = text(
-            f"SELECT 1 FROM {table} WHERE id = :id AND organization_id = :org_id LIMIT 1"
-        )
-        row = self.db.execute(stmt, {"id": str(row_id), "org_id": str(organization_id)}).first()
-        if row is None:
-            raise ValueError(
-                f"{field_name} '{row_id}' does not exist or belongs to a different organization."
-            )
-
-    def _assert_order_item_belongs_to_org(
-        self,
-        item_id: UUID,
-        organization_id: UUID,
-    ) -> None:
-        stmt = text(
-            """
-            SELECT 1
-            FROM production_order_items poi
-            JOIN production_orders po ON po.id = poi.production_order_id
-            WHERE poi.id = :item_id
-              AND po.organization_id = :org_id
-            LIMIT 1
-            """
-        )
-        row = self.db.execute(
-            stmt,
-            {"item_id": str(item_id), "org_id": str(organization_id)},
-        ).first()
-        if row is None:
-            raise ValueError(
-                f"production_order_item_id '{item_id}' does not exist or belongs to a different organization."
-            )
 
 
 class QualityDefectService:
@@ -348,140 +128,6 @@ class QualityDefectService:
         if quality_check is None:
             raise ValueError("Quality check must belong to the current organization.")
         return quality_check
-
-
-class QualityRejectionService:
-    def __init__(self, db: Session) -> None:
-        self.db = db
-        self.checks = QualityCheckRepository(db)
-        self.defects = QualityDefectRepository(db)
-        self.rejections = QualityRejectionRepository(db)
-
-    def create_quality_rejection(
-        self,
-        tenant: TenantContext,
-        data: QualityRejectionCreate,
-    ) -> QualityRejection:
-        # Soft rule v0.1: at least one of quality_check_id / quality_defect_id should be present.
-        self._validate_quality_check_if_present(tenant, data.quality_check_id)
-        self._validate_quality_defect_if_present(tenant, data.quality_defect_id)
-        self._validate_defect_belongs_to_check(tenant, data.quality_check_id, data.quality_defect_id)
-        self._validate_rejection_notes(data.rejection_notes)
-
-        quality_rejection = QualityRejection(
-            organization_id=tenant.organization_id,
-            disposition_status=DispositionStatus.PENDING,
-            rejected_by_user_id=tenant.user_id,
-            **data.model_dump(),
-        )
-
-        try:
-            self.rejections.add(quality_rejection)
-            self.db.commit()
-        except IntegrityError as exc:
-            self.db.rollback()
-            raise ValueError("Quality rejection could not be saved due to invalid data.") from exc
-
-        self.db.refresh(quality_rejection)
-        return quality_rejection
-
-    def list_quality_rejections(
-        self,
-        tenant: TenantContext,
-        *,
-        rejection_reason: RejectionReason | None = None,
-        disposition: Disposition | None = None,
-        disposition_status: DispositionStatus | None = None,
-        quality_check_id: UUID | None = None,
-        rejection_date: date | None = None,
-    ) -> list[QualityRejection]:
-        return self.rejections.list_by_organization(
-            tenant.organization_id,
-            rejection_reason=rejection_reason,
-            disposition=disposition,
-            disposition_status=disposition_status,
-            quality_check_id=quality_check_id,
-            rejection_date=rejection_date,
-        )
-
-    def get_quality_rejection(
-        self,
-        tenant: TenantContext,
-        rejection_id: UUID,
-    ) -> QualityRejection | None:
-        return self.rejections.get_by_id(tenant.organization_id, rejection_id)
-
-    def update_quality_rejection(
-        self,
-        tenant: TenantContext,
-        rejection_id: UUID,
-        data: QualityRejectionUpdate,
-    ) -> QualityRejection | None:
-        quality_rejection = self.rejections.get_by_id(tenant.organization_id, rejection_id)
-        if quality_rejection is None:
-            return None
-
-        payload = data.model_dump(exclude_unset=True)
-
-        if "quality_check_id" in payload:
-            self._validate_quality_check_if_present(tenant, payload["quality_check_id"])
-        if "quality_defect_id" in payload:
-            self._validate_quality_defect_if_present(tenant, payload["quality_defect_id"])
-        if "rejection_notes" in payload:
-            self._validate_rejection_notes(payload["rejection_notes"])
-
-        for field, value in payload.items():
-            setattr(quality_rejection, field, value)
-
-        try:
-            self.db.commit()
-        except IntegrityError as exc:
-            self.db.rollback()
-            raise ValueError("Quality rejection could not be saved due to invalid data.") from exc
-
-        self.db.refresh(quality_rejection)
-        return quality_rejection
-
-    def _validate_quality_check_if_present(
-        self,
-        tenant: TenantContext,
-        quality_check_id: UUID | None,
-    ) -> None:
-        if quality_check_id is None:
-            return
-        quality_check = self.checks.get_by_id(tenant.organization_id, quality_check_id)
-        if quality_check is None:
-            raise ValueError("Quality check must belong to the current organization.")
-
-    def _validate_quality_defect_if_present(
-        self,
-        tenant: TenantContext,
-        quality_defect_id: UUID | None,
-    ) -> None:
-        if quality_defect_id is None:
-            return
-        quality_defect = self.defects.get_by_id(tenant.organization_id, quality_defect_id)
-        if quality_defect is None:
-            raise ValueError("Quality defect must belong to the current organization.")
-
-    def _validate_defect_belongs_to_check(
-        self,
-        tenant: TenantContext,
-        quality_check_id: UUID | None,
-        quality_defect_id: UUID | None,
-    ) -> None:
-        if quality_check_id is None or quality_defect_id is None:
-            return
-        defect = self.defects.get_by_id(tenant.organization_id, quality_defect_id)
-        if defect is not None and defect.quality_check_id != quality_check_id:
-            raise ValueError(
-                "quality_defect_id must belong to the quality_check_id referenced in this rejection."
-            )
-
-    def _validate_rejection_notes(self, rejection_notes: str) -> None:
-        # Pydantic min_length=1 blocks empty strings; this guard blocks whitespace-only values.
-        if not rejection_notes.strip():
-            raise ValueError("rejection_notes is required.")
 
 
 class NonConformanceReportService:
@@ -701,8 +347,6 @@ class NonConformanceItemService:
 
 from app.core.interfaces.activity_log import instrument_activity_methods
 
-instrument_activity_methods(QualityCheckService, {"create_quality_check": ("quality_check.created", "quality_check"), "update_quality_check": ("quality_check.updated", "quality_check")})
 instrument_activity_methods(QualityDefectService, {"create_quality_defect": ("quality_defect.created", "quality_defect"), "update_quality_defect": ("quality_defect.updated", "quality_defect")})
-instrument_activity_methods(QualityRejectionService, {"create_quality_rejection": ("quality_rejection.created", "quality_rejection"), "update_quality_rejection": ("quality_rejection.updated", "quality_rejection")})
 instrument_activity_methods(NonConformanceReportService, {"create_report": ("ncr_report.created", "ncr_report"), "update_report": ("ncr_report.updated", "ncr_report")})
 instrument_activity_methods(NonConformanceItemService, {"create_item": ("ncr_item.created", "ncr_item"), "update_item": ("ncr_item.updated", "ncr_item")})

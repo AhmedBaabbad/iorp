@@ -1,4 +1,6 @@
 import { NcrReportDetail } from "@/features/ncr-reports";
+import { PermissionGate } from "@/features/auth/permission-gate";
+import { Q } from "@/lib/quality-permissions";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -6,5 +8,5 @@ type PageProps = {
 
 export default async function Page({ params }: PageProps) {
   const { id } = await params;
-  return <NcrReportDetail ncrReportId={id} />;
+  return <PermissionGate code={Q.NCR_READ}><NcrReportDetail ncrReportId={id} /></PermissionGate>;
 }

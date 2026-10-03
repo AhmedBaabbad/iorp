@@ -45,6 +45,17 @@ LABELS = {
     'process': ('هالك العملية', 'Process waste'), 'material_defect': ('هالك عيب المادة الخام', 'Raw material defect'),
     'machine_fault': ('هالك عطل الماكينة', 'Machine fault waste'), 'handling_damage': ('هالك المناولة والكسر', 'Handling and breakage'),
     'contamination': ('هالك التلوث', 'Contamination'),
+    # Quality inspections and rejections on the order (QUAL-REPORT-001), as named in the quality screens.
+    'open': ('مفتوح', 'Open'), 'under_inspection': ('قيد الفحص', 'Under inspection'), 'accepted': ('مقبول', 'Accepted'),
+    'rejected': ('مرفوض', 'Rejected'), 'conditional_accept': ('قبول مشروط', 'Conditional accept'), 'needs_reinspection': ('يحتاج إعادة فحص', 'Needs reinspection'),
+    'in_process_inspection': ('فحص أثناء الإنتاج', 'In-process inspection'), 'finished_product_inspection': ('فحص المنتج النهائي', 'Finished product inspection'),
+    'reinspection': ('إعادة فحص', 'Reinspection'), 'issue_triggered': ('بسبب مشكلة', 'Issue triggered'), 'general': ('عام', 'General'),
+    'failed_quality_check': ('فشل فحص الجودة', 'Failed quality check'), 'critical_defect': ('عيب حرج', 'Critical defect'),
+    'out_of_spec': ('خارج المواصفات', 'Out of specification'), 'dimension_failure': ('فشل الأبعاد', 'Dimension failure'),
+    'surface_failure': ('فشل السطح', 'Surface failure'), 'packaging_failure': ('فشل التعبئة', 'Packaging failure'), 'labeling_issue': ('مشكلة في التسمية', 'Labeling issue'),
+    'hold': ('حجز (عزل)', 'Hold (quarantine)'), 'return_to_process': ('إعادة إلى العملية', 'Return to process'),
+    'use_as_is': ('استخدام كما هو بموافقة', 'Use as is (concession)'), 'pending': ('بانتظار القرار', 'Awaiting decision'),
+    'decided': ('مقرَّر', 'Decided'), 'executed': ('منفَّذ', 'Executed'),
 }
 
 
@@ -113,6 +124,17 @@ def has_data(model, order_field=None):
         if model is ProductionRunMember and order_id:
             query = query.join(ProductionRun, ProductionRun.id == ProductionRunMember.production_run_id).where(
                 ProductionRun.organization_id == tenant.organization_id, ProductionRun.production_order_id == order_id)
+        return db.scalar(query.limit(1)) is not None
+    return check
+
+
+def quality_rows(name):
+    """Whether the order (or the organization) has quality records of this kind, read through the shared metadata."""
+    def check(db, tenant, params=None):
+        table_ = shared(name)
+        query = select(table_.id).where(table_.organization_id == tenant.organization_id)
+        if getattr(params, 'order_id', None):
+            query = query.where(table_.production_order_id == params.order_id)
         return db.scalar(query.limit(1)) is not None
     return check
 
@@ -198,6 +220,29 @@ def order_full(db, tenant, params, selected):
                 for e in [original,*original['corrections']]:
                     rows.append([e['line_no'],label(e['disposition'],lang),e['quantity'],e['unit'],label(e['entry_type'],lang),e['secondary_quantity'],e['secondary_unit'],e['reason_code'] or e['correction_reason'],e['created_by_name'],text(e['created_at'],zone)])
             sections.append(table('result_entries','تفاصيل النتيجة والتصحيحات','Entries and corrections',['#','التصنيف / Disposition','الكمية / Quantity',label('unit',lang),'النوع / Type','ثانوي / Secondary','الوحدة / Unit','السبب / Reason','بواسطة / By','التاريخ / Date'],rows,lang))
+    if {'quality_checks','quality_rejections'} & selected:
+        lines={i.id:i.line_no for i in order.items}
+    if 'quality_checks' in selected:
+        # Quality's tables through the shared metadata: production never imports quality.
+        checks=shared('quality_checks')
+        rows=db.execute(select(checks.inspection_code,checks.check_type,checks.production_order_item_id,checks.qty_inspected,checks.qty_accepted,checks.qty_rejected,
+            checks.unit,checks.status,checks.result,checks.check_datetime).where(checks.organization_id==tenant.organization_id,checks.production_order_id==order.id)
+            .order_by(checks.check_datetime)).all()
+        closed=lambda r: text(r.status)=='closed'  # noqa: E731
+        sections.append(table('quality_checks','فحوصات الجودة','Quality checks',['الرمز / Code','الوقت / Time','النوع / Type','البند / Line','المفحوص / Inspected',
+            'المقبول / Accepted','المرفوض / Rejected',label('unit',lang),'الحالة / Status','النتيجة / Result'],
+            [(r.inspection_code,text(r.check_datetime,zone),label(text(r.check_type),lang),lines.get(r.production_order_item_id),r.qty_inspected,
+              r.qty_accepted if closed(r) else None,r.qty_rejected if closed(r) else None,r.unit,label(text(r.status),lang),label(text(r.result),lang) if r.result else None) for r in rows],lang,
+            'الكميات المقبولة والمرفوضة تُسجَّل عند إغلاق الفحص / Accepted and rejected quantities are recorded when a check closes'))
+    if 'quality_rejections' in selected:
+        rejections=shared('quality_rejections')
+        rows=db.execute(select(rejections.rejection_code,rejections.rejection_date,rejections.production_order_item_id,rejections.quantity_rejected,rejections.unit,
+            rejections.rejection_reason,rejections.disposition,rejections.disposition_status).where(rejections.organization_id==tenant.organization_id,
+            rejections.production_order_id==order.id).order_by(rejections.rejection_date,rejections.rejection_code)).all()
+        sections.append(table('quality_rejections','حالات رفض الجودة','Quality rejections',['الرمز / Code','التاريخ / Date','البند / Line','الكمية / Quantity',label('unit',lang),
+            'السبب / Reason','القرار / Disposition','الحالة / Status'],
+            [(r.rejection_code,r.rejection_date,lines.get(r.production_order_item_id),r.quantity_rejected,r.unit,label(text(r.rejection_reason),lang),
+              label(text(r.disposition),lang) if r.disposition else None,label(text(r.disposition_status),lang)) for r in rows],lang))
     if 'notes' in selected:
         sections.append(table('notes','الملاحظات','Notes',['الملاحظات / Notes'],[[order.notes]] if order.notes else [],lang))
     if 'signatures' in selected:

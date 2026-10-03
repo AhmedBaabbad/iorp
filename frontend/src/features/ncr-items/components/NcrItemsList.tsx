@@ -8,6 +8,8 @@ import { SectionShell } from "@/components/layout/section-shell";
 import { useFormatter } from "@/hooks/useFormatter";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { displayValue } from "@/lib/utils";
+import { usePermission } from "@/features/auth/permission-hooks";
+import { Q } from "@/lib/quality-permissions";
 import { sharedStyles } from "@/styles/shared-styles";
 import { getItemsByReport } from "../api/ncr-items-api";
 import type { NcrItemListItem } from "../types";
@@ -60,6 +62,7 @@ const styles: Record<string, CSSProperties> = {
 
 export function NcrItemsList({ ncrReportId, reportStatus }: NcrItemsListProps) {
   const t = useTranslations("ncr.ncrReports.items");
+  const canUpdate = usePermission(Q.NCR_UPDATE);
   const common = useTranslations("common");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
@@ -125,7 +128,7 @@ export function NcrItemsList({ ncrReportId, reportStatus }: NcrItemsListProps) {
         <p style={{ ...sharedStyles.meta, margin: 0 }}>
           {t("lineNoAutoSentence")}
         </p>
-        {!isClosed && !isFormOpen ? (
+        {canUpdate && !isClosed && !isFormOpen ? (
           <button
             style={sharedStyles.button}
             type="button"

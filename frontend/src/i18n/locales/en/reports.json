@@ -43,7 +43,15 @@
     "inactive_days": "Inactive days",
     "recent_days": "Recent days",
     "quote_status": "Quote status",
-    "demand_status": "Demand status"
+    "demand_status": "Demand status",
+    "check_id": "Quality check",
+    "check_type": "Check type",
+    "result": "Result",
+    "reason": "Rejection reason",
+    "disposition": "Disposition",
+    "disposition_status": "Decision status",
+    "category": "Defect category",
+    "severity": "Severity"
   },
   "values": {
     "planned_start": "Planned start",
@@ -87,7 +95,49 @@
     "partially_planned": "Partially planned",
     "planned": "Planned",
     "name": "Name",
-    "created": "Created"
+    "created": "Created",
+    "check_type": "Check type",
+    "result": "Result",
+    "code": "Code",
+    "open": "Open",
+    "under_inspection": "Under inspection",
+    "conditional_accept": "Conditional accept",
+    "needs_reinspection": "Needs reinspection",
+    "in_process_inspection": "In-process inspection",
+    "finished_product_inspection": "Finished product inspection",
+    "sample_inspection": "Sample inspection",
+    "reinspection": "Reinspection",
+    "issue_triggered": "Issue triggered",
+    "general": "General",
+    "failed_quality_check": "Failed quality check",
+    "critical_defect": "Critical defect",
+    "out_of_spec": "Out of specification",
+    "dimension_failure": "Dimension failure",
+    "surface_failure": "Surface failure",
+    "packaging_failure": "Packaging failure",
+    "labeling_issue": "Labeling issue",
+    "other": "Other",
+    "hold": "Hold (quarantine)",
+    "scrap": "Scrap",
+    "rework": "Rework",
+    "return_to_process": "Return to process",
+    "use_as_is": "Use as is (concession)",
+    "pending": "Awaiting decision",
+    "decided": "Decided",
+    "executed": "Executed",
+    "dimension": "Dimension",
+    "thickness": "Thickness / gauge",
+    "surface": "Surface defect",
+    "color": "Color deviation",
+    "strength": "Strength failure",
+    "winding": "Winding defect",
+    "weight": "Weight out of tolerance",
+    "packaging": "Packaging defect",
+    "labeling": "Labeling error",
+    "finish": "Finish / texture",
+    "minor": "Minor",
+    "major": "Major",
+    "critical": "Critical"
   },
   "order": {
     "button": "Order report",
@@ -111,7 +161,8 @@
     "default": "The report could not be created. Check your connection and permissions.",
     "INTERNAL_AUDIENCE_DENIED": "Internal audience permission is required",
     "CUSTOMER_REQUIRED": "Choose a customer",
-    "CUSTOMER_NOT_FOUND": "Customer is unavailable in your scope"
+    "CUSTOMER_NOT_FOUND": "Customer is unavailable in your scope",
+    "QUALITY_CHECK_NOT_FOUND": "The quality check was not found."
   },
   "customerReports": {
     "title": "Customer report center",
@@ -119,5 +170,10 @@
     "statement": "Order status statement",
     "close": "Close",
     "loadError": "Unable to load report"
+  },
+  "record": {
+    "close": "Close",
+    "unavailable": "The report is not available.",
+    "loadError": "The report could not be loaded."
   }
 }

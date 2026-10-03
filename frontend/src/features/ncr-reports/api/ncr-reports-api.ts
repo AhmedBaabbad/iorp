@@ -7,7 +7,7 @@ import type {
   UpdateNcrReportStatusRequest,
 } from "../types";
 
-const BASE = "/non-conformance-reports";
+const BASE = "/quality/non-conformance-reports";
 
 export function getNCRReports(filters: NcrReportListFilters = {}) {
   const query = new URLSearchParams();

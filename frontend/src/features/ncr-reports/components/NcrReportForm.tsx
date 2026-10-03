@@ -68,6 +68,7 @@ const defaultValues: NcrReportFormValues = {
 export function NcrReportForm() {
   const router = useRouter();
   const t = useTranslations("ncr.ncrReports");
+  const enumT = useTranslations("enums");
   const messages = useTranslations("messages");
   const common = useTranslations("common");
   const [values, setValues] = useState<NcrReportFormValues>(defaultValues);
@@ -160,12 +161,12 @@ export function NcrReportForm() {
                 disabled={isSubmitting}
                 required
               >
-                <option value="internal_production">Internal Production</option>
-                <option value="incoming_material">Incoming Material</option>
-                <option value="supplier">Supplier</option>
-                <option value="warehouse">Warehouse</option>
-                <option value="customer_return">Customer Return</option>
-                <option value="other">Other</option>
+                <option value="internal_production">{enumT("ncrReport.sourceType.internal_production")}</option>
+                <option value="incoming_material">{enumT("ncrReport.sourceType.incoming_material")}</option>
+                <option value="supplier">{enumT("ncrReport.sourceType.supplier")}</option>
+                <option value="warehouse">{enumT("ncrReport.sourceType.warehouse")}</option>
+                <option value="customer_return">{enumT("ncrReport.sourceType.customer_return")}</option>
+                <option value="other">{enumT("ncrReport.sourceType.other")}</option>
               </select>
             </label>
 
@@ -180,12 +181,12 @@ export function NcrReportForm() {
                 disabled={isSubmitting}
                 required
               >
-                <option value="material_non_conformance">Material Non-Conformance</option>
-                <option value="product_non_conformance">Product Non-Conformance</option>
-                <option value="process_non_conformance">Process Non-Conformance</option>
-                <option value="packaging_non_conformance">Packaging Non-Conformance</option>
-                <option value="documentation_non_conformance">Documentation Non-Conformance</option>
-                <option value="other">Other</option>
+                <option value="material_non_conformance">{enumT("ncrReport.reportType.material_non_conformance")}</option>
+                <option value="product_non_conformance">{enumT("ncrReport.reportType.product_non_conformance")}</option>
+                <option value="process_non_conformance">{enumT("ncrReport.reportType.process_non_conformance")}</option>
+                <option value="packaging_non_conformance">{enumT("ncrReport.reportType.packaging_non_conformance")}</option>
+                <option value="documentation_non_conformance">{enumT("ncrReport.reportType.documentation_non_conformance")}</option>
+                <option value="other">{enumT("ncrReport.reportType.other")}</option>
               </select>
             </label>
 

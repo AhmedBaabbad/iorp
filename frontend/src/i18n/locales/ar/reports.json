@@ -43,7 +43,15 @@
     "inactive_days": "أيام الخمول",
     "recent_days": "الأيام الأخيرة",
     "quote_status": "حالة العرض",
-    "demand_status": "حالة الطلب"
+    "demand_status": "حالة الطلب",
+    "check_id": "فحص الجودة",
+    "check_type": "نوع الفحص",
+    "result": "النتيجة",
+    "reason": "سبب الرفض",
+    "disposition": "القرار",
+    "disposition_status": "حالة القرار",
+    "category": "تصنيف العيب",
+    "severity": "الخطورة"
   },
   "values": {
     "planned_start": "البداية المخططة",
@@ -87,7 +95,49 @@
     "partially_planned": "مخطط جزئيًا",
     "planned": "مخطط",
     "name": "الاسم",
-    "created": "الإنشاء"
+    "created": "الإنشاء",
+    "check_type": "نوع الفحص",
+    "result": "النتيجة",
+    "code": "الرمز",
+    "open": "مفتوح",
+    "under_inspection": "قيد الفحص",
+    "conditional_accept": "قبول مشروط",
+    "needs_reinspection": "يحتاج إعادة فحص",
+    "in_process_inspection": "فحص أثناء الإنتاج",
+    "finished_product_inspection": "فحص المنتج النهائي",
+    "sample_inspection": "فحص العينة",
+    "reinspection": "إعادة فحص",
+    "issue_triggered": "بسبب مشكلة",
+    "general": "عام",
+    "failed_quality_check": "فشل فحص الجودة",
+    "critical_defect": "عيب حرج",
+    "out_of_spec": "خارج المواصفات",
+    "dimension_failure": "فشل الأبعاد",
+    "surface_failure": "فشل السطح",
+    "packaging_failure": "فشل التعبئة",
+    "labeling_issue": "مشكلة في التسمية",
+    "other": "أخرى",
+    "hold": "حجز (عزل)",
+    "scrap": "هالك (إتلاف)",
+    "rework": "إعادة تشغيل",
+    "return_to_process": "إعادة إلى العملية",
+    "use_as_is": "استخدام كما هو بموافقة",
+    "pending": "بانتظار القرار",
+    "decided": "مقرَّر",
+    "executed": "منفَّذ",
+    "dimension": "أبعاد",
+    "thickness": "السماكة / القياس",
+    "surface": "عيب سطحي",
+    "color": "انحراف اللون",
+    "strength": "إخفاق في المتانة",
+    "winding": "عيب اللف",
+    "weight": "وزن خارج المعيار",
+    "packaging": "عيب التعبئة",
+    "labeling": "خطأ في التسمية",
+    "finish": "نعومة / الملمس",
+    "minor": "بسيط",
+    "major": "رئيسي",
+    "critical": "حرج"
   },
   "order": {
     "button": "تقرير الأمر",
@@ -111,7 +161,8 @@
     "default": "تعذر إنشاء التقرير. تحقق من الاتصال والصلاحيات.",
     "INTERNAL_AUDIENCE_DENIED": "لا تملك صلاحية التقرير الداخلي",
     "CUSTOMER_REQUIRED": "اختر العميل",
-    "CUSTOMER_NOT_FOUND": "العميل غير متاح ضمن صلاحياتك"
+    "CUSTOMER_NOT_FOUND": "العميل غير متاح ضمن صلاحياتك",
+    "QUALITY_CHECK_NOT_FOUND": "فحص الجودة غير موجود أو غير متاح."
   },
   "customerReports": {
     "title": "مركز تقارير العملاء",
@@ -119,5 +170,10 @@
     "statement": "كشف حالة الطلبات",
     "close": "إغلاق",
     "loadError": "تعذر تحميل التقرير"
+  },
+  "record": {
+    "close": "إغلاق",
+    "unavailable": "التقرير غير متاح.",
+    "loadError": "تعذر تحميل التقرير."
   }
 }

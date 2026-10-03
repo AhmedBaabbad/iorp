@@ -33,6 +33,13 @@ Report data queries run under a 30 s PostgreSQL statement timeout. A timeout ret
 | `production.results_analysis` | R3 results analysis: per period, scrap and sample reasons, loss trend | implemented |
 | `production.shift_workforce` | Shift rosters and recorded participation, offered only when rosters exist | implemented |
 | R5, R6 | the remaining reports of the specification | **not implemented**: their data does not exist yet |
+| `quality.check_full` | Q1 quality check report: inspection information (order, line and readable specification, or sample), quantities as figures, defects, rejections and dispositions, status history, notes and signatures. Watermark until the check is closed; a cancelled check is marked. | implemented |
+| `quality.checks_summary` | Q2 checks summary: key figures, checks (optionally grouped), totals per unit (acceptance and rejection %, closed checks only), results distribution | implemented |
+| `quality.rejections_analysis` | Q3 rejections and dispositions: per unit by outcome, reasons, dispositions, cases without a final decision with their age, quantity trend | implemented |
+| `quality.defects_analysis` | Q4 defects: Pareto by defective units with cumulative %, category × severity, major and critical defects | implemented |
+
+R1 also shows the order's quality checks and rejections (sections `quality_checks` and `quality_rejections`) to users who may read them;
+production reads quality's tables through the shared metadata.
 
 Text in the reports follows the report language. The terms match the application: «الهالك» and «نسبة الهالك» for loss, «نسبة الجيد» for yield. Values are wrapped in `<bdi>`, so dates, codes and numbers keep their direction in Arabic. The download file name is in the report language.
 
@@ -49,6 +56,7 @@ Text in the reports follows the report language. The terms match the application
     - `REPORT_RENDERER_TESTS=1` runs a real Arabic PDF and checks the header, footer, reference and page numbers on every page.
     - `REPORT_SAMPLES_DIR=<folder>` writes the review samples: R1 in progress, R1 closed (Arabic and English), R2 and R3.
 - `backend/tests/test_reporting_migration_postgres.py` covers the migration.
+- `backend/tests/quality/test_quality_reports.py` covers the quality reports; `REPORT_SAMPLES_DIR` writes Q1–Q4 samples.
 - `frontend/tests/components/reports.test.tsx` covers the report form and the branding editor.
 
 ## Layout

@@ -110,6 +110,7 @@ export function ClosureVerificationSection({
   correctiveActionStatus,
 }: ClosureVerificationSectionProps) {
   const t = useTranslations("capa.correctiveActions.closure");
+  const enumT = useTranslations("enums");
   const messages = useTranslations("messages");
   const common = useTranslations("common");
   const [verification, setVerification] = useState<ClosureVerification | null>(null);
@@ -308,11 +309,9 @@ export function ClosureVerificationSection({
                       disabled={isSubmitting}
                       required
                     >
-                      <option value="effective">Effective (Problem fully resolved)</option>
-                      <option value="partially_effective">
-                        Partially Effective (Issue reduced)
-                      </option>
-                      <option value="not_effective">Not Effective (Problem persists)</option>
+                      <option value="effective">{enumT("closureVerification.verificationResult.effective")}</option>
+                      <option value="partially_effective">{enumT("closureVerification.verificationResult.partially_effective")}</option>
+                      <option value="not_effective">{enumT("closureVerification.verificationResult.not_effective")}</option>
                     </select>
                     {resultError ? <p style={styles.inlineError}>{resultError}</p> : null}
                   </label>
@@ -330,8 +329,8 @@ export function ClosureVerificationSection({
                       disabled={isSubmitting}
                       required
                     >
-                      <option value="closed">Closed (Action complete)</option>
-                      <option value="re_opened">Re-opened (Requires further action)</option>
+                      <option value="closed">{enumT("closureVerification.closureStatus.closed")}</option>
+                      <option value="re_opened">{enumT("closureVerification.closureStatus.re_opened")}</option>
                     </select>
                   </label>
                 </div>

@@ -259,7 +259,12 @@
         "RESULT_REQUIRED_TO_CLOSE": "سجّل النتيجة النهائية قبل الإغلاق، أو أغلقه كإنتاج صفري مع ذكر السبب.",
         "RESULT_MISSING_FOR_ITEMS": "كل بند في هذا الأمر يحتاج قيد نتيجة قبل الإغلاق.",
         "ZERO_OUTPUT_WITH_ENTRIES": "لهذا الأمر قيود نتيجة، فلا يمكن إغلاقه كإنتاج صفري.",
-        "ZERO_OUTPUT_ONLY_ON_CLOSE": "الإنتاج الصفري يخص الإغلاق فقط."
+        "ZERO_OUTPUT_ONLY_ON_CLOSE": "الإنتاج الصفري يخص الإغلاق فقط.",
+        "CLOSE_BLOCKED": "لا يمكن إغلاق الأمر بعد:"
+      },
+      "blockers": {
+        "QUALITY_CHECKS_OPEN": "فحوصات جودة مفتوحة أو قيد الفحص: {count}",
+        "QUALITY_REJECTIONS_UNRESOLVED": "حالات رفض بلا قرار نهائي (بانتظار القرار أو محجوزة): {count}"
       }
     }
   },

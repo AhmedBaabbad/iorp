@@ -70,6 +70,7 @@ export function QualityDefectForm({
   onCancel,
 }: QualityDefectFormProps) {
   const t = useTranslations("quality.qualityChecks.defects");
+  const enumT = useTranslations("enums");
   const messages = useTranslations("messages");
   const common = useTranslations("common");
   const [values, setValues] = useState<QualityDefectFormValues>(createDefaultValues);
@@ -156,17 +157,17 @@ export function QualityDefectForm({
             disabled={isSubmitting}
             required
           >
-            <option value="dimension">Dimension</option>
-            <option value="thickness">Thickness / Gauge</option>
-            <option value="surface">Surface Defect</option>
-            <option value="color">Color Deviation</option>
-            <option value="strength">Strength Failure</option>
-            <option value="winding">Winding Defect</option>
-            <option value="weight">Weight Out of Tolerance</option>
-            <option value="packaging">Packaging Defect</option>
-            <option value="labeling">Labeling Error</option>
-            <option value="finish">Finish / Texture</option>
-            <option value="other">Other</option>
+            <option value="dimension">{enumT("qualityDefect.defectCategory.dimension")}</option>
+            <option value="thickness">{enumT("qualityDefect.defectCategory.thickness")}</option>
+            <option value="surface">{enumT("qualityDefect.defectCategory.surface")}</option>
+            <option value="color">{enumT("qualityDefect.defectCategory.color")}</option>
+            <option value="strength">{enumT("qualityDefect.defectCategory.strength")}</option>
+            <option value="winding">{enumT("qualityDefect.defectCategory.winding")}</option>
+            <option value="weight">{enumT("qualityDefect.defectCategory.weight")}</option>
+            <option value="packaging">{enumT("qualityDefect.defectCategory.packaging")}</option>
+            <option value="labeling">{enumT("qualityDefect.defectCategory.labeling")}</option>
+            <option value="finish">{enumT("qualityDefect.defectCategory.finish")}</option>
+            <option value="other">{enumT("qualityDefect.defectCategory.other")}</option>
           </select>
         </label>
 
@@ -183,9 +184,9 @@ export function QualityDefectForm({
             disabled={isSubmitting}
             required
           >
-            <option value="minor">Minor</option>
-            <option value="major">Major</option>
-            <option value="critical">Critical</option>
+            <option value="minor">{enumT("qualityDefect.severity.minor")}</option>
+            <option value="major">{enumT("qualityDefect.severity.major")}</option>
+            <option value="critical">{enumT("qualityDefect.severity.critical")}</option>
           </select>
         </label>
 

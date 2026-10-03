@@ -60,7 +60,8 @@
     "demands": "طلبات العملاء للإنتاج",
     "planning": "تخطيط الإنتاج",
     "shiftRosters": "فرق الورديات",
-    "customerReports": "تقارير العملاء"
+    "customerReports": "تقارير العملاء",
+    "qualityReports": "مركز تقارير الجودة"
   },
   "userMenu": {
     "changePassword": "تغيير كلمة المرور",

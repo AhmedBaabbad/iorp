@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.tenancy import TenantContext
-from app.dependencies import get_current_tenant, get_db
+from app.dependencies import get_current_tenant, get_db, require_permission
+from app.quality.domain import permissions as Q
 from app.quality.api.schemas import (
     QualityDefectCreate,
     QualityDefectListItem,
@@ -22,7 +23,7 @@ router = APIRouter(tags=["quality-defects"])
 @router.post(
     "/quality-checks/{check_id}/defects",
     response_model=QualityDefectRead,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission(Q.DEFECTS_CREATE))]
 )
 def create_quality_defect(
     check_id: UUID,
@@ -39,7 +40,7 @@ def create_quality_defect(
 
 @router.get(
     "/quality-checks/{check_id}/defects",
-    response_model=list[QualityDefectListItem],
+    response_model=list[QualityDefectListItem], dependencies=[Depends(require_permission(Q.DEFECTS_READ))]
 )
 def list_quality_defects_by_check(
     check_id: UUID,
@@ -53,7 +54,7 @@ def list_quality_defects_by_check(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
-@router.get("/quality-defects", response_model=list[QualityDefectListItem])
+@router.get("/quality-defects", response_model=list[QualityDefectListItem], dependencies=[Depends(require_permission(Q.DEFECTS_READ))])
 def list_quality_defects(
     defect_category: DefectCategory | None = Query(default=None),
     severity: DefectSeverity | None = Query(default=None),
@@ -72,7 +73,7 @@ def list_quality_defects(
     )
 
 
-@router.get("/quality-defects/{defect_id}", response_model=QualityDefectRead)
+@router.get("/quality-defects/{defect_id}", response_model=QualityDefectRead, dependencies=[Depends(require_permission(Q.DEFECTS_READ))])
 def get_quality_defect(
     defect_id: UUID,
     tenant: TenantContext = Depends(get_current_tenant),
@@ -85,7 +86,7 @@ def get_quality_defect(
     return quality_defect
 
 
-@router.patch("/quality-defects/{defect_id}", response_model=QualityDefectRead)
+@router.patch("/quality-defects/{defect_id}", response_model=QualityDefectRead, dependencies=[Depends(require_permission(Q.DEFECTS_UPDATE))])
 def update_quality_defect(
     defect_id: UUID,
     payload: QualityDefectUpdate,

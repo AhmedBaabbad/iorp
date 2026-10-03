@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { usePermission } from "@/features/auth/permission-hooks";
+import { Q } from "@/lib/quality-permissions";
 import { PageFrame } from "@/components/layout/page-frame";
 import { useFormatter } from "@/hooks/useFormatter";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
@@ -76,6 +78,8 @@ const styles: Record<string, CSSProperties> = {
 
 export function NcrReportsList() {
   const t = useTranslations("ncr.ncrReports");
+  const enumT = useTranslations("enums");
+  const canCreate = usePermission(Q.NCR_CREATE);
   const tEnums = useTranslations();
   const common = useTranslations("common");
   const messages = useTranslations("messages");
@@ -131,11 +135,11 @@ export function NcrReportsList() {
       section="Quality"
       title={t("listTitle")}
       subtitle={t("subtitle")}
-      action={
+      action={canCreate ? (
         <Link href="/non-conformance-reports/new" style={sharedStyles.button}>
           {t("newButton")}
         </Link>
-      }
+      ) : undefined}
     >
       <section style={styles.filters} aria-label={t("filtersAria")}>
         <label style={sharedStyles.field}>
@@ -147,13 +151,13 @@ export function NcrReportsList() {
               updateFilter("source_type", event.target.value as FilterValues["source_type"])
             }
           >
-            <option value="">All sources</option>
-            <option value="internal_production">Internal Production</option>
-            <option value="incoming_material">Incoming Material</option>
-            <option value="supplier">Supplier</option>
-            <option value="warehouse">Warehouse</option>
-            <option value="customer_return">Customer Return</option>
-            <option value="other">Other</option>
+            <option value="">{t("filters.allSources")}</option>
+            <option value="internal_production">{enumT("ncrReport.sourceType.internal_production")}</option>
+            <option value="incoming_material">{enumT("ncrReport.sourceType.incoming_material")}</option>
+            <option value="supplier">{enumT("ncrReport.sourceType.supplier")}</option>
+            <option value="warehouse">{enumT("ncrReport.sourceType.warehouse")}</option>
+            <option value="customer_return">{enumT("ncrReport.sourceType.customer_return")}</option>
+            <option value="other">{enumT("ncrReport.sourceType.other")}</option>
           </select>
         </label>
 
@@ -166,13 +170,13 @@ export function NcrReportsList() {
               updateFilter("report_type", event.target.value as FilterValues["report_type"])
             }
           >
-            <option value="">All report types</option>
-            <option value="material_non_conformance">Material Non-Conformance</option>
-            <option value="product_non_conformance">Product Non-Conformance</option>
-            <option value="process_non_conformance">Process Non-Conformance</option>
-            <option value="packaging_non_conformance">Packaging Non-Conformance</option>
-            <option value="documentation_non_conformance">Documentation Non-Conformance</option>
-            <option value="other">Other</option>
+            <option value="">{t("filters.allReportTypes")}</option>
+            <option value="material_non_conformance">{enumT("ncrReport.reportType.material_non_conformance")}</option>
+            <option value="product_non_conformance">{enumT("ncrReport.reportType.product_non_conformance")}</option>
+            <option value="process_non_conformance">{enumT("ncrReport.reportType.process_non_conformance")}</option>
+            <option value="packaging_non_conformance">{enumT("ncrReport.reportType.packaging_non_conformance")}</option>
+            <option value="documentation_non_conformance">{enumT("ncrReport.reportType.documentation_non_conformance")}</option>
+            <option value="other">{enumT("ncrReport.reportType.other")}</option>
           </select>
         </label>
 
@@ -185,11 +189,11 @@ export function NcrReportsList() {
               updateFilter("status", event.target.value as FilterValues["status"])
             }
           >
-            <option value="">All statuses</option>
-            <option value="draft">Draft</option>
-            <option value="open">Open</option>
-            <option value="under_review">Under Review</option>
-            <option value="closed">Closed</option>
+            <option value="">{t("filters.allStatuses")}</option>
+            <option value="draft">{enumT("ncrReport.status.draft")}</option>
+            <option value="open">{enumT("ncrReport.status.open")}</option>
+            <option value="under_review">{enumT("ncrReport.status.under_review")}</option>
+            <option value="closed">{enumT("ncrReport.status.closed")}</option>
           </select>
         </label>
 
@@ -231,9 +235,11 @@ export function NcrReportsList() {
           <p style={{ margin: "0 0 18px" }}>
             {t("createFirst")}
           </p>
-          <Link href="/non-conformance-reports/new" style={sharedStyles.button}>
-            {t("createButton")}
-          </Link>
+          {canCreate ? (
+            <Link href="/non-conformance-reports/new" style={sharedStyles.button}>
+              {t("createButton")}
+            </Link>
+          ) : null}
         </section>
       ) : null}
 

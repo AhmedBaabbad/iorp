@@ -9,6 +9,7 @@ import re
 
 # Each module declares its own permissions (a pure domain module); the catalog registers them.
 from app.production.domain import permissions as production_permissions
+from app.quality.domain import permissions as quality_permissions
 
 
 @dataclass(frozen=True)
@@ -81,6 +82,8 @@ ACTION_NAMES = {
     "complete": ("Complete", "إكمال"), "assign_owner": ("Assign Owner for", "تعيين المسؤول عن"),
     "link_user": ("Link User to", "ربط مستخدم بـ"),
     "manage_items": ("Manage Items of", "إدارة بنود"),
+    "decide": ("Decide", "اتخاذ قرار"),
+    "execute": ("Execute", "تنفيذ"),
 }
 
 
@@ -149,10 +152,9 @@ def _labelled(permission: PermissionDefinition, labels: dict[str, tuple[str, str
 PRODUCTION_PERMISSIONS = [_labelled(p, production_permissions.LABELS)
                           for p in _resource_permissions(production_permissions.MODULE, production_permissions.RESOURCES)]
 
-QUALITY_PERMISSIONS = _resource_permissions("quality", {
-    resource: ("read", "write") for resource in
-    ("quality_checks", "quality_defects", "rejections", "ncr_reports")
-})
+# QUAL-001: one permission per action, from quality/domain/permissions.py.
+QUALITY_PERMISSIONS = [_labelled(p, quality_permissions.LABELS)
+                       for p in _resource_permissions(quality_permissions.MODULE, quality_permissions.RESOURCES)]
 
 WORKFORCE_PERMISSIONS = _resource_permissions("workforce", {
     "members": ("read", "create", "update", "delete", "link_user"),
@@ -170,6 +172,9 @@ REPORTING_PERMISSIONS = [PermissionDefinition(code, *code.split(":"), en, ar, en
 from app.commercial.domain.report_permissions import LABELS as CUSTOMER_REPORT_LABELS
 REPORTING_PERMISSIONS += [PermissionDefinition('reports:customers:'+key, 'reports', 'customers', key, en, ar, en, ar)
                          for key, (en, ar) in CUSTOMER_REPORT_LABELS.items()]
+from app.quality.domain.report_permissions import LABELS as QUALITY_REPORT_LABELS
+REPORTING_PERMISSIONS += [PermissionDefinition('reports:quality:'+key, 'reports', 'quality', key, en, ar, en, ar)
+                         for key, (en, ar) in QUALITY_REPORT_LABELS.items()]
 
 ALL_TENANT_PERMISSIONS = (
     FOUNDATION_PERMISSIONS + COMMERCIAL_PERMISSIONS + PRODUCTION_PERMISSIONS

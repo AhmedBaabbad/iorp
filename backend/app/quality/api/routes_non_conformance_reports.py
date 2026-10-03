@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.tenancy import TenantContext
-from app.dependencies import get_current_tenant, get_db
+from app.dependencies import get_current_tenant, get_db, require_permission
+from app.quality.domain import permissions as Q
 from app.quality.api.schemas import (
     NonConformanceReportCreate,
     NonConformanceReportListItem,
@@ -19,7 +20,7 @@ from app.quality.domain.enums import NCRReportType, NCRSourceType, NCRStatus
 router = APIRouter(prefix="/non-conformance-reports", tags=["non-conformance-reports"])
 
 
-@router.post("", response_model=NonConformanceReportRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=NonConformanceReportRead, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission(Q.NCR_CREATE))])
 def create_non_conformance_report(
     payload: NonConformanceReportCreate,
     tenant: TenantContext = Depends(get_current_tenant),
@@ -32,7 +33,7 @@ def create_non_conformance_report(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
-@router.get("", response_model=list[NonConformanceReportListItem])
+@router.get("", response_model=list[NonConformanceReportListItem], dependencies=[Depends(require_permission(Q.NCR_READ))])
 def list_non_conformance_reports(
     source_type: NCRSourceType | None = Query(default=None),
     report_type: NCRReportType | None = Query(default=None),
@@ -51,7 +52,7 @@ def list_non_conformance_reports(
     )
 
 
-@router.get("/{report_id}", response_model=NonConformanceReportRead)
+@router.get("/{report_id}", response_model=NonConformanceReportRead, dependencies=[Depends(require_permission(Q.NCR_READ))])
 def get_non_conformance_report(
     report_id: UUID,
     tenant: TenantContext = Depends(get_current_tenant),
@@ -64,7 +65,7 @@ def get_non_conformance_report(
     return report
 
 
-@router.patch("/{report_id}", response_model=NonConformanceReportRead)
+@router.patch("/{report_id}", response_model=NonConformanceReportRead, dependencies=[Depends(require_permission(Q.NCR_UPDATE))])
 def update_non_conformance_report(
     report_id: UUID,
     payload: NonConformanceReportUpdate,

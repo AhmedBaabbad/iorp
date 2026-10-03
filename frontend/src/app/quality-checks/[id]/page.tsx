@@ -1,4 +1,6 @@
 import { QualityCheckDetail } from "@/features/quality-checks";
+import { PermissionGate } from "@/features/auth/permission-gate";
+import { Q } from "@/lib/quality-permissions";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -6,5 +8,5 @@ type PageProps = {
 
 export default async function Page({ params }: PageProps) {
   const { id } = await params;
-  return <QualityCheckDetail qualityCheckId={id} />;
+  return <PermissionGate code={Q.CHECKS_READ}><QualityCheckDetail qualityCheckId={id} /></PermissionGate>;
 }

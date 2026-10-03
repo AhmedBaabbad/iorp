@@ -5,7 +5,9 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { SectionShell } from "@/components/layout/section-shell";
+import { usePermission } from "@/features/auth/permission-hooks";
 import { useFormatter } from "@/hooks/useFormatter";
+import { Q } from "@/lib/quality-permissions";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { sharedStyles } from "@/styles/shared-styles";
 import { getDefectsByCheck } from "../api/quality-defects-api";
@@ -46,7 +48,9 @@ export function QualityDefectsList({
   const [error, setError] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const isMountedRef = useRef(true);
-  const isClosed = checkStatus === "closed";
+  // Closed and cancelled checks are final; without the create permission the list is read-only.
+  const isClosed = checkStatus === "closed" || checkStatus === "cancelled";
+  const canCreate = usePermission(Q.DEFECTS_CREATE);
 
   const loadDefects = useCallback(async () => {
     if (!isMountedRef.current) {
@@ -91,7 +95,7 @@ export function QualityDefectsList({
       title={t("sectionTitle")}
       subtitle={t("sectionSubtitle")}
     >
-      {!isClosed && !isFormOpen ? (
+      {canCreate && !isClosed && !isFormOpen ? (
         <div style={styles.headerActions}>
           <button
             style={sharedStyles.button}
@@ -109,7 +113,7 @@ export function QualityDefectsList({
         </div>
       ) : null}
 
-      {!isClosed && isFormOpen ? (
+      {canCreate && !isClosed && isFormOpen ? (
         <QualityDefectForm
           qualityCheckId={qualityCheckId}
           onCreated={handleDefectCreated}

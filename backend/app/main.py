@@ -72,6 +72,14 @@ customer_report_providers.identity_factory = ReportIdentityQueries
 register_customer_reports()
 from app.commercial.reporting.quotation.definitions import register_quotation
 register_quotation()
+# The quality report center (QUAL-REPORT-001).
+from app.quality.reporting.definitions import register_reports as register_quality_reports
+from app.quality.reporting.routes import router as quality_reports_router
+register_quality_reports()
+# Quality's gate on closing a production order (QUAL-001): production asks, it never imports quality.
+from app.core.interfaces.order_close_guards import register_close_guard
+from app.quality.application.rejection_service import close_blockers as quality_close_blockers
+register_close_guard(quality_close_blockers)
 # Composition root: reporting reads the organization identity through this seam, never by importing foundation.
 reporting_providers.branding_provider = lambda db, organization_id: BrandingService(db).get_branding(organization_id)
 from app.core.interfaces.activity_log import register_activity_logger
@@ -103,6 +111,7 @@ app.include_router(branding_router, prefix=settings.api_prefix)
 app.include_router(reporting_router, prefix=settings.api_prefix)
 app.include_router(customer_reports_router, prefix=settings.api_prefix)
 app.include_router(report_shortcuts_router, prefix=settings.api_prefix)
+app.include_router(quality_reports_router, prefix=settings.api_prefix)
 app.include_router(demands_router, prefix=f"{settings.api_prefix}/production")
 
 
