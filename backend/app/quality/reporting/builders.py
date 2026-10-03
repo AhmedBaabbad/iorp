@@ -16,7 +16,7 @@ from app.core.db import Base
 from app.core.reporting.contracts import ReportData, ReportLimitError, TableSection
 from app.quality.application.support import CommercialReads, history, user_names
 from app.quality.domain import rules
-from app.quality.infrastructure.models import QualityCheck, QualityDefect, QualityRejection
+from app.quality.infrastructure.models import QualityCheck, QualityCheckMeasurement, QualityDefect, QualityRejection
 
 LIMIT = 5000
 HUNDRED = Decimal(100)
@@ -54,6 +54,10 @@ LABELS = {
     'create': ('إنشاء', 'Created'), 'update': ('تعديل', 'Edited'), 'start': ('بدء الفحص', 'Inspection started'),
     'close': ('إغلاق بالنتيجة', 'Closed with result'), 'cancel': ('إلغاء', 'Cancelled'),
     'decide': ('قرار التصرف', 'Disposition decided'), 'execute': ('تنفيذ القرار', 'Disposition executed'),
+    'plan': ('تطبيق خطة القياس', 'Measurement plan applied'),
+    # measurement verdicts
+    'pass': ('مطابق', 'Pass'), 'fail': ('غير مطابق', 'Fail'), 'recorded': ('مسجَّل', 'Recorded'), 'pending_measurement': ('لم يُقَس', 'Not measured'),
+    'conforming': ('مطابق', 'Conforming'), 'nonconforming': ('غير مطابق', 'Not conforming'),
     # filters
     'none': ('دون تجميع', 'None'), 'check_type': ('نوع الفحص', 'Check type'), 'result': ('النتيجة', 'Result'), 'product': ('المنتج', 'Product'),
     'month': ('شهر', 'Month'), 'week': ('أسبوع', 'Week'), 'day': ('يوم', 'Day'),
@@ -193,6 +197,8 @@ def check_full(db, tenant, params, selected):
         else:
             rows += [('أمر الإنتاج / Production order', number), ('المنتج / Product', product),
                      ('البند / Line', line_no if line_no else ('الأمر كله / Whole order' if number else None)), ('المواصفات / Specification', spec_text(spec, lang))]
+        if check.specification_code:
+            rows.append(('المواصفة المرجعية / Reference specification', f'{check.specification_code} — rev {check.specification_revision}'))
         rows += [('بدأ في / Started at', text(check.started_at, zone)),
                  ('أُغلق في / Closed at', f'{text(check.closed_at, zone)} — {names.get(check.closed_by_user_id) or ""}'.strip(' —') if check.closed_at else None)]
         if check.cancel_reason:
@@ -207,6 +213,8 @@ def check_full(db, tenant, params, selected):
                         None if closed else 'تُسجَّل الكميات المقبولة والمرفوضة عند إغلاق الفحص / Accepted and rejected quantities are recorded when the check closes')
         section.cards = [(bi(k, lang), f'{text(v)} {unit if "%" not in k else "%"}'.strip()) for k, v in figures if v is not None]
         sections.append(section)
+    if 'measurements' in selected:
+        sections.append(measurements_section(db, tenant, check, lang))
     if 'defects' in selected:
         defects = db.scalars(select(QualityDefect).where(QualityDefect.organization_id == tenant.organization_id,
                                                          QualityDefect.quality_check_id == check.id).order_by(QualityDefect.defect_date, QualityDefect.created_at)).all()
@@ -234,6 +242,35 @@ def check_full(db, tenant, params, selected):
     final = text(check.status) in ('closed', 'cancelled')
     return ReportData(sections=sections, provisional=not final, subject=check.inspection_code,
                       document={'cancelled': text(check.status) == 'cancelled'})
+
+
+def limits_text(m):
+    if m.lower_limit is not None and m.upper_limit is not None:
+        return f'{text(m.lower_limit)} – {text(m.upper_limit)}'
+    if m.lower_limit is not None:
+        return f'≥ {text(m.lower_limit)}'
+    if m.upper_limit is not None:
+        return f'≤ {text(m.upper_limit)}'
+    return None
+
+
+def measurements_section(db, tenant, check, lang):
+    """The plan copied into the inspection and what was measured: one row per parameter, its limits and verdict."""
+    rows = []
+    for m in db.scalars(select(QualityCheckMeasurement).where(QualityCheckMeasurement.organization_id == tenant.organization_id,
+                                                              QualityCheckMeasurement.quality_check_id == check.id).order_by(QualityCheckMeasurement.position)):
+        name = m.name_en if lang == 'en' else m.name_ar
+        verdict = label('pending_measurement' if m.status == 'pending' else m.status, lang)
+        if m.kind == 'attribute':
+            result = label(m.attribute_result, lang) if m.attribute_result else None
+            rows.append((name, None, m.requirement, m.acceptance, ' — '.join(p for p in (result, m.observation) if p) or None, None, verdict, m.method))
+        else:
+            spread = f'{text(m.minimum)} – {text(m.maximum)} (n={m.reading_count})' if m.reading_count else None
+            rows.append((name, m.unit, m.target, limits_text(m), m.mean, spread, verdict, m.method))
+    return table('measurements', 'نتائج القياس', 'Measurement results',
+                 ['الخاصية / Parameter', 'الوحدة / Unit', 'المستهدف / Target', 'حدود القبول / Acceptance', 'المتوسط أو النتيجة / Mean or result',
+                  'المدى (العدد) / Range (n)', 'الحكم / Verdict', 'الطريقة / Method'], rows, lang,
+                 'يُحكم بالمطابقة إذا وقعت كل القراءات ضمن حدود القبول / A parameter passes when every reading lies within its limits')
 
 
 # ── Q2: checks summary ──────────────────────────────────────────────────────────────────────────

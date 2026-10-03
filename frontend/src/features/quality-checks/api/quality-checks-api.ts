@@ -1,7 +1,7 @@
 import { apiClient } from "@/lib/api-client";
 import type {
-  CloseQualityCheckRequest, CreateQualityCheckRequest, InspectableOrder, QualityCheckData, QualityCheckListFilters, QualityCheckListItem,
-  SampleOption, UpdateQualityCheckRequest,
+  CloseQualityCheckRequest, CreateQualityCheckRequest, InspectableOrder, MeasurementInput, QualityCheckData, QualityCheckListFilters,
+  QualityCheckListItem, SampleOption, UpdateQualityCheckRequest,
 } from "../types";
 
 const PATH = "/quality/quality-checks";
@@ -43,4 +43,17 @@ export function getInspectableOrders(search = "") {
 
 export function getInspectableSamples(search = "") {
   return apiClient<SampleOption[]>(`${PATH}/lookups/samples?q=${encodeURIComponent(search)}`);
+}
+
+// QUAL-SPEC-001: the specifications in force for the inspected product, applying one as the plan, and recording a measurement.
+export function getPlanCandidates(id: string) {
+  return apiClient<{ id: string; code: string; revision: number; title: string; grade: string | null }[]>(`${PATH}/${id}/specifications`);
+}
+
+export function applyPlan(id: string, specificationId: string) {
+  return apiClient<QualityCheckData>(`${PATH}/${id}/plan`, { method: "POST", body: { specification_id: specificationId } });
+}
+
+export function recordMeasurement(id: string, measurementId: string, body: MeasurementInput) {
+  return apiClient<QualityCheckData>(`${PATH}/${id}/measurements/${measurementId}`, { method: "PUT", body });
 }

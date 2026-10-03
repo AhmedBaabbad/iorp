@@ -8,8 +8,11 @@ from sqlalchemy.orm import Session
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, permission_check, require_any_permission, require_permission
 from app.quality.api.inspection_schemas import (
-    InspectableOrder, QualityCheckClose, QualityCheckCreate, QualityCheckListItem, QualityCheckRead, QualityCheckUpdate, ReasonInput, SampleOption,
+    InspectableOrder, MeasurementInput, PlanInput, QualityCheckClose, QualityCheckCreate, QualityCheckListItem, QualityCheckRead, QualityCheckUpdate,
+    ReasonInput, SampleOption,
 )
+from app.quality.api.specification_schemas import SpecificationListItem
+from app.quality.application.measurement_service import MeasurementService
 from app.quality.application.check_service import QualityCheckService
 from app.quality.domain import permissions as Q
 from app.quality.domain.enums import QualityCheckResult, QualityCheckStatus, QualityCheckType
@@ -109,5 +112,43 @@ def cancel_quality_check(check_id: UUID, payload: ReasonInput, tenant: TenantCon
     service = QualityCheckService(db, tenant)
     try:
         return _read(service, service.cancel(check_id, payload.reason), can)
+    except QualityError as exc:
+        raise _error(exc) from exc
+
+
+# ── measurement plan and readings (QUAL-SPEC-001) ──────────────────────────────────────────────
+
+@router.get("/{check_id}/specifications", response_model=list[SpecificationListItem], dependencies=[Depends(require_permission(Q.CHECKS_MEASURE))])
+def plan_candidates(check_id: UUID, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
+    """Specifications in force for the inspected product: the plans this check can take."""
+    service = QualityCheckService(db, tenant)
+    try:
+        return MeasurementService(db, tenant).candidates(service.get(check_id))
+    except QualityError as exc:
+        raise _error(exc) from exc
+
+
+@router.post("/{check_id}/plan", response_model=QualityCheckRead, dependencies=[Depends(require_permission(Q.CHECKS_MEASURE))])
+def apply_plan(check_id: UUID, payload: PlanInput, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db),
+               can=Depends(permission_check)):
+    """Copies a specification in force into the check, with its limits resolved for the lot; nothing measured yet."""
+    service = QualityCheckService(db, tenant)
+    try:
+        check = service.get(check_id)
+        MeasurementService(db, tenant).apply(check, payload.specification_id)
+        return _read(service, check, can)
+    except QualityError as exc:
+        raise _error(exc) from exc
+
+
+@router.put("/{check_id}/measurements/{measurement_id}", response_model=QualityCheckRead, dependencies=[Depends(require_permission(Q.CHECKS_MEASURE))])
+def record_measurement(check_id: UUID, measurement_id: UUID, payload: MeasurementInput, tenant: TenantContext = Depends(get_current_tenant),
+                       db: Session = Depends(get_db), can=Depends(permission_check)):
+    """Readings (numeric) or conforming / not (attribute); the verdict is computed against the plan's limits."""
+    service = QualityCheckService(db, tenant)
+    try:
+        check = service.get(check_id)
+        MeasurementService(db, tenant).record(check, measurement_id, payload)
+        return _read(service, check, can)
     except QualityError as exc:
         raise _error(exc) from exc

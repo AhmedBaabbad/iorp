@@ -13,6 +13,7 @@ from app.quality.domain import rules
 from app.quality.domain.enums import DispositionStatus, QualityCheckStatus as S, QualityCheckType as T, RejectionReason
 from app.quality.domain.rules import QualityError, ZERO
 from app.quality.infrastructure.models import QualityCheck, QualityRejection
+from .measurement_service import MeasurementService
 from .support import log_activity, CommercialReads, ProductionReads, as_decimal, history, next_code, record, user_names
 
 # Types inspecting a production lot: the production order is required.
@@ -58,6 +59,7 @@ class QualityCheckService:
                         closed_by_name=names.get(c.closed_by_user_id), actions=rules.check_actions(c.status, can))
             if detail:
                 view["history"] = history(self.db, self.org, "check", c.id)
+                view["measurements"] = MeasurementService(self.db, self.tenant).measurements(c.id)
                 view["rejections"] = [dict(id=r.id, rejection_code=r.rejection_code, disposition_status=r.disposition_status,
                                            disposition=r.disposition, quantity_rejected=r.quantity_rejected, unit=r.unit)
                                       for r in self.db.scalars(select(QualityRejection).where(QualityRejection.organization_id == self.org,
@@ -106,6 +108,8 @@ class QualityCheckService:
         self.db.add(check)
         self.db.flush()
         record(self.db, self.org, "check", check.id, "create", None, S.OPEN.value, self.tenant.user_id)
+        # QUAL-SPEC-001: the product's specification in force becomes the measurement plan, when there is exactly one.
+        MeasurementService(self.db, self.tenant).auto_apply(check)
         self.db.commit()
         log_activity(self.db, self.org, self.tenant.user_id, "quality_check.created", "quality_check", check.id, check.inspection_code)
         return check
@@ -150,6 +154,7 @@ class QualityCheckService:
         inspected, accepted, rejected = as_decimal(data.qty_inspected), as_decimal(data.qty_accepted), as_decimal(data.qty_rejected)
         rules.assert_quantities(inspected, accepted, rejected)
         rules.assert_result_matches(data.result, rejected)
+        MeasurementService(self.db, self.tenant).assert_complete(check, data.result)
         before = check.status.value
         check.qty_inspected, check.qty_accepted, check.qty_rejected = inspected, accepted, rejected
         check.result, check.status, check.closed_at, check.closed_by_user_id = data.result, S.CLOSED, utc_now(), self.tenant.user_id

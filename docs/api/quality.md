@@ -87,6 +87,34 @@ Update a defect. All fields optional.
 
 ---
 
+| GET | `/{id}/specifications` | checks:measure | Specifications in force for the inspected product |
+| POST | `/{id}/plan` | checks:measure | `specification_id`; copies the lines with limits resolved for the lot |
+| PUT | `/{id}/measurements/{measurement_id}` | checks:measure | `readings` (numeric) or `attribute_result` + `observation` |
+
+Measurement codes: `SPECIFICATION_NOT_ACTIVE`, `MEASUREMENTS_STARTED`, `LOT_SPEC_VALUE_MISSING` (with `key`), `READING_INVALID`,
+`TOO_MANY_READINGS`, `MEASUREMENTS_INCOMPLETE` (with `count`), `ACCEPTED_WITH_FAILED_MEASUREMENT`.
+
+## Test parameters and specifications
+
+Prefix `/api/v1/quality`.
+
+| Method | Path | Permission | Notes |
+|--------|------|------------|-------|
+| GET | `/quality-test-parameters` | specifications:read or checks:measure | `?active=true` for active ones |
+| POST | `/quality-test-parameters` | specifications:create | code, names, kind, unit, method |
+| POST | `/quality-test-parameters/standard` | specifications:create | Adds the strapping-band set once |
+| PATCH | `/quality-test-parameters/{id}` | specifications:update | Names, unit, method, active, order (not the kind) |
+| GET | `/quality-specifications` | specifications:read | Filters: `status`, `product_type`, `search` |
+| POST | `/quality-specifications` | specifications:create | Revision 1, draft, with its lines |
+| GET | `/quality-specifications/{id}` | specifications:read | With lines and `actions` |
+| PATCH | `/quality-specifications/{id}` | specifications:update | Draft only; `lines` replace the current ones |
+| POST | `/quality-specifications/{id}/activate` | specifications:activate | The revision in force with the same number becomes superseded |
+| POST | `/quality-specifications/{id}/revise` | specifications:create | New draft revision copying the lines |
+
+Codes: `PARAMETER_CODE_TAKEN`, `SPECIFICATION_CODE_TAKEN`, `SPECIFICATION_NOT_DRAFT`, `SPECIFICATION_EMPTY`, `SPECIFICATION_DRAFT_EXISTS`,
+`LIMITS_REQUIRED`, `LIMITS_INVALID`, `TARGET_REQUIRED`, `ORDER_SPEC_KEY_REQUIRED`, `REQUIREMENT_REQUIRED`, `TOLERANCE_NEGATIVE`
+(line errors carry the parameter code).
+
 ## Quality Rejections
 
 Prefix `/api/v1/quality/quality-rejections`.

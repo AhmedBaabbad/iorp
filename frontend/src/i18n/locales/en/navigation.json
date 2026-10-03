@@ -61,7 +61,9 @@
     "planning": "Production Planning",
     "shiftRosters": "Shift Rosters",
     "customerReports": "Customer reports",
-    "qualityReports": "Quality report center"
+    "qualityReports": "Quality report center",
+    "qualitySpecifications": "Product specifications",
+    "qualityTestParameters": "Test parameters"
   },
   "userMenu": {
     "changePassword": "Change Password",

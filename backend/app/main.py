@@ -40,6 +40,7 @@ from app.production.api.routes_work_centers import router as work_centers_router
 from app.quality.api.routes_non_conformance_items import router as non_conformance_items_router
 from app.quality.api.routes_non_conformance_reports import router as non_conformance_reports_router
 from app.quality.api.routes_quality_checks import router as quality_checks_router
+from app.quality.api.routes_specifications import router as quality_specifications_router
 from app.quality.api.routes_quality_defects import router as quality_defects_router
 from app.quality.api.routes_quality_rejections import router as quality_rejections_router
 from app.workforce.api.routes_workforce import router as workforce_router
@@ -155,6 +156,7 @@ app.include_router(result_overview_router, prefix=f"{settings.api_prefix}/produc
 app.include_router(downtime_events_router, prefix=f"{settings.api_prefix}/production")
 app.include_router(waste_records_router, prefix=f"{settings.api_prefix}/production")
 app.include_router(quality_checks_router, prefix=f"{settings.api_prefix}/quality")
+app.include_router(quality_specifications_router, prefix=f"{settings.api_prefix}/quality")
 app.include_router(quality_defects_router, prefix=f"{settings.api_prefix}/quality")
 app.include_router(quality_rejections_router, prefix=f"{settings.api_prefix}/quality")
 app.include_router(non_conformance_reports_router, prefix=f"{settings.api_prefix}/quality")

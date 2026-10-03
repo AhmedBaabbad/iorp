@@ -8,10 +8,12 @@ MODULE = "quality"
 
 # resource -> actions, in the order the roles screen shows them.
 RESOURCES: dict[str, tuple[str, ...]] = {
-    "quality_checks": ("read", "create", "update", "start", "close", "cancel"),
+    "quality_checks": ("read", "create", "update", "start", "close", "cancel", "measure"),
     "rejections": ("read", "create", "update", "decide", "execute"),
     "quality_defects": ("read", "create", "update"),
     "ncr_reports": ("read", "create", "update"),
+    # QUAL-SPEC-001: test parameters and product specifications (TDS); "activate" puts a revision into force.
+    "specifications": ("read", "create", "update", "activate"),
 }
 
 
@@ -22,13 +24,14 @@ def code(resource: str, action: str) -> str:
 
 ALL: tuple[str, ...] = tuple(code(resource, action) for resource, actions in RESOURCES.items() for action in actions)
 
-CHECKS_READ, CHECKS_CREATE, CHECKS_UPDATE, CHECKS_START, CHECKS_CLOSE, CHECKS_CANCEL = (code("quality_checks", a) for a in RESOURCES["quality_checks"])
+CHECKS_READ, CHECKS_CREATE, CHECKS_UPDATE, CHECKS_START, CHECKS_CLOSE, CHECKS_CANCEL, CHECKS_MEASURE = (code("quality_checks", a) for a in RESOURCES["quality_checks"])
 REJECTIONS_READ, REJECTIONS_CREATE, REJECTIONS_UPDATE, REJECTIONS_DECIDE, REJECTIONS_EXECUTE = (code("rejections", a) for a in RESOURCES["rejections"])
 DEFECTS_READ, DEFECTS_CREATE, DEFECTS_UPDATE = (code("quality_defects", a) for a in RESOURCES["quality_defects"])
 NCR_READ, NCR_CREATE, NCR_UPDATE = (code("ncr_reports", a) for a in RESOURCES["ncr_reports"])
+SPECS_READ, SPECS_CREATE, SPECS_UPDATE, SPECS_ACTIVATE = (code("specifications", a) for a in RESOURCES["specifications"])
 
 # action -> permission (allowed actions shown on each record).
-CHECK_ACTIONS: dict[str, str] = {"edit": CHECKS_UPDATE, "start": CHECKS_START, "close": CHECKS_CLOSE, "cancel": CHECKS_CANCEL}
+CHECK_ACTIONS: dict[str, str] = {"edit": CHECKS_UPDATE, "start": CHECKS_START, "close": CHECKS_CLOSE, "cancel": CHECKS_CANCEL, "measure": CHECKS_MEASURE}
 REJECTION_ACTIONS: dict[str, str] = {"edit": REJECTIONS_UPDATE, "decide": REJECTIONS_DECIDE, "execute": REJECTIONS_EXECUTE}
 
 # Labels where "<action> <resource>" reads badly; everything else is composed by the catalog.
@@ -38,4 +41,6 @@ LABELS: dict[str, tuple[str, str]] = {
     CHECKS_CANCEL: ("Cancel Quality Checks", "إلغاء فحوصات الجودة"),
     REJECTIONS_DECIDE: ("Decide Rejection Dispositions", "اتخاذ قرار حالات الرفض"),
     REJECTIONS_EXECUTE: ("Execute Rejection Decisions", "تنفيذ قرارات حالات الرفض"),
+    CHECKS_MEASURE: ("Record Inspection Measurements", "تسجيل قياسات الفحص"),
+    SPECS_ACTIVATE: ("Put Product Specifications into Force", "اعتماد مواصفات المنتجات وتفعيلها"),
 }

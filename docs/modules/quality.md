@@ -1,6 +1,6 @@
 # Quality Module
 
-**Status:** QUAL-001 — checks and rejections redesigned (lifecycle, close gate, per-action permissions); defects and NCR unchanged
+**Status:** QUAL-001 lifecycle and close gate; QUAL-REPORT-001 report center; QUAL-SPEC-001 specifications and measurements. Defects and NCR unchanged
 
 The quality module owns the inspection and non-conformance chain: recording quality checks, logging defects, formalizing rejections, and opening non-conformance cases with line items. All data is org-scoped via `TenantContext` (ADR-001). No imports from `app.production`, `app.commercial`, or `app.foundation` models are allowed — only `app.core.*` and `app.quality.*` (ADR-004).
 
@@ -175,15 +175,47 @@ Per action, one source: `quality/domain/permissions.py`, mirrored by `frontend/s
 
 | Resource | Actions |
 |----------|---------|
-| `quality:quality_checks` | read, create, update, start, close, cancel |
+| `quality:quality_checks` | read, create, update, start, close, cancel, measure |
 | `quality:rejections` | read, create, update, decide, execute |
 | `quality:quality_defects` | read, create, update |
 | `quality:ncr_reports` | read, create, update (NCR items use update) |
+| `quality:specifications` | read, create, update, activate (test parameters and product specifications) |
 
 Migration `f6a1b2i6` split the old `write` grants into these actions (backup `quality_rbac_i6_backup`) and gave `quality_manager`
 `production:production_orders:read`. Records carry an `actions` list computed by the server for the current user.
 
 ---
+
+## Specifications and measurements (QUAL-SPEC-001)
+
+Rules: `quality/domain/specifications.py`. Writers: `application/specification_service.py` (parameters, specifications) and
+`application/measurement_service.py` (a check's plan and readings).
+
+- **Test parameters** (`quality_test_parameters`): code, Arabic and English names, kind (`numeric` in a unit, or `attribute`
+  judged conforming / not conforming), unit, default method / equipment. "Add the standard parameters" adds the strapping-band set
+  once (width, thickness, net roll weight, roll length, break strength, elongation, color, embossing, winding, surface, core / packaging).
+  The kind never changes after creation.
+- **Product specifications** (`quality_specifications`, the TDS): number (e.g. `ROF-TDS-PP-001`), revision, title, product (as written on
+  production orders), grade. Document control: `draft` → activate → `active` (one per number, partial unique index) → `superseded` when a
+  newer revision is activated. Only a draft is edited; "new revision" copies the lines into a draft with revision + 1.
+- **Lines** (`quality_specification_lines`), one per parameter:
+  - numeric: target `fixed`, `order_line` (the order line's specification key, e.g. `width_mm`) or `none`; lower = minimum, else
+    target − tolerance; upper = maximum, else target + tolerance; either side may be open; readings required per parameter;
+  - attribute: requirement and acceptance wording;
+  - method / equipment overrides the parameter's.
+- **Measurement plan** (`quality_check_measurements`): a new inspection takes its product's specification in force automatically when
+  exactly one exists; otherwise the inspector applies one (`POST /quality-checks/{id}/plan`). Lines are copied with their limits resolved
+  for the lot (the order line's values, else the order's, or the sample's requested specification), and the check keeps
+  `specification_code` / `specification_revision`. Later revisions never change it. A plan is replaced only before anything is measured
+  (`MEASUREMENTS_STARTED`); a lot lacking a value the specification needs answers `LOT_SPEC_VALUE_MISSING`.
+- **Readings** (`PUT /quality-checks/{id}/measurements/{mid}`, permission `quality_checks:measure`): numeric readings → count, minimum,
+  maximum, mean and the verdict (`pass` when every reading lies within the limits, `fail` otherwise, `recorded` when there are no limits,
+  `pending` below the required count); attributes → conforming / not conforming with an observation.
+- **Closing**: a check with a plan closes only when everything is measured (`MEASUREMENTS_INCOMPLETE`), and never as `accepted` with a
+  failed parameter (`ACCEPTED_WITH_FAILED_MEASUREMENT`); conditional accept or rejected remain possible.
+- The inspection report (Q1) shows the plan, limits, readings and verdicts, and the reference specification.
+- Migration `f6a1b2i8` creates the tables and grants `measure` to every role that may update checks (same scope) and the
+  specification permissions to the organization admin, factory manager and quality manager (read also to the viewer).
 
 ## Quality report center (QUAL-REPORT-001)
 

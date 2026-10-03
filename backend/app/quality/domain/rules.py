@@ -107,7 +107,7 @@ def assert_rejection_quantity(quantity: Decimal, available: Decimal | None) -> N
 
 def check_actions(status, can) -> list[str]:
     s = S(status)
-    offered = (["edit", "start", "close", "cancel"] if s == S.OPEN else ["edit", "close", "cancel"] if s == S.UNDER_INSPECTION else [])
+    offered = (["edit", "measure", "start", "close", "cancel"] if s == S.OPEN else ["edit", "measure", "close", "cancel"] if s == S.UNDER_INSPECTION else [])
     return [a for a in offered if can(CHECK_ACTIONS[a])]
 
 

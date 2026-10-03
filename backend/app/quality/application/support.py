@@ -62,6 +62,18 @@ class ProductionReads:
             raise QualityError("ORDER_ITEM_NOT_FOUND", 404)
         return ItemRef(row.id, row.line_no, row.unit)
 
+    def lot_spec(self, order_id, item_id=None) -> tuple[str, dict]:
+        """(product type, specification values) of the inspected lot: the order line's, else the order's."""
+        orders, items = _t("production_orders"), _t("production_order_items")
+        order = self.db.execute(select(orders.c.product_type, orders.c.target_spec_json).where(
+            orders.c.id == order_id, orders.c.organization_id == self.org)).first()
+        if order is None:
+            raise QualityError("PRODUCTION_ORDER_NOT_FOUND", 404)
+        spec = order.target_spec_json
+        if item_id:
+            spec = self.db.scalar(select(items.c.target_spec_json).where(items.c.id == item_id, items.c.production_order_id == order_id)) or spec
+        return order.product_type, dict(spec or {})
+
     def numbers(self, order_ids) -> dict:
         orders = _t("production_orders")
         ids = [i for i in set(order_ids) if i]
@@ -104,6 +116,15 @@ class CommercialReads:
         if row is None:
             raise QualityError("SAMPLE_NOT_FOUND", 404)
         return dict(id=row.id, code=row.sample_code, product_type=row.product_type, unit=row.unit)
+
+    def sample_spec(self, sample_id) -> tuple[str, dict]:
+        """(product type, requested specification) of a commercial sample."""
+        samples, customers = _t("commercial_samples"), _t("commercial_customers")
+        row = self.db.execute(select(samples.c.product_type, samples.c.requested_spec_json).join(customers, customers.c.id == samples.c.customer_id)
+                              .where(samples.c.id == sample_id, customers.c.organization_id == self.org)).first()
+        if row is None:
+            raise QualityError("SAMPLE_NOT_FOUND", 404)
+        return row.product_type, dict(row.requested_spec_json or {})
 
     def sample_codes(self, sample_ids) -> dict:
         samples, customers = _t("commercial_samples"), _t("commercial_customers")

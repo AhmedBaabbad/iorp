@@ -11,6 +11,7 @@ export const Q = {
   CHECKS_START: code("quality_checks", "start"),
   CHECKS_CLOSE: code("quality_checks", "close"),
   CHECKS_CANCEL: code("quality_checks", "cancel"),
+  CHECKS_MEASURE: code("quality_checks", "measure"),
   REJECTIONS_READ: code("rejections", "read"),
   REJECTIONS_CREATE: code("rejections", "create"),
   REJECTIONS_UPDATE: code("rejections", "update"),
@@ -22,6 +23,10 @@ export const Q = {
   NCR_READ: code("ncr_reports", "read"),
   NCR_CREATE: code("ncr_reports", "create"),
   NCR_UPDATE: code("ncr_reports", "update"),
+  SPECS_READ: code("specifications", "read"),
+  SPECS_CREATE: code("specifications", "create"),
+  SPECS_UPDATE: code("specifications", "update"),
+  SPECS_ACTIVATE: code("specifications", "activate"),
 } as const;
 
 // Quality report center (QUAL-REPORT-001), mirroring backend/app/quality/domain/report_permissions.py.

@@ -95,14 +95,57 @@ class QualityCheckListItem(BaseModel):
     updated_at: ISODatetime
 
 
+class MeasurementRead(BaseModel):
+    """A plan line of the inspection (QUAL-SPEC-001): limits resolved for the lot, readings and the verdict."""
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    position: int
+    parameter_code: str
+    name_ar: str
+    name_en: str
+    kind: str
+    unit: str | None
+    method: str | None
+    requirement: str | None
+    acceptance: str | None
+    target: Decimal | None
+    lower_limit: Decimal | None
+    upper_limit: Decimal | None
+    readings_required: int
+    readings: list[str] | None
+    attribute_result: str | None
+    observation: str | None
+    reading_count: int
+    minimum: Decimal | None
+    maximum: Decimal | None
+    mean: Decimal | None
+    status: str
+    measured_at: ISODatetime | None
+
+
 class QualityCheckRead(QualityCheckListItem):
     notes: str | None
     started_at: ISODatetime | None
     closed_at: ISODatetime | None
     closed_by_name: str | None = None
     cancel_reason: str | None
+    specification_id: UUID | None = None
+    specification_code: str | None = None
+    specification_revision: int | None = None
     history: list[HistoryEntry] = []
     rejections: list[CheckRejectionSummary] = []
+    measurements: list[MeasurementRead] = []
+
+
+class PlanInput(_Input):
+    specification_id: UUID
+
+
+class MeasurementInput(_Input):
+    # Numeric parameters: the readings as typed ("5.02"); attributes: conforming / nonconforming.
+    readings: list[str] = Field(default_factory=list, max_length=50)
+    attribute_result: str | None = Field(default=None, pattern="^(conforming|nonconforming)$")
+    observation: str | None = Field(default=None, max_length=255)
 
 
 # ── rejections ────────────────────────────────────────────────────────────────────────────────

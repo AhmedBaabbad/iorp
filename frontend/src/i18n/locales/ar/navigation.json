@@ -61,7 +61,9 @@
     "planning": "تخطيط الإنتاج",
     "shiftRosters": "فرق الورديات",
     "customerReports": "تقارير العملاء",
-    "qualityReports": "مركز تقارير الجودة"
+    "qualityReports": "مركز تقارير الجودة",
+    "qualitySpecifications": "مواصفات المنتجات",
+    "qualityTestParameters": "خصائص الفحص"
   },
   "userMenu": {
     "changePassword": "تغيير كلمة المرور",

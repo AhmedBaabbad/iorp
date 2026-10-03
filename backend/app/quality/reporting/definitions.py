@@ -6,7 +6,7 @@ from app.core.reporting.registry import registry
 from app.core.reporting.service import template_roots
 from app.quality.domain import permissions as Q
 from app.quality.domain import report_permissions as R
-from app.quality.infrastructure.models import QualityDefect, QualityRejection
+from app.quality.infrastructure.models import QualityCheckMeasurement, QualityDefect, QualityRejection
 from app.quality.reporting import builders as b
 from app.quality.reporting.schemas import CheckParams, ChecksSummaryParams, DefectsParams, RejectionsParams
 
@@ -25,6 +25,7 @@ def register_reports():
     template_roots.append(Path(__file__).parent / 'templates')
     check_sections = (
         Section('information', 'معلومات الفحص', 'Inspection information'), Section('quantities', 'الكميات', 'Quantities'),
+        Section('measurements', 'نتائج القياس', 'Measurement results', available=b.has_rows(QualityCheckMeasurement, 'quality_check_id')),
         Section('defects', 'العيوب المكتشفة', 'Defects found', requires_permission=Q.DEFECTS_READ, available=b.has_rows(QualityDefect, 'quality_check_id')),
         Section('rejections', 'حالات الرفض والقرارات', 'Rejections and dispositions', requires_permission=Q.REJECTIONS_READ,
                 available=b.has_rows(QualityRejection, 'quality_check_id')),

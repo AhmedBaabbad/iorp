@@ -75,7 +75,7 @@ table{width:100%;border-collapse:collapse}
 .data{font-size:8.8pt;table-layout:auto;border:1px solid var(--line)}
 thead{display:table-header-group}
 tr{break-inside:avoid}
-.data th,.data td{padding:5px 8px;text-align:start;vertical-align:top;border-bottom:1px solid var(--line);overflow-wrap:anywhere;max-width:220px;white-space:pre-line}
+.data th,.data td{padding:5px 8px;text-align:start;vertical-align:top;border-bottom:1px solid var(--line);overflow-wrap:break-word;max-width:220px;white-space:pre-line}
 .data th{background:var(--tint);color:var(--ink);font-weight:700;font-size:8.3pt;white-space:nowrap;border-bottom:2px solid var(--brand)}
 .data tbody tr:nth-child(even){background:#fafbfc}
 .data td.num{font-variant-numeric:tabular-nums;white-space:nowrap}

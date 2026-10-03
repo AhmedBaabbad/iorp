@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadMessages } from "@/i18n/messages";
 import { ApiClientError } from "@/lib/api-client";
-import type { QualityCheckData } from "@/features/quality-checks/types";
+import type { Measurement, QualityCheckData } from "@/features/quality-checks/types";
 import type { QualityRejectionData } from "@/features/quality-rejections/types";
 
 const api = vi.hoisted(() => ({ apiClient: vi.fn() }));
@@ -25,6 +25,8 @@ import { OrderStatusPanel } from "@/features/production-orders/components/OrderS
 import type { ProductionOrderData } from "@/features/production-orders/types";
 import { Q, QUALITY_REPORT } from "@/lib/quality-permissions";
 import { ReportForm } from "@/features/reports/ReportForm";
+import { SpecificationForm } from "@/features/quality-specifications";
+import { splitReadings } from "@/features/quality-checks/components/MeasurementsSection";
 import type { Definition } from "@/features/reports/api";
 
 let en: Record<string, unknown>;
@@ -48,7 +50,8 @@ function check(over: Partial<QualityCheckData> = {}): QualityCheckData {
     check_datetime: "2026-10-01T08:00:00Z", production_order_id: "po1", production_order_item_id: null, sample_id: null,
     qty_inspected: "100.000", qty_accepted: "0.000", qty_rejected: "0.000", unit: "kg", order_number: "PO-1", item_line_no: null, sample_code: null,
     checked_by_name: "Sara", actions: ["edit", "close", "cancel"], created_at: "", updated_at: "", notes: null, started_at: "2026-10-01T08:05:00Z",
-    closed_at: null, closed_by_name: null, cancel_reason: null, history: [], rejections: [], ...over };
+    closed_at: null, closed_by_name: null, cancel_reason: null, history: [], rejections: [],
+    specification_id: null, specification_code: null, specification_revision: null, measurements: [], ...over };
 }
 function rejection(over: Partial<QualityRejectionData> = {}): QualityRejectionData {
   return { id: "r1", rejection_code: "QR-2026-0001", quality_check_id: "c1", production_order_id: "po1", production_order_item_id: null,
@@ -167,5 +170,83 @@ describe("quality reports", () => {
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Preview" })); });
     const sent = api.apiClient.mock.calls.find(([p]) => p === "/reports/quality.check_full/preview")?.[1]?.body;
     expect(sent).toMatchObject({ check_id: "c1", sections: ["information"] });
+  });
+});
+
+function measurement(over: Partial<Measurement> = {}): Measurement {
+  return { id: "m1", position: 1, parameter_code: "WIDTH", name_ar: "العرض", name_en: "Width", kind: "numeric", unit: "mm",
+    method: "Calibrated vernier caliper", requirement: null, acceptance: null, target: "5.0000", lower_limit: "4.8000", upper_limit: "5.2000",
+    readings_required: 3, readings: null, attribute_result: null, observation: null, reading_count: 0, minimum: null, maximum: null, mean: null,
+    status: "pending", measured_at: null, ...over };
+}
+
+describe("measurements", () => {
+  it("splits readings typed with spaces, commas or Arabic separators", () => {
+    expect(splitReadings("5.02, 4.98 ،5.01؛5")).toEqual(["5.02", "4.98", "5.01", "5"]);
+  });
+
+  it("records readings and shows the server's verdict with the limits", async () => {
+    const planned = check({ specification_code: "ROF-TDS-PP-001", specification_revision: 1, actions: ["edit", "measure", "close", "cancel"],
+      measurements: [measurement(), measurement({ id: "m2", parameter_code: "COLOR", name_ar: "اللون", name_en: "Color", kind: "attribute", unit: null,
+        requirement: "As approved sample", acceptance: "Visual match required", target: null, lower_limit: null, upper_limit: null, readings_required: 1 })] });
+    const measured = { ...planned, measurements: [measurement({ readings: ["5.02", "4.98", "5.01"], reading_count: 3, minimum: "4.98", maximum: "5.02",
+      mean: "5.0033", status: "pass" }), planned.measurements[1]] };
+    api.apiClient.mockImplementation((_path: string, o?: { method?: string }) => Promise.resolve(o?.method === "PUT" ? measured : planned));
+    ui(<QualityCheckDetail qualityCheckId="c1" />, "ar");
+    const section = await screen.findByRole("region", { name: "نتائج القياس" });
+    expect(within(section).getByText("4.8 – 5.2")).toBeTruthy();
+    expect(within(section).getByText("المواصفة المرجعية: ROF-TDS-PP-001 — rev 1")).toBeTruthy();
+    fireEvent.change(within(section).getByLabelText("قراءات العرض"), { target: { value: "5.02 4.98, 5.01" } });
+    await act(async () => { fireEvent.click(within(section).getAllByRole("button", { name: "حفظ" })[0]); });
+    expect(api.apiClient.mock.calls.find(([p, o]) => p === "/quality/quality-checks/c1/measurements/m1" && o?.method === "PUT")?.[1]?.body)
+      .toEqual({ readings: ["5.02", "4.98", "5.01"], observation: null });
+    expect(await within(section).findByText("مطابق: 1 · غير مطابق: 0 · لم يُقَس: 1")).toBeTruthy();
+  });
+
+  it("will not close while the plan is not fully measured", async () => {
+    api.apiClient.mockResolvedValue(check({ measurements: [measurement()] }));
+    ui(<QualityCheckDetail qualityCheckId="c1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Close with result" }));
+    const dialog = screen.getByRole("dialog", { name: "Close the check with its result" });
+    fireEvent.change(within(dialog).getByLabelText("Result"), { target: { value: "accepted" } });
+    expect(within(dialog).getByText("1 parameters of the plan are not measured yet.")).toBeTruthy();
+    expect((within(dialog).getByRole("button", { name: "Close with result" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("offers the specifications in force when the inspection has no plan yet", async () => {
+    const plain = check({ actions: ["edit", "measure", "close", "cancel"] });
+    api.apiClient.mockImplementation((path: string) => Promise.resolve(path.endsWith("/specifications")
+      ? [{ id: "s1", code: "ROF-TDS-PP-001", revision: 2, title: "PP strap", grade: null }]
+      : path.endsWith("/plan") ? { ...plain, specification_code: "ROF-TDS-PP-001", specification_revision: 2, measurements: [measurement()] } : plain));
+    ui(<QualityCheckDetail qualityCheckId="c1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Apply measurement plan" }));
+    expect(await screen.findByText("Reference specification: ROF-TDS-PP-001 — rev 2")).toBeTruthy();
+    expect(api.apiClient.mock.calls.some(([p, o]) => p === "/quality/quality-checks/c1/plan" && o?.body?.specification_id === "s1")).toBe(true);
+  });
+});
+
+describe("specification form", () => {
+  it("builds lines per parameter kind and sends a draft", async () => {
+    const parameters = [
+      { id: "p1", code: "WIDTH", name_ar: "العرض", name_en: "Width", kind: "numeric", unit: "mm", method: "Caliper", is_active: true, sort_order: 10 },
+      { id: "p2", code: "COLOR", name_ar: "اللون", name_en: "Color", kind: "attribute", unit: null, method: "Visual", is_active: true, sort_order: 20 },
+    ];
+    api.apiClient.mockImplementation((path: string, o?: { method?: string }) => Promise.resolve(o?.method === "POST" ? { id: "s1" } : parameters));
+    ui(<SpecificationForm />);
+    fireEvent.change(await screen.findByLabelText("Specification no."), { target: { value: "ROF-TDS-PP-001" } });
+    fireEvent.change(screen.getByLabelText("Title"), { target: { value: "PP strap" } });
+    fireEvent.change(screen.getByLabelText("Product"), { target: { value: "PP strap" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add all parameters" }));
+    fireEvent.change(screen.getByLabelText("Target from"), { target: { value: "order_line" } });
+    fireEvent.change(screen.getByLabelText("Order line key"), { target: { value: "width_mm" } });
+    fireEvent.change(screen.getByLabelText("Tolerance below (−)"), { target: { value: "0.2" } });
+    fireEvent.change(screen.getByLabelText("Tolerance above (+)"), { target: { value: "0.2" } });
+    fireEvent.change(screen.getByLabelText("Requirement"), { target: { value: "As approved sample" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save draft" })); });
+    const body = api.apiClient.mock.calls.find(([p, o]) => p === "/quality/quality-specifications" && o?.method === "POST")?.[1]?.body;
+    expect(body).toMatchObject({ code: "ROF-TDS-PP-001", product_type: "PP strap", lines: [
+      { parameter_id: "p1", target_source: "order_line", order_spec_key: "width_mm", tolerance_minus: "0.2", tolerance_plus: "0.2", requirement: null },
+      { parameter_id: "p2", target_source: "none", requirement: "As approved sample", tolerance_minus: null } ] });
+    expect(nav.push).toHaveBeenCalledWith("/quality-specifications/s1");
   });
 });

@@ -16,6 +16,7 @@ import { cancelQualityCheck, closeQualityCheck, getQualityCheckById, startQualit
 import { CHECK_RESULTS, type CloseQualityCheckRequest, type QualityCheckData, type QualityCheckResult } from "../types";
 import { QualityCheckResultBadge } from "./QualityCheckResultBadge";
 import { QualityCheckStatusBadge } from "./QualityCheckStatusBadge";
+import { MeasurementsSection } from "./MeasurementsSection";
 import { QualityHistory } from "./QualityHistory";
 import { QUANTITY, qualityErrorMessage } from "./quality-errors";
 
@@ -99,6 +100,7 @@ export function QualityCheckDetail({ qualityCheckId }: { qualityCheckId: string 
         <Item label={t("fields.qtyRejected")}><bdi>{closed ? fmt.quantity(check.qty_rejected, unit) : "—"}</bdi></Item>
       </dl>
     </section>
+    {(check.measurements.length > 0 || check.actions.includes("measure")) && <MeasurementsSection check={check} onChange={setCheck} />}
     {canReadRejections && closed && thousandths(check.qty_rejected) > 0 && <section className={s.panel} aria-label={t("rejections.title")}>
       <div className={s.actions} style={{ justifyContent: "space-between" }}>
         <h2 style={{ margin: 0 }}>{t("rejections.title")}</h2>
@@ -143,7 +145,10 @@ function CloseDialog({ check, busy, onClose, onConfirm }: { check: QualityCheckD
   const balanced = numbers && thousandths(accepted) + thousandths(rejected) === thousandths(inspected) && thousandths(inspected) > 0;
   const hasRejected = thousandths(rejected) > 0;
   const mismatch = result === "accepted" && hasRejected ? "acceptedWithRejected" : result === "rejected" && !hasRejected ? "rejectedWithout" : "";
-  const valid = Boolean(result) && balanced && !mismatch;
+  // QUAL-SPEC-001: a plan must be fully measured; a failed measurement rules out "accepted" (the server enforces both).
+  const pendingMeasurements = check.measurements.filter(m => m.status === "pending").length;
+  const failedMeasurements = check.measurements.filter(m => m.status === "fail").length;
+  const valid = Boolean(result) && balanced && !mismatch && pendingMeasurements === 0 && !(result === "accepted" && failedMeasurements > 0);
   // Changing the inspected or accepted quantity keeps the rest as rejected.
   const rebalance = (nextInspected: string, nextAccepted: string) => {
     if (QUANTITY.test(nextInspected) && QUANTITY.test(nextAccepted) && thousandths(nextAccepted) <= thousandths(nextInspected))
@@ -182,6 +187,8 @@ function CloseDialog({ check, busy, onClose, onConfirm }: { check: QualityCheckD
       </div>
       {numbers && !balanced && <p className={s.error} style={{ margin: 0 }}>{t("qtyConstraint")}</p>}
       {mismatch && <p className={s.error} style={{ margin: 0 }}>{t(`closeDialog.${mismatch}`)}</p>}
+      {pendingMeasurements > 0 && <p className={s.error} style={{ margin: 0 }}>{t("closeDialog.measurementsPending", { count: String(pendingMeasurements) })}</p>}
+      {failedMeasurements > 0 && <p className={s.muted} style={{ margin: 0 }}>{t("closeDialog.measurementsFailed", { count: String(failedMeasurements) })}</p>}
       {hasRejected && <>
         <label className={s.field}>{t("closeDialog.rejectionReason")}
           <select value={reason} disabled={busy} onChange={e => setReason(e.target.value)}>

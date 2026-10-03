@@ -3,7 +3,7 @@ export type QualityCheckType =
   | "in_process_inspection" | "finished_product_inspection" | "sample_inspection" | "reinspection" | "issue_triggered" | "general";
 export type QualityCheckStatus = "open" | "under_inspection" | "closed" | "cancelled";
 export type QualityCheckResult = "accepted" | "rejected" | "conditional_accept" | "needs_reinspection";
-export type QualityCheckAction = "edit" | "start" | "close" | "cancel";
+export type QualityCheckAction = "edit" | "measure" | "start" | "close" | "cancel";
 
 export const CHECK_TYPES: QualityCheckType[] = ["in_process_inspection", "finished_product_inspection", "reinspection", "sample_inspection", "issue_triggered", "general"];
 export const CHECK_STATUSES: QualityCheckStatus[] = ["open", "under_inspection", "closed", "cancelled"];
@@ -40,7 +40,22 @@ export type QualityCheckListItem = {
 export type CheckRejectionSummary = { id: string; rejection_code: string; disposition_status: string; disposition: string | null;
   quantity_rejected: string; unit: string };
 
+// A plan line of the inspection (QUAL-SPEC-001): limits resolved for the lot, readings and the verdict.
+export type MeasurementStatus = "pending" | "pass" | "fail" | "recorded";
+export type Measurement = {
+  id: string; position: number; parameter_code: string; name_ar: string; name_en: string; kind: "numeric" | "attribute";
+  unit: string | null; method: string | null; requirement: string | null; acceptance: string | null;
+  target: string | null; lower_limit: string | null; upper_limit: string | null; readings_required: number;
+  readings: string[] | null; attribute_result: "conforming" | "nonconforming" | null; observation: string | null;
+  reading_count: number; minimum: string | null; maximum: string | null; mean: string | null; status: MeasurementStatus; measured_at: string | null;
+};
+export type MeasurementInput = { readings?: string[]; attribute_result?: "conforming" | "nonconforming" | null; observation?: string | null };
+
 export type QualityCheckData = QualityCheckListItem & {
+  specification_id: string | null;
+  specification_code: string | null;
+  specification_revision: number | null;
+  measurements: Measurement[];
   notes: string | null;
   started_at: string | null;
   closed_at: string | null;

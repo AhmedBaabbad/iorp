@@ -4,6 +4,7 @@ import uuid
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     Enum as SqlEnum,
     ForeignKey,
     Index,
@@ -12,6 +13,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -152,6 +154,10 @@ class QualityCheck(Base):
     closed_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
     closed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # QUAL-SPEC-001: the specification revision its measurement plan was copied from.
+    specification_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("quality_specifications.id"), nullable=True)
+    specification_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    specification_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -575,3 +581,97 @@ class QualityStatusHistory(Base):
     detail: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
+
+
+class QualityTestParameter(Base):
+    """What is measured or checked (QUAL-SPEC-001): numeric in a unit, or an attribute judged conforming / not."""
+    __tablename__ = "quality_test_parameters"
+    __table_args__ = (UniqueConstraint("organization_id", "code", name="uq_quality_test_parameters_org_code"),)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False, index=True)
+    code: Mapped[str] = mapped_column(String(40), nullable=False)
+    name_ar: Mapped[str] = mapped_column(String(120), nullable=False)
+    name_en: Mapped[str] = mapped_column(String(120), nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)  # numeric | attribute
+    unit: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    method: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class QualitySpecification(Base):
+    """A product specification (TDS) revision: draft, active (one per code) or superseded."""
+    __tablename__ = "quality_specifications"
+    __table_args__ = (UniqueConstraint("organization_id", "code", "revision", name="uq_quality_specifications_org_code_rev"),
+                      # One revision in force per code.
+                      Index("uq_quality_specifications_active", "organization_id", "code", unique=True,
+                            postgresql_where=text("status = 'active'"), sqlite_where=text("status = 'active'")))
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False, index=True)
+    code: Mapped[str] = mapped_column(String(40), nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    product_type: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    grade: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="draft")
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    activated_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    activated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class QualitySpecificationLine(Base):
+    """One parameter's acceptance in a specification: target (fixed, from the order line, or none), limits or wording."""
+    __tablename__ = "quality_specification_lines"
+    __table_args__ = (UniqueConstraint("specification_id", "parameter_id", name="uq_quality_spec_lines_parameter"),)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    specification_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("quality_specifications.id", ondelete="CASCADE"), nullable=False, index=True)
+    parameter_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("quality_test_parameters.id"), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    target_source: Mapped[str] = mapped_column(String(16), nullable=False, default="none")
+    order_spec_key: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    target_value: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    tolerance_minus: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    tolerance_plus: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    min_value: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    max_value: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    requirement: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    acceptance: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    method: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    readings_required: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+
+class QualityCheckMeasurement(Base):
+    """A plan line copied into an inspection with its limits resolved for the lot, and what was measured."""
+    __tablename__ = "quality_check_measurements"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False)
+    quality_check_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("quality_checks.id", ondelete="CASCADE"), nullable=False, index=True)
+    parameter_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("quality_test_parameters.id", ondelete="SET NULL"), nullable=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    parameter_code: Mapped[str] = mapped_column(String(40), nullable=False)
+    name_ar: Mapped[str] = mapped_column(String(120), nullable=False)
+    name_en: Mapped[str] = mapped_column(String(120), nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    unit: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    method: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    requirement: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    acceptance: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    target: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    lower_limit: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    upper_limit: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    readings_required: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    readings: Mapped[list | None] = mapped_column(JSON, nullable=True)  # decimals as strings
+    attribute_result: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    observation: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reading_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    minimum: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    maximum: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    mean: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="pending")
+    measured_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    measured_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)

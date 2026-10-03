@@ -78,9 +78,9 @@ def test_check_takes_the_line_unit_and_is_numbered(q):
 
 def test_lifecycle_start_close_and_finality(q):
     c = q.opened(q.bare("kg", status="in_progress"))
-    assert c["actions"] == ["edit", "start", "close", "cancel"]
+    assert c["actions"] == ["edit", "measure", "start", "close", "cancel"]
     started = q.client.post(f"{CHECKS}/{c['id']}/start").json()
-    assert started["status"] == "under_inspection" and started["started_at"] and started["actions"] == ["edit", "close", "cancel"]
+    assert started["status"] == "under_inspection" and started["started_at"] and started["actions"] == ["edit", "measure", "close", "cancel"]
     assert code(q.client.post(f"{CHECKS}/{c['id']}/start")) == "CHECK_NOT_OPEN"
     closed = q.close_check(c, inspected="12.5", accepted="12.5").json()
     assert closed["status"] == "closed" and closed["result"] == "accepted" and Decimal(closed["qty_inspected"]) == Decimal("12.5")
