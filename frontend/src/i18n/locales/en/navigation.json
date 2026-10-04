@@ -63,7 +63,8 @@
     "customerReports": "Customer reports",
     "qualityReports": "Quality report center",
     "qualitySpecifications": "Product specifications",
-    "qualityTestParameters": "Test parameters"
+    "qualityTestParameters": "Test parameters",
+    "qualityCertificates": "Certificates of Analysis"
   },
   "userMenu": {
     "changePassword": "Change Password",

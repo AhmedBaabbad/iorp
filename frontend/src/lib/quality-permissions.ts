@@ -27,6 +27,11 @@ export const Q = {
   SPECS_CREATE: code("specifications", "create"),
   SPECS_UPDATE: code("specifications", "update"),
   SPECS_ACTIVATE: code("specifications", "activate"),
+  COA_READ: code("certificates", "read"),
+  COA_CREATE: code("certificates", "create"),
+  COA_UPDATE: code("certificates", "update"),
+  COA_ISSUE: code("certificates", "issue"),
+  COA_REVOKE: code("certificates", "revoke"),
 } as const;
 
 // Quality report center (QUAL-REPORT-001), mirroring backend/app/quality/domain/report_permissions.py.

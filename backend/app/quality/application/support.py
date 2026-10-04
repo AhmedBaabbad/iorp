@@ -74,6 +74,28 @@ class ProductionReads:
             spec = self.db.scalar(select(items.c.target_spec_json).where(items.c.id == item_id, items.c.production_order_id == order_id)) or spec
         return order.product_type, dict(spec or {})
 
+    def lot_facts(self, order_id, item_id=None) -> dict:
+        """Order number, line number and completion time of a lot, for its certificate."""
+        orders, items = _t("production_orders"), _t("production_order_items")
+        order = self.db.execute(select(orders.c.production_order_number, orders.c.product_type, orders.c.actual_end_at).where(
+            orders.c.id == order_id, orders.c.organization_id == self.org)).first()
+        if order is None:
+            raise QualityError("PRODUCTION_ORDER_NOT_FOUND", 404)
+        line_no = self.db.scalar(select(items.c.line_no).where(items.c.id == item_id, items.c.production_order_id == order_id)) if item_id else None
+        return dict(number=order.production_order_number, product_type=order.product_type, completed_at=order.actual_end_at, line_no=line_no)
+
+    def customers(self, order_id, item_id=None) -> list[dict]:
+        """The customers whose demand the lot was allocated to (the line's allocations, else the order's)."""
+        allocations, demands, customers = _t("production_allocations"), _t("production_demands"), _t("commercial_customers")
+        query = (select(customers.c.id, customers.c.name).distinct()
+                 .select_from(allocations.join(demands, demands.c.id == allocations.c.production_demand_id)
+                              .join(customers, customers.c.id == demands.c.customer_id))
+                 .where(allocations.c.organization_id == self.org, allocations.c.production_order_id == order_id,
+                        customers.c.organization_id == self.org))
+        if item_id:
+            query = query.where(allocations.c.production_order_item_id == item_id)
+        return [dict(id=i, name=n) for i, n in self.db.execute(query.order_by(customers.c.name)).all()]
+
     def numbers(self, order_ids) -> dict:
         orders = _t("production_orders")
         ids = [i for i in set(order_ids) if i]

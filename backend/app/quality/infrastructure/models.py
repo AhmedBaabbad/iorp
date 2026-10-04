@@ -675,3 +675,59 @@ class QualityCheckMeasurement(Base):
     status: Mapped[str] = mapped_column(String(12), nullable=False, default="pending")
     measured_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
     measured_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
+
+
+class QualitySettings(Base):
+    """Per organization (QUAL-COA-001): how certificates are numbered. The last number only moves forward."""
+    __tablename__ = "quality_settings"
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), primary_key=True)
+    coa_prefix: Mapped[str] = mapped_column(String(20), nullable=False, default="COA-")
+    coa_last_number: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class QualityCertificate(Base):
+    """A Certificate of Analysis for one batch: values copied from a closed inspection, frozen; numbered when issued."""
+    __tablename__ = "quality_certificates"
+    __table_args__ = (UniqueConstraint("organization_id", "certificate_no", name="uq_quality_certificates_org_no"),)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False, index=True)
+    certificate_no: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="draft")
+    quality_check_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("quality_checks.id"), nullable=False, index=True)
+    production_order_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    production_order_item_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    customer_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    customer_po: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    delivery_ref: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    batch_no: Mapped[str] = mapped_column(String(80), nullable=False)
+    product_description: Mapped[str] = mapped_column(String(255), nullable=False)
+    grade: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    production_date: Mapped[date | None] = mapped_column(nullable=True)
+    inspection_date: Mapped[date | None] = mapped_column(nullable=True)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False)
+    unit_label: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    package_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sample_size: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    sampling_reference: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    retained_sample: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    retention_ref: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    deviation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Frozen copy of what the inspection established (identity of the check, result, specification, measurements).
+    inspection_code: Mapped[str] = mapped_column(String(32), nullable=False)
+    inspection_result: Mapped[str] = mapped_column(String(32), nullable=False)
+    specification_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    specification_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    measurements: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    inspector_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    supersedes_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("quality_certificates.id"), nullable=True)
+    prepared_by_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=False)
+    issued_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    issued_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    revoked_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
+    revoke_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now, onupdate=utc_now)

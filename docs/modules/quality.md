@@ -1,6 +1,6 @@
 # Quality Module
 
-**Status:** QUAL-001 lifecycle and close gate; QUAL-REPORT-001 report center; QUAL-SPEC-001 specifications and measurements. Defects and NCR unchanged
+**Status:** QUAL-001 lifecycle and close gate; QUAL-REPORT-001 report center; QUAL-SPEC-001 specifications and measurements; QUAL-COA-001 certificates of analysis. Defects and NCR unchanged
 
 The quality module owns the inspection and non-conformance chain: recording quality checks, logging defects, formalizing rejections, and opening non-conformance cases with line items. All data is org-scoped via `TenantContext` (ADR-001). No imports from `app.production`, `app.commercial`, or `app.foundation` models are allowed — only `app.core.*` and `app.quality.*` (ADR-004).
 
@@ -180,6 +180,7 @@ Per action, one source: `quality/domain/permissions.py`, mirrored by `frontend/s
 | `quality:quality_defects` | read, create, update |
 | `quality:ncr_reports` | read, create, update (NCR items use update) |
 | `quality:specifications` | read, create, update, activate (test parameters and product specifications) |
+| `quality:certificates` | read, create, update, issue, revoke (certificates of analysis) |
 
 Migration `f6a1b2i6` split the old `write` grants into these actions (backup `quality_rbac_i6_backup`) and gave `quality_manager`
 `production:production_orders:read`. Records carry an `actions` list computed by the server for the current user.
@@ -216,6 +217,31 @@ Rules: `quality/domain/specifications.py`. Writers: `application/specification_s
 - The inspection report (Q1) shows the plan, limits, readings and verdicts, and the reference specification.
 - Migration `f6a1b2i8` creates the tables and grants `measure` to every role that may update checks (same scope) and the
   specification permissions to the organization admin, factory manager and quality manager (read also to the viewer).
+
+## Certificates of Analysis (QUAL-COA-001)
+
+Rules: `quality/domain/certificates.py`. Writer: `application/certificate_service.py`. Document: `reporting/certificate.py`
+(`quality.certificate`, not listed in the center) with `templates/coa_*.html|css`, external corporate identity.
+
+- **Source**: a closed inspection whose result is `accepted` or `conditional_accept`, with a measurement plan and no failed parameter
+  (`CHECK_NOT_CLOSED`, `CHECK_NOT_CERTIFIABLE`, `CERTIFICATE_NEEDS_MEASUREMENTS`, `CERTIFICATE_HAS_FAILED_MEASUREMENT`).
+  `GET /quality-certificates/sources?check_id=` says whether it is certifiable and lists the lot's customers (the production
+  allocations of the line, read through the shared metadata).
+- **Draft**: copies and freezes the inspection code and result, the specification number and revision, and every measurement
+  (limits, readings summary, verdict). Defaults: customer (the lot's only customer), batch `PO-…-L<line>`, product = specification title,
+  grade, production date (order completion), inspection date, quantity = accepted quantity (it can only go down), sample size.
+  Completed before issue: customer PO, delivery note, packages, sampling reference, retained sample, deviation (required for a
+  conditional accept), remarks.
+- **Issue** (`certificates:issue`): numbered `<prefix><NNNN>` from `quality_settings` under a row lock — numbers are given only on issue,
+  so drafts never consume one. The prefix and last number are set once to continue from paper certificates and never go back.
+  An issued certificate is final.
+- **Revoke** (`certificates:revoke`) with a reason, printed on the document. **Replace**: a new draft copying the certificate; issuing it
+  revokes the old one ("Superseded by …") and prints "Supersedes …".
+- **Document**: identification, specification and actual results (mean, range and number of readings, or the attribute verdict),
+  sampling and release, declaration, prepared-by / approved-by, electronic-issue statement. Drafts carry "DRAFT — NOT VALID" and
+  "PENDING RELEASE APPROVAL"; revoked ones "REVOKED". English by default, Arabic on request. Nothing is stored.
+- Migration `f6a1b2i9` creates the tables and grants the certificate permissions to the organization admin, factory manager and
+  quality manager (read also to the viewer). Its downgrade refuses while issued or revoked certificates exist.
 
 ## Quality report center (QUAL-REPORT-001)
 

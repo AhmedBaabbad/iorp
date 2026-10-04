@@ -1,0 +1,40 @@
+/* Certificate of Analysis (QUAL-COA-001). Colours follow the company identity (--brand). */
+.coa{padding:0 18px;font-size:9pt}
+.coa-banner{background:var(--brand);color:#fff;text-align:center;padding:8px 12px 7px;border-radius:3px;margin-bottom:10px;position:relative}
+.coa-banner h1{margin:0;font-size:16pt;letter-spacing:.3px;color:#fff;border:0}
+.coa-sub{margin:2px 0 0;font-weight:700;font-size:9.5pt}
+.coa-scope{margin:2px 0 0;font-style:italic;font-size:8.3pt;opacity:.9}
+.coa-flag{display:inline-block;margin-top:6px;padding:2px 10px;border:1px solid #fff;border-radius:10px;font-size:8.5pt;font-weight:700}
+.coa-watermark{font-size:44pt;color:rgba(160,30,30,.09)}
+.coa-block{margin-bottom:9px;break-inside:avoid}
+.coa-block h2{display:flex;gap:8px;align-items:center;margin:0 0 6px;font-size:10pt;background:color-mix(in srgb,var(--brand) 88%,#fff);color:#fff;padding:5px 10px;border-radius:2px}
+.coa-block h2 span{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#fff;color:var(--brand);font-size:8.5pt}
+.coa-grid{display:grid;grid-template-columns:repeat(3,1fr);margin:0;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.coa-grid div{padding:4px 9px;border-bottom:1px solid var(--line);border-inline-end:1px solid var(--line);background:#fff}
+.coa-grid div:nth-child(6n+1),.coa-grid div:nth-child(6n+2),.coa-grid div:nth-child(6n+3){background:var(--soft)}
+.coa-grid dt{color:var(--muted);font-size:7.8pt;font-weight:700;margin:0}
+.coa-grid dd{margin:2px 0 0;font-weight:700;font-size:9pt;overflow-wrap:break-word}
+.coa-grid .coa-overall{grid-column:span 3;background:#eef7f0}
+.coa-grid .coa-overall dd{color:#1d6b35;font-size:10pt;letter-spacing:.2px}
+.coa-results{width:100%;border-collapse:collapse;border:1px solid var(--line);font-size:8.4pt}
+.coa-results thead th{background:var(--brand);color:#fff;font-weight:700;font-size:7.8pt;padding:6px 6px;text-align:start;text-transform:uppercase}
+.coa-results td,.coa-results tbody th{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top;text-align:start;overflow-wrap:break-word}
+.coa-results tbody th{font-weight:700;background:var(--soft);white-space:nowrap}
+.coa-results tbody tr{break-inside:avoid}
+.coa-results tbody tr:nth-child(even) td{background:#fafbfc}
+.coa-actual{font-weight:700;font-variant-numeric:tabular-nums}
+.coa-method{color:var(--muted);font-size:7.8pt}
+.coa-status{display:inline-block;padding:1px 7px;border-radius:9px;font-weight:700;font-size:7.8pt;white-space:nowrap}
+.coa-status.pass{background:#e3f3e7;color:#1d6b35}
+.coa-status.fail{background:#fbe4e4;color:#a12a2a}
+.coa-note{margin:4px 0 0;color:var(--muted);font-style:italic;font-size:7.6pt}
+.coa-text{margin:6px 0 0;font-size:8.6pt}
+.coa-revoked{color:#a12a2a}
+.coa-declaration{margin:10px 0;padding:8px 10px;border-inline-start:3px solid var(--brand);background:var(--soft);font-size:8.8pt}
+.coa-sign{width:100%;border-collapse:collapse;margin-top:6px;break-inside:avoid}
+.coa-sign td{width:50%;border:1px solid var(--line);padding:0 10px 10px;vertical-align:top}
+.coa-sign span{display:block;margin:0 -10px 8px;padding:5px 10px;background:var(--brand);color:#fff;font-weight:700;font-size:8.4pt}
+.coa-sign b{display:block;font-size:9.5pt}
+.coa-sign small{display:block;color:var(--muted);margin-top:2px}
+.coa-electronic{margin:8px 0 0;text-align:center;color:var(--muted);font-size:7.6pt}
+.coa-closing{break-inside:avoid}

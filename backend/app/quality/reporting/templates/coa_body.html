@@ -1,0 +1,55 @@
+{#- Certificate of Analysis (QUAL-COA-001): identification, specification and actual results, sampling and release, signatures. -#}
+{%- set ar = lang == 'ar' %}{% set d = data.document %}
+<main class="coa">
+  <header class="coa-banner">
+    <h1>{{ 'شهادة تحليل (COA)' if ar else 'CERTIFICATE OF ANALYSIS (COA)' }}</h1>
+    <p class="coa-sub">{{ 'شهادة جودة الدفعة من الشركة المصنّعة' if ar else "MANUFACTURER'S BATCH QUALITY CERTIFICATE" }}</p>
+    <p class="coa-scope">{{ 'صادرة عن إدارة مراقبة الجودة للدفعة المحددة أدناه فقط' if ar else 'Issued by the Quality Control Department for the identified batch / lot only' }}</p>
+    {% if watermark %}<span class="coa-flag">{{ watermark }}</span>{% endif %}
+  </header>
+
+  <section class="coa-block">
+    <h2><span>1</span>{{ 'بيانات الشهادة والدفعة' if ar else 'Certificate & batch identification' }}</h2>
+    <dl class="coa-grid">{% for label, value in d.identification %}<div><dt>{{ label }}</dt><dd><bdi>{{ value }}</bdi></dd></div>{% endfor %}</dl>
+  </section>
+
+  <section class="coa-block" style="break-inside:auto">
+    <h2><span>2</span>{{ 'مواصفات المنتج ونتائج الدفعة الفعلية' if ar else 'Product specification & actual batch results' }}</h2>
+    <table class="coa-results">
+      <thead><tr>
+        <th>{{ 'خاصية الفحص' if ar else 'Test parameter' }}</th><th>{{ 'الوحدة' if ar else 'Unit' }}</th>
+        <th>{{ 'المستهدف / المتطلب' if ar else 'Target / requirement' }}</th><th>{{ 'حدود القبول' if ar else 'Tolerance / acceptance' }}</th>
+        <th>{{ 'النتيجة الفعلية' if ar else 'Actual result' }}</th><th>{{ 'الحكم' if ar else 'Status' }}</th>
+        <th>{{ 'الطريقة / الجهاز' if ar else 'Method / equipment' }}</th>
+      </tr></thead>
+      <tbody>{% for r in d.rows %}<tr>
+        <th scope="row">{{ r.name }}</th><td>{{ r.unit }}</td><td><bdi>{{ r.target }}</bdi></td><td><bdi>{{ r.acceptance }}</bdi></td>
+        <td class="coa-actual"><bdi>{{ r.result }}</bdi></td>
+        <td><span class="coa-status {{ 'pass' if r.passed else 'fail' }}">{{ r.status }}</span></td>
+        <td class="coa-method"><bdi>{{ r.method }}</bdi></td>
+      </tr>{% endfor %}</tbody>
+    </table>
+    <p class="coa-note">{{ 'النتائج الفعلية مقيسة على هذه الدفعة؛ يظهر المتوسط ثم المدى وعدد القراءات عند تعدد القراءات.' if ar else 'Actual results were measured on this batch; with several readings the mean is followed by the range and the number of readings.' }}</p>
+  </section>
+
+  <section class="coa-block">
+    <h2><span>3</span>{{ 'أخذ العينات والتتبع والإفراج' if ar else 'Sampling, traceability & release' }}</h2>
+    <dl class="coa-grid">{% for label, value in d.sampling %}<div><dt>{{ label }}</dt><dd><bdi>{{ value }}</bdi></dd></div>{% endfor %}
+      <div class="coa-overall"><dt>{{ 'النتيجة الإجمالية' if ar else 'Overall result' }}</dt><dd>{{ d.overall }}</dd></div>
+    </dl>
+    {% if d.deviation %}<p class="coa-text"><b>{{ 'الانحراف المعتمد:' if ar else 'Approved deviation:' }}</b> {{ d.deviation }}</p>{% endif %}
+    {% if d.remarks %}<p class="coa-text"><b>{{ 'ملاحظات:' if ar else 'Remarks:' }}</b> {{ d.remarks }}</p>{% endif %}
+    {% if d.status == 'revoked' and d.revoke_reason %}<p class="coa-text coa-revoked"><b>{{ 'سبب الإلغاء:' if ar else 'Revoked:' }}</b> {{ d.revoke_reason }}</p>{% endif %}
+  </section>
+
+  <section class="coa-closing">
+  <p class="coa-declaration">{{ 'نشهد بأن الدفعة المحددة أعلاه صُنعت وفُحصت وفق المواصفة الفنية المرجعية، وأنها مطابقة لمتطلباتها.' if ar else 'We hereby certify that the batch identified above was manufactured and inspected in accordance with the referenced technical data sheet and conforms to its requirements.' }}</p>
+
+  <table class="coa-sign"><tr>
+    <td><span>{{ 'أعدّها — فاحص الجودة' if ar else 'Prepared by — QC Inspector' }}</span><b><bdi>{{ d.prepared_by }}</bdi></b></td>
+    <td><span>{{ 'اعتمدها — ضمان الجودة' if ar else 'Approved by — Quality Assurance' }}</span><b><bdi>{{ d.approved_by or '________________' }}</bdi></b>
+      {% if d.approved_on %}<small><bdi dir="ltr">{{ d.approved_on }}</bdi></small>{% endif %}</td>
+  </tr></table>
+  <p class="coa-electronic">{{ 'صدرت هذه الشهادة إلكترونيًا وهي صالحة دون توقيع، وتخص الدفعة المذكورة فقط.' if ar else 'This certificate was issued electronically and is valid without a signature. It relates only to the batch identified above.' }}</p>
+  </section>
+</main>

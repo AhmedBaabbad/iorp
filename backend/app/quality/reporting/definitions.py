@@ -8,6 +8,7 @@ from app.quality.domain import permissions as Q
 from app.quality.domain import report_permissions as R
 from app.quality.infrastructure.models import QualityCheckMeasurement, QualityDefect, QualityRejection
 from app.quality.reporting import builders as b
+from app.quality.reporting.certificate import register_certificate
 from app.quality.reporting.schemas import CheckParams, ChecksSummaryParams, DefectsParams, RejectionsParams
 
 
@@ -51,4 +52,5 @@ def register_reports():
                                            orientation, required_permissions=required, context_fields=context,
                                            watermark=watermark if key == 'check_full' else None,
                                            classification='internal', department=('الجودة', 'Quality')))
-    assert {d.permission for d in registry.definitions.values() if d.module == 'quality'} == set(R.ALL)
+    assert {d.permission for d in registry.definitions.values() if d.module == 'quality' and d.listed} == set(R.ALL)
+    register_certificate()  # QUAL-COA-001: a document opened from its record, not listed in the center

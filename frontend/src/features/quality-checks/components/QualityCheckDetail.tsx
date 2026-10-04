@@ -9,6 +9,7 @@ import { usePermission } from "@/features/auth/permission-hooks";
 import { ReasonDialog } from "@/features/production-demands/reason-dialog";
 import s from "@/features/production-demands/demands.module.css";
 import { QualityDefectsList } from "@/features/quality-defects";
+import { CheckCertificatesSection } from "@/features/quality-certificates";
 import { RecordReportButton } from "@/features/reports/RecordReportButton";
 import { useFormatter } from "@/hooks/useFormatter";
 import { Q, QUALITY_REPORT } from "@/lib/quality-permissions";
@@ -117,6 +118,7 @@ export function QualityCheckDetail({ qualityCheckId }: { qualityCheckId: string 
         </tr>)}</tbody>
       </table></div>}
     </section>}
+    {closed && (check.result === "accepted" || check.result === "conditional_accept") && <CheckCertificatesSection checkId={check.id} />}
     {canReadDefects && <QualityDefectsList qualityCheckId={check.id} checkStatus={check.status} />}
     <QualityHistory entries={check.history} statusLabel={v => enums.has(`status.${v}`) ? enums(`status.${v}`) : v} />
     {dialog === "close" && <CloseDialog check={check} busy={busy} onClose={() => setDialog(null)}

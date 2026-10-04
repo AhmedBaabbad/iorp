@@ -59,6 +59,7 @@ RESOURCE_NAMES = {
     "quality_checks": ("Quality Checks", "فحوصات الجودة"), "quality_defects": ("Quality Defects", "عيوب الجودة"),
     "rejections": ("Rejections", "حالات الرفض"), "ncr_reports": ("NCR Reports", "تقارير عدم المطابقة"),
     "specifications": ("Product Specifications", "مواصفات المنتجات"),
+    "certificates": ("Certificates of Analysis", "شهادات التحليل"),
     "members": ("Workforce Members", "أعضاء القوى العاملة"),
 }
 
@@ -86,6 +87,8 @@ ACTION_NAMES = {
     "decide": ("Decide", "اتخاذ قرار"),
     "execute": ("Execute", "تنفيذ"),
     "measure": ("Record Measurements for", "تسجيل قياسات"),
+    "issue": ("Issue", "إصدار"),
+    "revoke": ("Revoke", "إلغاء"),
 }
 
 

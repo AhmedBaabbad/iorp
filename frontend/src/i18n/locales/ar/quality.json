@@ -274,7 +274,21 @@
     "TOO_MANY_READINGS": "الحد الأقصى {maximum} قراءة.",
     "ATTRIBUTE_RESULT_INVALID": "اختر مطابق أو غير مطابق.",
     "MEASUREMENTS_INCOMPLETE": "بقيت {count} خاصية لم تُقَس؛ أكمل القياس قبل الإغلاق.",
-    "ACCEPTED_WITH_FAILED_MEASUREMENT": "توجد خاصية غير مطابقة؛ لا يُغلق الفحص «مقبولًا». اختر «قبول مشروط» أو «مرفوض»."
+    "ACCEPTED_WITH_FAILED_MEASUREMENT": "توجد خاصية غير مطابقة؛ لا يُغلق الفحص «مقبولًا». اختر «قبول مشروط» أو «مرفوض».",
+    "CERTIFICATE_NOT_FOUND": "الشهادة غير موجودة.",
+    "CHECK_NOT_CLOSED": "تُعدّ الشهادة بعد إغلاق الفحص.",
+    "CHECK_NOT_CERTIFIABLE": "نتيجة الفحص لا تسمح بإصدار شهادة.",
+    "CERTIFICATE_NEEDS_MEASUREMENTS": "الفحص بلا خطة قياس؛ لا تُصدر شهادة.",
+    "CERTIFICATE_HAS_FAILED_MEASUREMENT": "في الفحص خاصية غير مطابقة؛ لا تُصدر شهادة.",
+    "CERTIFICATE_NOT_DRAFT": "الشهادة صادرة أو ملغاة؛ لا تُعدَّل.",
+    "CERTIFICATE_NOT_ISSUED": "الإجراء متاح للشهادة الصادرة فقط.",
+    "QUANTITY_EXCEEDS_ACCEPTED": "الكمية أكبر من المقبول في الفحص ({available}).",
+    "CUSTOMER_REQUIRED": "اكتب اسم العميل قبل الإصدار.",
+    "CUSTOMER_NOT_ON_LOT": "العميل المختار ليس من عملاء هذه الدفعة.",
+    "BATCH_REQUIRED": "اكتب رقم الدفعة قبل الإصدار.",
+    "DEVIATION_NOTE_REQUIRED": "الفحص «قبول مشروط»: اذكر الانحراف المعتمد قبل الإصدار.",
+    "CERTIFICATE_NUMBER_BACKWARDS": "لا يرجع الترقيم للخلف (آخر رقم {current}).",
+    "REPLACEMENT_DRAFT_EXISTS": "توجد مسودة بديلة لهذه الشهادة بالفعل."
   },
   "history": {
     "title": "سجل الحالة",
@@ -288,7 +302,9 @@
       "cancel": "إلغاء",
       "decide": "قرار التصرف",
       "execute": "تنفيذ القرار",
-      "plan": "تطبيق خطة القياس"
+      "plan": "تطبيق خطة القياس",
+      "issue": "اعتماد وإصدار",
+      "revoke": "إلغاء"
     }
   },
   "orderSection": {
@@ -458,6 +474,106 @@
       "max": "≤ {value}",
       "minus": "− {value}",
       "plus": "+ {value}"
+    }
+  },
+  "certificates": {
+    "listTitle": "شهادات التحليل",
+    "subtitle": "شهادات جودة الدفعات للعملاء (COA): تُعدّ من فحص مغلق مطابق، وتُعتمد فتُرقَّم وتُجمَّد.",
+    "filtersAria": "فلاتر الشهادات",
+    "search": "بحث",
+    "searchPlaceholder": "الرقم أو العميل أو الدفعة",
+    "allStatuses": "كل الحالات",
+    "statuses": {
+      "draft": "مسودة",
+      "issued": "صادرة",
+      "revoked": "ملغاة"
+    },
+    "empty": "لا توجد شهادات",
+    "emptyHint": "افتح فحصًا مغلقًا مقبولًا له خطة قياس، ثم «إعداد شهادة تحليل».",
+    "fields": {
+      "number": "رقم الشهادة",
+      "status": "الحالة",
+      "customer": "العميل",
+      "customerPo": "أمر شراء العميل",
+      "product": "المنتج",
+      "grade": "الدرجة",
+      "batch": "رقم الدفعة",
+      "quantity": "الكمية المشمولة",
+      "unitLabel": "الوحدة",
+      "packageCount": "عدد العبوات",
+      "productionDate": "تاريخ الإنتاج",
+      "inspectionDate": "تاريخ الفحص",
+      "deliveryRef": "الفاتورة / إشعار التسليم",
+      "sampleSize": "حجم العينة",
+      "samplingReference": "مرجع خطة أخذ العينات",
+      "retainedSample": "عينة محفوظة",
+      "retentionRef": "رقم العينة المحفوظة",
+      "deviationNote": "الانحراف المعتمد",
+      "remarks": "ملاحظات",
+      "inspection": "الفحص",
+      "issuedAt": "صدرت في",
+      "issuedBy": "اعتمدها"
+    },
+    "yes": "نعم",
+    "no": "لا",
+    "draftNumber": "مسودة",
+    "draftTitle": "مسودة شهادة تحليل",
+    "supersedes": "تحل محل {number}",
+    "supersededBy": "استُبدلت بـ {number}",
+    "draftHint": "مسودة غير صالحة للإرسال: أكمل البيانات ثم «اعتماد وإصدار» لتأخذ رقمها.",
+    "revokedHint": "شهادة ملغاة: {reason}",
+    "fieldsTitle": "بيانات الشهادة",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "preparing": "جارٍ الإعداد…",
+    "download": {
+      "en": "تنزيل PDF (إنجليزي)",
+      "ar": "تنزيل PDF (عربي)"
+    },
+    "actions": {
+      "create": "إعداد شهادة تحليل",
+      "issue": "اعتماد وإصدار",
+      "revoke": "إلغاء الشهادة",
+      "replace": "إصدار بديلة مصحَّحة"
+    },
+    "resultsTitle": "مواصفات المنتج والنتائج الفعلية",
+    "source": "من الفحص {inspection} — المواصفة {specification}",
+    "frozenHint": "نُسخت النتائج من الفحص عند إعداد المسودة ولا تتغير.",
+    "columns": {
+      "parameter": "الخاصية",
+      "unit": "الوحدة",
+      "target": "المستهدف / المتطلب",
+      "acceptance": "حدود القبول",
+      "result": "النتيجة الفعلية",
+      "verdict": "الحكم"
+    },
+    "deviationHint": "الفحص «قبول مشروط»: اذكر الانحراف وموافقة العميل؛ يظهر في الشهادة.",
+    "issueDialog": {
+      "title": "اعتماد الشهادة وإصدارها",
+      "text": "تأخذ الشهادة رقمها التالي وتصبح نهائية؛ لا تُعدَّل بعدها، والتصحيح يكون بشهادة بديلة."
+    },
+    "revokeDialog": {
+      "title": "إلغاء الشهادة",
+      "text": "الإلغاء نهائي ويظهر على الشهادة. اكتب السبب."
+    },
+    "backToList": "العودة إلى الشهادات",
+    "detailTitle": "شهادة التحليل",
+    "notFound": "الشهادة غير موجودة",
+    "checkSection": "شهادات التحليل",
+    "blockers": {
+      "CHECK_NOT_CLOSED": "تُعدّ الشهادة بعد إغلاق الفحص.",
+      "CHECK_NOT_CERTIFIABLE": "لا تُصدر شهادة لفحص نتيجته ليست «مقبول» أو «قبول مشروط».",
+      "CERTIFICATE_NEEDS_MEASUREMENTS": "لا توجد خطة قياس لهذا الفحص؛ الشهادة تحتاج نتائج مقيسة مقابل مواصفة.",
+      "CERTIFICATE_HAS_FAILED_MEASUREMENT": "في الفحص خاصية غير مطابقة؛ لا تُصدر شهادة لدفعة غير مطابقة."
+    },
+    "settings": {
+      "title": "ترقيم الشهادات",
+      "next": "الرقم التالي: {number}",
+      "prefix": "البادئة",
+      "lastNumber": "آخر رقم مستخدم",
+      "hint": "لمواصلة ترقيم الشهادات الورقية اكتب آخر رقم صدر؛ لا يرجع الترقيم للخلف.",
+      "save": "حفظ",
+      "saved": "تم الحفظ."
     }
   }
 }

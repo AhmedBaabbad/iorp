@@ -115,6 +115,28 @@ Codes: `PARAMETER_CODE_TAKEN`, `SPECIFICATION_CODE_TAKEN`, `SPECIFICATION_NOT_DR
 `LIMITS_REQUIRED`, `LIMITS_INVALID`, `TARGET_REQUIRED`, `ORDER_SPEC_KEY_REQUIRED`, `REQUIREMENT_REQUIRED`, `TOLERANCE_NEGATIVE`
 (line errors carry the parameter code).
 
+## Certificates of Analysis
+
+Prefix `/api/v1/quality`.
+
+| Method | Path | Permission | Notes |
+|--------|------|------------|-------|
+| GET | `/quality-certificates/sources?check_id=` | certificates:create | `certifiable`, `blocker`, the lot's `customers` |
+| GET | `/quality-certificates` | certificates:read | Filters: `status`, `quality_check_id`, `production_order_id`, `search` |
+| POST | `/quality-certificates` | certificates:create | `quality_check_id`, optional `customer_id`, `customer_po`; a draft with frozen results |
+| GET | `/quality-certificates/{id}` | certificates:read | With measurements, history and `actions` |
+| PATCH | `/quality-certificates/{id}` | certificates:update | Draft only |
+| POST | `/quality-certificates/{id}/issue` | certificates:issue | Numbers and finalises it |
+| POST | `/quality-certificates/{id}/revoke` | certificates:revoke | `reason` |
+| POST | `/quality-certificates/{id}/replace` | certificates:create | New draft superseding it |
+| GET | `/quality-certificates/{id}/document.pdf?lang=en|ar` | certificates:read | The PDF |
+| GET / PATCH | `/quality-settings` | certificates:read / certificates:issue | `coa_prefix`, `coa_last_number` (never backwards) |
+
+Codes: `CERTIFICATE_NOT_FOUND`, `CHECK_NOT_CLOSED`, `CHECK_NOT_CERTIFIABLE`, `CERTIFICATE_NEEDS_MEASUREMENTS`,
+`CERTIFICATE_HAS_FAILED_MEASUREMENT`, `CERTIFICATE_NOT_DRAFT`, `CERTIFICATE_NOT_ISSUED`, `QUANTITY_EXCEEDS_ACCEPTED`,
+`CUSTOMER_REQUIRED`, `CUSTOMER_NOT_ON_LOT`, `BATCH_REQUIRED`, `DEVIATION_NOTE_REQUIRED`, `CERTIFICATE_NUMBER_BACKWARDS`,
+`REPLACEMENT_DRAFT_EXISTS`.
+
 ## Quality Rejections
 
 Prefix `/api/v1/quality/quality-rejections`.

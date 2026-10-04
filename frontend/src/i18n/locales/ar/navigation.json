@@ -63,7 +63,8 @@
     "customerReports": "تقارير العملاء",
     "qualityReports": "مركز تقارير الجودة",
     "qualitySpecifications": "مواصفات المنتجات",
-    "qualityTestParameters": "خصائص الفحص"
+    "qualityTestParameters": "خصائص الفحص",
+    "qualityCertificates": "شهادات التحليل"
   },
   "userMenu": {
     "changePassword": "تغيير كلمة المرور",

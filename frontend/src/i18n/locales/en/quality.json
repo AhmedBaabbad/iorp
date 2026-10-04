@@ -274,7 +274,21 @@
     "TOO_MANY_READINGS": "At most {maximum} readings.",
     "ATTRIBUTE_RESULT_INVALID": "Choose conforming or not conforming.",
     "MEASUREMENTS_INCOMPLETE": "{count} parameters are not measured yet; complete them before closing.",
-    "ACCEPTED_WITH_FAILED_MEASUREMENT": "A parameter failed; the inspection cannot close as accepted. Choose conditional accept or rejected."
+    "ACCEPTED_WITH_FAILED_MEASUREMENT": "A parameter failed; the inspection cannot close as accepted. Choose conditional accept or rejected.",
+    "CERTIFICATE_NOT_FOUND": "The certificate was not found.",
+    "CHECK_NOT_CLOSED": "A certificate is prepared once the inspection is closed.",
+    "CHECK_NOT_CERTIFIABLE": "The inspection result does not allow a certificate.",
+    "CERTIFICATE_NEEDS_MEASUREMENTS": "The inspection has no measurement plan; no certificate can be issued.",
+    "CERTIFICATE_HAS_FAILED_MEASUREMENT": "A parameter failed; no certificate can be issued.",
+    "CERTIFICATE_NOT_DRAFT": "The certificate is issued or revoked and cannot be changed.",
+    "CERTIFICATE_NOT_ISSUED": "Only an issued certificate allows this.",
+    "QUANTITY_EXCEEDS_ACCEPTED": "The quantity exceeds what the inspection accepted ({available}).",
+    "CUSTOMER_REQUIRED": "Enter the customer before issuing.",
+    "CUSTOMER_NOT_ON_LOT": "The chosen customer is not one of this lot's customers.",
+    "BATCH_REQUIRED": "Enter the batch number before issuing.",
+    "DEVIATION_NOTE_REQUIRED": "Conditional accept: state the approved deviation before issuing.",
+    "CERTIFICATE_NUMBER_BACKWARDS": "Numbering cannot go back (last number {current}).",
+    "REPLACEMENT_DRAFT_EXISTS": "A replacement draft already exists for this certificate."
   },
   "history": {
     "title": "Status history",
@@ -288,7 +302,9 @@
       "cancel": "Cancelled",
       "decide": "Disposition decided",
       "execute": "Disposition executed",
-      "plan": "Measurement plan applied"
+      "plan": "Measurement plan applied",
+      "issue": "Approved and issued",
+      "revoke": "Revoked"
     }
   },
   "orderSection": {
@@ -458,6 +474,106 @@
       "max": "≤ {value}",
       "minus": "− {value}",
       "plus": "+ {value}"
+    }
+  },
+  "certificates": {
+    "listTitle": "Certificates of Analysis",
+    "subtitle": "Batch quality certificates for customers (COA): prepared from a closed conforming inspection, then approved, numbered and frozen.",
+    "filtersAria": "Certificate filters",
+    "search": "Search",
+    "searchPlaceholder": "Number, customer or batch",
+    "allStatuses": "All statuses",
+    "statuses": {
+      "draft": "Draft",
+      "issued": "Issued",
+      "revoked": "Revoked"
+    },
+    "empty": "No certificates",
+    "emptyHint": "Open a closed, accepted inspection with a measurement plan, then «Prepare certificate».",
+    "fields": {
+      "number": "COA No.",
+      "status": "Status",
+      "customer": "Customer",
+      "customerPo": "Customer PO",
+      "product": "Product",
+      "grade": "Grade",
+      "batch": "Batch / lot no.",
+      "quantity": "Quantity covered",
+      "unitLabel": "Unit",
+      "packageCount": "Packages",
+      "productionDate": "Production date",
+      "inspectionDate": "Inspection date",
+      "deliveryRef": "Invoice / delivery note",
+      "sampleSize": "Sample size",
+      "samplingReference": "Sampling reference",
+      "retainedSample": "Retained sample",
+      "retentionRef": "Retention ID",
+      "deviationNote": "Approved deviation",
+      "remarks": "Remarks",
+      "inspection": "Inspection",
+      "issuedAt": "Issued",
+      "issuedBy": "Approved by"
+    },
+    "yes": "Yes",
+    "no": "No",
+    "draftNumber": "Draft",
+    "draftTitle": "Draft certificate",
+    "supersedes": "Supersedes {number}",
+    "supersededBy": "Superseded by {number}",
+    "draftHint": "A draft is not valid to send: complete it, then «Approve and issue» to number it.",
+    "revokedHint": "Revoked certificate: {reason}",
+    "fieldsTitle": "Certificate details",
+    "save": "Save",
+    "cancel": "Cancel",
+    "preparing": "Preparing…",
+    "download": {
+      "en": "Download PDF (English)",
+      "ar": "Download PDF (Arabic)"
+    },
+    "actions": {
+      "create": "Prepare certificate",
+      "issue": "Approve and issue",
+      "revoke": "Revoke",
+      "replace": "Corrected replacement"
+    },
+    "resultsTitle": "Specification and actual results",
+    "source": "From inspection {inspection} — specification {specification}",
+    "frozenHint": "The results were copied from the inspection when the draft was prepared and do not change.",
+    "columns": {
+      "parameter": "Parameter",
+      "unit": "Unit",
+      "target": "Target / requirement",
+      "acceptance": "Acceptance",
+      "result": "Actual result",
+      "verdict": "Verdict"
+    },
+    "deviationHint": "The inspection is a conditional accept: state the deviation and the customer's approval; it is printed.",
+    "issueDialog": {
+      "title": "Approve and issue the certificate",
+      "text": "The certificate takes the next number and becomes final; a correction is made with a replacement."
+    },
+    "revokeDialog": {
+      "title": "Revoke the certificate",
+      "text": "Revoking is final and is printed on the certificate. Give the reason."
+    },
+    "backToList": "Back to certificates",
+    "detailTitle": "Certificate of Analysis",
+    "notFound": "Certificate not found",
+    "checkSection": "Certificates of Analysis",
+    "blockers": {
+      "CHECK_NOT_CLOSED": "A certificate is prepared once the inspection is closed.",
+      "CHECK_NOT_CERTIFIABLE": "No certificate for an inspection that is not accepted or conditionally accepted.",
+      "CERTIFICATE_NEEDS_MEASUREMENTS": "This inspection has no measurement plan; a certificate needs results measured against a specification.",
+      "CERTIFICATE_HAS_FAILED_MEASUREMENT": "A parameter failed; no certificate is issued for a non-conforming batch."
+    },
+    "settings": {
+      "title": "Certificate numbering",
+      "next": "Next number: {number}",
+      "prefix": "Prefix",
+      "lastNumber": "Last number used",
+      "hint": "To continue from paper certificates, enter the last number issued; numbering never goes back.",
+      "save": "Save",
+      "saved": "Saved."
     }
   }
 }
