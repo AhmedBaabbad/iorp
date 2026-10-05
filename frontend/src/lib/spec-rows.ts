@@ -1,4 +1,4 @@
-// Quote line specification <-> "property | value" rows. Pure: no React, tested by tests/spec-rows.test.mjs.
+// A line specification (quotations, shipments, ...) <-> "property | value" rows. Pure: no React, tested by tests/spec-rows.test.mjs.
 export type Row = { key: string; value: string };
 
 /** A specification value as typed: numbers and true/false keep their type (production reads e.g. width_mm as a number). */

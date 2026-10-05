@@ -424,16 +424,6 @@
       "remove": "Remove",
       "save": "Save settings",
       "saved": "Settings saved."
-    },
-    "spec": {
-      "title": "Line specification",
-      "empty": "No specification yet. Add a property such as width, thickness, colour or weight.",
-      "property": "Property",
-      "propertyHint": "e.g. width_mm or colour",
-      "value": "Value",
-      "valueHint": "e.g. 5 or black",
-      "add": "Add property",
-      "remove": "Remove property"
     }
   },
   "commercialOrders": {
@@ -516,53 +506,5 @@
   "currency": {
     "SAR": "SAR — Saudi Riyal",
     "USD": "$ — US Dollar"
-  },
-  "quoteUnits": {
-    "choose": "Choose a unit",
-    "groups": {
-      "count": "Count",
-      "packaging": "Packaging",
-      "weight": "Weight",
-      "length": "Length",
-      "areaVolume": "Area and volume",
-      "time": "Time"
-    },
-    "units": {
-      "piece": "Piece",
-      "unit": "Unit",
-      "pair": "Pair",
-      "set": "Set",
-      "dozen": "Dozen",
-      "lot": "Lot",
-      "roll": "Roll",
-      "reel": "Reel",
-      "coil": "Coil",
-      "bundle": "Bundle",
-      "pack": "Pack",
-      "box": "Box",
-      "carton": "Carton",
-      "bag": "Bag",
-      "sack": "Sack",
-      "pallet": "Pallet",
-      "drum": "Drum",
-      "can": "Can",
-      "bottle": "Bottle",
-      "sheet": "Sheet",
-      "container": "Container",
-      "g": "Gram",
-      "kg": "Kilogram",
-      "ton": "Ton",
-      "mm": "Millimetre",
-      "cm": "Centimetre",
-      "m": "Metre",
-      "linear_m": "Linear metre",
-      "km": "Kilometre",
-      "sqm": "Square metre",
-      "cbm": "Cubic metre",
-      "ml": "Millilitre",
-      "l": "Litre",
-      "hour": "Hour",
-      "day": "Day"
-    }
   }
 }

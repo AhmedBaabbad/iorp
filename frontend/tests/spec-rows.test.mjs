@@ -1,7 +1,7 @@
 // Quote line specification rows: stored as the same JSON production reads.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseSpecValue, rowsToSpec, specToRows } from "../src/features/quotes/spec-rows.ts";
+import { parseSpecValue, rowsToSpec, specToRows } from "../src/lib/spec-rows.ts";
 
 test("numbers and booleans keep their type, text stays text", () => {
   assert.equal(parseSpecValue("5"), 5);

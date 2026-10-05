@@ -54,7 +54,7 @@ const styles: Record<string, CSSProperties> = {
 export function QuoteItemsTable({ items, currency }: QuoteItemsTableProps) {
   const fmt = useFormatter();
   const t = useTranslations("commercial.quotes");
-  const units = useTranslations("commercial.quoteUnits.units");
+  const units = useTranslations("common.units.units");
   const locale = useLocale();
   const unitLabel = (code: string) => (units.has(code) ? units(code) : code);
   void currency;

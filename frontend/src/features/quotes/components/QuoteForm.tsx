@@ -18,7 +18,7 @@ import { createQuote, listSamplesForQuoteCustomer } from "../api/quotes-api";
 import type { CreateQuoteRequest, QuoteItem, QuoteSampleOption } from "../types";
 import { QuoteItemsTable } from "./QuoteItemsTable";
 import { LineDescriptionFields, QuoteHeadingFields, UnitSelect } from "./QuoteLineFields";
-import { SpecEditor } from "./SpecEditor";
+import { SpecEditor } from "@/components/forms/SpecEditor";
 import { VAT_RATE } from "../quote-units";
 import { QuoteTotals } from "./QuoteTotals";
 

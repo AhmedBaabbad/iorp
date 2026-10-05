@@ -12,6 +12,7 @@ from sqlalchemy import select
 
 from app.commercial.application.quote_settings_service import QuoteSettingsService
 from app.commercial.domain.units import unit_label
+from app.core.units import spec_text
 from app.commercial.infrastructure.models import Customer, Quote
 from app.commercial.reporting.customers import providers
 from app.commercial.reporting.customers.queries import scoped
@@ -27,12 +28,6 @@ def amount(value) -> str:
 def quantity(value) -> str:
     value = Decimal(value or 0)
     return f"{value:,.0f}" if value == value.to_integral_value() else f"{value.normalize():,f}"
-
-
-def spec_text(spec) -> str:
-    if not isinstance(spec, dict):
-        return ""
-    return " × ".join(str(v) for v in spec.values() if v not in (None, ""))
 
 
 def describe(item, ar: bool) -> str:

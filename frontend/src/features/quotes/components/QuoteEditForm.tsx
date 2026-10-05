@@ -19,7 +19,7 @@ import { QuoteItemsTable } from "./QuoteItemsTable";
 import { QuoteTotals } from "./QuoteTotals";
 import { useFormatter } from "@/hooks/useFormatter";
 import { LineDescriptionFields, QuoteHeadingFields, UnitSelect } from "./QuoteLineFields";
-import { SpecEditor } from "./SpecEditor";
+import { SpecEditor } from "@/components/forms/SpecEditor";
 import { VAT_RATE } from "../quote-units";
 
 type QuoteEditValues = {

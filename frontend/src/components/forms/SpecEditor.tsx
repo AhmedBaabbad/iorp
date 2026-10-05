@@ -4,14 +4,14 @@ import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { sharedStyles } from "@/styles/shared-styles";
 
-import { rowsToSpec, specToRows, type Row } from "../spec-rows";
+import { rowsToSpec, specToRows, type Row } from "@/lib/spec-rows";
 
 /**
  * The line's specification as "property | value" rows (width, thickness, colour, weight...), any properties a
- * product needs. Stored as the same JSON as before, so commercial orders and production read it unchanged.
+ * product needs. Stored as JSON (quotation and shipment lines alike), so commercial orders and production read it unchanged.
  */
 export function SpecEditor({ value, onChange, disabled }: { value: string; onChange: (json: string) => void; disabled?: boolean }) {
-  const t = useTranslations("commercial.quotes.spec");
+  const t = useTranslations("common.spec");
   const [rows, setRows] = useState<Row[]>(() => specToRows(value));
   const emitted = useRef(value);
 
