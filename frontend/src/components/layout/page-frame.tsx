@@ -327,7 +327,7 @@ const staticNavGroups: StaticNavGroup[] = [
     labelKey: "sections.capa",
     icon: IconShieldCheck,
     links: [
-      { href: "/corrective-actions", labelKey: "links.correctiveActions" },
+      { href: "/corrective-actions", labelKey: "links.correctiveActions", anyPermissions: [Q.NCR_ACTIONS_READ, Q.NCR_READ] },
     ],
   },
 ];

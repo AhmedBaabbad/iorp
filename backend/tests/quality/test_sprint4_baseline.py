@@ -11,8 +11,8 @@ Critical decisions verified here:
   D5  — quality_check_id REQUIRED in QualityDefect (enforced via nested route path)
   D6  — defect_count defaults to 1 when not provided
   D8/D9 — rejections (notes required, pending until a disposition is decided): tests/quality/test_quality_inspections.py
-  D11 — report_number auto-generated as NCR-YYYY-NNNN, never a caller input
-  D12 — NCR items cannot be created or modified on CLOSED reports
+  D11 — report_number auto-generated as NCR-YYYY-NNNN, never a caller input (status starts open, QUAL-NCR-002)
+  D12 — NCR items cannot be created or modified on CLOSED reports (closed through its stages, QUAL-NCR-002)
 """
 
 import re
@@ -55,7 +55,7 @@ def _base_report(**overrides) -> dict:
         "title": "Non-conforming LLDPE granules — Batch B-44",
         "description": "Moisture content exceeds specification.",
         # report_number intentionally absent — must auto-generate (D11)
-        # status intentionally absent — must auto-set to 'draft' (D11)
+        # status intentionally absent — must auto-set to 'open' (D11, QUAL-NCR-002)
     }
     payload.update(overrides)
     return payload
@@ -174,7 +174,7 @@ def test_ncr_report_number_auto_generation(client, auth_headers):
       - present in the response (never null)
       - formatted as NCR-YYYY-NNNN
       - absent from the create request body (never a caller input)
-    status must auto-set to 'draft' on creation (never a caller input).
+    status must auto-set to 'open' on creation (never a caller input).
     Two reports must receive distinct numbers.
     """
     payload = _base_report()
@@ -190,8 +190,8 @@ def test_ncr_report_number_auto_generation(client, auth_headers):
     assert re.match(r"^NCR-\d{4}-\d{4}$", number), (
         f"report_number '{number}' must match NCR-YYYY-NNNN (D11)"
     )
-    assert first.json()["status"] == "draft", (
-        "NCR status must auto-set to 'draft' on creation (D11)"
+    assert first.json()["status"] == "open", (
+        "NCR status must auto-set to 'open' on creation (D11)"
     )
     assert first.json()["report_number"] != second.json()["report_number"], (
         "Two NCR reports must receive distinct report_numbers (D11)"
@@ -212,11 +212,12 @@ def test_ncr_item_status_guard_on_closed_report(client, auth_headers):
     assert report.status_code == 201
     report_id = report.json()["id"]
 
-    close = client.patch(
-        f"{NCR_BASE}/{report_id}",
-        json={"status": "closed"},
-        headers=auth_headers,
-    )
+    # QUAL-NCR-002: a report is closed through its stages, never by editing its status.
+    assert client.patch(f"{NCR_BASE}/{report_id}", json={"status": "closed"}, headers=auth_headers).status_code == 422
+    client.post(f"{NCR_BASE}/{report_id}/contain", json={"containment": "Lot quarantined"}, headers=auth_headers)
+    close = client.post(f"{NCR_BASE}/{report_id}/investigate", headers=auth_headers, json={
+        "root_cause_category": "material", "root_cause": "Supplier lot wet", "action_required": False,
+        "no_action_justification": "Isolated lot, returned to the supplier"})
     assert close.status_code == 200
     assert close.json()["status"] == "closed"
 
@@ -229,11 +230,11 @@ def test_ncr_item_status_guard_on_closed_report(client, auth_headers):
         },
         headers=auth_headers,
     )
-    assert item_resp.status_code == 400, (
-        "Creating an item on a CLOSED report must return 400 (D12)"
+    assert item_resp.status_code == 409, (
+        "Creating an item on a CLOSED report must be refused (D12)"
     )
-    assert "closed" in item_resp.json()["detail"].lower(), (
-        "Error message must indicate the report is closed (D12)"
+    assert item_resp.json()["detail"]["code"] == "NCR_IS_FINAL", (
+        "The error must say the report is final (D12)"
     )
 
 

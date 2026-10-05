@@ -62,6 +62,7 @@ RESOURCE_NAMES = {
     "rejections": ("Rejections", "حالات الرفض"), "ncr_reports": ("NCR Reports", "تقارير عدم المطابقة"),
     "specifications": ("Product Specifications", "مواصفات المنتجات"),
     "certificates": ("Certificates of Analysis", "شهادات التحليل"),
+    "ncr_actions": ("Corrective Actions", "الإجراءات التصحيحية"),
     "shipments": ("Shipments", "الشحنات"), "returns": ("Returns", "المرتجعات"), "settings": ("Settings", "الإعدادات"),
     "members": ("Workforce Members", "أعضاء القوى العاملة"),
 }

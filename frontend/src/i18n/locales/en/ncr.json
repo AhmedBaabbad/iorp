@@ -1,93 +1,336 @@
 {
-  "ncrReports": {
-    "listTitle": "Non-Conformance Reports",
-    "createTitle": "Create Non-Conformance Report",
-    "detailTitle": "Non-Conformance Report Details",
-    "reportNumberAuto": "Auto-generated",
-    "sectionItems": "Affected Items",
-    "fields": {
-      "reportNumber": "Report Number",
-      "reportDate": "Report Date",
-      "title": "Report Title",
-      "description": "Non-Conformance Description",
-      "sourceType": "Source Type",
-      "reportType": "Report Type",
-      "status": "Status",
-      "referenceCode": "Reference Code",
-      "qualityCheck": "Reference Quality Check",
-      "qualityRejection": "Reference Quality Rejection"
-    },
-    "subtitle": "Raise and track non-conformance reports across the quality chain.",
-    "listAria": "NCR reports list",
-    "filtersAria": "NCR report filters",
-    "newButton": "New NCR Report",
-    "createButton": "Create NCR Report",
-    "createFirst": "Create the first NCR report, or adjust the filters.",
-    "loading": "Loading NCR reports...",
-    "loadingDetail": "Loading NCR report...",
-    "loadError": "Unable to load NCR reports.",
-    "loadDetailError": "Unable to load NCR report.",
-    "createError": "Unable to create NCR report.",
-    "updateStatusError": "Unable to update NCR report status.",
-    "detailSubtitle": "Review non-conformance report details.",
-    "createSubtitle": "Report number is auto-generated. Status starts as draft.",
-    "backToList": "Back to NCR Reports",
-    "returnToList": "Return to NCR Reports",
-    "notFoundDescription": "The NCR report may have been removed or is unavailable.",
-    "descriptionSection": "Description",
-    "qualityChainSection": "Quality Chain",
-    "closedMessage": "Report is closed.",
-    "validation": {
-      "titleRequired": "Title is required",
-      "descriptionRequired": "Description is required"
-    },
-    "actions": {
-      "openReport": "Open Report",
-      "opening": "Opening...",
-      "startReview": "Start Review",
-      "startingReview": "Starting...",
-      "closeReport": "Close Report",
-      "closing": "Closing..."
-    },
-    "items": {
-      "sectionTitle": "Affected Items",
-      "sectionSubtitle": "Line-level items and issue details for this non-conformance report.",
-      "addButton": "Add Item",
-      "empty": "No items have been added to this report yet",
-      "loading": "Loading NCR items...",
-      "loadError": "Unable to load NCR items.",
-      "createError": "Unable to create NCR item.",
-      "statusGuardMessage": "Items cannot be added to a closed report",
-      "lineNoAuto": "Auto-assigned",
-      "lineNoAutoSentence": "Line numbers are auto-assigned.",
-      "showMore": "Show more",
-      "showLess": "Show less",
-      "notesLabel": "Notes: {value}",
-      "saveButton": "Save Item",
-      "saving": "Saving...",
-      "itemReferencePlaceholder": "Batch #, material code, product code...",
-      "unitPlaceholder": "kg, pcs, m, roll",
-      "issueDescriptionPlaceholder": "Describe what is non-conforming about this item...",
-      "validation": {
-        "itemNameRequired": "Item name is required",
-        "issueDescriptionRequired": "Issue description is required"
-      },
-      "fields": {
-        "lineNo": "Line No",
-        "itemName": "Item Name",
-        "itemReference": "Item Reference",
-        "quantityAffected": "Quantity Affected",
-        "unit": "Unit",
-        "issueDescription": "Issue Description",
-        "notes": "Notes"
-      }
-    },
-    "empty": "No non-conformance reports yet",
-    "notFound": "Non-conformance report not found",
-    "filters": {
-      "allSources": "All sources",
-      "allReportTypes": "All report types",
-      "allStatuses": "All statuses"
-    }
+  "listTitle": "Non-conformance reports",
+  "subtitle": "Every non-conformance — a supplier's material, production, the warehouse, a customer's return — and its corrective action.",
+  "newButton": "New report",
+  "actionsList": "Corrective actions",
+  "filtersAria": "Report filters",
+  "filters": {
+    "search": "Search",
+    "searchPlaceholder": "Number, title, reference, supplier or customer",
+    "all": "All",
+    "dateFrom": "From",
+    "dateTo": "To",
+    "openOnly": "Open only",
+    "clear": "Clear filters"
+  },
+  "empty": "No reports",
+  "emptyHint": "Open a report when something does not conform: incoming material, a batch, a customer's return.",
+  "statuses": {
+    "open": "Open",
+    "investigation": "Under investigation",
+    "action": "Corrective action",
+    "verification": "Verification",
+    "closed": "Closed",
+    "cancelled": "Cancelled"
+  },
+  "stages": {
+    "open": "Recorded",
+    "investigation": "Investigation",
+    "action": "Corrective action",
+    "verification": "Verification",
+    "closed": "Closed"
+  },
+  "stagesAria": "Report stages",
+  "stageHints": {
+    "open": "Record the containment: what was done at once to stop it spreading (quarantine, sorting, stopping a line).",
+    "investigation": "Find the root cause; add a correction if one is needed now.",
+    "action": "Carry out the corrective actions; when all are finished, send the report to verification.",
+    "verification": "Check the actions worked (the problem did not come back). Effective closes the report.",
+    "closed": "Closed.",
+    "cancelled": "Cancelled."
+  },
+  "severities": {
+    "minor": "Minor",
+    "major": "Major",
+    "critical": "Critical"
+  },
+  "sources": {
+    "incoming_material": "Incoming material",
+    "supplier": "Supplier",
+    "internal_production": "Internal production",
+    "warehouse": "Warehouse",
+    "customer_return": "Customer return",
+    "other": "Other"
+  },
+  "sourceHints": {
+    "incoming_material": "Material received from a supplier (granules, masterbatch, cores, cartons, film…).",
+    "supplier": "A supplier's service or document, beyond the material itself.",
+    "internal_production": "Found in our own production.",
+    "warehouse": "Found in storage or handling.",
+    "customer_return": "Goods a customer returned or complained about.",
+    "other": "Anything else; describe it."
+  },
+  "types": {
+    "material_non_conformance": "Material",
+    "product_non_conformance": "Product",
+    "process_non_conformance": "Process",
+    "packaging_non_conformance": "Packaging",
+    "documentation_non_conformance": "Documentation",
+    "other": "Other"
+  },
+  "dispositions": {
+    "return_to_supplier": "Return to supplier",
+    "use_as_is": "Use as is (concession)",
+    "sort": "Sort and re-inspect",
+    "rework": "Rework",
+    "regrade": "Second grade",
+    "return_to_process": "Recycle",
+    "scrap": "Scrap",
+    "hold": "Hold"
+  },
+  "categories": {
+    "man": "Man",
+    "machine": "Machine",
+    "material": "Material",
+    "method": "Method",
+    "measurement": "Measurement",
+    "environment": "Environment"
+  },
+  "methods": {
+    "five_whys": "5 Whys",
+    "fishbone": "Fishbone",
+    "other": "Other"
+  },
+  "kinds": {
+    "correction": "Correction",
+    "corrective": "Corrective",
+    "preventive": "Preventive"
+  },
+  "kindHints": {
+    "correction": "Fixes what happened now (sort, rework, return).",
+    "corrective": "Removes the cause, so it does not happen again.",
+    "preventive": "Stops it happening elsewhere (other lines, other suppliers)."
+  },
+  "actionStatuses": {
+    "open": "Open",
+    "done": "Done",
+    "cancelled": "Cancelled"
+  },
+  "supplierActions": {
+    "none": "No action",
+    "notify": "Notify the supplier",
+    "return_goods": "Return the goods",
+    "scar": "Corrective action request (SCAR)"
+  },
+  "supplierActionHints": {
+    "notify": "The supplier is told; nothing is asked back.",
+    "return_goods": "The material goes back to the supplier.",
+    "scar": "The supplier must find the cause and answer with its corrective action; record its answer here."
+  },
+  "claims": {
+    "none": "No claim",
+    "claimed": "Claimed",
+    "accepted": "Accepted",
+    "rejected": "Rejected",
+    "recovered": "Recovered"
+  },
+  "fields": {
+    "number": "Report no.",
+    "date": "Date",
+    "report_date": "Date",
+    "title": "Title",
+    "description": "Description",
+    "status": "Status",
+    "source_type": "Source",
+    "report_type": "Type",
+    "severity": "Severity",
+    "reference_code": "Reference (lot, batch, document)",
+    "owner": "Owner",
+    "due_date": "Due date",
+    "detected_by": "Raised by",
+    "supplier_name": "Supplier",
+    "supplier_reference": "Supplier reference (delivery, invoice, lot)",
+    "customer_name": "Customer",
+    "production_order": "Production order",
+    "return": "Return",
+    "inspection": "Inspection",
+    "rejection": "Rejection",
+    "supplier_action": "Action with the supplier",
+    "supplier_response": "Supplier's answer",
+    "supplier_responded_at": "Answered on",
+    "cost_material": "Material cost",
+    "cost_labor": "Labour and downtime",
+    "cost_scrap": "Scrap cost",
+    "cost_transport": "Transport",
+    "cost_other": "Other costs",
+    "total_cost": "Total cost",
+    "claim_amount": "Amount claimed",
+    "claim_status": "Claim",
+    "containment": "Containment",
+    "root_cause_category": "Cause category (6M)",
+    "root_cause_method": "Analysis method",
+    "root_cause": "Root cause",
+    "no_action_justification": "Why no corrective action is needed",
+    "kind": "Kind",
+    "action": "Action",
+    "owner_name": "Owner outside the system",
+    "evidence": "Evidence (what was done, where it can be seen)"
+  },
+  "itemFields": {
+    "item_name": "Item",
+    "item_reference": "Lot / batch",
+    "quantity_affected": "Quantity",
+    "unit": "Unit",
+    "issue_description": "Problem",
+    "disposition": "Decision",
+    "disposition_notes": "Notes on the decision"
+  },
+  "placeholders": {
+    "reference": "e.g. lot SUP-7781",
+    "supplierReference": "Delivery or invoice no., supplier's lot",
+    "noOwner": "Not assigned",
+    "undecided": "Not decided",
+    "outsideOwner": "Someone outside the system"
+  },
+  "sections": {
+    "report": "Report",
+    "supplier": "Supplier and follow-up",
+    "party": "Party and follow-up",
+    "items": "Affected items and decision",
+    "costs": "Cost and claim",
+    "supplierAndCosts": "Supplier, cost and claim",
+    "containment": "Containment",
+    "rootCause": "Root cause",
+    "actions": "Corrective and preventive actions",
+    "verification": "Effectiveness verification",
+    "files": "Photos and documents"
+  },
+  "costsHint": "Optional: what the non-conformance cost, and what is claimed back from the party responsible.",
+  "moneyHint": "Amounts are numbers with up to two decimals.",
+  "itemNo": "Item {no}",
+  "addItem": "Add item",
+  "remove": "Remove",
+  "itemsHint": "Each item needs a name and a problem; the quantity is a number.",
+  "createTitle": "New non-conformance report",
+  "editTitle": "Edit report",
+  "formSubtitle": "Numbered NCR-YYYY-NNNN; then worked through its stages.",
+  "back": "Back",
+  "save": "Save",
+  "create": "Open the report",
+  "cancel": "Cancel",
+  "lockedHint": "A closed or cancelled report cannot be changed.",
+  "backToList": "Back to reports",
+  "detailTitle": "Report",
+  "notFound": "Report not found",
+  "overdue": "Overdue",
+  "dueOn": "Due {date}",
+  "openActions": "{count} open actions",
+  "cancelledHint": "Cancelled: {reason}",
+  "preparing": "Preparing…",
+  "download": {
+    "ar": "Report PDF (Arabic)",
+    "en": "Report PDF (English)"
+  },
+  "actions": {
+    "edit": "Edit",
+    "contain": "Record containment",
+    "investigate": "Record root cause",
+    "submit": "Send to verification",
+    "verify": "Verify effectiveness",
+    "cancel": "Cancel report",
+    "complete": "Mark done",
+    "cancelAction": "Cancel action"
+  },
+  "noItems": "No items yet.",
+  "noActions": "No actions yet.",
+  "addAction": "Add action",
+  "noActionNeeded": "No corrective action needed",
+  "effective": "Effective — report closed",
+  "attempts": "{count} verifications",
+  "removeItemConfirm": "Remove {name}?",
+  "noFiles": "No files.",
+  "upload": "Upload a file",
+  "uploading": "Uploading…",
+  "open": "Open",
+  "filesHint": "An image or PDF, 10 MB at most: the defect, the lot label, the supplier's answer.",
+  "removeFileConfirm": "Remove {name}?",
+  "historyTitle": "Report history",
+  "events": {
+    "create": "Opened",
+    "update": "Edited",
+    "item_added": "Item added",
+    "item_updated": "Item changed",
+    "item_removed": "Item removed",
+    "contain": "Containment recorded",
+    "investigate": "Root cause recorded",
+    "action_added": "Action added",
+    "action_updated": "Action changed",
+    "action_done": "Action done",
+    "action_cancelled": "Action cancelled",
+    "submit": "Sent to verification",
+    "verify": "Verified",
+    "cancel": "Cancelled"
+  },
+  "containDialog": {
+    "title": "Containment",
+    "text": "What was done at once to stop the problem spreading? The investigation starts next."
+  },
+  "investigateDialog": {
+    "title": "Root cause",
+    "text": "Why did it happen? Choose the category and describe the analysis.",
+    "noAction": "A minor, isolated case: no corrective action is needed",
+    "confirm": "Record — actions next",
+    "close": "Record and close"
+  },
+  "verifyDialog": {
+    "title": "Verify effectiveness",
+    "text": "Did the actions work? Check that the problem did not come back.",
+    "effective": "Effective — close the report",
+    "notEffective": "Not effective — back to actions",
+    "notes": "Notes",
+    "notesRequired": "Why it was not effective"
+  },
+  "cancelDialog": {
+    "title": "Cancel the report",
+    "text": "Raised by mistake or a duplicate? Give the reason."
+  },
+  "actionDialog": {
+    "title": "Add an action"
+  },
+  "completeDialog": {
+    "title": "Mark the action done"
+  },
+  "cancelActionDialog": {
+    "title": "Cancel the action"
+  },
+  "itemDialog": {
+    "add": "Add an item",
+    "edit": "Edit the item"
+  },
+  "errors": {
+    "request_failed": "The request could not be completed. Please try again.",
+    "forbidden": "You do not have permission for this action.",
+    "NCR_NOT_FOUND": "The report was not found.",
+    "NCR_IS_FINAL": "The report is closed or cancelled.",
+    "NCR_NOT_OPEN": "The containment is already recorded.",
+    "CONTAINMENT_REQUIRED": "Describe the containment.",
+    "NCR_NOT_UNDER_INVESTIGATION": "Record the containment first.",
+    "ROOT_CAUSE_REQUIRED": "Choose the cause category and describe the root cause.",
+    "NO_ACTION_JUSTIFICATION_REQUIRED": "Say why no corrective action is needed.",
+    "ROOT_CAUSE_METHOD_UNKNOWN": "Choose the method from the list.",
+    "NCR_NOT_IN_ACTION": "Actions are added while investigating or acting.",
+    "ACTION_REQUIRED": "At least one action must be done.",
+    "ACTIONS_STILL_OPEN": "{open} actions are still open.",
+    "NCR_NOT_IN_VERIFICATION": "The report is not waiting for verification.",
+    "VERIFICATION_NOTES_REQUIRED": "Say why the actions were not effective.",
+    "REASON_REQUIRED": "Please give a reason.",
+    "ACTION_NOT_FOUND": "The action was not found.",
+    "ACTION_NOT_OPEN": "The action is already finished.",
+    "EVIDENCE_REQUIRED": "Describe the evidence.",
+    "ACTION_KIND_UNKNOWN": "Choose the kind from the list.",
+    "NCR_ITEM_NOT_FOUND": "The item was not found.",
+    "USER_NOT_FOUND": "The user was not found.",
+    "QUALITY_CHECK_NOT_FOUND": "The inspection was not found.",
+    "QUALITY_REJECTION_NOT_FOUND": "The rejection was not found.",
+    "PRODUCTION_ORDER_NOT_FOUND": "The production order was not found.",
+    "SEVERITY_UNKNOWN": "Choose the severity from the list.",
+    "SUPPLIER_ACTION_UNKNOWN": "Choose the action with the supplier from the list.",
+    "CLAIM_STATUS_UNKNOWN": "Choose the claim status from the list.",
+    "TOO_MANY_FILES": "At most {limit} files.",
+    "FILE_EMPTY": "The file is empty.",
+    "FILE_TOO_LARGE": "The file is larger than 10 MB.",
+    "FILE_UNSUPPORTED_TYPE": "Only images (PNG, JPEG, WebP) and PDF files.",
+    "FILE_INVALID_PATH": "The file could not be saved.",
+    "ATTACHMENT_NOT_FOUND": "The file was not found."
   }
 }

@@ -9,17 +9,12 @@ from app.quality.domain.enums import (
     DefectSeverity,
     Disposition,
     DispositionStatus,
-    NCRReportType,
-    NCRSourceType,
-    NCRStatus,
     QualityCheckResult,
     QualityCheckStatus,
     QualityCheckType,
     RejectionReason,
 )
 from app.quality.infrastructure.models import (
-    NonConformanceItem,
-    NonConformanceReport,
     QualityCheck,
     QualityDefect,
     QualityRejection,
@@ -209,109 +204,3 @@ class QualityRejectionRepository:
             QualityRejection.created_at.desc(),
         )
         return list(self.db.scalars(statement))
-
-
-class NonConformanceReportRepository:
-    def __init__(self, db: Session) -> None:
-        self.db = db
-
-    def add(self, report: NonConformanceReport) -> NonConformanceReport:
-        self.db.add(report)
-        self.db.flush()
-        return report
-
-    def get_by_id(self, organization_id: UUID, report_id: UUID) -> NonConformanceReport | None:
-        statement = select(NonConformanceReport).where(
-            NonConformanceReport.organization_id == organization_id,
-            NonConformanceReport.id == report_id,
-        )
-        return self.db.scalar(statement)
-
-    def get_by_number(self, organization_id: UUID, report_number: str) -> NonConformanceReport | None:
-        statement = select(NonConformanceReport).where(
-            NonConformanceReport.organization_id == organization_id,
-            NonConformanceReport.report_number == report_number,
-        )
-        return self.db.scalar(statement)
-
-    def count_for_year(self, organization_id: UUID, year: int) -> int:
-        year_start = datetime(year, 1, 1, tzinfo=timezone.utc)
-        year_end = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
-        statement = (
-            select(func.count())
-            .select_from(NonConformanceReport)
-            .where(
-                NonConformanceReport.organization_id == organization_id,
-                NonConformanceReport.created_at >= year_start,
-                NonConformanceReport.created_at < year_end,
-            )
-        )
-        return self.db.scalar(statement) or 0
-
-    def list_by_organization(
-        self,
-        organization_id: UUID,
-        *,
-        source_type: NCRSourceType | None = None,
-        report_type: NCRReportType | None = None,
-        status: NCRStatus | None = None,
-        report_date: date | None = None,
-    ) -> list[NonConformanceReport]:
-        statement = select(NonConformanceReport).where(
-            NonConformanceReport.organization_id == organization_id,
-        )
-        if source_type is not None:
-            statement = statement.where(NonConformanceReport.source_type == source_type)
-        if report_type is not None:
-            statement = statement.where(NonConformanceReport.report_type == report_type)
-        if status is not None:
-            statement = statement.where(NonConformanceReport.status == status)
-        if report_date is not None:
-            statement = statement.where(NonConformanceReport.report_date == report_date)
-        statement = statement.order_by(
-            NonConformanceReport.report_date.desc(),
-            NonConformanceReport.created_at.desc(),
-        )
-        return list(self.db.scalars(statement))
-
-
-class NonConformanceItemRepository:
-    def __init__(self, db: Session) -> None:
-        self.db = db
-
-    def add(self, item: NonConformanceItem) -> NonConformanceItem:
-        self.db.add(item)
-        self.db.flush()
-        return item
-
-    def max_line_no(self, report_id: UUID) -> int | None:
-        statement = select(func.max(NonConformanceItem.line_no)).where(
-            NonConformanceItem.non_conformance_report_id == report_id,
-        )
-        return self.db.scalar(statement)
-
-    def list_by_report(self, organization_id: UUID, report_id: UUID) -> list[NonConformanceItem]:
-        statement = (
-            select(NonConformanceItem)
-            .join(NonConformanceReport, NonConformanceReport.id == NonConformanceItem.non_conformance_report_id)
-            .where(
-                NonConformanceReport.organization_id == organization_id,
-                NonConformanceItem.non_conformance_report_id == report_id,
-            )
-            .order_by(NonConformanceItem.line_no.asc(), NonConformanceItem.created_at.asc())
-        )
-        return list(self.db.scalars(statement))
-
-    def get_by_id(self, organization_id: UUID, item_id: UUID) -> NonConformanceItem | None:
-        statement = (
-            select(NonConformanceItem)
-            .join(
-                NonConformanceReport,
-                NonConformanceReport.id == NonConformanceItem.non_conformance_report_id,
-            )
-            .where(
-                NonConformanceItem.id == item_id,
-                NonConformanceReport.organization_id == organization_id,
-            )
-        )
-        return self.db.scalar(statement)

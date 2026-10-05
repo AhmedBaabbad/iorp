@@ -37,8 +37,7 @@ from app.production.api.routes_planning_orders import router as planning_orders_
 from app.production.api.routes_shift_definitions import router as shift_definitions_router
 from app.production.api.routes_waste_records import router as waste_records_router
 from app.production.api.routes_work_centers import router as work_centers_router
-from app.quality.api.routes_non_conformance_items import router as non_conformance_items_router
-from app.quality.api.routes_non_conformance_reports import router as non_conformance_reports_router
+from app.quality.api.routes_ncr import router as ncr_router
 from app.quality.api.routes_quality_checks import router as quality_checks_router
 from app.quality.api.routes_return_inspections import router as quality_returns_router
 from app.quality.api.routes_specifications import router as quality_specifications_router
@@ -172,8 +171,7 @@ app.include_router(shipping_router, prefix=f"{settings.api_prefix}/shipping")
 app.include_router(shipping_returns_router, prefix=f"{settings.api_prefix}/shipping")
 app.include_router(quality_defects_router, prefix=f"{settings.api_prefix}/quality")
 app.include_router(quality_rejections_router, prefix=f"{settings.api_prefix}/quality")
-app.include_router(non_conformance_reports_router, prefix=f"{settings.api_prefix}/quality")
-app.include_router(non_conformance_items_router, prefix=f"{settings.api_prefix}/quality")
+app.include_router(ncr_router, prefix=f"{settings.api_prefix}/quality")
 app.include_router(workforce_router, prefix=settings.api_prefix)
 app.include_router(dashboard_router, prefix=settings.api_prefix)
 app.include_router(bootstrap_router, prefix=settings.api_prefix)

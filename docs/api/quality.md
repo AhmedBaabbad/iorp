@@ -20,7 +20,7 @@ The following fields are **never accepted in request bodies**. They are set by t
 | `detected_by_user_id` | QualityDefect | From JWT `TenantContext` |
 | `disposition_status` (initial) | QualityRejection | Always `pending` on creation (D9) |
 | `rejected_by_user_id` | QualityRejection | From JWT `TenantContext` |
-| `report_number` | NonConformanceReport | Auto-generated `NCR-YYYY-NNNN` on creation |
+| `report_number` | NonConformanceReport | Auto-generated `NCR-YYYY-NNNN` on creation (locked quality counter) |
 | `status` (initial) | NonConformanceReport | Always `draft` on creation |
 | `detected_by_user_id` | NonConformanceReport | From JWT `TenantContext` |
 | `line_no` (auto) | NonConformanceItem | `(max_line_no or 0) + 1` when not provided (D13) |
@@ -153,99 +153,28 @@ Prefix `/api/v1/quality/quality-rejections`.
 Codes: `CHECK_HAS_NO_REJECTED_QUANTITY`, `QUANTITY_REQUIRED`, `QUANTITY_EXCEEDS_CHECK` (with `available`), `NOTES_REQUIRED`, `DEFECT_NOT_FOUND`,
 `REJECTION_ALREADY_DECIDED`, `REJECTION_IS_FINAL`, `CONCESSION_DETAILS_REQUIRED`, `DECISION_REQUIRED`, `HOLD_IS_NOT_FINAL`.
 
-## Non-Conformance Reports
+## Non-Conformance Reports (QUAL-NCR-002)
 
-### `POST /non-conformance-reports`
-Open a non-conformance case. `report_number` and `status` are always auto-set.
+Errors answer `{"detail": {"code": ...}}`. The status moves only through the stage endpoints. See `docs/modules/quality.md`.
 
-**Body:**
-```json
-{
-  "report_date": "2026-07-03",
-  "source_type": "incoming_material",
-  "report_type": "material_non_conformance",
-  "title": "Non-conforming LLDPE granules — Batch B-44",
-  "description": "Moisture content measured at 0.12%, spec max is 0.05%.",
-  "reference_code": "BATCH-B-44",
-  "quality_check_id": "<uuid>",
-  "quality_rejection_id": "<uuid>"
-}
-```
-
-`title` and `description` are both required.
-`quality_check_id` and `quality_rejection_id` are optional plain UUID references — org ownership validated when provided.
-
-Returns `201` with `status = "draft"` and auto-generated `report_number = "NCR-YYYY-NNNN"` (D11).
-
-### `GET /non-conformance-reports`
-List NCR reports.
-
-**Query filters:** `source_type`, `report_type`, `ncr_status`, `report_date`
-
-Note: the filter parameter is `ncr_status` (not `status`) to avoid shadowing the FastAPI `status` import.
-
-### `GET /non-conformance-reports/{id}`
-Get a single NCR report. Returns `404` if not found or belongs to a different org.
-
-### `PATCH /non-conformance-reports/{id}`
-Update an NCR report. To advance the status lifecycle:
-
-```json
-{ "status": "open" }
-```
-
-```json
-{ "status": "under_review" }
-```
-
-```json
-{ "status": "closed" }
-```
-
-**Re-open guard:** Once a report is `closed`, it cannot be reopened — returns `400` if `status` is patched to any non-closed value on a closed report.
-
----
-
-## Non-Conformance Items
-
-Items are nested under their parent NCR report.
-
-### `POST /non-conformance-reports/{report_id}/items`
-Add an item to an NCR report.
-
-**Guard (D12):** Returns `400` if the parent report status is `closed`. Org check fires first — a foreign-org `report_id` returns `404` before the status is even checked.
-
-**Body:**
-```json
-{
-  "item_name": "LLDPE Granules — Grade A",
-  "issue_description": "Moisture content measured at 0.12%, specification max is 0.05%.",
-  "quantity_affected": "500.00",
-  "unit": "kg",
-  "item_reference": "BATCH-B-44-GRD-A",
-  "line_no": 1,
-  "notes": "optional"
-}
-```
-
-`item_name` and `issue_description` are required.
-`quantity_affected` is nullable — may be unknown at case open.
-`line_no` is optional — auto-assigns as `(max_line_no or 0) + 1` if absent (D13).
-
-Returns `201`.
-
-### `GET /non-conformance-reports/{report_id}/items`
-List items for a specific NCR report.
-
-### `GET /non-conformance-items/{item_id}`
-Get a single NCR item by ID.
-
-### `PATCH /non-conformance-items/{item_id}`
-Update an NCR item. All fields optional.
-
-**Guard (D12):** Returns `400` if the parent report is `closed` — update is also blocked.
-
----
+| Method | Path | Permission |
+|--------|------|------------|
+| GET | `/non-conformance-reports` (`status`, `source_type`, `severity`, `owner_user_id`, `open_only`, `date_from`, `date_to`, `search`) | ncr_reports:read |
+| POST | `/non-conformance-reports` (header, sources, owner, due date, supplier action, costs, `items[]`) | ncr_reports:create |
+| GET / PATCH | `/non-conformance-reports/{id}` | ncr_reports:read / ncr_reports:update (until closed or cancelled) |
+| GET | `/non-conformance-reports/lookups/users?q=` | ncr_reports:create or update |
+| GET | `/non-conformance-reports/{id}/document.pdf?lang=ar|en` | ncr_reports:read |
+| POST / PATCH / DELETE | `/non-conformance-reports/{id}/items[/{item_id}]` | ncr_reports:update |
+| POST | `/non-conformance-reports/{id}/contain` (`containment`) | ncr_reports:update |
+| POST | `/non-conformance-reports/{id}/investigate` (`root_cause_category`, `root_cause_method`, `root_cause`, `action_required`, `no_action_justification`) | ncr_reports:update |
+| POST | `/non-conformance-reports/{id}/submit` | ncr_reports:update |
+| POST | `/non-conformance-reports/{id}/verify` (`effective`, `notes`) | ncr_reports:verify |
+| POST | `/non-conformance-reports/{id}/cancel` (`reason`) | ncr_reports:cancel |
+| POST / PATCH | `/non-conformance-reports/{id}/actions[/{action_id}]` (`kind`, `description`, `owner_user_id` or `owner_name`, `due_date`) | ncr_reports:update |
+| POST | `/non-conformance-reports/{id}/actions/{action_id}/complete` (`evidence`) | ncr_actions:complete or ncr_reports:update |
+| POST | `/non-conformance-reports/{id}/actions/{action_id}/cancel` (`reason`) | ncr_reports:update |
+| GET | `/ncr-actions` (`status`, `mine`, `overdue`, `search`) | ncr_actions:read or ncr_reports:read |
+| POST / GET / DELETE | `/non-conformance-reports/{id}/attachments[/{attachment_id}]` | ncr_reports:create or update / read / update |
 
 ## Common error codes
 

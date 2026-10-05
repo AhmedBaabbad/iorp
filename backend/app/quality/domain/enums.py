@@ -141,14 +141,3 @@ class NCRReportType(str, Enum):
     DOCUMENTATION_NON_CONFORMANCE = "documentation_non_conformance"
     # Catch-all; details belong in description.
     OTHER = "other"
-
-
-class NCRStatus(str, Enum):
-    # Report created, not yet formally opened.
-    DRAFT = "draft"
-    # Report is active and being tracked.
-    OPEN = "open"
-    # NCR is under investigation or assessment.
-    UNDER_REVIEW = "under_review"
-    # NCR is resolved and formally closed.
-    CLOSED = "closed"

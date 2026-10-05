@@ -89,7 +89,7 @@ def test_a_returned_line_is_inspected_and_decided_in_parts(env):
     assert sorted((x["disposition"], x["quantity_rejected"], x["disposition_status"]) for x in done["rejections"]) == [
         ("rework", "5.000", "decided"), ("scrap", "5.000", "decided")]
     ncr = env.db.scalar(select(NonConformanceReport).where(NonConformanceReport.quality_check_id == UUID(done["id"])))
-    assert ncr.source_type.value == "customer_return" and ncr.reference_code == ret["return_no"] and ncr.status.value == "draft"
+    assert ncr.source_type.value == "customer_return" and ncr.reference_code == ret["return_no"] and ncr.status == "open"
     assert env.client.get(f"{QUALITY}/returns/awaiting").json() == []  # every line is decided
     back = env.client.get(f"{RETURNS}/{ret['id']}").json()
     assert back["quality_status"] == "decided" and back["quality"]["inspections"][0]["inspection_code"] == done["inspection_code"]

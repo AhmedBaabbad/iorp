@@ -62,7 +62,9 @@ def test_order_actions_use_the_transition_map():
 
 def test_production_manager_holds_every_production_permission_explicitly():
     role = SYSTEM_ROLE_BY_CODE["production_manager"]
-    assert set(role["permissions"]) == set(P.ALL) | set(P.REPORTS) | {"workforce:members:read"}
+    # QUAL-NCR-002: production also reads non-conformance reports and completes the corrective actions it owns.
+    ncr_owner = {"quality:ncr_reports:read", "quality:ncr_actions:read", "quality:ncr_actions:complete"}
+    assert set(role["permissions"]) == set(P.ALL) | set(P.REPORTS) | {"workforce:members:read"} | ncr_owner
     for definition in SYSTEM_ROLES:  # no production wildcard: a new code is granted on purpose
         assert not [p for p in definition["permissions"] if str(p).startswith("production:") and "*" in str(p)], definition["code"]
 

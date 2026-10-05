@@ -1,93 +1,336 @@
 {
-  "ncrReports": {
-    "listTitle": "تقارير عدم المطابقة",
-    "createTitle": "إنشاء تقرير عدم مطابقة",
-    "detailTitle": "تفاصيل تقرير عدم المطابقة",
-    "reportNumberAuto": "يُنشأ تلقائياً",
-    "sectionItems": "العناصر المتأثرة",
-    "fields": {
-      "reportNumber": "رقم التقرير",
-      "reportDate": "تاريخ التقرير",
-      "title": "عنوان التقرير",
-      "description": "وصف حالة عدم المطابقة",
-      "sourceType": "مصدر الحالة",
-      "reportType": "نوع التقرير",
-      "status": "الحالة",
-      "referenceCode": "رمز المرجع",
-      "qualityCheck": "فحص الجودة المرجعي",
-      "qualityRejection": "حالة الرفض المرجعية"
-    },
-    "subtitle": "إنشاء وتتبع تقارير عدم المطابقة عبر سلسلة الجودة.",
-    "listAria": "قائمة تقارير عدم المطابقة",
-    "filtersAria": "فلاتر تقارير عدم المطابقة",
-    "newButton": "تقرير عدم مطابقة جديد",
-    "createButton": "إنشاء تقرير عدم مطابقة",
-    "createFirst": "أنشئ أول تقرير عدم مطابقة أو عدّل الفلاتر.",
-    "loading": "جاري تحميل تقارير عدم المطابقة...",
-    "loadingDetail": "جاري تحميل تقرير عدم المطابقة...",
-    "loadError": "تعذر تحميل تقارير عدم المطابقة.",
-    "loadDetailError": "تعذر تحميل تقرير عدم المطابقة.",
-    "createError": "تعذر إنشاء تقرير عدم المطابقة.",
-    "updateStatusError": "تعذر تحديث حالة تقرير عدم المطابقة.",
-    "detailSubtitle": "مراجعة تفاصيل تقرير عدم المطابقة.",
-    "createSubtitle": "يُنشأ رقم التقرير تلقائياً. تبدأ الحالة كمسودة.",
-    "backToList": "العودة إلى تقارير عدم المطابقة",
-    "returnToList": "الرجوع إلى تقارير عدم المطابقة",
-    "notFoundDescription": "ربما تمت إزالة تقرير عدم المطابقة أو أصبح غير متاح.",
-    "descriptionSection": "الوصف",
-    "qualityChainSection": "سلسلة الجودة",
-    "closedMessage": "التقرير مغلق.",
-    "validation": {
-      "titleRequired": "العنوان مطلوب",
-      "descriptionRequired": "الوصف مطلوب"
-    },
-    "actions": {
-      "openReport": "فتح التقرير",
-      "opening": "جاري الفتح...",
-      "startReview": "بدء المراجعة",
-      "startingReview": "جاري البدء...",
-      "closeReport": "إغلاق التقرير",
-      "closing": "جاري الإغلاق..."
-    },
-    "items": {
-      "sectionTitle": "العناصر المتأثرة",
-      "sectionSubtitle": "عناصر السطور وتفاصيل المشكلة لهذا التقرير.",
-      "addButton": "إضافة عنصر",
-      "empty": "لم تتم إضافة عناصر لهذا التقرير بعد",
-      "loading": "جاري تحميل عناصر عدم المطابقة...",
-      "loadError": "تعذر تحميل عناصر عدم المطابقة.",
-      "createError": "تعذر إنشاء عنصر عدم المطابقة.",
-      "statusGuardMessage": "لا يمكن إضافة عناصر لتقرير مغلق",
-      "lineNoAuto": "يُعيّن تلقائياً",
-      "lineNoAutoSentence": "تُعيّن أرقام السطور تلقائياً.",
-      "showMore": "عرض المزيد",
-      "showLess": "عرض أقل",
-      "notesLabel": "ملاحظات: {value}",
-      "saveButton": "حفظ العنصر",
-      "saving": "جاري الحفظ...",
-      "itemReferencePlaceholder": "رقم الدفعة، رمز المادة، رمز المنتج...",
-      "unitPlaceholder": "كجم، قطعة، متر، رول",
-      "issueDescriptionPlaceholder": "صف ما هو غير مطابق في هذا العنصر...",
-      "validation": {
-        "itemNameRequired": "اسم العنصر مطلوب",
-        "issueDescriptionRequired": "وصف المشكلة مطلوب"
-      },
-      "fields": {
-        "lineNo": "رقم السطر",
-        "itemName": "اسم العنصر",
-        "itemReference": "رمز المرجع",
-        "quantityAffected": "الكمية المتأثرة",
-        "unit": "الوحدة",
-        "issueDescription": "وصف المشكلة",
-        "notes": "ملاحظات"
-      }
-    },
-    "empty": "لا توجد تقارير عدم مطابقة حتى الآن",
-    "notFound": "تقرير عدم المطابقة غير موجود",
-    "filters": {
-      "allSources": "كل المصادر",
-      "allReportTypes": "كل أنواع التقارير",
-      "allStatuses": "كل الحالات"
-    }
+  "listTitle": "تقارير عدم المطابقة",
+  "subtitle": "كل حالة عدم مطابقة — مادة من مورد، الإنتاج، المستودع، مرتجع عميل — وإجراؤها التصحيحي.",
+  "newButton": "تقرير جديد",
+  "actionsList": "الإجراءات التصحيحية",
+  "filtersAria": "تصفية التقارير",
+  "filters": {
+    "search": "بحث",
+    "searchPlaceholder": "الرقم أو العنوان أو المرجع أو المورد أو العميل",
+    "all": "الكل",
+    "dateFrom": "من",
+    "dateTo": "إلى",
+    "openOnly": "المفتوحة فقط",
+    "clear": "مسح التصفية"
+  },
+  "empty": "لا توجد تقارير",
+  "emptyHint": "افتح تقريراً عند وجود عدم مطابقة: مادة واردة، دفعة إنتاج، مرتجع عميل.",
+  "statuses": {
+    "open": "مفتوح",
+    "investigation": "قيد التحقيق",
+    "action": "إجراءات تصحيحية",
+    "verification": "قيد التحقق",
+    "closed": "مغلق",
+    "cancelled": "ملغى"
+  },
+  "stages": {
+    "open": "التسجيل",
+    "investigation": "التحقيق",
+    "action": "الإجراء التصحيحي",
+    "verification": "التحقق",
+    "closed": "الإغلاق"
+  },
+  "stagesAria": "مراحل التقرير",
+  "stageHints": {
+    "open": "سجّل الاحتواء: ما الذي عُمل فوراً لمنع انتشار المشكلة (حجز، فرز، إيقاف خط).",
+    "investigation": "حدّد السبب الجذري؛ وأضف تصحيحاً فورياً إن لزم.",
+    "action": "نفّذ الإجراءات التصحيحية؛ وعند إنجازها كلها أرسل التقرير للتحقق.",
+    "verification": "تأكد أن الإجراءات نجحت (لم تتكرر المشكلة). «فعّالة» تُغلق التقرير.",
+    "closed": "مغلق.",
+    "cancelled": "ملغى."
+  },
+  "severities": {
+    "minor": "بسيطة",
+    "major": "جوهرية",
+    "critical": "حرجة"
+  },
+  "sources": {
+    "incoming_material": "مواد واردة",
+    "supplier": "مورد",
+    "internal_production": "الإنتاج الداخلي",
+    "warehouse": "المستودع",
+    "customer_return": "مرتجع عميل",
+    "other": "أخرى"
+  },
+  "sourceHints": {
+    "incoming_material": "مادة مستلمة من مورد (حبيبات، ماستر باتش، كور، كراتين، استريتش…).",
+    "supplier": "خدمة أو مستند من المورد، غير المادة نفسها.",
+    "internal_production": "اكتُشفت في إنتاجنا.",
+    "warehouse": "اكتُشفت في التخزين أو المناولة.",
+    "customer_return": "بضاعة أرجعها العميل أو اشتكى منها.",
+    "other": "غير ذلك؛ صِفه."
+  },
+  "types": {
+    "material_non_conformance": "مادة",
+    "product_non_conformance": "منتج",
+    "process_non_conformance": "عملية",
+    "packaging_non_conformance": "تغليف",
+    "documentation_non_conformance": "مستندات",
+    "other": "أخرى"
+  },
+  "dispositions": {
+    "return_to_supplier": "إرجاع للمورد",
+    "use_as_is": "قبول كما هو باستثناء",
+    "sort": "فرز وإعادة فحص",
+    "rework": "إعادة تشغيل",
+    "regrade": "درجة ثانية",
+    "return_to_process": "إعادة تدوير",
+    "scrap": "هالك",
+    "hold": "حجز"
+  },
+  "categories": {
+    "man": "الإنسان",
+    "machine": "الآلة",
+    "material": "المادة",
+    "method": "الطريقة",
+    "measurement": "القياس",
+    "environment": "البيئة"
+  },
+  "methods": {
+    "five_whys": "لماذا الخمسة",
+    "fishbone": "مخطط عظم السمكة",
+    "other": "أخرى"
+  },
+  "kinds": {
+    "correction": "تصحيح فوري",
+    "corrective": "إجراء تصحيحي",
+    "preventive": "إجراء وقائي"
+  },
+  "kindHints": {
+    "correction": "يعالج ما حدث الآن (فرز، إعادة تشغيل، إرجاع).",
+    "corrective": "يزيل السبب حتى لا يتكرر.",
+    "preventive": "يمنع حدوثه في مكان آخر (خطوط أخرى، موردون آخرون)."
+  },
+  "actionStatuses": {
+    "open": "مفتوح",
+    "done": "منجز",
+    "cancelled": "ملغى"
+  },
+  "supplierActions": {
+    "none": "لا إجراء",
+    "notify": "إشعار المورد",
+    "return_goods": "إرجاع البضاعة",
+    "scar": "طلب إجراء تصحيحي (SCAR)"
+  },
+  "supplierActionHints": {
+    "notify": "يُبلَّغ المورد دون أن يُطلب منه رد.",
+    "return_goods": "تعود المادة إلى المورد.",
+    "scar": "على المورد أن يحدد السبب ويرد بإجرائه التصحيحي؛ سجّل رده هنا."
+  },
+  "claims": {
+    "none": "لا مطالبة",
+    "claimed": "مُطالَب بها",
+    "accepted": "مقبولة",
+    "rejected": "مرفوضة",
+    "recovered": "مُستردة"
+  },
+  "fields": {
+    "number": "رقم التقرير",
+    "date": "التاريخ",
+    "report_date": "التاريخ",
+    "title": "العنوان",
+    "description": "الوصف",
+    "status": "الحالة",
+    "source_type": "المصدر",
+    "report_type": "النوع",
+    "severity": "الخطورة",
+    "reference_code": "المرجع (دفعة، لوط، مستند)",
+    "owner": "المسؤول",
+    "due_date": "تاريخ الاستحقاق",
+    "detected_by": "أعدّه",
+    "supplier_name": "المورد",
+    "supplier_reference": "مرجع المورد (شحنة، فاتورة، دفعة)",
+    "customer_name": "العميل",
+    "production_order": "أمر الإنتاج",
+    "return": "المرتجع",
+    "inspection": "الفحص",
+    "rejection": "حالة الرفض",
+    "supplier_action": "الإجراء مع المورد",
+    "supplier_response": "رد المورد",
+    "supplier_responded_at": "تاريخ الرد",
+    "cost_material": "تكلفة المواد",
+    "cost_labor": "العمالة والتوقف",
+    "cost_scrap": "تكلفة الهالك",
+    "cost_transport": "النقل",
+    "cost_other": "تكاليف أخرى",
+    "total_cost": "إجمالي التكلفة",
+    "claim_amount": "المبلغ المُطالَب به",
+    "claim_status": "المطالبة",
+    "containment": "الاحتواء",
+    "root_cause_category": "فئة السبب (6M)",
+    "root_cause_method": "طريقة التحليل",
+    "root_cause": "السبب الجذري",
+    "no_action_justification": "لماذا لا يلزم إجراء تصحيحي",
+    "kind": "النوع",
+    "action": "الإجراء",
+    "owner_name": "مسؤول من خارج النظام",
+    "evidence": "الدليل (ما الذي عُمل وأين يمكن رؤيته)"
+  },
+  "itemFields": {
+    "item_name": "الصنف",
+    "item_reference": "الدفعة / اللوط",
+    "quantity_affected": "الكمية",
+    "unit": "الوحدة",
+    "issue_description": "المشكلة",
+    "disposition": "القرار",
+    "disposition_notes": "ملاحظات القرار"
+  },
+  "placeholders": {
+    "reference": "مثال: دفعة SUP-7781",
+    "supplierReference": "رقم الشحنة أو الفاتورة، دفعة المورد",
+    "noOwner": "غير مُسند",
+    "undecided": "لم يُقرَّر",
+    "outsideOwner": "شخص من خارج النظام"
+  },
+  "sections": {
+    "report": "التقرير",
+    "supplier": "المورد والمتابعة",
+    "party": "الطرف والمتابعة",
+    "items": "الأصناف المتأثرة والقرار",
+    "costs": "التكلفة والمطالبة",
+    "supplierAndCosts": "المورد والتكلفة والمطالبة",
+    "containment": "الاحتواء",
+    "rootCause": "السبب الجذري",
+    "actions": "الإجراءات التصحيحية والوقائية",
+    "verification": "التحقق من الفعالية",
+    "files": "الصور والمستندات"
+  },
+  "costsHint": "اختياري: كم كلّفت حالة عدم المطابقة، وما الذي يُطالَب به الطرف المسؤول.",
+  "moneyHint": "المبالغ أرقام بحد أقصى منزلتين عشريتين.",
+  "itemNo": "الصنف {no}",
+  "addItem": "إضافة صنف",
+  "remove": "حذف",
+  "itemsHint": "لكل صنف اسم ومشكلة؛ والكمية رقم.",
+  "createTitle": "تقرير عدم مطابقة جديد",
+  "editTitle": "تعديل التقرير",
+  "formSubtitle": "يُرقَّم NCR-YYYY-NNNN؛ ثم يُعالَج عبر مراحله.",
+  "back": "رجوع",
+  "save": "حفظ",
+  "create": "فتح التقرير",
+  "cancel": "إلغاء",
+  "lockedHint": "لا يمكن تعديل تقرير مغلق أو ملغى.",
+  "backToList": "العودة إلى التقارير",
+  "detailTitle": "التقرير",
+  "notFound": "التقرير غير موجود",
+  "overdue": "متأخر",
+  "dueOn": "الاستحقاق {date}",
+  "openActions": "{count} إجراءات مفتوحة",
+  "cancelledHint": "ملغى: {reason}",
+  "preparing": "جارٍ التجهيز…",
+  "download": {
+    "ar": "التقرير PDF (عربي)",
+    "en": "التقرير PDF (إنجليزي)"
+  },
+  "actions": {
+    "edit": "تعديل",
+    "contain": "تسجيل الاحتواء",
+    "investigate": "تسجيل السبب الجذري",
+    "submit": "إرسال للتحقق",
+    "verify": "التحقق من الفعالية",
+    "cancel": "إلغاء التقرير",
+    "complete": "تم الإنجاز",
+    "cancelAction": "إلغاء الإجراء"
+  },
+  "noItems": "لا توجد أصناف بعد.",
+  "noActions": "لا توجد إجراءات بعد.",
+  "addAction": "إضافة إجراء",
+  "noActionNeeded": "لا يلزم إجراء تصحيحي",
+  "effective": "فعّالة — أُغلق التقرير",
+  "attempts": "{count} مرات تحقق",
+  "removeItemConfirm": "حذف {name}؟",
+  "noFiles": "لا توجد ملفات.",
+  "upload": "رفع ملف",
+  "uploading": "جارٍ الرفع…",
+  "open": "فتح",
+  "filesHint": "صورة أو PDF بحد أقصى 10 ميجابايت: العيب، ملصق الدفعة، رد المورد.",
+  "removeFileConfirm": "حذف {name}؟",
+  "historyTitle": "سجل التقرير",
+  "events": {
+    "create": "فُتح",
+    "update": "عُدّل",
+    "item_added": "أُضيف صنف",
+    "item_updated": "عُدّل صنف",
+    "item_removed": "حُذف صنف",
+    "contain": "سُجّل الاحتواء",
+    "investigate": "سُجّل السبب الجذري",
+    "action_added": "أُضيف إجراء",
+    "action_updated": "عُدّل إجراء",
+    "action_done": "أُنجز إجراء",
+    "action_cancelled": "أُلغي إجراء",
+    "submit": "أُرسل للتحقق",
+    "verify": "تم التحقق",
+    "cancel": "أُلغي"
+  },
+  "containDialog": {
+    "title": "الاحتواء",
+    "text": "ما الذي عُمل فوراً لمنع انتشار المشكلة؟ يبدأ التحقيق بعدها."
+  },
+  "investigateDialog": {
+    "title": "السبب الجذري",
+    "text": "لماذا حدثت؟ اختر الفئة وصِف التحليل.",
+    "noAction": "حالة بسيطة ومنفردة: لا يلزم إجراء تصحيحي",
+    "confirm": "تسجيل — ثم الإجراءات",
+    "close": "تسجيل وإغلاق"
+  },
+  "verifyDialog": {
+    "title": "التحقق من الفعالية",
+    "text": "هل نجحت الإجراءات؟ تأكد أن المشكلة لم تتكرر.",
+    "effective": "فعّالة — أغلق التقرير",
+    "notEffective": "غير فعّالة — عودة للإجراءات",
+    "notes": "ملاحظات",
+    "notesRequired": "لماذا لم تكن فعّالة"
+  },
+  "cancelDialog": {
+    "title": "إلغاء التقرير",
+    "text": "فُتح بالخطأ أو مكرر؟ اكتب السبب."
+  },
+  "actionDialog": {
+    "title": "إضافة إجراء"
+  },
+  "completeDialog": {
+    "title": "تسجيل إنجاز الإجراء"
+  },
+  "cancelActionDialog": {
+    "title": "إلغاء الإجراء"
+  },
+  "itemDialog": {
+    "add": "إضافة صنف",
+    "edit": "تعديل الصنف"
+  },
+  "errors": {
+    "request_failed": "تعذّر إكمال الطلب. حاول مرة أخرى.",
+    "forbidden": "ليست لديك صلاحية لهذا الإجراء.",
+    "NCR_NOT_FOUND": "التقرير غير موجود.",
+    "NCR_IS_FINAL": "التقرير مغلق أو ملغى.",
+    "NCR_NOT_OPEN": "الاحتواء مسجّل من قبل.",
+    "CONTAINMENT_REQUIRED": "صِف الاحتواء.",
+    "NCR_NOT_UNDER_INVESTIGATION": "سجّل الاحتواء أولاً.",
+    "ROOT_CAUSE_REQUIRED": "اختر فئة السبب وصِف السبب الجذري.",
+    "NO_ACTION_JUSTIFICATION_REQUIRED": "اذكر لماذا لا يلزم إجراء تصحيحي.",
+    "ROOT_CAUSE_METHOD_UNKNOWN": "اختر الطريقة من القائمة.",
+    "NCR_NOT_IN_ACTION": "تُضاف الإجراءات أثناء التحقيق أو الإجراء التصحيحي.",
+    "ACTION_REQUIRED": "يجب إنجاز إجراء واحد على الأقل.",
+    "ACTIONS_STILL_OPEN": "ما زال {open} إجراءات مفتوحة.",
+    "NCR_NOT_IN_VERIFICATION": "التقرير ليس بانتظار التحقق.",
+    "VERIFICATION_NOTES_REQUIRED": "اذكر لماذا لم تكن الإجراءات فعّالة.",
+    "REASON_REQUIRED": "يرجى ذكر السبب.",
+    "ACTION_NOT_FOUND": "الإجراء غير موجود.",
+    "ACTION_NOT_OPEN": "الإجراء منتهٍ من قبل.",
+    "EVIDENCE_REQUIRED": "صِف الدليل.",
+    "ACTION_KIND_UNKNOWN": "اختر النوع من القائمة.",
+    "NCR_ITEM_NOT_FOUND": "الصنف غير موجود.",
+    "USER_NOT_FOUND": "المستخدم غير موجود.",
+    "QUALITY_CHECK_NOT_FOUND": "الفحص غير موجود.",
+    "QUALITY_REJECTION_NOT_FOUND": "حالة الرفض غير موجودة.",
+    "PRODUCTION_ORDER_NOT_FOUND": "أمر الإنتاج غير موجود.",
+    "SEVERITY_UNKNOWN": "اختر الخطورة من القائمة.",
+    "SUPPLIER_ACTION_UNKNOWN": "اختر الإجراء مع المورد من القائمة.",
+    "CLAIM_STATUS_UNKNOWN": "اختر حالة المطالبة من القائمة.",
+    "TOO_MANY_FILES": "بحد أقصى {limit} ملفاً.",
+    "FILE_EMPTY": "الملف فارغ.",
+    "FILE_TOO_LARGE": "الملف أكبر من 10 ميجابايت.",
+    "FILE_UNSUPPORTED_TYPE": "الصور (PNG وJPEG وWebP) وملفات PDF فقط.",
+    "FILE_INVALID_PATH": "تعذّر حفظ الملف.",
+    "ATTACHMENT_NOT_FOUND": "الملف غير موجود."
   }
 }

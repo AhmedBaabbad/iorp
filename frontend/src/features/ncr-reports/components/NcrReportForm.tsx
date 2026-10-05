@@ -3,277 +3,173 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import type { CSSProperties, FormEvent } from "react";
-import { useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
+import { UnitSelect } from "@/components/forms/UnitSelect";
 import { PageFrame } from "@/components/layout/page-frame";
-import { getApiErrorMessage } from "@/lib/api-error-handler";
-import { optionalText } from "@/lib/utils";
-import { sharedStyles } from "@/styles/shared-styles";
-import { createNcrReport } from "../api/ncr-reports-api";
-import type { CreateNcrReportRequest, NCRReportType, NCRSourceType } from "../types";
+import s from "@/features/production-demands/demands.module.css";
+import { createNcrReport, getNcrReport, getNcrUsers, updateNcrReport } from "../api";
+import { DECIMAL, MONEY, ncrErrorMessage, todayIso } from "../ncr-errors";
+import {
+  CLAIM_STATUSES, COSTS, DISPOSITIONS, NCR_SOURCES, NCR_TYPES, SEVERITIES, SUPPLIER_ACTIONS, SUPPLIER_SOURCES,
+  type NcrHeader, type NcrItemInput, type NcrReportType, type NcrSeverity, type NcrSourceType, type UserOption,
+} from "../types";
 
-type NcrReportFormValues = {
-  report_date: string;
-  source_type: NCRSourceType;
-  report_type: NCRReportType;
-  title: string;
-  reference_code: string;
-  quality_check_id: string;
-  quality_rejection_id: string;
-  description: string;
-};
+type Text = { [K in Exclude<keyof NcrHeader, "source_type" | "report_type" | "severity" | "supplier_action" | "claim_status">]: string };
+const EMPTY: Text = { report_date: "", title: "", description: "", reference_code: "", customer_name: "", supplier_name: "", supplier_reference: "",
+  owner_user_id: "", due_date: "", supplier_response: "", supplier_responded_at: "", cost_material: "", cost_labor: "", cost_scrap: "",
+  cost_transport: "", cost_other: "", claim_amount: "" };
+type Item = { [K in keyof NcrItemInput]: string };
+const EMPTY_ITEM: Item = { item_name: "", item_reference: "", quantity_affected: "", unit: "", issue_description: "", disposition: "", disposition_notes: "", notes: "" };
+const blank = (v: string) => v.trim() || null;
 
-const styles: Record<string, CSSProperties> = {
-  panel: {
-    background: "var(--surface)",
-    border: "1px solid var(--border-strong)",
-    borderRadius: "8px",
-    boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
-  },
-  form: {
-    display: "grid",
-    gap: "18px",
-    padding: "24px",
-  },
-  formGrid: {
-    display: "grid",
-    gap: "18px",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  },
-  actions: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "12px",
-    alignItems: "center",
-  },
-  inlineError: {
-    color: "var(--danger)",
-    fontSize: "13px",
-    margin: 0,
-  },
-};
-
-const defaultValues: NcrReportFormValues = {
-  report_date: new Date().toISOString().slice(0, 10),
-  source_type: "internal_production",
-  report_type: "product_non_conformance",
-  title: "",
-  reference_code: "",
-  quality_check_id: "",
-  quality_rejection_id: "",
-  description: "",
-};
-
-export function NcrReportForm() {
-  const router = useRouter();
-  const t = useTranslations("ncr.ncrReports");
-  const enumT = useTranslations("enums");
+// A non-conformance report: open one (with what it affects), or edit its details while it is not closed.
+export function NcrReportForm({ reportId }: { reportId?: string }) {
+  const t = useTranslations("ncr");
+  const errors = useTranslations("ncr.errors");
   const messages = useTranslations("messages");
-  const common = useTranslations("common");
-  const [values, setValues] = useState<NcrReportFormValues>(defaultValues);
-  const [titleError, setTitleError] = useState<string | null>(null);
-  const [descriptionError, setDescriptionError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const editing = Boolean(reportId);
+  const [v, setV] = useState<Text>({ ...EMPTY, report_date: todayIso() });
+  const [source, setSource] = useState<NcrSourceType>("incoming_material");
+  const [type, setType] = useState<NcrReportType>("material_non_conformance");
+  const [severity, setSeverity] = useState<NcrSeverity>("major");
+  const [supplierAction, setSupplierAction] = useState<(typeof SUPPLIER_ACTIONS)[number]>("none");
+  const [claim, setClaim] = useState<(typeof CLAIM_STATUSES)[number]>("none");
+  const [items, setItems] = useState<Item[]>([{ ...EMPTY_ITEM }]);
+  const [users, setUsers] = useState<UserOption[]>([]);
+  const [locked, setLocked] = useState(false);
+  const [loading, setLoading] = useState(editing);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
-  function updateField<TField extends keyof NcrReportFormValues>(
-    field: TField,
-    value: NcrReportFormValues[TField],
-  ) {
-    setValues((current) => ({ ...current, [field]: value }));
+  useEffect(() => { getNcrUsers().then(setUsers).catch(() => setUsers([])); }, []);
+  useEffect(() => {
+    if (!reportId) return;
+    let active = true;
+    getNcrReport(reportId).then(r => {
+      if (!active) return;
+      setV(Object.fromEntries(Object.keys(EMPTY).map(k => [k, r[k as keyof Text] === null ? "" : String(r[k as keyof Text])])) as Text);
+      setSource(r.source_type); setType(r.report_type); setSeverity(r.severity); setSupplierAction(r.supplier_action); setClaim(r.claim_status);
+      setLocked(!r.actions.includes("edit"));
+    }).catch(e => { if (active) setError(ncrErrorMessage(e, errors)); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [reportId, errors]);
 
-    if (field === "title") {
-      setTitleError(null);
-    }
+  const set = (field: keyof Text, value: string) => setV(old => ({ ...old, [field]: value }));
+  const setItem = (i: number, field: keyof Item, value: string) => setItems(old => old.map((item, n) => (n === i ? { ...item, [field]: value } : item)));
+  const supplier = SUPPLIER_SOURCES.includes(source);
+  const moneyOk = [...COSTS, "claim_amount" as const].every(k => !v[k].trim() || MONEY.test(v[k].trim()));
+  const itemsOk = editing || items.every(i => (!i.item_name.trim() && !i.issue_description.trim())
+    || (i.item_name.trim() && i.issue_description.trim() && (!i.quantity_affected.trim() || DECIMAL.test(i.quantity_affected.trim()))));
+  const valid = Boolean(v.report_date && v.title.trim() && v.description.trim()) && moneyOk && itemsOk;
 
-    if (field === "description") {
-      setDescriptionError(null);
-    }
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
-    setError(null);
-    setTitleError(null);
-    setDescriptionError(null);
-
-    if (!values.title.trim()) {
-      setTitleError(messages("validation.titleRequired"));
-      return;
-    }
-
-    if (!values.description.trim()) {
-      setDescriptionError(messages("validation.descriptionRequired"));
-      return;
-    }
-
-    setIsSubmitting(true);
-
+    if (!valid || busy || locked) return;
+    setBusy(true); setError("");
+    const header = { ...Object.fromEntries(Object.entries(v).map(([k, value]) => [k, blank(value)])), report_date: v.report_date, title: v.title.trim(),
+      description: v.description.trim(), source_type: source, report_type: type, severity, supplier_action: supplierAction, claim_status: claim } as NcrHeader;
     try {
-      const createdReport = await createNcrReport(toCreateRequest(values));
-      router.replace(`/non-conformance-reports/${createdReport.id}`);
-    } catch (caughtError) {
-      setError(getApiErrorMessage(caughtError, messages));
-    } finally {
-      setIsSubmitting(false);
-    }
+      const saved = reportId ? await updateNcrReport(reportId, header) : await createNcrReport({ ...header,
+        items: items.filter(i => i.item_name.trim()).map(i => ({ item_name: i.item_name.trim(), item_reference: blank(i.item_reference),
+          quantity_affected: blank(i.quantity_affected), unit: blank(i.unit), issue_description: i.issue_description.trim(),
+          disposition: (blank(i.disposition) as NcrItemInput["disposition"]), disposition_notes: blank(i.disposition_notes), notes: null })) });
+      router.push(`/non-conformance-reports/${saved.id}`);
+    } catch (e) { setError(ncrErrorMessage(e, errors)); setBusy(false); }
   }
 
-  return (
-    <PageFrame
-      section="Quality"
-      title={t("createTitle")}
-      subtitle={t("createSubtitle")}
-      action={
-        <Link href="/non-conformance-reports" style={sharedStyles.secondaryButton}>
-          {t("backToList")}
-        </Link>
-      }
-    >
-      <section style={styles.panel}>
-        <form style={styles.form} onSubmit={handleSubmit}>
-          <div style={sharedStyles.state}>
-            {t("fields.reportNumber")}: {t("reportNumberAuto")}
+  const input = (field: keyof Text, extra: Record<string, unknown> = {}) =>
+    <label className={s.field}>{t(`fields.${field}`)}<input value={v[field]} onChange={e => set(field, e.target.value)} {...extra} /></label>;
+  const back = reportId ? `/non-conformance-reports/${reportId}` : "/non-conformance-reports";
+  const title = editing ? t("editTitle") : t("createTitle");
+
+  return <PageFrame title={title} subtitle={t("formSubtitle")} action={<Link href={back} className={s.button}>{t("back")}</Link>}>
+    {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form onSubmit={submit} aria-label={title}>
+      {locked && <p role="status" className={s.error}>{t("lockedHint")}</p>}
+      <fieldset disabled={busy || locked} style={{ border: 0, padding: 0, margin: 0 }}>
+        <section className={s.panel}>
+          <h2 style={{ marginTop: 0 }}>{t("sections.report")}</h2>
+          <div className={s.grid}>
+            {input("report_date", { type: "date", required: true })}
+            <label className={s.field}>{t("fields.source_type")}
+              <select value={source} onChange={e => setSource(e.target.value as NcrSourceType)}>{NCR_SOURCES.map(o => <option key={o} value={o}>{t(`sources.${o}`)}</option>)}</select></label>
+            <label className={s.field}>{t("fields.report_type")}
+              <select value={type} onChange={e => setType(e.target.value as NcrReportType)}>{NCR_TYPES.map(o => <option key={o} value={o}>{t(`types.${o}`)}</option>)}</select></label>
+            <label className={s.field}>{t("fields.severity")}
+              <select value={severity} onChange={e => setSeverity(e.target.value as NcrSeverity)}>{SEVERITIES.map(o => <option key={o} value={o}>{t(`severities.${o}`)}</option>)}</select></label>
+            {input("reference_code", { maxLength: 255, dir: "auto", placeholder: t("placeholders.reference") })}
           </div>
+          <p className={s.muted}>{t(`sourceHints.${source}`)}</p>
+          {input("title", { required: true, maxLength: 255 })}
+          <label className={s.field}>{t("fields.description")}<textarea required maxLength={8000} value={v.description} onChange={e => set("description", e.target.value)} /></label>
+        </section>
 
-          <div style={styles.formGrid}>
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>{t("fields.reportDate")} *</span>
-              <input
-                style={sharedStyles.input}
-                type="date"
-                value={values.report_date}
-                onChange={(event) => updateField("report_date", event.target.value)}
-                disabled={isSubmitting}
-                required
-              />
-            </label>
-
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>{t("fields.sourceType")} *</span>
-              <select
-                style={sharedStyles.input}
-                value={values.source_type}
-                onChange={(event) =>
-                  updateField("source_type", event.target.value as NCRSourceType)
-                }
-                disabled={isSubmitting}
-                required
-              >
-                <option value="internal_production">{enumT("ncrReport.sourceType.internal_production")}</option>
-                <option value="incoming_material">{enumT("ncrReport.sourceType.incoming_material")}</option>
-                <option value="supplier">{enumT("ncrReport.sourceType.supplier")}</option>
-                <option value="warehouse">{enumT("ncrReport.sourceType.warehouse")}</option>
-                <option value="customer_return">{enumT("ncrReport.sourceType.customer_return")}</option>
-                <option value="other">{enumT("ncrReport.sourceType.other")}</option>
-              </select>
-            </label>
-
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>{t("fields.reportType")} *</span>
-              <select
-                style={sharedStyles.input}
-                value={values.report_type}
-                onChange={(event) =>
-                  updateField("report_type", event.target.value as NCRReportType)
-                }
-                disabled={isSubmitting}
-                required
-              >
-                <option value="material_non_conformance">{enumT("ncrReport.reportType.material_non_conformance")}</option>
-                <option value="product_non_conformance">{enumT("ncrReport.reportType.product_non_conformance")}</option>
-                <option value="process_non_conformance">{enumT("ncrReport.reportType.process_non_conformance")}</option>
-                <option value="packaging_non_conformance">{enumT("ncrReport.reportType.packaging_non_conformance")}</option>
-                <option value="documentation_non_conformance">{enumT("ncrReport.reportType.documentation_non_conformance")}</option>
-                <option value="other">{enumT("ncrReport.reportType.other")}</option>
-              </select>
-            </label>
-
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>{t("fields.title")} *</span>
-              <input
-                style={sharedStyles.input}
-                value={values.title}
-                onChange={(event) => updateField("title", event.target.value)}
-                disabled={isSubmitting}
-                required
-              />
-              {titleError ? <p style={styles.inlineError}>{titleError}</p> : null}
-            </label>
-
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>{t("fields.referenceCode")}</span>
-              <input
-                style={sharedStyles.input}
-                value={values.reference_code}
-                onChange={(event) => updateField("reference_code", event.target.value)}
-                disabled={isSubmitting}
-              />
-            </label>
-
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>{t("fields.qualityCheck")}</span>
-              <input
-                style={sharedStyles.input}
-                value={values.quality_check_id}
-                onChange={(event) => updateField("quality_check_id", event.target.value)}
-                disabled={isSubmitting}
-              />
-            </label>
-
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>{t("fields.qualityRejection")}</span>
-              <input
-                style={sharedStyles.input}
-                value={values.quality_rejection_id}
-                onChange={(event) => updateField("quality_rejection_id", event.target.value)}
-                disabled={isSubmitting}
-              />
-            </label>
+        <section className={s.panel}>
+          <h2 style={{ marginTop: 0 }}>{supplier ? t("sections.supplier") : t("sections.party")}</h2>
+          <div className={s.grid}>
+            {supplier ? <>
+              {input("supplier_name", { maxLength: 255 })}
+              {input("supplier_reference", { maxLength: 120, dir: "auto", placeholder: t("placeholders.supplierReference") })}
+              <label className={s.field}>{t("fields.supplier_action")}
+                <select value={supplierAction} onChange={e => setSupplierAction(e.target.value as (typeof SUPPLIER_ACTIONS)[number])}>
+                  {SUPPLIER_ACTIONS.map(o => <option key={o} value={o}>{t(`supplierActions.${o}`)}</option>)}</select></label>
+            </> : input("customer_name", { maxLength: 255 })}
+            <label className={s.field}>{t("fields.owner")}
+              <select value={v.owner_user_id} onChange={e => set("owner_user_id", e.target.value)}>
+                <option value="">{t("placeholders.noOwner")}</option>{users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
+            {input("due_date", { type: "date" })}
           </div>
+          {supplier && supplierAction !== "none" && <>
+            <p className={s.muted}>{t(`supplierActionHints.${supplierAction}`)}</p>
+            {editing && <div className={s.grid}>
+              <label className={s.field} style={{ gridColumn: "1 / -1" }}>{t("fields.supplier_response")}
+                <textarea maxLength={4000} value={v.supplier_response} onChange={e => set("supplier_response", e.target.value)} /></label>
+              {input("supplier_responded_at", { type: "date" })}
+            </div>}
+          </>}
+        </section>
 
-          <label style={sharedStyles.field}>
-            <span style={sharedStyles.label}>{t("fields.description")} *</span>
-            <textarea
-              style={{ ...sharedStyles.textarea, minHeight: "120px" }}
-              value={values.description}
-              onChange={(event) => updateField("description", event.target.value)}
-              disabled={isSubmitting}
-              required
-            />
-            {descriptionError ? <p style={styles.inlineError}>{descriptionError}</p> : null}
-          </label>
-
-          {error ? (
-            <div style={sharedStyles.error} role="alert">
-              {error}
+        {!editing && <section className={s.panel} aria-label={t("sections.items")}>
+          <h2 style={{ marginTop: 0 }}>{t("sections.items")}</h2>
+          {items.map((item, i) => <div key={i} className={s.panel} style={{ margin: "0 0 10px", padding: 14 }}>
+            <div className={s.actions} style={{ justifyContent: "space-between", marginBottom: 8 }}>
+              <strong>{t("itemNo", { no: String(i + 1) })}</strong>
+              {items.length > 1 && <button type="button" className={`${s.button} ${s.danger}`} onClick={() => setItems(old => old.filter((_, n) => n !== i))}>{t("remove")}</button>}
             </div>
-          ) : null}
+            <div className={s.grid}>
+              <label className={s.field}>{t("itemFields.item_name")}<input maxLength={255} value={item.item_name} onChange={e => setItem(i, "item_name", e.target.value)} /></label>
+              <label className={s.field}>{t("itemFields.item_reference")}<input maxLength={255} dir="auto" value={item.item_reference} onChange={e => setItem(i, "item_reference", e.target.value)} /></label>
+              <label className={s.field}>{t("itemFields.quantity_affected")}<input inputMode="decimal" dir="ltr" value={item.quantity_affected} onChange={e => setItem(i, "quantity_affected", e.target.value)} /></label>
+              <label className={s.field}>{t("itemFields.unit")}<UnitSelect value={item.unit} onChange={u => setItem(i, "unit", u)} ariaLabel={t("itemFields.unit")} placeholder="—" required={false} /></label>
+              <label className={s.field}>{t("itemFields.disposition")}
+                <select value={item.disposition} onChange={e => setItem(i, "disposition", e.target.value)}>
+                  <option value="">{t("placeholders.undecided")}</option>{DISPOSITIONS.map(o => <option key={o} value={o}>{t(`dispositions.${o}`)}</option>)}</select></label>
+              <label className={s.field} style={{ gridColumn: "1 / -1" }}>{t("itemFields.issue_description")}
+                <textarea maxLength={4000} value={item.issue_description} onChange={e => setItem(i, "issue_description", e.target.value)} /></label>
+            </div>
+          </div>)}
+          <button type="button" className={s.button} onClick={() => setItems(old => [...old, { ...EMPTY_ITEM }])}>{t("addItem")}</button>
+          {!itemsOk && <p className={s.muted}>{t("itemsHint")}</p>}
+        </section>}
 
-          <div style={styles.actions}>
-            <button style={sharedStyles.button} type="submit" disabled={isSubmitting}>
-              {isSubmitting ? `${common("actions.create")}...` : t("createButton")}
-            </button>
-            <Link href="/non-conformance-reports" style={sharedStyles.secondaryButton}>
-              {common("actions.cancel")}
-            </Link>
+        <section className={s.panel}>
+          <h2 style={{ marginTop: 0 }}>{t("sections.costs")}</h2>
+          <p className={s.muted} style={{ marginTop: 0 }}>{t("costsHint")}</p>
+          <div className={s.grid}>
+            {COSTS.map(k => <label key={k} className={s.field}>{t(`fields.${k}`)}<input inputMode="decimal" dir="ltr" value={v[k]} onChange={e => set(k, e.target.value)} /></label>)}
+            <label className={s.field}>{t("fields.claim_amount")}<input inputMode="decimal" dir="ltr" value={v.claim_amount} onChange={e => set("claim_amount", e.target.value)} /></label>
+            <label className={s.field}>{t("fields.claim_status")}
+              <select value={claim} onChange={e => setClaim(e.target.value as (typeof CLAIM_STATUSES)[number])}>{CLAIM_STATUSES.map(o => <option key={o} value={o}>{t(`claims.${o}`)}</option>)}</select></label>
           </div>
-        </form>
-      </section>
-    </PageFrame>
-  );
-}
-
-function toCreateRequest(values: NcrReportFormValues): CreateNcrReportRequest {
-  return {
-    report_date: values.report_date,
-    source_type: values.source_type,
-    report_type: values.report_type,
-    title: values.title.trim(),
-    description: values.description.trim(),
-    reference_code: optionalText(values.reference_code) ?? null,
-    quality_check_id: optionalText(values.quality_check_id) ?? null,
-    quality_rejection_id: optionalText(values.quality_rejection_id) ?? null,
-  };
+          {!moneyOk && <p className={s.error}>{t("moneyHint")}</p>}
+        </section>
+      </fieldset>
+      {error && <p role="alert" className={s.error}>{error}</p>}
+      <div className={s.actions}>
+        <button type="submit" className={`${s.button} ${s.primary}`} disabled={!valid || busy || locked}>{editing ? t("save") : t("create")}</button>
+        <Link href={back} className={s.button}>{t("cancel")}</Link>
+      </div>
+    </form>}
+  </PageFrame>;
 }

@@ -1,10 +1,10 @@
 # Quality Module
 
-**Status:** QUAL-001 lifecycle and close gate; QUAL-REPORT-001 report center; QUAL-SPEC-001 specifications and measurements; QUAL-COA-001 certificates of analysis. Defects and NCR unchanged
+**Status:** QUAL-001 lifecycle and close gate; QUAL-REPORT-001 report center; QUAL-SPEC-001 specifications and measurements; QUAL-COA-001 certificates of analysis; QUAL-RET-001 returned goods; QUAL-NCR-002 non-conformance reports redesigned. Defects unchanged
 
 The quality module owns the inspection and non-conformance chain: recording quality checks, logging defects, formalizing rejections, and opening non-conformance cases with line items. All data is org-scoped via `TenantContext` (ADR-001). No imports from `app.production`, `app.commercial`, or `app.foundation` models are allowed — only `app.core.*` and `app.quality.*` (ADR-004).
 
-**NCR co-location note (D10):** NonConformanceReport and NonConformanceItem live inside `backend/app/quality/` — not in a separate `ncr/` module. This is a deliberate v0.1 scaffold decision. The NCR domain is small enough to co-locate with Quality. A future migration to `backend/app/ncr/` would be a pure file move with no business logic change.
+**NCR placement (D10, confirmed in QUAL-NCR-002):** non-conformance reports are a quality instrument for every source (supplier material, production, warehouse, customer returns), so they stay in `backend/app/quality/`. Suppliers, purchase orders and goods receipt belong to a future procurement module; the report keeps a supplier by name (and `supplier_id` for it) until then.
 
 ---
 
@@ -57,7 +57,7 @@ A specific defect found during a quality check. Requires a parent check.
 Defaults to 1 (`Field(default=1, gt=0)`). Omitting it from the create body produces count=1. Zero or negative counts are rejected with 422.
 
 **D14 — No status field:**
-`QualityDefect` intentionally has no status field in v0.1. A defect is a static factual observation — it was found, measured, and recorded. It does not have a lifecycle. Defect resolution tracking belongs to the downstream `QualityRejection` and future CAPA entities.
+`QualityDefect` intentionally has no status field in v0.1. A defect is a static factual observation — it was found, measured, and recorded. It does not have a lifecycle. Defect resolution tracking belongs to the downstream `QualityRejection` and the non-conformance report's corrective actions.
 
 **Isolation note:**
 `QualityDefect` has BOTH `organization_id` (direct) AND a parent JOIN check in `get_by_id`. This is dual isolation — more secure than strictly required, but correct.
@@ -80,62 +80,61 @@ A rejected quantity and the decision on what to do with it.
 **Lifecycle:** `pending` → decide → `decided` → execute → `executed` (final). The decision may change while `decided`.
 `hold` is a quarantine, not a final decision: it cannot be executed and must be changed first. Editing (date, reason, notes, quantity) is allowed only while `pending`.
 
-### NonConformanceReport
-A formal non-conformance case. Header entity for NCR items.
+### NonConformanceReport (QUAL-NCR-002)
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | UUID PK | |
-| organization_id | UUID FK | Tenant scope |
-| report_number | String(32) | Auto-generated `NCR-YYYY-NNNN` — never a caller input (D11) |
-| report_date | Date | |
-| source_type | Enum (6 values) | |
-| report_type | Enum (6 values) | |
-| status | Enum `draft/open/under_review/closed` | Auto-set to `draft` on creation (D11) |
-| title | String(min=1, max=255) | Required |
-| description | String(min=1) | Required |
-| reference_code | String(max=255) nullable | Optional batch/lot reference |
-| quality_check_id | UUID nullable | Optional plain UUID ref to triggering check |
-| quality_rejection_id | UUID nullable | Optional plain UUID ref to triggering rejection |
-| detected_by_user_id | UUID FK → foundation_users (DB-level only) | |
+One report per non-conformance, whatever its source — incoming material from a supplier (granules, masterbatch, cores, cartons,
+film…), a supplier's service, production, the warehouse, a customer return — worked through the stages of a corrective action
+(`domain/ncr.py`, single writer `application/ncr_service.py`, routes `api/routes_ncr.py`).
 
-**D11 — report_number auto-generation:**
-Same pattern as inspection_code: `NCR-{year}-{sequence:04d}`, 20-attempt retry, unique per org: `UNIQUE(organization_id, report_number)`.
+```
+open ─contain(what was done at once)→ investigation ─investigate(root cause)→ action ─submit→ verification ─verify(effective)→ closed
+                                       investigation ─investigate(no action needed, why)→ closed          (a minor, isolated case)
+                                                                                 verification ─verify(not effective, why)→ action
+any stage before closed ─cancel(reason)→ cancelled
+```
 
-**NCR status lifecycle:**
-`draft` → `open` → `under_review` → `closed`
+| Group | Fields |
+|-------|--------|
+| Identity | `report_number` (NCR-YYYY-NNNN from the quality counter, kind `NCR`), `report_date`, `source_type`, `report_type`, `severity` (minor/major/critical), `status`, `title`, `description`, `reference_code` |
+| Sources (plain references, ADR-004) | `quality_check_id`, `quality_rejection_id`, `production_order_id`, `return_id`, `customer_id` / `customer_name`, `supplier_id` (procurement, later) / `supplier_name`, `supplier_reference` |
+| Follow-up | `owner_user_id`, `due_date` (overdue when past and not final) |
+| Containment | `containment`, `contained_at/by` |
+| Investigation | `root_cause_category` (6M: man, machine, material, method, measurement, environment), `root_cause_method` (5 Whys, fishbone, other), `root_cause`, `action_required`, `no_action_justification`, `investigated_at/by` |
+| Verification | `verification_attempts`, `verification_notes`, `verified_at/by`, `closed_at`, `cancel_reason` |
+| With the supplier | `supplier_action` (none, notify, return the goods, SCAR), `supplier_response`, `supplier_responded_at` |
+| Cost (optional) | `cost_material`, `cost_labor`, `cost_scrap`, `cost_transport`, `cost_other` (total shown), `claim_amount`, `claim_status` (none, claimed, accepted, rejected, recovered) |
 
-Once `closed`, the report cannot be reopened (enforced in service — returns 400). Items cannot be created or modified on a closed report (D12).
-
-**Boundary note:**
-`quality_check_id` and `quality_rejection_id` are plain UUID references with no FK constraints. The service validates org ownership when provided, but does not follow cross-module FKs.
+Details, items, costs and the supplier's answer are edited until the report is closed or cancelled (`NCR_IS_FINAL`); the status
+only moves through the stage endpoints (a status in an update is refused, 422).
 
 ### NonConformanceItem
-A line item within an NCR case. Represents a specific material, product batch, or sub-component affected by the non-conformance.
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | UUID PK | |
-| non_conformance_report_id | UUID FK → non_conformance_reports | Required |
-| line_no | Integer | Auto-assigned if not provided (D13) |
-| item_reference | String(max=255) nullable | Optional batch/lot/PN reference |
-| item_name | String(min=1, max=255) | Required |
-| quantity_affected | Numeric(14,2) nullable | Nullable — quantity may be unknown at case open |
-| unit | String(max=32) nullable | |
-| issue_description | String(min=1) | Required |
-| notes | Text nullable | |
+What a report affects (a material lot, a product batch): `item_name`, `item_reference` (lot/batch), `quantity_affected` with a `unit`
+from the shared catalogue, `issue_description`, and the decision on it — `disposition` (return to supplier, use as is under a
+concession, sort and re-inspect, rework, second grade, recycle, scrap «هالك», hold) with `disposition_notes`. Scoped through its report.
 
-**D12 — Status guard on CLOSED report:**
-`create_item` and `update_item` both call `_validate_open_parent_report`. The guard checks org ownership first, then checks `report.status == NCRStatus.CLOSED` — returns 400 if closed. This order prevents status guard from leaking information about foreign-org reports.
+### NCRAction (`quality_ncr_actions`) and NCRAttachment (`quality_ncr_attachments`)
 
-**D13 — line_no auto-assignment:**
-`line_no = (max_line_no(report_id) or 0) + 1`. Unique per report: `UNIQUE(non_conformance_report_id, line_no)` at DB level. Explicit override allowed — providing `line_no` in the request body uses that value.
+Corrective actions of a report: `kind` (correction, corrective, preventive), `description`, an owner (a user, or someone outside the
+system by name — e.g. the supplier), `due_date`, `status` (open, done with its `evidence`, cancelled with a reason), overdue when
+past due and open. They are added while investigating or acting; the report goes to verification only when none is open and at
+least one is done (`ACTIONS_STILL_OPEN`, `ACTION_REQUIRED`). `/corrective-actions` lists them across reports (`GET /quality/ncr-actions`,
+`mine`, `overdue`, `status`). Photos and documents (images or PDF, 10 MB, at most 20) are kept with the report.
 
-**D14 — No status field:**
-`NonConformanceItem` intentionally has no status field. The parent report's status governs what can be done with items. Per-item status tracking is deferred to CAPA.
+### Document
 
-**Tenant isolation (cascaded):**
-`NonConformanceItem` has NO `organization_id` column. Isolation is cascaded: `get_by_id(org_id, item_id)` JOINs `NonConformanceReport` and filters by `NonConformanceReport.organization_id`.
+`quality.ncr` (opened from the report, not listed): the company's identity, numbered sections (report, source, description, affected
+items and decisions, containment, root cause, actions, verification, with the supplier, cost and claim) and three signature boxes;
+Arabic or English; "CANCELLED" on a cancelled report. It can be sent to the supplier. Nothing is stored.
+
+### Opened by other flows
+
+A customer return's quality decision may open one (`customer_return`, the return, its inspection, rejection, production order and
+customer, with the rejected quantity as its item) through `NCRService.open_report`.
+
+Migration `f6a1b2j6` turned the status into text (`draft` → open, `under_review` → investigation), added the columns and tables,
+seeded the NCR counter from the numbers already issued, and granted the new permissions; its downgrade refuses once reports have
+actions, files or later stages.
 
 ---
 
@@ -153,7 +152,7 @@ A line item within an NCR case. Represents a specific material, product batch, o
 | DispositionStatus | `pending` / `decided` / `executed` |
 | NCRSourceType | `internal_production` / `incoming_material` / `supplier` / `warehouse` / `customer_return` / `other` |
 | NCRReportType | `material_non_conformance` / `product_non_conformance` / `process_non_conformance` / `packaging_non_conformance` / `documentation_non_conformance` / `other` |
-| NCRStatus | `draft` / `open` / `under_review` / `closed` |
+| NCR status (text, `domain/ncr.py`) | `open` / `investigation` / `action` / `verification` / `closed` / `cancelled` |
 
 ---
 
@@ -180,11 +179,14 @@ Per action, one source: `quality/domain/permissions.py`, mirrored by `frontend/s
 | `quality:quality_checks` | read, create, update, start, close, cancel, measure |
 | `quality:rejections` | read, create, update, decide, execute |
 | `quality:quality_defects` | read, create, update |
-| `quality:ncr_reports` | read, create, update (NCR items use update) |
+| `quality:ncr_reports` | read, create, update (details, items, containment, root cause, actions), verify (effectiveness, closes), cancel |
+| `quality:ncr_actions` | read, complete (corrective actions, for the departments that own them) |
 | `quality:specifications` | read, create, update, activate (test parameters and product specifications) |
 | `quality:certificates` | read, create, update, issue, revoke (certificates of analysis) |
 
-Migration `f6a1b2i6` split the old `write` grants into these actions (backup `quality_rbac_i6_backup`) and gave `quality_manager`
+Non-conformance (QUAL-NCR-002): quality and factory managers hold all; production, maintenance and procurement managers read
+reports and complete their actions; the warehouse also opens reports; the safety manager keeps read/create/update and completes actions;
+the viewer reads. Migration `f6a1b2i6` split the old `write` grants into these actions (backup `quality_rbac_i6_backup`) and gave `quality_manager`
 `production:production_orders:read`. Records carry an `actions` list computed by the server for the current user.
 
 ---

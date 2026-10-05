@@ -1,0 +1,34 @@
+/* Non-conformance report (QUAL-NCR-002). Colours follow the company identity (--brand). */
+.ncr{padding:0 18px;font-size:9pt}
+.ncr-banner{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--brand);color:#fff;border-radius:3px;padding:10px 14px;margin-bottom:10px}
+.ncr-banner h1{margin:0;font-size:16pt;color:#fff;border:0}
+.ncr-banner p{margin:2px 0 0;font-size:9pt;opacity:.9}
+.ncr-flag{padding:3px 11px;border:1px solid #fff;border-radius:10px;font-size:8.5pt;font-weight:700;white-space:nowrap}
+.ncr-flag.critical{background:#a12a2a;border-color:#a12a2a}
+.ncr-watermark{font-size:46pt;color:rgba(160,30,30,.08)}
+.ncr-title{margin:0 0 10px;font-size:11pt;font-weight:700}
+.ncr-block{margin-bottom:10px;break-inside:avoid}
+.ncr-block.flow{break-inside:auto}
+.ncr-block h2{display:flex;gap:8px;align-items:center;margin:0 0 6px;font-size:10pt;background:color-mix(in srgb,var(--brand) 88%,#fff);color:#fff;padding:5px 10px;border-radius:2px;border:0}
+.ncr-block h2 span{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#fff;color:var(--brand);font-size:8.5pt}
+.ncr-grid{display:grid;grid-template-columns:repeat(3,1fr);margin:0;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.ncr-grid div{padding:4px 9px;border-bottom:1px solid var(--line);border-inline-end:1px solid var(--line)}
+.ncr-grid dt{color:var(--muted);font-size:7.8pt;font-weight:700;margin:0}
+.ncr-grid dd{margin:2px 0 0;font-weight:700;overflow-wrap:break-word}
+.ncr-text{margin:0;padding:7px 10px;border:1px solid var(--line);border-radius:3px;white-space:pre-wrap}
+.ncr-by{margin:3px 0 0;color:var(--muted);font-size:7.8pt}
+.ncr-table{width:100%;border-collapse:collapse;border:1px solid var(--line);font-size:8.5pt}
+.ncr-table th{background:var(--brand);color:#fff;font-weight:700;font-size:7.9pt;padding:6px;text-align:start}
+.ncr-table td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:break-word}
+.ncr-table tr{break-inside:avoid}
+.ncr-table tbody tr:nth-child(even) td{background:#fafbfc}
+.ncr-table .n{width:22px;text-align:center}
+.ncr-table small{display:block;color:var(--muted);font-size:7.6pt;margin-top:2px}
+.ncr-table tfoot td{font-weight:700;background:var(--soft);border-top:2px solid var(--brand)}
+.ncr-verdict{display:inline-block;padding:2px 9px;border-radius:9px;font-weight:700;background:#e3f3e7;color:#1d6b35}
+.ncr-cancelled{color:#a12a2a;margin:6px 0}
+.ncr-sign{width:100%;border-collapse:collapse;margin-top:10px;break-inside:avoid}
+.ncr-sign td{width:33.3%;border:1px solid var(--line);padding:0 10px 8px;vertical-align:top}
+.ncr-sign span{display:block;margin:0 -10px 6px;padding:5px 10px;background:var(--brand);color:#fff;font-weight:700;font-size:8.3pt}
+.ncr-sign b{display:block;min-height:13px}
+.ncr-sign i{display:block;border-bottom:1px dotted var(--muted);height:28px}

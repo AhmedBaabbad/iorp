@@ -1,0 +1,72 @@
+{#- Non-conformance report (QUAL-NCR-002): identity, source, what is affected, containment, root cause, corrective actions, verification. -#}
+{%- set ar = lang == 'ar' %}{% set d = data.document %}{% set n = namespace(i=0) %}
+{%- macro head(title) %}{% set n.i = n.i + 1 %}<h2><span>{{ n.i }}</span>{{ title }}</h2>{% endmacro %}
+<main class="ncr">
+  <header class="ncr-banner">
+    <div><h1>{{ 'تقرير عدم مطابقة' if ar else 'NON-CONFORMANCE REPORT' }}</h1><p>{{ 'Non-Conformance Report' if ar else 'تقرير عدم مطابقة' }} · <bdi dir="ltr">{{ d.number }}</bdi></p></div>
+    <span class="ncr-flag {{ d.severity }}">{{ d.status_label }}</span>
+  </header>
+  <p class="ncr-title" dir="auto">{{ d.title }}</p>
+
+  <section class="ncr-block">{{ head('بيانات التقرير' if ar else 'Report') }}
+    <dl class="ncr-grid">{% for label, value in d.identity %}<div><dt>{{ label }}</dt><dd><bdi>{{ value }}</bdi></dd></div>{% endfor %}</dl>
+  </section>
+
+  {% if d.source %}<section class="ncr-block">{{ head('المصدر' if ar else 'Source') }}
+    <dl class="ncr-grid">{% for label, value in d.source %}<div><dt>{{ label }}</dt><dd><bdi>{{ value }}</bdi></dd></div>{% endfor %}</dl>
+  </section>{% endif %}
+
+  <section class="ncr-block">{{ head('وصف عدم المطابقة' if ar else 'Non-conformance') }}<p class="ncr-text" dir="auto">{{ d.description }}</p></section>
+
+  {% if d.affected %}<section class="ncr-block flow">{{ head('الأصناف المتأثرة والقرار' if ar else 'Affected items and disposition') }}
+    <table class="ncr-table">
+      <thead><tr><th class="n">#</th><th>{{ 'الصنف' if ar else 'Item' }}</th><th>{{ 'الكمية' if ar else 'Quantity' }}</th>
+        <th>{{ 'المشكلة' if ar else 'Issue' }}</th><th>{{ 'القرار' if ar else 'Disposition' }}</th></tr></thead>
+      <tbody>{% for i in d.affected %}<tr><td class="n">{{ i.no }}</td>
+        <td><bdi>{{ i.name }}</bdi>{% if i.reference %}<small><bdi dir="ltr">{{ i.reference }}</bdi></small>{% endif %}</td>
+        <td><bdi>{{ i.quantity }}</bdi></td><td dir="auto">{{ i.issue }}</td>
+        <td>{{ i.disposition }}{% if i.disposition_notes %}<small dir="auto">{{ i.disposition_notes }}</small>{% endif %}</td></tr>{% endfor %}</tbody>
+    </table>
+  </section>{% endif %}
+
+  {% if d.containment %}<section class="ncr-block">{{ head('الاحتواء الفوري' if ar else 'Containment') }}
+    <p class="ncr-text" dir="auto">{{ d.containment }}</p><p class="ncr-by">{{ d.contained }}</p></section>{% endif %}
+
+  {% if d.root_cause %}<section class="ncr-block">{{ head('السبب الجذري' if ar else 'Root cause') }}
+    <dl class="ncr-grid"><div><dt>{{ 'الفئة' if ar else 'Category' }}</dt><dd>{{ d.category }}</dd></div>
+      <div><dt>{{ 'طريقة التحليل' if ar else 'Method' }}</dt><dd>{{ d.method or '—' }}</dd></div><div><dt></dt><dd></dd></div></dl>
+    <p class="ncr-text" dir="auto" style="margin-top:6px">{{ d.root_cause }}</p>
+    {% if d.no_action %}<p class="ncr-text" dir="auto" style="margin-top:6px"><b>{{ 'لا يلزم إجراء تصحيحي:' if ar else 'No corrective action needed:' }}</b> {{ d.no_action }}</p>{% endif %}
+    <p class="ncr-by">{{ d.investigated }}</p></section>{% endif %}
+
+  {% if d.actions %}<section class="ncr-block flow">{{ head('الإجراءات التصحيحية والوقائية' if ar else 'Corrective and preventive actions') }}
+    <table class="ncr-table">
+      <thead><tr><th class="n">#</th><th>{{ 'النوع' if ar else 'Kind' }}</th><th>{{ 'الإجراء' if ar else 'Action' }}</th><th>{{ 'المسؤول' if ar else 'Owner' }}</th>
+        <th>{{ 'الموعد' if ar else 'Due' }}</th><th>{{ 'الحالة' if ar else 'Status' }}</th></tr></thead>
+      <tbody>{% for a in d.actions %}<tr><td class="n">{{ a.no }}</td><td>{{ a.kind }}</td>
+        <td dir="auto">{{ a.description }}{% if a.evidence %}<small dir="auto">{{ a.evidence }}</small>{% endif %}</td>
+        <td><bdi>{{ a.owner }}</bdi></td><td><bdi dir="ltr">{{ a.due }}</bdi></td><td>{{ a.status }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </section>{% endif %}
+
+  {% if d.verified %}<section class="ncr-block">{{ head('التحقق من الفعالية' if ar else 'Effectiveness verification') }}
+    {% if d.verified_effective %}<p><span class="ncr-verdict">{{ 'فعّالة — أُغلق التقرير' if ar else 'Effective — report closed' }}</span></p>{% endif %}
+    {% if d.verification %}<p class="ncr-text" dir="auto">{{ d.verification }}</p>{% endif %}<p class="ncr-by">{{ d.verified }}</p></section>{% endif %}
+
+  {% if d.supplier_action or d.supplier_response %}<section class="ncr-block">{{ head('الإجراء مع المورد' if ar else 'With the supplier') }}
+    <p class="ncr-text" dir="auto"><b>{{ d.supplier_action }}</b>{% if d.supplier_response %}<br>{{ d.supplier_response }}{% endif %}</p>
+    {% if d.supplier_responded %}<p class="ncr-by">{{ 'تاريخ الرد:' if ar else 'Answered:' }} <bdi dir="ltr">{{ d.supplier_responded }}</bdi></p>{% endif %}</section>{% endif %}
+
+  {% if d.costs or d.claim %}<section class="ncr-block">{{ head('التكلفة والمطالبة' if ar else 'Cost and claim') }}
+    <table class="ncr-table"><tbody>{% for label, value in d.costs %}<tr><td>{{ label }}</td><td><bdi dir="ltr">{{ value }}</bdi></td></tr>{% endfor %}</tbody>
+      <tfoot>{% if d.total_cost %}<tr><td>{{ 'الإجمالي' if ar else 'Total' }}</td><td><bdi dir="ltr">{{ d.total_cost }}</bdi></td></tr>{% endif %}
+        {% if d.claim %}<tr><td>{{ 'المطالبة' if ar else 'Claim' }}</td><td><bdi>{{ d.claim }}</bdi></td></tr>{% endif %}</tfoot></table></section>{% endif %}
+
+  {% if d.cancel_reason %}<p class="ncr-cancelled" dir="auto"><b>{{ 'سبب الإلغاء:' if ar else 'Cancelled:' }}</b> {{ d.cancel_reason }}</p>{% endif %}
+
+  <table class="ncr-sign"><tr>
+    <td><span>{{ 'أعدّه' if ar else 'Raised by' }}</span><b><bdi>{{ d.detected_by }}</bdi></b><i></i></td>
+    <td><span>{{ 'حقّق فيه' if ar else 'Investigated by' }}</span><b><bdi>{{ d.investigator }}</bdi></b><i></i></td>
+    <td><span>{{ 'تحقّق وأغلق' if ar else 'Verified and closed by' }}</span><b><bdi>{{ d.verifier }}</bdi></b><i></i></td>
+  </tr></table>
+</main>

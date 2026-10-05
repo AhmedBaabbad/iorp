@@ -15,12 +15,11 @@ from sqlalchemy import select
 from app.core.utils import utc_now
 from app.quality.domain import return_rules as RR
 from app.quality.domain import rules
-from app.quality.domain.enums import (DispositionStatus, NCRReportType, NCRSourceType, NCRStatus, QualityCheckStatus as S,
-                                      QualityCheckType as T)
+from app.quality.domain.enums import DispositionStatus, NCRReportType, NCRSourceType, QualityCheckStatus as S, QualityCheckType as T
 from app.quality.domain.rules import QualityError, ZERO
-from app.quality.infrastructure.models import NonConformanceReport, QualityCheck, QualityRejection
+from app.quality.infrastructure.models import QualityCheck, QualityRejection
 from .measurement_service import MeasurementService
-from .services import NonConformanceReportService
+from .ncr_service import NCRService
 from .support import ShippingReads, as_decimal, log_activity, next_code, record
 
 LOT_KEYS = ("width_mm", "thickness_mm")
@@ -131,13 +130,14 @@ class ReturnInspectionService:
             record(self.db, self.org, "rejection", rejection.id, "decide", None, DispositionStatus.DECIDED.value, self.tenant.user_id,
                    reason=notes, detail=dict(source=line.get("return_no") or check.inspection_code, disposition=disposition.value))
         if data.open_ncr and rejected > ZERO:
-            self.db.add(NonConformanceReport(
-                organization_id=self.org, report_number=NonConformanceReportService(self.db)._generate_report_number(self.org),
-                report_date=now.date(), source_type=NCRSourceType.CUSTOMER_RETURN, report_type=NCRReportType.PRODUCT_NON_CONFORMANCE,
-                status=NCRStatus.DRAFT, title=f"{line.get('return_no', '')} — {line.get('description', '')}"[:255],
+            items = [dict(item_name=line.get("description") or check.inspection_code, item_reference=line.get("production_order_no"),
+                          quantity_affected=rejected, unit=check.unit, issue_description=notes or line.get("details") or check.inspection_code)]
+            NCRService(self.db, self.tenant).open_report(
+                source_type=NCRSourceType.CUSTOMER_RETURN, report_type=NCRReportType.PRODUCT_NON_CONFORMANCE, severity="major",
+                title=f"{line.get('return_no', '')} — {line.get('description', '')}"[:255],
                 description="\n".join(filter(None, [line.get("details"), notes, f"{line.get('shipment_no', '')} · {line.get('customer_name', '')}"])),
                 reference_code=line.get("return_no"), quality_check_id=check.id, quality_rejection_id=first.id if first else None,
-                detected_by_user_id=self.tenant.user_id))
+                production_order_id=check.production_order_id, return_id=check.return_id, customer_name=line.get("customer_name"), items=items)
         self.db.commit()
         log_activity(self.db, self.org, self.tenant.user_id, "quality_check.closed", "quality_check", check.id, check.inspection_code)
         return check

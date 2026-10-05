@@ -1,13 +1,5 @@
-import type { ActionFollowUpStatus } from "@/features/action-follow-ups/types";
-import type { ClosureStatus, ClosureVerificationResult } from "@/features/closure-verifications/types";
 import type { CommercialOrderStatus } from "@/features/commercial-orders/types";
-import type {
-  CorrectiveActionPriority,
-  CorrectiveActionStatus,
-  CorrectiveActionType,
-} from "@/features/corrective-actions/types";
 import type { DowntimeCategory, DowntimeStatus } from "@/features/downtime-events/types";
-import type { NCRSourceType, NCRStatus } from "@/features/ncr-reports/types";
 import type { ProductionOrderPriority, ProductionOrderStatus } from "@/features/production-orders/types";
 import type { QualityCheckResult, QualityCheckStatus } from "@/features/quality-checks/types";
 import type { DefectCategory, DefectSeverity } from "@/features/quality-defects/types";
@@ -70,61 +62,6 @@ export const qualityRejectionDispositionStatusColors: Record<DispositionStatus, 
   pending: { background: "var(--warning-soft)", color: "var(--warning)" },
   decided: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
   executed: { background: "var(--success-soft)", color: "var(--success)" },
-};
-
-export const ncrStatusColors: Record<NCRStatus, BadgeColor> = {
-  draft: { background: "var(--surface-muted)", color: "var(--text-muted)" },
-  open: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
-  under_review: { background: "var(--warning-soft)", color: "var(--warning)" },
-  closed: { background: "var(--success-soft)", color: "var(--success)" },
-};
-
-export const ncrSourceTypeColors: Record<NCRSourceType, BadgeColor> = {
-  internal_production: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
-  incoming_material: { background: "var(--accent-soft)", color: "var(--purple)" },
-  supplier: { background: "var(--warning-soft)", color: "var(--warning)" },
-  warehouse: { background: "var(--teal-soft)", color: "var(--teal)" },
-  customer_return: { background: "var(--danger-soft)", color: "var(--danger)" },
-  other: { background: "var(--surface-muted)", color: "var(--text-muted)" },
-};
-
-export const correctiveActionStatusColors: Record<CorrectiveActionStatus, BadgeColor> = {
-  open: { background: "var(--surface-muted)", color: "var(--text-muted)" },
-  in_progress: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
-  completed: { background: "var(--success-soft)", color: "var(--success)" },
-  closed: { background: "var(--success-soft)", color: "var(--success)" },
-};
-
-export const correctiveActionPriorityColors: Record<CorrectiveActionPriority, BadgeColor> = {
-  urgent: { background: "var(--danger-soft)", color: "var(--danger)" },
-  high: { background: "var(--warning-soft)", color: "var(--warning)" },
-  normal: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
-  low: { background: "var(--surface-muted)", color: "var(--text-muted)" },
-};
-
-export const correctiveActionTypeColors: Record<CorrectiveActionType, BadgeColor> = {
-  corrective: { background: "var(--danger-soft)", color: "var(--danger)" },
-  preventive: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
-  improvement: { background: "var(--teal-soft)", color: "var(--teal)" },
-  containment: { background: "var(--warning-soft)", color: "var(--warning)" },
-};
-
-export const followUpStatusColors: Record<ActionFollowUpStatus, BadgeColor> = {
-  on_track: { background: "var(--success-soft)", color: "var(--success)" },
-  delayed: { background: "var(--warning-soft)", color: "var(--warning)" },
-  blocked: { background: "var(--danger-soft)", color: "var(--danger)" },
-  completed: { background: "var(--success-soft)", color: "var(--success)" },
-};
-
-export const closureResultColors: Record<ClosureVerificationResult, BadgeColor> = {
-  effective: { background: "var(--success-soft)", color: "var(--success)" },
-  partially_effective: { background: "var(--warning-soft)", color: "var(--warning)" },
-  not_effective: { background: "var(--danger-soft)", color: "var(--danger)" },
-};
-
-export const closureStatusColors: Record<ClosureStatus, BadgeColor> = {
-  closed: { background: "var(--success-soft)", color: "var(--success)" },
-  re_opened: { background: "var(--warning-soft)", color: "var(--warning)" },
 };
 
 export const productionOrderStatusColors: Record<ProductionOrderStatus, BadgeColor> = {
