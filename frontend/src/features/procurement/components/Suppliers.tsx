@@ -13,9 +13,17 @@ import { PR } from "@/lib/procurement-permissions";
 import { Q } from "@/lib/quality-permissions";
 import { createSupplier, getSupplier, getSuppliers, setSupplierStatus, updateSupplier, type SupplierFilters } from "../api";
 import { procurementErrorMessage } from "../procurement-errors";
-import { SUPPLIER_CATEGORIES, SUPPLIER_STATUSES, type Supplier, type SupplierInput, type SupplierStatus } from "../types";
+import { SUPPLIER_CATEGORIES, SUPPLIER_STATUSES, type Evaluation, type Supplier, type SupplierInput, type SupplierStatus } from "../types";
 
 const STATUS_CLASS: Record<SupplierStatus, string> = { pending: s.high, approved: s.green, conditional: s.overdue, blocked: s.cancelled };
+
+const GRADE_CLASS: Record<string, string> = { A: s.green, B: s.blue, C: s.overdue, D: s.cancelled };
+
+export function GradeBadge({ evaluation }: { evaluation: Evaluation | null }) {
+  const t = useTranslations("procurement.evaluation");
+  if (!evaluation?.grade) return <span className={s.muted}>{t("notScored")}</span>;
+  return <span className={`${s.badge} ${GRADE_CLASS[evaluation.grade]}`}>{evaluation.grade} · {Number(evaluation.score)}</span>;
+}
 
 export function SupplierStatusBadge({ status }: { status: SupplierStatus }) {
   const t = useTranslations("procurement.supplierStatuses");
@@ -59,7 +67,7 @@ export function SuppliersList() {
     {rows === null && !error && <p className={s.muted}>{messages("loading.default")}</p>}
     {rows?.length === 0 && <section className={s.panel}><h2 style={{ marginTop: 0 }}>{t("suppliers.empty")}</h2><p className={s.muted} style={{ margin: 0 }}>{t("suppliers.emptyHint")}</p></section>}
     {rows && rows.length > 0 && <section className={s.panel}><div className={s.tableWrap}><table className={s.table} aria-label={t("suppliers.title")}>
-      <thead><tr>{["code", "name", "category", "supplies", "receipts", "ncr", "status"].map(c => <th key={c}>{t(`fields.${c}`)}</th>)}</tr></thead>
+      <thead><tr>{["code", "name", "category", "supplies", "receipts", "ncr", "grade", "status"].map(c => <th key={c}>{t(`fields.${c}`)}</th>)}</tr></thead>
       <tbody>{rows.map(r => <tr key={r.id}>
         <td><Link href={`/suppliers/${r.id}`}><bdi>{r.supplier_code}</bdi></Link></td>
         <td>{r.name}{r.contact_name && <div className={s.muted}>{r.contact_name}</div>}</td>
@@ -67,6 +75,7 @@ export function SuppliersList() {
         <td>{r.supplies ?? "—"}</td>
         <td>{r.receipts_count}{r.last_receipt_date && <div className={s.muted}>{fmt.date(r.last_receipt_date)}</div>}</td>
         <td className={r.open_ncr_count ? s.error : undefined}>{r.ncr_count}{r.open_ncr_count > 0 && <div>{t("openNcr", { count: String(r.open_ncr_count) })}</div>}</td>
+        <td><GradeBadge evaluation={r.evaluation} /></td>
         <td><SupplierStatusBadge status={r.status} /></td>
       </tr>)}</tbody>
     </table></div></section>}
@@ -198,6 +207,7 @@ export function SupplierDetail({ supplierId }: { supplierId: string }) {
         <Item label={t("suppliers.openNcrCount")}><span className={x.open_ncr_count ? s.error : undefined}>{x.open_ncr_count}</span></Item>
       </dl>
     </section>
+    {x.evaluation && <EvaluationPanel value={x.evaluation} status={x.status} />}
     {x.recent_receipts.length > 0 && <section className={s.panel} aria-label={t("receipts.title")}>
       <h2 style={{ marginTop: 0 }}>{t("receipts.title")}</h2>
       <ul style={{ margin: 0, paddingInlineStart: 18, display: "grid", gap: 4 }}>{x.recent_receipts.map(r => <li key={r.id}>
@@ -248,4 +258,28 @@ function StatusDialog({ current, onClose, onConfirm }: { current: SupplierStatus
       </div>
     </form>
   </div>;
+}
+
+// The supplier's score: lots released in full, less points for its non-conformance reports and their cost (PROC-002).
+function EvaluationPanel({ value, status }: { value: Evaluation; status: SupplierStatus }) {
+  const t = useTranslations("procurement.evaluation");
+  const statuses = useTranslations("procurement.supplierStatuses");
+  const fmt = useFormatter();
+  const differs = value.suggested_status && value.suggested_status !== status;
+  return <section className={s.panel} aria-label={t("title")}>
+    <div className={s.actions} style={{ justifyContent: "space-between" }}>
+      <h2 style={{ margin: 0 }}>{t("title")}</h2>
+      <GradeBadge evaluation={value} />
+    </div>
+    <p className={s.muted}>{t("period", { months: String(value.months), since: fmt.date(value.since) })}</p>
+    {value.score === null ? <p className={s.muted} style={{ margin: 0 }}>{t("noLots")}</p> : <dl className={s.grid} style={{ margin: 0 }}>
+      <div><dt className={s.muted}>{t("lots")}</dt><dd style={{ margin: "4px 0 0" }}>{t("lotsValue", { released: String(value.lots_released),
+        inspected: String(value.lots_inspected), pct: String(Number(value.acceptance_pct)) })}</dd></div>
+      <div><dt className={s.muted}>{t("ncr")}</dt><dd style={{ margin: "4px 0 0" }}>{t("ncrValue", { count: String(value.ncr_count), points: String(value.ncr_penalty) })}</dd></div>
+      <div><dt className={s.muted}>{t("cost")}</dt><dd style={{ margin: "4px 0 0" }}><bdi>{fmt.number(value.ncr_cost)}</bdi> — {t("points", { points: String(value.cost_penalty) })}</dd></div>
+      <div><dt className={s.muted}>{t("score")}</dt><dd style={{ margin: "4px 0 0" }}><strong>{Number(value.score)} / 100</strong></dd></div>
+    </dl>}
+    {differs && <p role="status" className={s.error} style={{ marginBottom: 0 }}>{t("suggestion", { status: statuses(value.suggested_status!) })}</p>}
+    <p className={s.muted} style={{ marginBottom: 0 }}>{t("formula")}</p>
+  </section>;
 }

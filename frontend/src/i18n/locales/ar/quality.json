@@ -53,7 +53,8 @@
       "closeInspection": "إغلاق بالنتيجة",
       "cancelInspection": "إلغاء الفحص",
       "report": "تقرير الفحص",
-      "returnDecision": "القرار على البضاعة المرتجعة"
+      "returnDecision": "القرار على البضاعة المرتجعة",
+      "lotDecision": "القرار على الدفعة"
     },
     "hints": {
       "locked": "هذا الفحص مغلق أو ملغى، فلا يمكن تعديله.",
@@ -297,7 +298,13 @@
     "RETURN_LINE_ALREADY_INSPECTED": "لهذا البند المرتجع فحص مفتوح من قبل.",
     "RETURN_SPLIT_MISMATCH": "مجموع الأجزاء ({total}) يجب أن يساوي الكمية المفحوصة ({inspected}).",
     "NOT_A_RETURN_INSPECTION": "هذا الفحص لا يخص بضاعة مرتجعة.",
-    "RETURN_INSPECTION_NEEDS_DECISION": "فحص البضاعة المرتجعة يُغلق بقرار على البضاعة."
+    "RETURN_INSPECTION_NEEDS_DECISION": "فحص البضاعة المرتجعة يُغلق بقرار على البضاعة.",
+    "RECEIPT_LINE_NOT_FOUND": "الدفعة المستلمة غير موجودة.",
+    "LOT_NOT_AWAITING_INSPECTION": "هذه الدفعة ليست بانتظار الفحص.",
+    "LOT_ALREADY_INSPECTED": "لهذه الدفعة فحص مفتوح من قبل.",
+    "LOT_SPLIT_MISMATCH": "مجموع الأجزاء ({total}) يجب أن يساوي الكمية المفحوصة ({inspected}).",
+    "NOT_AN_INCOMING_INSPECTION": "هذا الفحص لا يخص دفعة مستلمة.",
+    "INCOMING_INSPECTION_NEEDS_DECISION": "فحص المواد الواردة يُغلق بقرار على الدفعة."
   },
   "history": {
     "title": "سجل الحالة",
@@ -652,6 +659,49 @@
     "notes": "ملاحظات",
     "notesRequired": "ملاحظات (إلزامية للدرجة الثانية)",
     "openNcr": "فتح تقرير عدم مطابقة لمرتجع العميل",
+    "decide": "تسجيل القرار"
+  },
+  "incoming": {
+    "title": "فحص المواد الواردة",
+    "subtitle": "دفعات المواد المستلمة التي تُفحص عند الاستلام: فحص لكل دفعة ثم القرار عليها.",
+    "search": "بحث",
+    "searchPlaceholder": "رقم الاستلام أو المورد أو المادة أو الدفعة",
+    "empty": "لا شيء للفحص",
+    "emptyHint": "تظهر هنا دفعات المواد المؤشَّرة «تُفحص عند الاستلام» حتى يُقرَّر في كل منها.",
+    "material": "المادة",
+    "lot": "دفعة المورد",
+    "quantity": "الكمية",
+    "specification": "مفتاح المواصفة",
+    "inspection": "الفحص",
+    "open": "فتح الفحص",
+    "opening": "جارٍ الفتح…",
+    "notOpened": "لم يُفتح",
+    "sourceTitle": "الدفعة المستلمة",
+    "receipt": "استلام المواد",
+    "supplier": "المورد",
+    "decisionTitle": "القرار على الدفعة",
+    "decisionText": "وزّع الكمية المفحوصة {quantity}: ما يُعتمد للاستخدام، وأين يذهب الباقي؛ مجموع الأجزاء يساويها.",
+    "parts": {
+      "released": "معتمد للاستخدام",
+      "use_as_is": "قبول كما هو باستثناء",
+      "sort": "فرز وإعادة فحص",
+      "return_to_supplier": "إرجاع للمورد",
+      "scrap": "هالك",
+      "hold": "حجز"
+    },
+    "partHints": {
+      "released": "مطابق: يُصرف للإنتاج",
+      "use_as_is": "خارج المواصفة ويُقبل بموافقة استثنائية",
+      "sort": "يُفرز ويُعاد فحص الجيد منه",
+      "return_to_supplier": "يعود إلى المورد",
+      "scrap": "يُتلف ويُحسب هالكاً",
+      "hold": "حجز مؤقت بانتظار القرار"
+    },
+    "decisionTotal": "المجموع {total} من {quantity}",
+    "ncrNotice": "ما لا يُعتمد يفتح تقرير عدم مطابقة باسم المورد.",
+    "concessionBy": "اعتمد الاستثناء",
+    "notes": "ملاحظات",
+    "notesRequired": "ملاحظات (إلزامية للاستثناء)",
     "decide": "تسجيل القرار"
   }
 }

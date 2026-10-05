@@ -13,12 +13,13 @@ import { CheckCertificatesSection } from "@/features/quality-certificates";
 import { RecordReportButton } from "@/features/reports/RecordReportButton";
 import { useFormatter } from "@/hooks/useFormatter";
 import { Q, QUALITY_REPORT } from "@/lib/quality-permissions";
-import { cancelQualityCheck, closeQualityCheck, decideReturn, getQualityCheckById, startQualityCheck } from "../api/quality-checks-api";
+import { cancelQualityCheck, closeQualityCheck, decideLot, decideReturn, getQualityCheckById, startQualityCheck } from "../api/quality-checks-api";
 import { CHECK_RESULTS, type CloseQualityCheckRequest, type QualityCheckData, type QualityCheckResult } from "../types";
 import { QualityCheckResultBadge } from "./QualityCheckResultBadge";
 import { QualityCheckStatusBadge } from "./QualityCheckStatusBadge";
 import { MeasurementsSection } from "./MeasurementsSection";
 import { QualityHistory } from "./QualityHistory";
+import { IncomingSourceSection, LotDecisionDialog } from "./IncomingInspection";
 import { ReturnDecisionDialog, ReturnSourceSection } from "./ReturnInspection";
 import { QUANTITY, qualityErrorMessage } from "./quality-errors";
 
@@ -43,7 +44,7 @@ export function QualityCheckDetail({ qualityCheckId }: { qualityCheckId: string 
   const [check, setCheck] = useState<QualityCheckData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [dialog, setDialog] = useState<"close" | "decision" | "cancel" | null>(null);
+  const [dialog, setDialog] = useState<"close" | "decision" | "lot" | "cancel" | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -80,6 +81,8 @@ export function QualityCheckDetail({ qualityCheckId }: { qualityCheckId: string 
           {check.actions.includes("close") && <button type="button" className={`${s.button} ${s.primary}`} disabled={busy} onClick={() => setDialog("close")}>{t("actions.closeInspection")}</button>}
           {check.actions.includes("return_decision") && <button type="button" className={`${s.button} ${s.primary}`} disabled={busy}
             onClick={() => setDialog("decision")}>{t("actions.returnDecision")}</button>}
+          {check.actions.includes("lot_decision") && <button type="button" className={`${s.button} ${s.primary}`} disabled={busy}
+            onClick={() => setDialog("lot")}>{t("actions.lotDecision")}</button>}
           {check.actions.includes("cancel") && <button type="button" className={`${s.button} ${s.danger}`} disabled={busy} onClick={() => setDialog("cancel")}>{t("actions.cancelInspection")}</button>}
         </span>
       </div>
@@ -97,6 +100,7 @@ export function QualityCheckDetail({ qualityCheckId }: { qualityCheckId: string 
       {check.notes && <p style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}><span className={s.muted}>{t("fields.notes")}: </span>{check.notes}</p>}
     </section>
     {check.return_source && <ReturnSourceSection check={check} />}
+    {check.incoming_source && <IncomingSourceSection check={check} />}
     <section className={s.panel} aria-label={t("quantitySection")}>
       <h2 style={{ marginTop: 0 }}>{t("quantitySection")}</h2>
       <dl className={s.grid} style={{ margin: 0 }}>
@@ -129,6 +133,8 @@ export function QualityCheckDetail({ qualityCheckId }: { qualityCheckId: string 
       onConfirm={body => void act(() => closeQualityCheck(check.id, body))} />}
     {dialog === "decision" && <ReturnDecisionDialog check={check} busy={busy} onClose={() => setDialog(null)}
       onConfirm={body => void act(() => decideReturn(check.id, body))} />}
+    {dialog === "lot" && <LotDecisionDialog check={check} busy={busy} onClose={() => setDialog(null)}
+      onConfirm={body => void act(() => decideLot(check.id, body))} />}
     {dialog === "cancel" && <ReasonDialog title={t("cancelDialog.title")} description={t("cancelDialog.text")} confirmLabel={t("actions.cancelInspection")}
       busy={busy} danger onClose={() => setDialog(null)} onConfirm={reason => void act(() => cancelQualityCheck(check.id, reason))} />}
   </PageFrame>;

@@ -93,9 +93,26 @@ class QualityCheckListItem(BaseModel):
     return_id: UUID | None = None
     return_line_id: UUID | None = None
     return_source: "ReturnSource | None" = None
+    receipt_id: UUID | None = None
+    receipt_line_id: UUID | None = None
+    incoming_source: "IncomingSource | None" = None
     actions: list[str] = []
     created_at: ISODatetime
     updated_at: ISODatetime
+
+
+class IncomingSource(BaseModel):
+    """The received lot an incoming inspection is about (QUAL-INC-001), read from procurement."""
+    receipt_id: UUID
+    receipt_no: str
+    receipt_date: date
+    supplier_id: UUID
+    supplier_name: str
+    line_no: int
+    description: str
+    material_code: str | None
+    supplier_lot: str | None
+    spec_product_type: str | None
 
 
 class ReturnSource(BaseModel):
@@ -333,3 +350,41 @@ class BatchShipment(BaseModel):
     quantity: Decimal
     delivered_quantity: Decimal | None
     unit: str
+
+
+# ── incoming inspection (QUAL-INC-001) ────────────────────────────────────────────────────────
+class LotDecision(_Input):
+    """Where the inspected lot goes; the parts add up to it. Anything not released opens a non-conformance report."""
+    released: Quantity = Part
+    use_as_is: Quantity = Part  # under a concession
+    sort: Quantity = Part  # sorted and re-inspected
+    return_to_supplier: Quantity = Part
+    scrap: Quantity = Part
+    hold: Quantity = Part
+    notes: str | None = Field(default=None, max_length=2000)
+    concession_approved_by: str | None = Field(default=None, max_length=255)
+
+
+class AwaitingLot(BaseModel):
+    line_id: UUID
+    line_no: int
+    description: str
+    material_code: str | None
+    spec_product_type: str | None
+    supplier_lot: str | None
+    quantity: Decimal
+    unit: str
+    inspection_id: UUID | None
+    inspection_code: str | None
+    inspection_status: str | None
+
+
+class AwaitingReceipt(BaseModel):
+    receipt_id: UUID
+    receipt_no: str
+    receipt_date: date
+    received_at: ISODatetime | None
+    supplier_id: UUID
+    supplier_name: str
+    supplier_delivery_no: str | None
+    lines: list[AwaitingLot]

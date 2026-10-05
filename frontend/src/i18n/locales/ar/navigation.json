@@ -72,7 +72,8 @@
     "qualityReturns": "مرتجعات بانتظار الجودة",
     "suppliers": "الموردون",
     "materials": "المواد",
-    "goodsReceipts": "استلام المواد"
+    "goodsReceipts": "استلام المواد",
+    "qualityIncoming": "فحص المواد الواردة"
   },
   "userMenu": {
     "changePassword": "تغيير كلمة المرور",

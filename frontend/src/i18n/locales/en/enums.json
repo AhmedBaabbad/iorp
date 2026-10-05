@@ -25,7 +25,8 @@
       "sample_inspection": "Sample Inspection",
       "reinspection": "Reinspection",
       "issue_triggered": "Issue Triggered",
-      "general": "General"
+      "general": "General",
+      "incoming_inspection": "Incoming inspection"
     }
   },
   "qualityRejection": {

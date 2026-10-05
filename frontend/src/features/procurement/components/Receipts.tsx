@@ -18,10 +18,19 @@ import {
   updateProcurementSettings, updateReceipt, type ReceiptFilters,
 } from "../api";
 import { DECIMAL, procurementErrorMessage, todayIso } from "../procurement-errors";
-import { RECEIPT_STATUSES, type Material, type Receipt, type ReceiptInput, type ReceiptListItem, type ReceiptStatus, type SupplierOption } from "../types";
+import { RECEIPT_STATUSES, type LotStatus, type Material, type Receipt, type ReceiptInput, type ReceiptListItem, type ReceiptStatus,
+  type SupplierOption } from "../types";
 import { SupplierStatusBadge } from "./Suppliers";
 
 const STATUS_CLASS: Record<ReceiptStatus, string> = { draft: "", received: s.green, cancelled: s.cancelled };
+
+const LOT_CLASS: Record<LotStatus, string> = { not_required: "", awaiting: s.high, inspecting: s.blue, released: s.green, partly_released: s.overdue,
+  rejected: s.cancelled };
+
+export function LotStatusBadge({ status }: { status: LotStatus }) {
+  const t = useTranslations("procurement.lotStatuses");
+  return <span className={`${s.badge} ${LOT_CLASS[status]}`}>{t(status)}</span>;
+}
 
 export function ReceiptStatusBadge({ status }: { status: ReceiptStatus }) {
   const t = useTranslations("procurement.receiptStatuses");
@@ -72,7 +81,7 @@ export function ReceiptsList() {
         <td>{r.supplier_name}</td>
         <td><bdi>{[r.supplier_delivery_no, r.supplier_invoice_no, r.purchase_reference].filter(Boolean).join(" · ") || "—"}</bdi></td>
         <td><bdi>{r.quantities.map(q => fmt.quantity(q.quantity, unit(q.unit))).join(" · ") || "—"}</bdi>
-          {r.inspection_lines > 0 && <div className={s.muted}>{t("receipts.toInspect", { count: String(r.inspection_lines) })}</div>}</td>
+          {r.lots_pending > 0 && <div className={s.error}>{t("receipts.awaitingQuality", { count: String(r.lots_pending) })}</div>}</td>
         <td><ReceiptStatusBadge status={r.status} /></td>
       </tr>)}</tbody>
     </table></div></section>}
@@ -292,14 +301,19 @@ export function ReceiptDetail({ receiptId }: { receiptId: string }) {
     <section className={s.panel} aria-label={t("receipts.lines")}>
       <h2 style={{ marginTop: 0 }}>{t("receipts.lines")}</h2>
       <div className={s.tableWrap}><table className={s.table}>
-        <thead><tr><th>#</th>{["material", "supplier_lot", "quantity", "package_count", "weight"].map(c => <th key={c}>{t(`fields.${c}`)}</th>)}<th /></tr></thead>
+        <thead><tr><th>#</th>{["material", "supplier_lot", "quantity", "package_count", "weight", "quality"].map(c => <th key={c}>{t(`fields.${c}`)}</th>)}<th /></tr></thead>
         <tbody>{x.lines.map(l => <tr key={l.id}>
           <td>{l.line_no}</td>
-          <td>{l.description}{l.inspection_required && <div className={s.muted}>{t("receipts.inspected")}</div>}</td>
+          <td>{l.description}</td>
           <td><bdi dir="ltr">{l.supplier_lot ?? "—"}</bdi></td>
           <td><bdi>{fmt.quantity(l.quantity, unit(l.unit))}</bdi></td>
           <td>{l.package_count ?? "—"}</td>
           <td><bdi>{l.weight ? fmt.quantity(l.weight, unit(l.weight_unit)) : "—"}</bdi></td>
+          <td>{x.status === "received" && x.line_quality[l.id] ? <>
+            <LotStatusBadge status={x.line_quality[l.id].status} />
+            {x.line_quality[l.id].inspection && <div><Link href={`/quality-checks/${x.line_quality[l.id].inspection!.id}`}>
+              <bdi>{x.line_quality[l.id].inspection!.inspection_code}</bdi></Link></div>}
+          </> : l.inspection_required ? <span className={s.muted}>{t("receipts.inspected")}</span> : "—"}</td>
           <td>{canNcr && x.status === "received" && <Link href={ncrLink(l.supplier_lot, l.description)} className={s.button}>{t("receipts.raiseNcr")}</Link>}</td>
         </tr>)}</tbody>
       </table></div>

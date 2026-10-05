@@ -97,6 +97,49 @@ def assert_can_cancel(status, reason) -> None:
         raise ProcurementError("REASON_REQUIRED", 400)
 
 
+# ── quality of received lots and supplier evaluation (PROC-002) ───────────────────────────────
+
+def lot_status(inspection_required, checks: list[dict]) -> str:
+    """Where a received lot stands with quality (read from its incoming inspection):
+    not_required · awaiting · inspecting · released · partly_released · rejected."""
+    if not inspection_required:
+        return "not_required"
+    live = [c for c in checks if c["status"] != "cancelled"]
+    if not live:
+        return "awaiting"
+    check = live[-1]
+    if check["status"] != "closed":
+        return "inspecting"
+    if check["qty_accepted"] >= check["qty_inspected"]:
+        return "released"
+    return "partly_released" if check["qty_accepted"] > ZERO else "rejected"
+
+
+# How a supplier is scored over a period (out of 100):
+#   quality   = 100 × lots released in full ÷ lots inspected (no inspected lot: not scored)
+#   penalty   = per non-conformance report about it: critical 10, major 5, minor 2 (at most 30)
+#             + 1 point per 1 000 of non-conformance cost (at most 20)
+#   score     = quality − penalty, never below 0;  grade A ≥ 90, B ≥ 75, C ≥ 60, D below
+# The grade suggests a standing (A, B: approved · C: conditional · D: blocked); deciding it stays with whoever approves suppliers.
+SEVERITY_POINTS = {"critical": 10, "major": 5, "minor": 2}
+NCR_PENALTY_CAP, COST_PER_POINT, COST_PENALTY_CAP = 30, Decimal("1000"), 20
+GRADES = ((90, "A", APPROVED), (75, "B", APPROVED), (60, "C", CONDITIONAL), (0, "D", BLOCKED))
+
+
+def evaluate(lots_inspected: int, lots_released: int, ncr_severities: list[str], ncr_cost: Decimal) -> dict:
+    ncr_penalty = min(NCR_PENALTY_CAP, sum(SEVERITY_POINTS.get(s, 0) for s in ncr_severities))
+    cost_penalty = min(COST_PENALTY_CAP, int(ncr_cost / COST_PER_POINT)) if ncr_cost else 0
+    if lots_inspected == 0:
+        return dict(lots_inspected=0, lots_released=0, lots_rejected=0, acceptance_pct=None, ncr_count=len(ncr_severities),
+                    ncr_penalty=ncr_penalty, ncr_cost=ncr_cost, cost_penalty=cost_penalty, score=None, grade=None, suggested_status=None)
+    acceptance = Decimal(lots_released * 100) / Decimal(lots_inspected)
+    score = max(Decimal("0"), acceptance - ncr_penalty - cost_penalty).quantize(Decimal("0.1"))
+    grade, suggested = next((g, st) for floor, g, st in GRADES if score >= floor)
+    return dict(lots_inspected=lots_inspected, lots_released=lots_released, lots_rejected=lots_inspected - lots_released,
+                acceptance_pct=acceptance.quantize(Decimal("0.1")), ncr_count=len(ncr_severities), ncr_penalty=ncr_penalty, ncr_cost=ncr_cost,
+                cost_penalty=cost_penalty, score=score, grade=grade, suggested_status=suggested)
+
+
 def receipt_actions(status, can) -> list[str]:
     offered = {DRAFT: ["edit", "receive", "cancel"], RECEIVED: ["cancel"]}.get(status, [])
     return [a for a in offered if can(a)]

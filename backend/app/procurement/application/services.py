@@ -5,6 +5,8 @@ non-conformance reports quality raised about it (read from quality's tables).
 """
 from __future__ import annotations
 
+from datetime import timedelta
+
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
@@ -69,9 +71,10 @@ class SupplierService:
         for s in suppliers:
             view = dict(receipts_count=receipts.get(s.id, 0), last_receipt_date=last.get(s.id), ncr_count=ncr.get(s.id, (0, 0))[0],
                         open_ncr_count=ncr.get(s.id, (0, 0))[1], status_changed_by_name=names.get(s.status_changed_by_user_id),
-                        actions=rules.supplier_actions(lambda a: can(P.SUPPLIER_ACTIONS[a])))
+                        evaluation=self.evaluation(s.id), actions=rules.supplier_actions(lambda a: can(P.SUPPLIER_ACTIONS[a])))
             if detail:
-                view.update(history=history(self.db, self.org, "supplier", s.id), non_conformances=QualityReads(self.db, self.org).of_supplier(s.id),
+                view.update(history=history(self.db, self.org, "supplier", s.id),
+                            non_conformances=QualityReads(self.db, self.org).of_supplier(s.id),
                             recent_receipts=[dict(id=r.id, receipt_no=r.receipt_no, receipt_date=r.receipt_date, status=r.status)
                                              for r in self.db.scalars(select(GoodsReceipt).where(GoodsReceipt.organization_id == self.org,
                                                                                                  GoodsReceipt.supplier_id == s.id)
@@ -103,6 +106,14 @@ class SupplierService:
         record(self.db, self.org, "supplier", supplier.id, "update", self.tenant.user_id, supplier.status, supplier.status)
         self.db.commit()
         return self._get(supplier.id)
+
+    def evaluation(self, supplier_id, months=12) -> dict:
+        """The supplier's score over the last months, from its incoming lots and non-conformance reports (PROC-002)."""
+        supplier = self._get(supplier_id)
+        since = utc_now() - timedelta(days=30 * months)
+        data = QualityReads(self.db, self.org).supplier_period(supplier.id, since)
+        released = sum(1 for inspected, accepted in data["lots"] if accepted >= inspected)
+        return dict(months=months, since=since.date(), **rules.evaluate(len(data["lots"]), released, data["severities"], data["cost"]))
 
     def set_status(self, supplier_id, status, reason) -> Supplier:
         supplier = self._get(supplier_id, lock=True)
@@ -191,6 +202,7 @@ class ReceiptService:
     def views(self, receipts, can, detail=False) -> list[dict]:
         names = user_names(self.db, self.org, [u for r in receipts for u in (r.created_by_user_id, r.received_by_user_id)])
         statuses = dict(self.db.execute(select(Supplier.id, Supplier.status).where(Supplier.id.in_({r.supplier_id for r in receipts}))).all()) if receipts else {}
+        inspections = QualityReads(self.db, self.org).inspections_of([line.id for r in receipts for line in r.lines if line.inspection_required])
         out = []
         for r in receipts:
             per_unit: dict = {}
@@ -200,9 +212,14 @@ class ReceiptService:
             view = dict(created_by_name=names.get(r.created_by_user_id), received_by_name=names.get(r.received_by_user_id),
                         supplier_status=statuses.get(r.supplier_id), quantities=[dict(unit=u, quantity=q) for u, q in per_unit.items()],
                         weight_kg=sum(weights) if weights else None, inspection_lines=sum(1 for line in r.lines if line.inspection_required),
+                        lots_pending=sum(1 for line in r.lines if r.status == rules.RECEIVED
+                                         and rules.lot_status(line.inspection_required, inspections.get(line.id, [])) in ("awaiting", "inspecting")),
                         actions=rules.receipt_actions(r.status, lambda a: can(P.RECEIPT_ACTIONS[a])))
             if detail:
                 view["history"] = history(self.db, self.org, "receipt", r.id)
+                view["line_quality"] = {str(line.id): dict(status=rules.lot_status(line.inspection_required, inspections.get(line.id, [])),
+                                                           inspection=(inspections.get(line.id) or [None])[-1])
+                                        for line in r.lines}
             out.append(view)
         return out
 

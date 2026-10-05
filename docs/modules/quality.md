@@ -280,6 +280,28 @@ sends them. Other returns go back to stock on receipt without quality. Contract 
 - Shipping shows the outcome on the return: back in stock, awaiting, inspecting, decided (parts still to carry out) or done.
 - Migration `f6a1b2j5` adds the return references (and `shipping_returns.quality_required`); no new permissions.
 
+## Incoming inspection (PROC-002)
+
+Received lots of materials marked «inspected on arrival» (procurement goods receipts). Contract between the modules (no imports,
+ADR-004):
+
+| Quality reads from procurement (`support.ProcurementReads`) | Procurement reads from quality (`support.QualityReads`) |
+|-------------------------------------------------------------|---------------------------------------------------------|
+| `procurement_receipts` (received), `procurement_receipt_lines` (`inspection_required`), `procurement_materials` (`spec_product_type`), supplier name | `quality_checks` by `receipt_line_id`; `quality_non_conformance_reports` by `supplier_id` (severity, cost) |
+
+- **`/quality-incoming`** lists them by receipt (`GET /quality/incoming/awaiting`); **one inspection per lot**
+  (`POST /quality/incoming/lines/{line_id}/inspection`): type `incoming_inspection`, the lot's quantity and unit, planned from the
+  specification of the material's `spec_product_type`; `receipt_id` / `receipt_line_id` keep the source. No production order.
+  `RECEIPT_LINE_NOT_FOUND`, `LOT_NOT_AWAITING_INSPECTION`, `LOT_ALREADY_INSPECTED`.
+- It is measured like any inspection, then **closed by the lot decision** (`POST /quality/quality-checks/{id}/lot-decision`, needs
+  `quality_checks:close` and `ncr:create`; the plain close answers `INCOMING_INSPECTION_NEEDS_DECISION`): the inspected quantity is
+  split (`LOT_SPLIT_MISMATCH` otherwise) between released, use as is (concession: approver and notes), sort, return to supplier,
+  scrap (هالك) and hold. The result is accepted, partial or rejected.
+- Anything not released **opens an NCR** (`incoming_material`, type material) with the supplier, reference «GRN… / lot», the
+  delivery note and lot as the supplier's reference, and one item per part with its disposition.
+- Procurement shows each lot's release on the receipt and scores the supplier (procurement.md).
+- Migration `f6a1b2j8` adds `incoming_inspection` to the check type and the receipt references; no new permissions.
+
 ## Quality report center (QUAL-REPORT-001)
 
 `/quality-reports` uses the shared reporting core (same layout, identity, languages and "nothing is stored" rule as production).

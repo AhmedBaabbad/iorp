@@ -152,6 +152,9 @@ class QualityCheck(Base):
     # QUAL-RET-001: an inspection of goods a customer returned (a shipping return and its line, plain UUIDs, no FK).
     return_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     return_line_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    # QUAL-INC-001: an incoming inspection of a received lot (a procurement goods receipt and its line, plain UUIDs, no FK).
+    receipt_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    receipt_line_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     started_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
     closed_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
     closed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)

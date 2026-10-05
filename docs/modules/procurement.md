@@ -50,6 +50,26 @@ weight. A received line can open a non-conformance report pre-filled with the su
 
 The history of suppliers and receipts is in `procurement_events`.
 
+## Lot release and supplier evaluation (PROC-002)
+
+Quality inspects each received lot marked for inspection (see quality.md, *Incoming inspection*); procurement only **reads**
+`quality_checks` (by `receipt_line_id`) and `quality_non_conformance_reports` (by `supplier_id`) through `support.QualityReads`.
+
+- **Lot status** (`rules.lot_status`), on each line of a received receipt (`line_quality`, with its inspection) and as
+  `lots_pending` in the list: `not_required`, `awaiting` (no inspection yet), `inspecting`, `released` (all accepted),
+  `partly_released`, `rejected` (nothing accepted).
+- **Evaluation** (`rules.evaluate`, `GET /suppliers/{id}/evaluation?months=12`, also on every supplier view), over the closed
+  inspections of its lots and its NCRs that are not cancelled in the period:
+
+  ```
+  score = 100 × lots released in full / lots inspected
+        − min(30, 10 × critical + 5 × major + 2 × minor NCRs)
+        − min(20, 1 point per 1,000 of the NCRs' cost)          (never below 0)
+  A ≥ 90, B ≥ 75 → approved · C ≥ 60 → conditional · D → blocked
+  ```
+
+  Without inspected lots there is no score. The grade only **suggests** a standing; changing it stays with `suppliers:approve`.
+
 ## Goods receipt note
 
 `procurement.goods_receipt` (not listed): the company's identity, supplier and references, the lots received with the ones to
@@ -77,6 +97,7 @@ Migration `f6a1b2j7` creates the tables and these grants for existing organizati
 | Method | Path | Permission |
 |--------|------|------------|
 | GET / POST | `/suppliers` (`status`, `category`, `search`) | suppliers:read / suppliers:create |
+| GET | `/suppliers/{id}/evaluation?months=` | suppliers:read |
 | GET | `/suppliers/lookup?q=` (not blocked) | suppliers:read or receipts:create/update |
 | GET / PATCH | `/suppliers/{id}` | suppliers:read / suppliers:update |
 | POST | `/suppliers/{id}/status` (`status`, `reason`) | suppliers:approve |
@@ -91,7 +112,4 @@ Frontend: `/suppliers`, `/suppliers/{id}`, `/materials`, `/goods-receipts`, `/go
 
 ## Next phases
 
-- Incoming inspection (quality): an inspection of each received lot marked for inspection, against its material's specification;
-  a rejected lot opens a non-conformance report with the supplier, and the receipt shows each lot's release.
-- Supplier evaluation: a score from rejected lots, non-conformances and their cost.
 - Purchase orders, when needed.

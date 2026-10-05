@@ -13,12 +13,23 @@ export type SupplierInput = {
   email: string | null; address: string | null; city: string | null; country: string | null; vat_number: string | null; cr_number: string | null;
   notes: string | null;
 };
+// The supplier's score over a period (PROC-002), from its incoming lots and the non-conformance reports about it.
+export type Evaluation = {
+  months: number; since: string; lots_inspected: number; lots_released: number; lots_rejected: number; acceptance_pct: string | null;
+  ncr_count: number; ncr_penalty: number; ncr_cost: string; cost_penalty: number; score: string | null; grade: "A" | "B" | "C" | "D" | null;
+  suggested_status: SupplierStatus | null;
+};
+// Where a received lot stands with quality.
+export type LotStatus = "not_required" | "awaiting" | "inspecting" | "released" | "partly_released" | "rejected";
+export type LotQuality = { status: LotStatus; inspection: { id: string; inspection_code: string; status: string; result: string | null;
+  qty_inspected: string; qty_accepted: string; closed_at: string | null } | null };
+
 export type Supplier = SupplierInput & {
   id: string; supplier_code: string; status: SupplierStatus; status_reason: string | null; status_changed_at: string | null;
   status_changed_by_name: string | null; receipts_count: number; last_receipt_date: string | null; ncr_count: number; open_ncr_count: number;
   actions: ("edit" | "set_status")[]; history: HistoryEntry[];
   non_conformances: { id: string; report_number: string; report_date: string; title: string; status: string; severity: string; reference_code: string | null }[];
-  recent_receipts: { id: string; receipt_no: string; receipt_date: string; status: ReceiptStatus }[]; created_at: string;
+  recent_receipts: { id: string; receipt_no: string; receipt_date: string; status: ReceiptStatus }[]; evaluation: Evaluation | null; created_at: string;
 };
 export type SupplierOption = { id: string; supplier_code: string; name: string; status: SupplierStatus };
 
@@ -40,10 +51,11 @@ export type ReceiptInput = {
 export type ReceiptListItem = {
   id: string; receipt_no: string; status: ReceiptStatus; receipt_date: string; supplier_id: string; supplier_name: string;
   supplier_status: SupplierStatus | null; supplier_delivery_no: string | null; supplier_invoice_no: string | null; purchase_reference: string | null;
-  quantities: { unit: string; quantity: string }[]; weight_kg: string | null; inspection_lines: number; actions: ("edit" | "receive" | "cancel")[];
+  quantities: { unit: string; quantity: string }[]; weight_kg: string | null; inspection_lines: number; lots_pending: number;
+  actions: ("edit" | "receive" | "cancel")[];
   created_at: string;
 };
 export type Receipt = ReceiptListItem & Omit<ReceiptInput, "lines" | "supplier_id" | "receipt_date"> & {
   received_at: string | null; received_by_name: string | null; created_by_name: string | null; cancel_reason: string | null;
-  lines: ReceiptLine[]; history: HistoryEntry[]; updated_at: string;
+  lines: ReceiptLine[]; line_quality: Record<string, LotQuality>; history: HistoryEntry[]; updated_at: string;
 };

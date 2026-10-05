@@ -87,6 +87,23 @@ class NonConformanceRef(BaseModel):
     reference_code: str | None
 
 
+class Evaluation(BaseModel):
+    """The supplier's score over a period (PROC-002): see rules.evaluate."""
+    months: int
+    since: date
+    lots_inspected: int
+    lots_released: int
+    lots_rejected: int
+    acceptance_pct: Decimal | None
+    ncr_count: int
+    ncr_penalty: int
+    ncr_cost: Decimal
+    cost_penalty: int
+    score: Decimal | None
+    grade: str | None
+    suggested_status: str | None
+
+
 class SupplierRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -114,6 +131,7 @@ class SupplierRead(BaseModel):
     actions: list[str] = []
     history: list[HistoryEntry] = []
     non_conformances: list[NonConformanceRef] = []
+    evaluation: Evaluation | None = None
     recent_receipts: list[ReceiptRef] = []
     created_at: ISODatetime
 
@@ -253,8 +271,24 @@ class ReceiptListItem(BaseModel):
     quantities: list[UnitQuantity] = []
     weight_kg: Decimal | None = None
     inspection_lines: int = 0
+    lots_pending: int = 0
     actions: list[str] = []
     created_at: ISODatetime
+
+
+class LotInspection(BaseModel):
+    id: UUID
+    inspection_code: str
+    status: str
+    result: str | None
+    qty_inspected: Decimal
+    qty_accepted: Decimal
+    closed_at: ISODatetime | None
+
+
+class LotQuality(BaseModel):
+    status: str  # not_required · awaiting · inspecting · released · partly_released · rejected
+    inspection: LotInspection | None = None
 
 
 class ReceiptRead(ReceiptListItem):
@@ -266,5 +300,6 @@ class ReceiptRead(ReceiptListItem):
     created_by_name: str | None = None
     cancel_reason: str | None
     lines: list[LineRead] = []
+    line_quality: dict[str, LotQuality] = {}
     history: list[HistoryEntry] = []
     updated_at: ISODatetime

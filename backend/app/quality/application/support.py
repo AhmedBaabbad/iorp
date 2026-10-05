@@ -243,6 +243,44 @@ class ProcurementReads:
             suppliers.c.organization_id == self.org, suppliers.c.id == supplier_id)).first()
         return dict(row._mapping) if row else None
 
+    def _lots(self):
+        receipts, lines, materials = _t("procurement_receipts"), _t("procurement_receipt_lines"), _t("procurement_materials")
+        query = (select(lines.c.id.label("line_id"), lines.c.line_no, lines.c.description, lines.c.supplier_lot, lines.c.quantity, lines.c.unit,
+                        lines.c.inspection_required, lines.c.material_id, materials.c.material_code, materials.c.spec_product_type,
+                        receipts.c.id.label("receipt_id"), receipts.c.receipt_no, receipts.c.receipt_date, receipts.c.status,
+                        receipts.c.received_at, receipts.c.supplier_id, receipts.c.supplier_name, receipts.c.supplier_delivery_no)
+                 .join(receipts, receipts.c.id == lines.c.receipt_id).outerjoin(materials, materials.c.id == lines.c.material_id)
+                 .where(receipts.c.organization_id == self.org))
+        return receipts, lines, query
+
+    @staticmethod
+    def _lot(row) -> dict:
+        lot = dict(row._mapping)
+        lot["awaiting_inspection"] = lot["status"] == "received" and bool(lot["inspection_required"])
+        return lot
+
+    def lot(self, line_id) -> dict | None:
+        """A received lot (a goods receipt line) with its receipt, supplier and material."""
+        _receipts, lines, query = self._lots()
+        row = self.db.execute(query.where(lines.c.id == line_id)).first()
+        return self._lot(row) if row else None
+
+    def lots(self, line_ids) -> dict:
+        ids = [i for i in set(line_ids) if i]
+        if not ids:
+            return {}
+        _receipts, lines, query = self._lots()
+        return {r.line_id: self._lot(r) for r in self.db.execute(query.where(lines.c.id.in_(ids))).all()}
+
+    def received_for_inspection(self, search: str = "", limit: int = 300) -> list[dict]:
+        receipts, lines, query = self._lots()
+        query = query.where(receipts.c.status == "received", lines.c.inspection_required.is_(True))
+        if search:
+            query = query.where(receipts.c.receipt_no.icontains(search, autoescape=True) | receipts.c.supplier_name.icontains(search, autoescape=True)
+                                | lines.c.supplier_lot.icontains(search, autoescape=True) | lines.c.description.icontains(search, autoescape=True))
+        rows = self.db.execute(query.order_by(receipts.c.received_at.desc(), receipts.c.receipt_no, lines.c.line_no).limit(limit)).all()
+        return [self._lot(r) for r in rows]
+
     def search(self, text: str = "", limit: int = 30) -> list[dict]:
         suppliers = _t("procurement_suppliers")
         query = select(suppliers.c.id, suppliers.c.supplier_code, suppliers.c.name, suppliers.c.status).where(suppliers.c.organization_id == self.org)

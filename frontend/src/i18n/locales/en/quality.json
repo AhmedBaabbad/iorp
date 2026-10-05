@@ -53,7 +53,8 @@
       "closeInspection": "Close with result",
       "cancelInspection": "Cancel check",
       "report": "Inspection report",
-      "returnDecision": "Decide on the returned goods"
+      "returnDecision": "Decide on the returned goods",
+      "lotDecision": "Decide on the lot"
     },
     "hints": {
       "locked": "This check is closed or cancelled and cannot be edited.",
@@ -297,7 +298,13 @@
     "RETURN_LINE_ALREADY_INSPECTED": "This returned item already has an inspection.",
     "RETURN_SPLIT_MISMATCH": "The parts ({total}) must add up to the inspected quantity ({inspected}).",
     "NOT_A_RETURN_INSPECTION": "This inspection is not about returned goods.",
-    "RETURN_INSPECTION_NEEDS_DECISION": "An inspection of returned goods is closed by its decision on the goods."
+    "RETURN_INSPECTION_NEEDS_DECISION": "An inspection of returned goods is closed by its decision on the goods.",
+    "RECEIPT_LINE_NOT_FOUND": "The received lot was not found.",
+    "LOT_NOT_AWAITING_INSPECTION": "This lot is not waiting for inspection.",
+    "LOT_ALREADY_INSPECTED": "This lot already has an inspection.",
+    "LOT_SPLIT_MISMATCH": "The parts ({total}) must add up to the inspected quantity ({inspected}).",
+    "NOT_AN_INCOMING_INSPECTION": "This inspection is not about a received lot.",
+    "INCOMING_INSPECTION_NEEDS_DECISION": "An incoming inspection is closed by its decision on the lot."
   },
   "history": {
     "title": "Status history",
@@ -652,6 +659,49 @@
     "notes": "Notes",
     "notesRequired": "Notes (required for second grade)",
     "openNcr": "Open a non-conformance report for the customer return",
+    "decide": "Record the decision"
+  },
+  "incoming": {
+    "title": "Incoming inspection",
+    "subtitle": "Received lots of materials inspected on arrival: one inspection per lot, then its decision.",
+    "search": "Search",
+    "searchPlaceholder": "Receipt no., supplier, material or lot",
+    "empty": "Nothing to inspect",
+    "emptyHint": "Received lots of materials marked “inspected on arrival” appear here until each is decided.",
+    "material": "Material",
+    "lot": "Supplier's lot",
+    "quantity": "Quantity",
+    "specification": "Specification key",
+    "inspection": "Inspection",
+    "open": "Open the inspection",
+    "opening": "Opening…",
+    "notOpened": "Not opened",
+    "sourceTitle": "Received lot",
+    "receipt": "Goods receipt",
+    "supplier": "Supplier",
+    "decisionTitle": "Decision on the lot",
+    "decisionText": "Split the inspected {quantity}: what is released for use, and where the rest goes; the parts add up to it.",
+    "parts": {
+      "released": "Released for use",
+      "use_as_is": "Use as is (concession)",
+      "sort": "Sort and re-inspect",
+      "return_to_supplier": "Return to supplier",
+      "scrap": "Scrap",
+      "hold": "Hold"
+    },
+    "partHints": {
+      "released": "Conforms: production may use it",
+      "use_as_is": "Out of specification, accepted under a concession",
+      "sort": "Sorted, the good part inspected again",
+      "return_to_supplier": "Sent back to the supplier",
+      "scrap": "Destroyed and counted as scrap (هالك)",
+      "hold": "Quarantined pending a decision"
+    },
+    "decisionTotal": "Total {total} of {quantity}",
+    "ncrNotice": "What is not released opens a non-conformance report about the supplier.",
+    "concessionBy": "Concession approved by",
+    "notes": "Notes",
+    "notesRequired": "Notes (required for a concession)",
     "decide": "Record the decision"
   }
 }

@@ -25,7 +25,8 @@
       "sample_inspection": "فحص العينة",
       "reinspection": "إعادة فحص",
       "issue_triggered": "بسبب مشكلة",
-      "general": "عام"
+      "general": "عام",
+      "incoming_inspection": "فحص مواد واردة"
     }
   },
   "qualityRejection": {

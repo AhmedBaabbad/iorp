@@ -18,7 +18,7 @@ from app.quality.domain import specifications as rules
 from app.quality.domain.rules import QualityError
 from app.quality.infrastructure.models import QualityCheck, QualityCheckMeasurement
 from .specification_service import SpecificationService
-from .support import CommercialReads, ProductionReads, record
+from .support import ProcurementReads, CommercialReads, ProductionReads, record
 
 
 class MeasurementService:
@@ -37,6 +37,9 @@ class MeasurementService:
             return CommercialReads(self.db, self.org).sample_spec(check.sample_id)
         if check.production_order_id:
             return ProductionReads(self.db, self.org).lot_spec(check.production_order_id, check.production_order_item_id)
+        if check.receipt_line_id:  # a received lot: its material's specification key (QUAL-INC-001)
+            lot = ProcurementReads(self.db, self.org).lot(check.receipt_line_id)
+            return (lot["spec_product_type"] if lot else None), {}
         return None, {}
 
     def candidates(self, check) -> list[tuple]:

@@ -12,6 +12,8 @@ class QualityCheckType(str, Enum):
     REINSPECTION = "reinspection"
     # Inspection opened in direct response to a reported quality issue.
     ISSUE_TRIGGERED = "issue_triggered"
+    # QUAL-INC-001: a received lot of purchased material, inspected on arrival.
+    INCOMING_INSPECTION = "incoming_inspection"
     # Catch-all for inspections that do not fit a named business type.
     GENERAL = "general"
 

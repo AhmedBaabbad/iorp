@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 import type {
-  AwaitingReturn, BatchShipment, ReturnDecisionRequest, CloseQualityCheckRequest, CreateQualityCheckRequest, InspectableOrder, MeasurementInput, PlanCandidate, QualityCheckData, QualityCheckListFilters,
+  AwaitingReceipt, AwaitingReturn, BatchShipment, LotDecisionRequest, ReturnDecisionRequest, CloseQualityCheckRequest, CreateQualityCheckRequest, InspectableOrder, MeasurementInput, PlanCandidate, QualityCheckData, QualityCheckListFilters,
   QualityCheckListItem, SampleOption, UpdateQualityCheckRequest,
 } from "../types";
 
@@ -76,4 +76,17 @@ export function decideReturn(id: string, body: ReturnDecisionRequest) {
 
 export function getBatchShipments(id: string) {
   return apiClient<BatchShipment[]>(`${PATH}/${id}/batch-shipments`);
+}
+
+// QUAL-INC-001: received lots awaiting inspection, an inspection per lot, the lot decision.
+export function getAwaitingLots(search = "") {
+  return apiClient<AwaitingReceipt[]>(`/quality/incoming/awaiting?q=${encodeURIComponent(search)}`);
+}
+
+export function openIncomingInspection(receiptLineId: string) {
+  return apiClient<QualityCheckData>(`/quality/incoming/lines/${receiptLineId}/inspection`, { method: "POST" });
+}
+
+export function decideLot(id: string, body: LotDecisionRequest) {
+  return apiClient<QualityCheckData>(`${PATH}/${id}/lot-decision`, { method: "POST", body });
 }

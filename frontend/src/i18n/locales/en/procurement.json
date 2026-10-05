@@ -92,7 +92,9 @@
     "supplier_lot": "Supplier's lot",
     "package_count": "Packages",
     "weight": "Weight",
-    "weight_unit": "Weight unit"
+    "weight_unit": "Weight unit",
+    "quality": "Quality",
+    "grade": "Grade"
   },
   "suppliers": {
     "title": "Suppliers",
@@ -164,7 +166,8 @@
     "inspectionNote": "Lots marked for inspection are not used before quality releases them.",
     "cancelledHint": "Cancelled: {reason}",
     "cancelTitle": "Cancel the receipt",
-    "cancelText": "Entered by mistake or sent back? Give the reason."
+    "cancelText": "Entered by mistake or sent back? Give the reason.",
+    "awaitingQuality": "{count} awaiting quality"
   },
   "download": {
     "ar": "Receipt PDF (Arabic)",
@@ -195,5 +198,28 @@
     "LINES_REQUIRED": "Add at least one line.",
     "RECEIPT_IS_CANCELLED": "The receipt is already cancelled.",
     "UNIT_UNKNOWN": "Choose the unit from the list."
+  },
+  "lotStatuses": {
+    "not_required": "Not inspected",
+    "awaiting": "Awaiting quality",
+    "inspecting": "Being inspected",
+    "released": "Released",
+    "partly_released": "Partly released",
+    "rejected": "Not released"
+  },
+  "evaluation": {
+    "title": "Supplier evaluation",
+    "notScored": "Not scored",
+    "period": "The last {months} months (since {since}).",
+    "noLots": "No inspected lot in this period: not scored yet.",
+    "lots": "Lots released in full",
+    "lotsValue": "{released} of {inspected} ({pct}%)",
+    "ncr": "Non-conformance reports",
+    "ncrValue": "{count} — minus {points} points",
+    "cost": "Their cost",
+    "points": "minus {points} points",
+    "score": "Score",
+    "suggestion": "The score suggests the standing «{status}»; whoever approves suppliers decides.",
+    "formula": "Score = % of lots released in full − points for non-conformance reports (critical 10, major 5, minor 2; at most 30) − 1 point per 1,000 of their cost (at most 20). A ≥ 90, B ≥ 75, C ≥ 60, D below."
   }
 }

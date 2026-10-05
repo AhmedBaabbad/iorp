@@ -1,10 +1,11 @@
 // Quality checks and rejections (QUAL-001). Quantities are decimal strings in the inspected line's unit.
 export type QualityCheckType =
-  | "in_process_inspection" | "finished_product_inspection" | "sample_inspection" | "reinspection" | "issue_triggered" | "general";
+  | "in_process_inspection" | "finished_product_inspection" | "sample_inspection" | "reinspection" | "issue_triggered" | "incoming_inspection" | "general";
 export type QualityCheckStatus = "open" | "under_inspection" | "closed" | "cancelled";
 export type QualityCheckResult = "accepted" | "rejected" | "conditional_accept" | "needs_reinspection";
 // "return_decision" replaces "close" on an inspection of returned goods (QUAL-RET-001).
-export type QualityCheckAction = "edit" | "measure" | "start" | "close" | "return_decision" | "cancel";
+// "lot_decision" replaces "close" on an incoming inspection of a received lot (QUAL-INC-001).
+export type QualityCheckAction = "edit" | "measure" | "start" | "close" | "return_decision" | "lot_decision" | "cancel";
 
 export const CHECK_TYPES: QualityCheckType[] = ["in_process_inspection", "finished_product_inspection", "reinspection", "sample_inspection", "issue_triggered", "general"];
 export const CHECK_STATUSES: QualityCheckStatus[] = ["open", "under_inspection", "closed", "cancelled"];
@@ -36,10 +37,34 @@ export type QualityCheckListItem = {
   return_id?: string | null;
   return_line_id?: string | null;
   return_source?: ReturnSource | null;
+  receipt_id?: string | null;
+  receipt_line_id?: string | null;
+  incoming_source?: IncomingSource | null;
   actions: QualityCheckAction[];
   created_at: string;
   updated_at: string;
 };
+
+// The received lot an incoming inspection is about (read from procurement).
+export type IncomingSource = {
+  receipt_id: string; receipt_no: string; receipt_date: string; supplier_id: string; supplier_name: string; line_no: number; description: string;
+  material_code: string | null; supplier_lot: string | null; spec_product_type: string | null;
+};
+
+// Received lots of materials inspected on arrival, grouped by goods receipt.
+export type AwaitingLot = {
+  line_id: string; line_no: number; description: string; material_code: string | null; spec_product_type: string | null; supplier_lot: string | null;
+  quantity: string; unit: string; inspection_id: string | null; inspection_code: string | null; inspection_status: QualityCheckStatus | null;
+};
+export type AwaitingReceipt = {
+  receipt_id: string; receipt_no: string; receipt_date: string; received_at: string | null; supplier_id: string; supplier_name: string;
+  supplier_delivery_no: string | null; lines: AwaitingLot[];
+};
+
+// Where an inspected lot goes; the parts add up to it. Anything not released opens a non-conformance report.
+export const LOT_PARTS = ["released", "use_as_is", "sort", "return_to_supplier", "scrap", "hold"] as const;
+export type LotPart = (typeof LOT_PARTS)[number];
+export type LotDecisionRequest = Record<LotPart, string> & { notes: string | null; concession_approved_by: string | null };
 
 // The returned goods an inspection is about (read from shipping).
 export type ReturnSource = {

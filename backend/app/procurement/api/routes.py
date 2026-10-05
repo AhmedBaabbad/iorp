@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.reporting.routes import generate_response
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_current_user, get_db, permission_check, require_any_permission, require_permission
-from app.procurement.api.schemas import (MaterialCreate, MaterialRead, MaterialUpdate, ReasonInput, ReceiptCreate, ReceiptListItem, ReceiptRead,
+from app.procurement.api.schemas import (Evaluation, MaterialCreate, MaterialRead, MaterialUpdate, ReasonInput, ReceiptCreate, ReceiptListItem, ReceiptRead,
                                          ReceiptUpdate, SettingsInput, SettingsRead, SupplierCreate, SupplierOption, SupplierRead, SupplierStatusInput,
                                          SupplierUpdate)
 from app.procurement.application.services import MaterialService, ReceiptService, SupplierService
@@ -72,6 +72,13 @@ def create_supplier(payload: SupplierCreate, tenant: TenantContext = Depends(get
 def get_supplier(supplier_id: UUID, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
     """The supplier with its receipts and the non-conformance reports raised about it."""
     return _supplier(db, tenant, can, lambda s: s.get(supplier_id))
+
+
+@router.get("/suppliers/{supplier_id}/evaluation", response_model=Evaluation, dependencies=[Depends(require_permission(P.SUPPLIERS_READ))])
+def supplier_evaluation(supplier_id: UUID, months: int = Query(default=12, ge=1, le=60), tenant: TenantContext = Depends(get_current_tenant),
+                        db: Session = Depends(get_db)):
+    """The supplier's score over the last months, from its incoming lots and the non-conformance reports about it."""
+    return _attempt(db, lambda: SupplierService(db, tenant).evaluation(supplier_id, months))
 
 
 @router.patch("/suppliers/{supplier_id}", response_model=SupplierRead, dependencies=[Depends(require_permission(P.SUPPLIERS_UPDATE))])

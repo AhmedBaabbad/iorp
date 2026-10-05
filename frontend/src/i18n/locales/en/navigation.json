@@ -72,7 +72,8 @@
     "qualityReturns": "Returns awaiting quality",
     "suppliers": "Suppliers",
     "materials": "Materials",
-    "goodsReceipts": "Goods receipts"
+    "goodsReceipts": "Goods receipts",
+    "qualityIncoming": "Incoming inspection"
   },
   "userMenu": {
     "changePassword": "Change Password",

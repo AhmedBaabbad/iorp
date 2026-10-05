@@ -92,7 +92,9 @@
     "supplier_lot": "دفعة المورد",
     "package_count": "العبوات",
     "weight": "الوزن",
-    "weight_unit": "وحدة الوزن"
+    "weight_unit": "وحدة الوزن",
+    "quality": "الجودة",
+    "grade": "التقييم"
   },
   "suppliers": {
     "title": "الموردون",
@@ -164,7 +166,8 @@
     "inspectionNote": "الدفعات المؤشَّرة للفحص لا تُستخدم قبل اعتماد الجودة.",
     "cancelledHint": "ملغى: {reason}",
     "cancelTitle": "إلغاء الاستلام",
-    "cancelText": "سُجّل بالخطأ أو أُعيد؟ اكتب السبب."
+    "cancelText": "سُجّل بالخطأ أو أُعيد؟ اكتب السبب.",
+    "awaitingQuality": "{count} بانتظار الجودة"
   },
   "download": {
     "ar": "الاستلام PDF (عربي)",
@@ -195,5 +198,28 @@
     "LINES_REQUIRED": "أضف بنداً واحداً على الأقل.",
     "RECEIPT_IS_CANCELLED": "الاستلام ملغى من قبل.",
     "UNIT_UNKNOWN": "اختر الوحدة من القائمة."
+  },
+  "lotStatuses": {
+    "not_required": "لا تُفحص",
+    "awaiting": "بانتظار الجودة",
+    "inspecting": "قيد الفحص",
+    "released": "معتمدة",
+    "partly_released": "معتمدة جزئياً",
+    "rejected": "غير معتمدة"
+  },
+  "evaluation": {
+    "title": "تقييم المورد",
+    "notScored": "غير مقيَّم",
+    "period": "آخر {months} شهراً (منذ {since}).",
+    "noLots": "لا توجد دفعات مفحوصة في هذه الفترة: لم يُقيَّم بعد.",
+    "lots": "الدفعات المعتمدة كاملة",
+    "lotsValue": "{released} من {inspected} ({pct}٪)",
+    "ncr": "تقارير عدم المطابقة",
+    "ncrValue": "{count} — خصم {points} نقطة",
+    "cost": "تكلفتها",
+    "points": "خصم {points} نقطة",
+    "score": "الدرجة",
+    "suggestion": "الدرجة تقترح التصنيف «{status}»؛ والقرار لمن يعتمد الموردين.",
+    "formula": "الدرجة = نسبة الدفعات المعتمدة كاملة − نقاط تقارير عدم المطابقة (حرجة 10، جوهرية 5، بسيطة 2؛ بحد أقصى 30) − نقطة لكل 1000 من تكلفتها (بحد أقصى 20). A ≥ 90، B ≥ 75، C ≥ 60، D أقل."
   }
 }
