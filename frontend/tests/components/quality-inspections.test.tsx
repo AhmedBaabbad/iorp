@@ -26,7 +26,7 @@ import type { ProductionOrderData } from "@/features/production-orders/types";
 import { Q, QUALITY_REPORT } from "@/lib/quality-permissions";
 import { ReportForm } from "@/features/reports/ReportForm";
 import { SpecificationForm } from "@/features/quality-specifications";
-import { splitReadings } from "@/features/quality-checks/components/MeasurementsSection";
+import { normalizeReading, splitReadings } from "@/features/quality-checks/components/MeasurementsSection";
 import type { Definition } from "@/features/reports/api";
 
 let en: Record<string, unknown>;
@@ -51,7 +51,7 @@ function check(over: Partial<QualityCheckData> = {}): QualityCheckData {
     qty_inspected: "100.000", qty_accepted: "0.000", qty_rejected: "0.000", unit: "kg", order_number: "PO-1", item_line_no: null, sample_code: null,
     checked_by_name: "Sara", actions: ["edit", "close", "cancel"], created_at: "", updated_at: "", notes: null, started_at: "2026-10-01T08:05:00Z",
     closed_at: null, closed_by_name: null, cancel_reason: null, history: [], rejections: [],
-    specification_id: null, specification_code: null, specification_revision: null, measurements: [], ...over };
+    specification_id: null, specification_code: null, specification_revision: null, lot_values: null, measurements: [], ...over };
 }
 function rejection(over: Partial<QualityRejectionData> = {}): QualityRejectionData {
   return { id: "r1", rejection_code: "QR-2026-0001", quality_check_id: "c1", production_order_id: "po1", production_order_item_id: null,
@@ -181,8 +181,10 @@ function measurement(over: Partial<Measurement> = {}): Measurement {
 }
 
 describe("measurements", () => {
-  it("splits readings typed with spaces, commas or Arabic separators", () => {
-    expect(splitReadings("5.02, 4.98 ،5.01؛5")).toEqual(["5.02", "4.98", "5.01", "5"]);
+  it("reads Arabic digits, the Arabic decimal separator and a decimal comma; splits pasted lists", () => {
+    expect(normalizeReading("٥٫٠٢")).toBe("5.02");
+    expect(normalizeReading("4,98")).toBe("4.98");
+    expect(splitReadings("5.02 4.98 ،5.01؛٥")).toEqual(["5.02", "4.98", "5.01", "5"]);
   });
 
   it("records readings and shows the server's verdict with the limits", async () => {
@@ -196,10 +198,20 @@ describe("measurements", () => {
     const section = await screen.findByRole("region", { name: "نتائج القياس" });
     expect(within(section).getByText("4.8 – 5.2")).toBeTruthy();
     expect(within(section).getByText("المواصفة المرجعية: ROF-TDS-PP-001 — rev 1")).toBeTruthy();
-    fireEvent.change(within(section).getByLabelText("قراءات العرض"), { target: { value: "5.02 4.98, 5.01" } });
-    await act(async () => { fireEvent.click(within(section).getAllByRole("button", { name: "حفظ" })[0]); });
-    expect(api.apiClient.mock.calls.find(([p, o]) => p === "/quality/quality-checks/c1/measurements/m1" && o?.method === "PUT")?.[1]?.body)
-      .toEqual({ readings: ["5.02", "4.98", "5.01"], observation: null });
+    // One box per required reading, with a counter; nothing is sent until "save measurements".
+    expect(within(section).getByText("0 من 3 قراءات")).toBeTruthy();
+    expect((within(section).getByRole("button", { name: "حفظ القياسات" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(within(section).getByLabelText("القراءة 1 — العرض"), { target: { value: "٥٫٠٢" } });
+    fireEvent.change(within(section).getByLabelText("القراءة 2 — العرض"), { target: { value: "4,98" } });
+    fireEvent.change(within(section).getByLabelText("القراءة 3 — العرض"), { target: { value: "5.01" } });
+    expect(within(section).getByText("3 من 3 قراءات")).toBeTruthy();
+    fireEvent.change(within(section).getByLabelText("نتيجة اللون"), { target: { value: "conforming" } });
+    await act(async () => { fireEvent.click(within(section).getByRole("button", { name: "حفظ القياسات (2)" })); });
+    const puts = api.apiClient.mock.calls.filter(([, o]) => o?.method === "PUT").map(([p, o]) => [p, o.body]);
+    expect(puts).toEqual([
+      ["/quality/quality-checks/c1/measurements/m1", { readings: ["5.02", "4.98", "5.01"], observation: null }],
+      ["/quality/quality-checks/c1/measurements/m2", { attribute_result: "conforming", observation: null }]]);
+    expect(within(section).getByText("حُفظت 2 خاصية.")).toBeTruthy();
     expect(await within(section).findByText("مطابق: 1 · غير مطابق: 0 · لم يُقَس: 1")).toBeTruthy();
   });
 
@@ -216,7 +228,7 @@ describe("measurements", () => {
   it("offers the specifications in force when the inspection has no plan yet", async () => {
     const plain = check({ actions: ["edit", "measure", "close", "cancel"] });
     api.apiClient.mockImplementation((path: string) => Promise.resolve(path.endsWith("/specifications")
-      ? [{ id: "s1", code: "ROF-TDS-PP-001", revision: 2, title: "PP strap", grade: null }]
+      ? [{ id: "s1", code: "ROF-TDS-PP-001", revision: 2, title: "PP strap", product_type: "pp_strap", grade: null, matches_product: true, missing_keys: [] }]
       : path.endsWith("/plan") ? { ...plain, specification_code: "ROF-TDS-PP-001", specification_revision: 2, measurements: [measurement()] } : plain));
     ui(<QualityCheckDetail qualityCheckId="c1" />);
     fireEvent.click(await screen.findByRole("button", { name: "Apply measurement plan" }));
@@ -248,5 +260,38 @@ describe("specification form", () => {
       { parameter_id: "p1", target_source: "order_line", order_spec_key: "width_mm", tolerance_minus: "0.2", tolerance_plus: "0.2", requirement: null },
       { parameter_id: "p2", target_source: "none", requirement: "As approved sample", tolerance_minus: null } ] });
     expect(nav.push).toHaveBeenCalledWith("/quality-specifications/s1");
+  });
+});
+
+describe("plan for a lot without sizes", () => {
+  it("offers other specifications and asks for the values the order line lacks", async () => {
+    const plain = check({ actions: ["edit", "measure", "close", "cancel"] });
+    api.apiClient.mockImplementation((path: string) => Promise.resolve(path.endsWith("/specifications")
+      ? [{ id: "s1", code: "ROF-TDS-PP-001", revision: 1, title: "PP Strap 5 × 0.35", product_type: "pp_strap", grade: null, matches_product: false,
+        missing_keys: ["thickness_mm", "width_mm"] }]
+      : path.endsWith("/plan") ? { ...plain, specification_code: "ROF-TDS-PP-001", specification_revision: 1, lot_values: { width_mm: "5", thickness_mm: "0.35" },
+        measurements: [measurement()] } : plain));
+    ui(<QualityCheckDetail qualityCheckId="c1" />, "ar");
+    expect(await screen.findByText(/وليست لمنتج الأمر/)).toBeTruthy();
+    const apply = screen.getByRole("button", { name: "تطبيق خطة القياس" }) as HTMLButtonElement;
+    expect(apply.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("العرض (مم)"), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText("السماكة (مم)"), { target: { value: "0.35" } });
+    await act(async () => { fireEvent.click(apply); });
+    expect(api.apiClient.mock.calls.find(([p]) => p === "/quality/quality-checks/c1/plan")?.[1]?.body)
+      .toEqual({ specification_id: "s1", lot_values: { thickness_mm: "0.35", width_mm: "5" } });
+    expect(await screen.findByText("قيم الدفعة التي أدخلها الفاحص: العرض (مم): 5 · السماكة (مم): 0.35")).toBeTruthy();
+  });
+});
+
+describe("invalid readings", () => {
+  it("flags a reading that is not a number and does not save", async () => {
+    api.apiClient.mockResolvedValue(check({ actions: ["edit", "measure", "close", "cancel"], specification_code: "X", specification_revision: 1, measurements: [measurement()] }));
+    ui(<QualityCheckDetail qualityCheckId="c1" />);
+    fireEvent.change(await screen.findByLabelText("Width reading 1"), { target: { value: "5 mm" } });
+    expect(screen.getByText("Invalid reading: enter a number only (e.g. 5.02).")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Save measurements (1)" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Add a reading for Width" }));
+    expect(screen.getByLabelText("Width reading 4")).toBeTruthy();
   });
 });

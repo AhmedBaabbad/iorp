@@ -228,3 +228,50 @@ def test_write_measured_inspection_sample(sq):
         r = sq.client.post("/api/v1/reports/quality.check_full/pdf", json=dict(check_id=check["id"], lang=lang))
         assert r.status_code == 200, r.text
         (out / f"Q1-measured-{lang}.pdf").write_bytes(r.content)
+
+
+# ── QUAL-SPEC-002: any specification in force, missing lot values, reinspection of closed orders ─────
+
+def test_every_specification_in_force_is_offered_with_what_it_still_needs(sq):
+    sq.spec()
+    sq.spec(code_="OTHER-001", product="another product")
+    check = sq.opened(strap_order(sq, color="Black"), check_type="finished_product_inspection")
+    candidates = sq.client.get(f"{CHECKS}/{check['id']}/specifications").json()
+    assert [(c["code"], c["matches_product"]) for c in candidates] == [("ROF-TDS-PP-001", True), ("OTHER-001", False)]
+    assert candidates[0]["missing_keys"] == ["thickness_mm", "width_mm"]
+
+
+def test_the_inspector_enters_the_values_the_order_line_lacks(sq):
+    spec = sq.spec()
+    check = sq.opened(strap_order(sq, color="Black", width_mm=5), check_type="finished_product_inspection")
+    r = sq.client.post(f"{CHECKS}/{check['id']}/plan", json=dict(specification_id=spec["id"], lot_values=dict(thickness_mm="abc")))
+    assert r.status_code == 400 and code(r) == "LOT_VALUE_INVALID"
+    # The order line's own width wins over an entered one; the missing thickness is taken from the inspector.
+    planned = sq.client.post(f"{CHECKS}/{check['id']}/plan", json=dict(specification_id=spec["id"], lot_values=dict(thickness_mm="0.35", width_mm="9"))).json()
+    by_code = {m["parameter_code"]: m for m in planned["measurements"]}
+    assert float(by_code["WIDTH"]["target"]) == 5 and float(by_code["THICKNESS"]["target"]) == 0.35
+    assert planned["lot_values"] == {"thickness_mm": "0.35"}
+    assert sq.client.get(f"{CHECKS}/{check['id']}/specifications").json()[0]["missing_keys"] == []
+
+
+def test_a_closed_order_takes_a_reinspection_only(sq):
+    po = sq.planned({"width_mm": 5, "thickness_mm": 0.35}, quantity="400")
+    sq.added(po, "customer_good", "390")
+    sq.close(po)
+    r = sq.check(po, check_type="finished_product_inspection")
+    assert r.status_code == 409 and code(r) == "ORDER_NOT_INSPECTABLE"
+    numbers = [o["number"] for o in sq.client.get(f"{CHECKS}/lookups/orders", params=dict(check_type="reinspection")).json()]
+    assert po["production_order_number"] in numbers
+    assert po["production_order_number"] not in [o["number"] for o in sq.client.get(f"{CHECKS}/lookups/orders").json()]
+    reinspection = sq.check(po, check_type="reinspection")
+    assert reinspection.status_code == 201, reinspection.text
+    r = sq.client.patch(f"{CHECKS}/{reinspection.json()['id']}", json=dict(check_type="finished_product_inspection"))
+    assert r.status_code == 409 and code(r) == "ORDER_NOT_INSPECTABLE"
+
+
+def test_readings_typed_with_arabic_digits_or_a_decimal_comma(sq):
+    sq.spec()
+    check = sq.opened(strap_order(sq), check_type="finished_product_inspection")
+    check = sq.measure(check, "WIDTH", ["٥٫٠٢", "5,1", "4.9"])
+    width = next(m for m in check["measurements"] if m["parameter_code"] == "WIDTH")
+    assert width["readings"] == ["5.02", "5.1", "4.9"] and width["status"] == "pass"

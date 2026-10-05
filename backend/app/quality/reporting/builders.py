@@ -199,6 +199,8 @@ def check_full(db, tenant, params, selected):
                      ('البند / Line', line_no if line_no else ('الأمر كله / Whole order' if number else None)), ('المواصفات / Specification', spec_text(spec, lang))]
         if check.specification_code:
             rows.append(('المواصفة المرجعية / Reference specification', f'{check.specification_code} — rev {check.specification_revision}'))
+        if check.lot_values:
+            rows.append(('قيم الدفعة التي أدخلها الفاحص / Lot values entered by the inspector', spec_text(check.lot_values, lang)))
         rows += [('بدأ في / Started at', text(check.started_at, zone)),
                  ('أُغلق في / Closed at', f'{text(check.closed_at, zone)} — {names.get(check.closed_by_user_id) or ""}'.strip(' —') if check.closed_at else None)]
         if check.cancel_reason:

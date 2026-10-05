@@ -27,6 +27,14 @@ ACTIVE = frozenset({S.OPEN, S.UNDER_INSPECTION})
 FINAL = frozenset({S.CLOSED, S.CANCELLED})
 # Orders a check or a rejection may be recorded against: running, held or completed (closing locks quality).
 ORDER_STATUSES = frozenset({"in_progress", "on_hold", "completed"})
+# A reinspection may also be made on a closed order: its retained samples are measured again, e.g. when a customer
+# asks for a certificate after shipment. The order stays closed; the close gate is not involved.
+REINSPECTION_ORDER_STATUSES = ORDER_STATUSES | {"closed"}
+
+
+def order_statuses(check_type) -> frozenset:
+    """The order statuses an inspection of this type may be opened on."""
+    return REINSPECTION_ORDER_STATUSES if str(getattr(check_type, "value", check_type)) == "reinspection" else ORDER_STATUSES
 
 
 class QualityError(ValueError):

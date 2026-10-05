@@ -2,6 +2,9 @@
 
 Applying a specification copies its lines into the check with the limits resolved for the inspected lot (the order
 line's specification values, or the sample's), so the plan never changes when the specification is later revised.
+Any specification in force can be applied (those for the order's product are offered first). A value the specification
+takes from the order line but the line lacks (e.g. an order written before its sizes were recorded) is entered by the
+inspector when applying the plan; it is kept on the check as the lot's value. A value the order line has always wins.
 """
 from __future__ import annotations
 
@@ -36,11 +39,31 @@ class MeasurementService:
             return ProductionReads(self.db, self.org).lot_spec(check.production_order_id, check.production_order_item_id)
         return None, {}
 
-    def candidates(self, check) -> list:
-        product, _spec = self.lot(check)
-        return self.specs.active_for(product) if product else []
+    def candidates(self, check) -> list[tuple]:
+        """Every specification in force as (specification, matches the product, lot values it still needs), matching ones first."""
+        product, lot_spec = self.lot(check)
+        effective = self._effective(check, lot_spec)
+        matching = {s.id for s in self.specs.active_for(product)} if product else set()
+        specs = self.specs.list(status=rules.ACTIVE)
+        out = [(s, s.id in matching, self.missing_keys(s.id, effective)) for s in specs]
+        return sorted(out, key=lambda row: (not row[1], row[0].code))
 
-    def apply(self, check: QualityCheck, spec_id, *, commit=True):
+    def missing_keys(self, spec_id, effective) -> list[str]:
+        keys = {line.order_spec_key for line, parameter in self.specs.lines(spec_id)
+                if parameter.kind == rules.NUMERIC and line.target_source == rules.ORDER_LINE and line.order_spec_key}
+        return sorted(k for k in keys if rules.decimal(effective.get(k)) is None)
+
+    @staticmethod
+    def _effective(check, lot_spec, extra=None) -> dict:
+        """The lot's values: the order line's (or sample's), completed by what the inspector entered for the missing ones."""
+        entered = {**(check.lot_values or {}), **(extra or {})}
+        effective = dict(lot_spec)
+        for key, value in entered.items():
+            if rules.decimal(lot_spec.get(key)) is None:
+                effective[key] = value
+        return effective
+
+    def apply(self, check: QualityCheck, spec_id, *, lot_values=None, commit=True):
         """Copies the specification's lines into the check; replaces a plan nothing has been measured against yet."""
         check_rules.assert_editable(check.status)
         spec = self.specs.get(spec_id)
@@ -50,13 +73,17 @@ class MeasurementService:
         if any(m.status != rules.PENDING or m.readings or m.attribute_result for m in existing):
             raise QualityError("MEASUREMENTS_STARTED")
         _product, lot_spec = self.lot(check)
+        for key, value in (lot_values or {}).items():
+            if rules.decimal(value) is None:
+                raise QualityError("LOT_VALUE_INVALID", 400, key=key, value=str(value))
+        effective = self._effective(check, lot_spec, lot_values)
         lines = self.specs.lines(spec.id)
         planned = []
         for line, parameter in lines:
             if parameter.kind == rules.NUMERIC:
                 target, lower, upper = rules.resolve_limits({**{f: getattr(line, f) for f in ("target_source", "order_spec_key", "target_value",
                                                              "tolerance_minus", "tolerance_plus", "min_value", "max_value")},
-                                                             "parameter_code": parameter.code}, lot_spec)
+                                                             "parameter_code": parameter.code}, effective)
             else:
                 target = lower = upper = None
             planned.append(QualityCheckMeasurement(
@@ -69,6 +96,10 @@ class MeasurementService:
         self.db.flush()
         self.db.add_all(planned)
         check.specification_id, check.specification_code, check.specification_revision = spec.id, spec.code, spec.revision
+        # Keep only what the inspector supplied for values the lot lacks, as the lot's recorded values.
+        used = {line.order_spec_key for line, _p in lines if line.target_source == rules.ORDER_LINE}
+        supplied = {k: str(v) for k, v in effective.items() if k in used and rules.decimal(lot_spec.get(k)) is None}
+        check.lot_values = supplied or None
         record(self.db, self.org, "check", check.id, "plan", check.status.value, check.status.value, self.tenant.user_id,
                detail=dict(specification=f"{spec.code} rev {spec.revision}"))
         if commit:
@@ -77,14 +108,15 @@ class MeasurementService:
 
     def auto_apply(self, check: QualityCheck) -> None:
         """A new inspection takes its product's specification when exactly one is in force; otherwise the inspector chooses."""
-        candidates = self.candidates(check)
+        product, _spec = self.lot(check)
+        candidates = self.specs.active_for(product) if product else []
         if len(candidates) == 1:
             try:
                 self.apply(check, candidates[0].id, commit=False)
             except QualityError as exc:
                 if exc.code != "LOT_SPEC_VALUE_MISSING":
                     raise
-                # The lot lacks a value the specification takes from it: the inspector applies it once the order is complete.
+                # The lot lacks a value the specification takes from it: the inspector applies it and enters that value.
 
     def record(self, check: QualityCheck, measurement_id, data) -> QualityCheckMeasurement:
         check_rules.assert_editable(check.status)

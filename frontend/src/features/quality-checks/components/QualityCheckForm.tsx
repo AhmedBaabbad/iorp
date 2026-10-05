@@ -34,9 +34,11 @@ export function QualityCheckForm({ checkId }: { checkId?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  // A reinspection may also be made on a closed order (its retained samples), so it lists those too.
+  const reinspection = values.type === "reinspection";
   useEffect(() => {
-    getInspectableOrders().then(setOrders).catch(() => setOrders([]));
-  }, []);
+    getInspectableOrders("", reinspection ? "reinspection" : undefined).then(setOrders).catch(() => setOrders([]));
+  }, [reinspection]);
   useEffect(() => {
     if (values.type !== "sample_inspection" || samples.length) return;
     getInspectableSamples().then(setSamples).catch(() => setSamples([]));
@@ -122,7 +124,7 @@ export function QualityCheckForm({ checkId }: { checkId?: string }) {
           <input type="number" min="0" step="0.001" inputMode="decimal" value={values.quantity} disabled={busy || locked} onChange={e => set("quantity", e.target.value)} />
         </label>
       </div>
-      <p className={s.muted}>{isSample ? t("hints.sample") : orderRequired ? t("hints.orderStatuses") : t("hints.optionalOrder")} {t("hints.quantityLater")}</p>
+      <p className={s.muted}>{isSample ? t("hints.sample") : reinspection ? t("hints.reinspection") : orderRequired ? t("hints.orderStatuses") : t("hints.optionalOrder")} {t("hints.quantityLater")}</p>
       <label className={s.field}>{t("fields.notes")}<textarea maxLength={2000} value={values.notes} disabled={busy || locked} onChange={e => set("notes", e.target.value)} /></label>
       {error && <p role="alert" className={s.error}>{error}</p>}
       <div className={s.actions} style={{ marginTop: 16 }}>

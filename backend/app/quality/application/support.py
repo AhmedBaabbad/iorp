@@ -42,7 +42,7 @@ class ProductionReads:
     def __init__(self, db, organization_id):
         self.db, self.org = db, organization_id
 
-    def order(self, order_id, *, lock=False, inspectable=False) -> OrderRef:
+    def order(self, order_id, *, lock=False, inspectable=False, statuses=ORDER_STATUSES) -> OrderRef:
         orders = _t("production_orders")
         query = select(orders.c.id, orders.c.production_order_number, orders.c.product_type, orders.c.status, orders.c.unit).where(
             orders.c.id == order_id, orders.c.organization_id == self.org)
@@ -50,7 +50,7 @@ class ProductionReads:
         if row is None:
             raise QualityError("PRODUCTION_ORDER_NOT_FOUND", 404)
         ref = OrderRef(row.id, row.production_order_number, row.product_type, getattr(row.status, "value", row.status), row.unit)
-        if inspectable and ref.status not in ORDER_STATUSES:
+        if inspectable and ref.status not in statuses:
             raise QualityError("ORDER_NOT_INSPECTABLE", order_status=ref.status)
         return ref
 
@@ -107,11 +107,11 @@ class ProductionReads:
         ids = [i for i in set(item_ids) if i]
         return dict(self.db.execute(select(items.c.id, items.c.line_no).where(items.c.id.in_(ids))).all()) if ids else {}
 
-    def inspectable_orders(self, search: str = "", limit: int = 50) -> list[dict]:
+    def inspectable_orders(self, search: str = "", limit: int = 50, statuses=ORDER_STATUSES) -> list[dict]:
         """Orders a check can be opened on (running, held, completed), with their lines, newest first."""
         orders, items = _t("production_orders"), _t("production_order_items")
         query = select(orders.c.id, orders.c.production_order_number, orders.c.product_type, orders.c.status, orders.c.unit).where(
-            orders.c.organization_id == self.org, orders.c.status.in_(sorted(ORDER_STATUSES)))
+            orders.c.organization_id == self.org, orders.c.status.in_(sorted(statuses)))
         if search:
             query = query.where(orders.c.production_order_number.icontains(search, autoescape=True)
                                 | orders.c.product_type.icontains(search, autoescape=True))

@@ -70,8 +70,8 @@ class QualityCheckService:
     def get(self, check_id) -> QualityCheck:
         return self._get(check_id)
 
-    def inspectable_orders(self, search=""):
-        return self.production.inspectable_orders(search)
+    def inspectable_orders(self, search="", check_type=None):
+        return self.production.inspectable_orders(search, statuses=rules.order_statuses(check_type) if check_type else rules.ORDER_STATUSES)
 
     def samples(self, search=""):
         return self.commercial.samples(search)
@@ -90,7 +90,7 @@ class QualityCheckService:
             if item_id:
                 raise QualityError("PRODUCTION_ORDER_REQUIRED", 400)
             return None, None, None
-        order = self.production.order(order_id, lock=lock, inspectable=True)
+        order = self.production.order(order_id, lock=lock, inspectable=True, statuses=rules.order_statuses(check_type))
         item = self.production.item(order.id, item_id) if item_id else None
         return order, item, (item.unit if item else order.unit)
 

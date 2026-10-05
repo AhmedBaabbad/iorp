@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 import type {
-  CloseQualityCheckRequest, CreateQualityCheckRequest, InspectableOrder, MeasurementInput, QualityCheckData, QualityCheckListFilters,
+  CloseQualityCheckRequest, CreateQualityCheckRequest, InspectableOrder, MeasurementInput, PlanCandidate, QualityCheckData, QualityCheckListFilters,
   QualityCheckListItem, SampleOption, UpdateQualityCheckRequest,
 } from "../types";
 
@@ -37,8 +37,9 @@ export function cancelQualityCheck(id: string, reason: string) {
   return apiClient<QualityCheckData>(`${PATH}/${id}/cancel`, { method: "POST", body: { reason } });
 }
 
-export function getInspectableOrders(search = "") {
-  return apiClient<InspectableOrder[]>(`${PATH}/lookups/orders?q=${encodeURIComponent(search)}`);
+// Orders a check of this type can be opened on: a reinspection also lists closed orders (retained samples).
+export function getInspectableOrders(search = "", checkType?: string) {
+  return apiClient<InspectableOrder[]>(`${PATH}/lookups/orders?q=${encodeURIComponent(search)}${checkType ? `&check_type=${checkType}` : ""}`);
 }
 
 export function getInspectableSamples(search = "") {
@@ -46,12 +47,14 @@ export function getInspectableSamples(search = "") {
 }
 
 // QUAL-SPEC-001: the specifications in force for the inspected product, applying one as the plan, and recording a measurement.
+// Every specification in force, those for the order's product first, with the lot values each still needs.
 export function getPlanCandidates(id: string) {
-  return apiClient<{ id: string; code: string; revision: number; title: string; grade: string | null }[]>(`${PATH}/${id}/specifications`);
+  return apiClient<PlanCandidate[]>(`${PATH}/${id}/specifications`);
 }
 
-export function applyPlan(id: string, specificationId: string) {
-  return apiClient<QualityCheckData>(`${PATH}/${id}/plan`, { method: "POST", body: { specification_id: specificationId } });
+export function applyPlan(id: string, specificationId: string, lotValues?: Record<string, string>) {
+  return apiClient<QualityCheckData>(`${PATH}/${id}/plan`, { method: "POST",
+    body: { specification_id: specificationId, lot_values: lotValues && Object.keys(lotValues).length ? lotValues : null } });
 }
 
 export function recordMeasurement(id: string, measurementId: string, body: MeasurementInput) {

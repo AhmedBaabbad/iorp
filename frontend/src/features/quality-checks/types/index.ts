@@ -49,12 +49,17 @@ export type Measurement = {
   readings: string[] | null; attribute_result: "conforming" | "nonconforming" | null; observation: string | null;
   reading_count: number; minimum: string | null; maximum: string | null; mean: string | null; status: MeasurementStatus; measured_at: string | null;
 };
+export type PlanCandidate = {
+  id: string; code: string; revision: number; title: string; product_type: string; grade: string | null;
+  matches_product: boolean; missing_keys: string[];
+};
 export type MeasurementInput = { readings?: string[]; attribute_result?: "conforming" | "nonconforming" | null; observation?: string | null };
 
 export type QualityCheckData = QualityCheckListItem & {
   specification_id: string | null;
   specification_code: string | null;
   specification_revision: number | null;
+  lot_values: Record<string, string> | null;
   measurements: Measurement[];
   notes: string | null;
   started_at: string | null;

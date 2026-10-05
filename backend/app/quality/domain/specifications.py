@@ -113,10 +113,14 @@ def resolve_limits(line, lot_spec: dict | None):
     return target, lower, upper
 
 
+# Arabic-Indic and Persian digits are decimal digits to Python; the Arabic decimal separator and a decimal comma become a point.
+DECIMAL_SEPARATORS = str.maketrans({"٫": ".", ",": "."})
+
+
 def parse_readings(values) -> list[Decimal]:
     readings = []
     for value in values or []:
-        number = decimal(value)
+        number = decimal(str(value).strip().translate(DECIMAL_SEPARATORS))
         if number is None:
             raise QualityError("READING_INVALID", 400, value=str(value))
         readings.append(number)

@@ -8,10 +8,9 @@ from sqlalchemy.orm import Session
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, permission_check, require_any_permission, require_permission
 from app.quality.api.inspection_schemas import (
-    InspectableOrder, MeasurementInput, PlanInput, QualityCheckClose, QualityCheckCreate, QualityCheckListItem, QualityCheckRead, QualityCheckUpdate,
+    InspectableOrder, MeasurementInput, PlanCandidate, PlanInput, QualityCheckClose, QualityCheckCreate, QualityCheckListItem, QualityCheckRead, QualityCheckUpdate,
     ReasonInput, SampleOption,
 )
-from app.quality.api.specification_schemas import SpecificationListItem
 from app.quality.application.measurement_service import MeasurementService
 from app.quality.application.check_service import QualityCheckService
 from app.quality.domain import permissions as Q
@@ -57,8 +56,10 @@ def list_quality_checks(
 # Lookups before /{check_id}: the orders and samples a check may be opened on.
 @router.get("/lookups/orders", response_model=list[InspectableOrder],
             dependencies=[Depends(require_any_permission([Q.CHECKS_CREATE, Q.REJECTIONS_CREATE]))])
-def inspectable_orders(q: str = Query(default="", max_length=60), tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
-    return QualityCheckService(db, tenant).inspectable_orders(q)
+def inspectable_orders(q: str = Query(default="", max_length=60), check_type: QualityCheckType | None = None,
+                       tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
+    """Orders a check of this type can be opened on; a reinspection also lists closed orders."""
+    return QualityCheckService(db, tenant).inspectable_orders(q, check_type)
 
 
 @router.get("/lookups/samples", response_model=list[SampleOption], dependencies=[Depends(require_permission(Q.CHECKS_CREATE))])
@@ -118,12 +119,14 @@ def cancel_quality_check(check_id: UUID, payload: ReasonInput, tenant: TenantCon
 
 # ── measurement plan and readings (QUAL-SPEC-001) ──────────────────────────────────────────────
 
-@router.get("/{check_id}/specifications", response_model=list[SpecificationListItem], dependencies=[Depends(require_permission(Q.CHECKS_MEASURE))])
+@router.get("/{check_id}/specifications", response_model=list[PlanCandidate], dependencies=[Depends(require_permission(Q.CHECKS_MEASURE))])
 def plan_candidates(check_id: UUID, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
-    """Specifications in force for the inspected product: the plans this check can take."""
+    """Every specification in force, those for the inspected product first, with the lot values each still needs."""
     service = QualityCheckService(db, tenant)
     try:
-        return MeasurementService(db, tenant).candidates(service.get(check_id))
+        return [PlanCandidate(id=s.id, code=s.code, revision=s.revision, title=s.title, product_type=s.product_type, grade=s.grade,
+                              matches_product=matches, missing_keys=missing)
+                for s, matches, missing in MeasurementService(db, tenant).candidates(service.get(check_id))]
     except QualityError as exc:
         raise _error(exc) from exc
 
@@ -135,7 +138,7 @@ def apply_plan(check_id: UUID, payload: PlanInput, tenant: TenantContext = Depen
     service = QualityCheckService(db, tenant)
     try:
         check = service.get(check_id)
-        MeasurementService(db, tenant).apply(check, payload.specification_id)
+        MeasurementService(db, tenant).apply(check, payload.specification_id, lot_values=payload.lot_values)
         return _read(service, check, can)
     except QualityError as exc:
         raise _error(exc) from exc

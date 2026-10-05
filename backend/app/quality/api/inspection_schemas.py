@@ -132,6 +132,7 @@ class QualityCheckRead(QualityCheckListItem):
     specification_id: UUID | None = None
     specification_code: str | None = None
     specification_revision: int | None = None
+    lot_values: dict[str, str] | None = None
     history: list[HistoryEntry] = []
     rejections: list[CheckRejectionSummary] = []
     measurements: list[MeasurementRead] = []
@@ -139,6 +140,20 @@ class QualityCheckRead(QualityCheckListItem):
 
 class PlanInput(_Input):
     specification_id: UUID
+    # Values the order line lacks, e.g. {"width_mm": "5", "thickness_mm": "0.35"}; the order line's own values win.
+    lot_values: dict[str, str] | None = Field(default=None, max_length=20)
+
+
+class PlanCandidate(BaseModel):
+    """A specification in force the check can take: whether it is for the order's product, and the lot values it still needs."""
+    id: UUID
+    code: str
+    revision: int
+    title: str
+    product_type: str
+    grade: str | None
+    matches_product: bool
+    missing_keys: list[str]
 
 
 class MeasurementInput(_Input):

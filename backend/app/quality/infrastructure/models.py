@@ -158,6 +158,8 @@ class QualityCheck(Base):
     specification_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("quality_specifications.id"), nullable=True)
     specification_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
     specification_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Lot values the order line lacked, entered by the inspector when applying the plan (e.g. {"width_mm": "5"}).
+    lot_values: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 

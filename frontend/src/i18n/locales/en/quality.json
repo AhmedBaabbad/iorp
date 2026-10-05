@@ -59,7 +59,8 @@
       "sample": "Inspects a commercial sample.",
       "orderStatuses": "Orders in progress, on hold or completed can be inspected.",
       "optionalOrder": "Linking an order is optional for this type.",
-      "quantityLater": "The quantity can be left for when the check closes."
+      "quantityLater": "The quantity can be left for when the check closes.",
+      "reinspection": "A reinspection can be opened on an order in progress, on hold or completed, and also on a closed order to measure its retained samples (e.g. for a certificate after shipment)."
     },
     "placeholders": {
       "selectSample": "Choose a sample",
@@ -288,7 +289,8 @@
     "BATCH_REQUIRED": "Enter the batch number before issuing.",
     "DEVIATION_NOTE_REQUIRED": "Conditional accept: state the approved deviation before issuing.",
     "CERTIFICATE_NUMBER_BACKWARDS": "Numbering cannot go back (last number {current}).",
-    "REPLACEMENT_DRAFT_EXISTS": "A replacement draft already exists for this certificate."
+    "REPLACEMENT_DRAFT_EXISTS": "A replacement draft already exists for this certificate.",
+    "LOT_VALUE_INVALID": "The lot value «{key}» is not a number: {value}"
   },
   "history": {
     "title": "Status history",
@@ -338,13 +340,9 @@
       "stats": "Statistics",
       "verdict": "Verdict"
     },
-    "readingsRequired": "{count} readings required",
-    "readingsFor": "{name} readings",
     "resultFor": "{name} result",
     "observationFor": "{name} observation",
-    "readingsPlaceholder": "5.02 4.98 5.01",
     "observation": "Observation",
-    "save": "Save",
     "conforming": "Conforming",
     "nonconforming": "Not conforming",
     "stats": "n={n} · mean {mean} · {min}–{max}",
@@ -354,7 +352,28 @@
       "pending": "Not measured",
       "recorded": "Recorded"
     },
-    "rule": "A parameter passes when every reading lies within its limits. The whole plan must be measured before closing, and an inspection with a failed parameter cannot close as accepted."
+    "rule": "A parameter passes when every reading lies within its limits. The whole plan must be measured before closing, and an inspection with a failed parameter cannot close as accepted.",
+    "matchingGroup": "For this order's product",
+    "otherGroup": "Other specifications in force",
+    "otherProductHint": "This specification is for «{product}», not the order's product; make sure it applies to this batch.",
+    "missingValuesHint": "The order line lacks these values the specification needs; enter them from the batch itself. They are kept on the inspection and shown in its report.",
+    "lotValues": "Lot values entered by the inspector: {values}",
+    "keys": {
+      "width_mm": "Width (mm)",
+      "thickness_mm": "Thickness (mm)",
+      "thickness_micron": "Thickness (µm)",
+      "roll_weight_kg": "Roll weight (kg)",
+      "weight_kg": "Weight (kg)",
+      "length_m": "Length (m)"
+    },
+    "readingFor": "{name} reading {n}",
+    "addReading": "Add a reading for {name}",
+    "readingsProgress": "{count} of {required} readings",
+    "needsMore": "{count} more readings needed",
+    "savedCount": "{count} parameters saved.",
+    "saveChanged": "Save measurements ({count})",
+    "saveAll": "Save measurements",
+    "invalidReading": "Invalid reading: enter a number only (e.g. 5.02)."
   },
   "parameters": {
     "title": "Test parameters",

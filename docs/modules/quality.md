@@ -209,6 +209,14 @@ Rules: `quality/domain/specifications.py`. Writers: `application/specification_s
   for the lot (the order line's values, else the order's, or the sample's requested specification), and the check keeps
   `specification_code` / `specification_revision`. Later revisions never change it. A plan is replaced only before anything is measured
   (`MEASUREMENTS_STARTED`); a lot lacking a value the specification needs answers `LOT_SPEC_VALUE_MISSING`.
+- **Any specification in force** can be applied (QUAL-SPEC-002): `GET /quality-checks/{id}/specifications` lists those for the order's
+  product first (`matches_product`), then the others, with the lot values each still needs (`missing_keys`). Automatic application still
+  happens only for exactly one specification of the product.
+- **Missing lot values**: when the order line lacks a value a specification takes from it (e.g. `width_mm`), the inspector enters it with
+  the plan (`lot_values`); the order line's own values always win. Entered values are kept on the check (`quality_checks.lot_values`,
+  migration `f6a1b2j0`) and printed in the inspection report.
+- **Reinspection of closed orders**: a `reinspection` may be opened on a closed order as well (its retained samples — e.g. a certificate
+  requested after shipment); other types still need the order running, held or completed. The order stays closed.
 - **Readings** (`PUT /quality-checks/{id}/measurements/{mid}`, permission `quality_checks:measure`): numeric readings → count, minimum,
   maximum, mean and the verdict (`pass` when every reading lies within the limits, `fail` otherwise, `recorded` when there are no limits,
   `pending` below the required count); attributes → conforming / not conforming with an observation.
