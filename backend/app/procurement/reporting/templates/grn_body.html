@@ -1,0 +1,47 @@
+{#- Goods receipt note (PROC-001): number and date, supplier and its references, received lots, signatures. -#}
+{%- set ar = lang == 'ar' %}{% set d = data.document %}
+<main class="gr">
+  <header class="gr-banner">
+    <div class="gr-title">
+      <h1>{{ 'إشعار استلام مواد' if ar else 'GOODS RECEIPT NOTE' }}</h1>
+      <p>{{ 'Goods Receipt Note' if ar else 'إشعار استلام مواد' }}</p>
+      {% if watermark %}<span class="gr-flag">{{ watermark }}</span>{% endif %}
+    </div>
+    <dl class="gr-meta">
+      <div><dt>{{ 'رقم الاستلام' if ar else 'Receipt no.' }}</dt><dd><bdi dir="ltr">{{ d.number }}</bdi></dd></div>
+      <div><dt>{{ 'التاريخ' if ar else 'Date' }}</dt><dd><bdi dir="ltr">{{ d.date }}</bdi></dd></div>
+    </dl>
+  </header>
+
+  <div class="gr-columns">
+    <section class="gr-block"><h2>{{ 'المورد' if ar else 'Supplier' }}</h2>
+      <dl class="gr-fields">{% for label, value in d.party %}<dt>{{ label }}</dt><dd><bdi>{{ value }}</bdi></dd>{% endfor %}</dl></section>
+    <section class="gr-block"><h2>{{ 'المراجع' if ar else 'References' }}</h2>
+      <dl class="gr-fields">{% for label, value in d.refs %}<dt>{{ label }}</dt><dd><bdi>{{ value }}</bdi></dd>{% endfor %}</dl></section>
+  </div>
+
+  <section class="gr-block" style="break-inside:auto"><h2>{{ 'المواد المستلمة' if ar else 'Materials received' }}</h2>
+    <table class="gr-items">
+      <thead><tr><th class="n">#</th><th>{{ 'المادة' if ar else 'Material' }}</th><th>{{ 'دفعة المورد' if ar else "Supplier's lot" }}</th>
+        <th>{{ 'الكمية' if ar else 'Quantity' }}</th><th>{{ 'الوحدة' if ar else 'Unit' }}</th><th>{{ 'العبوات' if ar else 'Packages' }}</th>
+        <th>{{ 'الوزن' if ar else 'Weight' }}</th>{% if d.any_inspection %}<th>{{ 'فحص' if ar else 'Inspect' }}</th>{% endif %}</tr></thead>
+      <tbody>{% for l in d.lines %}<tr><td class="n">{{ l.no }}</td><td><bdi>{{ l.description }}</bdi></td><td><bdi dir="ltr">{{ l.lot }}</bdi></td>
+        <td class="num">{{ l.quantity }}</td><td>{{ l.unit }}</td><td class="num">{{ l.packages }}</td><td class="num"><bdi>{{ l.weight }}</bdi></td>
+        {% if d.any_inspection %}<td>{{ l.inspect }}</td>{% endif %}</tr>{% endfor %}</tbody>
+      <tfoot><tr><td colspan="3" class="lbl">{{ 'الإجمالي' if ar else 'Total' }}</td><td colspan="3"><bdi>{{ d.quantities }}</bdi></td>
+        <td class="num"><bdi>{{ d.weight or '—' }}</bdi></td>{% if d.any_inspection %}<td></td>{% endif %}</tr></tfoot>
+    </table>
+    {% if d.any_inspection %}<p class="gr-note">{{ 'المواد المؤشَّرة «فحص» لا تُصرف للإنتاج قبل اعتماد الجودة.' if ar else 'Materials marked “Inspect” are not issued to production before quality releases them.' }}</p>{% endif %}
+  </section>
+
+  {% if d.notes %}<section class="gr-block"><h2>{{ 'ملاحظات' if ar else 'Notes' }}</h2><p class="gr-notes" dir="auto">{{ d.notes }}</p></section>{% endif %}
+  {% if d.status == 'cancelled' and d.cancel_reason %}<p class="gr-cancelled" dir="auto"><b>{{ 'سبب الإلغاء:' if ar else 'Cancelled:' }}</b> {{ d.cancel_reason }}</p>{% endif %}
+
+  <table class="gr-sign"><tr>
+    <td><span>{{ 'سائق المورد' if ar else "Supplier's driver" }}</span><b><bdi>{{ d.driver }}</bdi></b><i></i></td>
+    <td><span>{{ 'استلمه — المستودع' if ar else 'Received by — Warehouse' }}</span><b><bdi>{{ d.received_by }}</bdi></b>
+      {% if d.received_at %}<small><bdi dir="ltr">{{ d.received_at }}</bdi></small>{% endif %}<i></i></td>
+    <td><span>{{ 'الجودة' if ar else 'Quality' }}</span><b></b><i></i></td>
+  </tr></table>
+  <p class="gr-hint">{{ 'الاسم والتوقيع والتاريخ' if ar else 'Name, signature and date' }}</p>
+</main>

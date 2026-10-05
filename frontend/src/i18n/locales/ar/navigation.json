@@ -27,7 +27,8 @@
     "ncr": "عدم المطابقة",
     "capa": "الإجراءات التصحيحية",
     "administration": "الإدارة",
-    "shipping": "الشحن والتسليم"
+    "shipping": "الشحن والتسليم",
+    "procurement": "المشتريات"
   },
   "links": {
     "productionReports": "مركز التقارير",
@@ -68,7 +69,10 @@
     "qualityCertificates": "شهادات التحليل",
     "shipments": "الشحنات وإشعارات التسليم",
     "shipmentReturns": "المرتجعات",
-    "qualityReturns": "مرتجعات بانتظار الجودة"
+    "qualityReturns": "مرتجعات بانتظار الجودة",
+    "suppliers": "الموردون",
+    "materials": "المواد",
+    "goodsReceipts": "استلام المواد"
   },
   "userMenu": {
     "changePassword": "تغيير كلمة المرور",

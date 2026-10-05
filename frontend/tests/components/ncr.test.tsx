@@ -39,7 +39,7 @@ const action = (over: Partial<CorrectiveAction> = {}): CorrectiveAction => ({ id
 function report(over: Partial<NcrReport> = {}): NcrReport {
   return { id: "n1", report_number: "NCR-2026-0001", report_date: "2026-10-05", source_type: "incoming_material", report_type: "material_non_conformance",
     status: "open", severity: "major", title: "Wet PP granules", description: "Moisture above specification", reference_code: "SUP-7781",
-    supplier_name: "Gulf Polymers", customer_name: null, owner_user_id: null, owner_name: null, due_date: null, overdue: false, open_actions: 0,
+    supplier_id: null, supplier_name: "Gulf Polymers", customer_name: null, owner_user_id: null, owner_name: null, due_date: null, overdue: false, open_actions: 0,
     overdue_actions: 0, total_cost: null, actions: ["edit", "contain", "cancel"], created_at: "", supplier_reference: "DN-GP-4471", supplier_action: "none",
     supplier_response: null, supplier_responded_at: null, cost_material: null, cost_labor: null, cost_scrap: null, cost_transport: null, cost_other: null,
     claim_amount: null, claim_status: "none", quality_check_id: null, quality_rejection_id: null, production_order_id: null, return_id: null,

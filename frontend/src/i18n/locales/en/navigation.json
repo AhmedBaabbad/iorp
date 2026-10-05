@@ -27,7 +27,8 @@
     "ncr": "NCR",
     "capa": "CAPA",
     "administration": "Administration",
-    "shipping": "Shipping"
+    "shipping": "Shipping",
+    "procurement": "Procurement"
   },
   "links": {
     "productionReports": "Report center",
@@ -68,7 +69,10 @@
     "qualityCertificates": "Certificates of Analysis",
     "shipments": "Shipments & delivery notes",
     "shipmentReturns": "Returns",
-    "qualityReturns": "Returns awaiting quality"
+    "qualityReturns": "Returns awaiting quality",
+    "suppliers": "Suppliers",
+    "materials": "Materials",
+    "goodsReceipts": "Goods receipts"
   },
   "userMenu": {
     "changePassword": "Change Password",

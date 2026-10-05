@@ -164,7 +164,8 @@
     "kind": "النوع",
     "action": "الإجراء",
     "owner_name": "مسؤول من خارج النظام",
-    "evidence": "الدليل (ما الذي عُمل وأين يمكن رؤيته)"
+    "evidence": "الدليل (ما الذي عُمل وأين يمكن رؤيته)",
+    "registered_supplier": "مورد مسجّل"
   },
   "itemFields": {
     "item_name": "الصنف",
@@ -180,7 +181,8 @@
     "supplierReference": "رقم الشحنة أو الفاتورة، دفعة المورد",
     "noOwner": "غير مُسند",
     "undecided": "لم يُقرَّر",
-    "outsideOwner": "شخص من خارج النظام"
+    "outsideOwner": "شخص من خارج النظام",
+    "unregisteredSupplier": "غير مسجّل (اكتب الاسم)"
   },
   "sections": {
     "report": "التقرير",
@@ -331,6 +333,7 @@
     "FILE_TOO_LARGE": "الملف أكبر من 10 ميجابايت.",
     "FILE_UNSUPPORTED_TYPE": "الصور (PNG وJPEG وWebP) وملفات PDF فقط.",
     "FILE_INVALID_PATH": "تعذّر حفظ الملف.",
-    "ATTACHMENT_NOT_FOUND": "الملف غير موجود."
+    "ATTACHMENT_NOT_FOUND": "الملف غير موجود.",
+    "SUPPLIER_NOT_FOUND": "المورد غير موجود."
   }
 }

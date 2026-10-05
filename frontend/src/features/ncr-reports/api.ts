@@ -15,6 +15,8 @@ export const getNcrReports = (filters: NcrFilters = {}) => apiClient<NcrListItem
 export const getNcrReport = (id: string) => apiClient<NcrReport>(`${PATH}/${id}`);
 export const createNcrReport = (body: NcrCreateInput) => apiClient<NcrReport>(PATH, { method: "POST", body });
 export const updateNcrReport = (id: string, body: Partial<NcrHeader>) => apiClient<NcrReport>(`${PATH}/${id}`, { method: "PATCH", body });
+export const getNcrSuppliers = (search = "") =>
+  apiClient<{ id: string; supplier_code: string; name: string; status: string }[]>(`${PATH}/lookups/suppliers?q=${encodeURIComponent(search)}`);
 export const getNcrUsers = (search = "") => apiClient<UserOption[]>(`${PATH}/lookups/users?q=${encodeURIComponent(search)}`);
 
 // Stages: contained, root cause found (then actions, or closed when none is needed), actions finished, verified, cancelled.

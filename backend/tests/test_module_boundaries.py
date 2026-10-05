@@ -89,7 +89,7 @@ def test_b08_core_interfaces_are_protocols():
 
 
 def test_b09_operational_modules_do_not_import_platform():
-    for module in ("commercial", "production", "quality", "shipping", "workforce"):
+    for module in ("commercial", "production", "quality", "shipping", "procurement", "workforce"):
         assert not {
             item
             for item in _imports(APP_ROOT / module)
@@ -109,6 +109,8 @@ def test_tenant_create_update_schemas_do_not_accept_organization_scope():
         "app.production.api.schemas",
         "app.quality.api.schemas",
         "app.shipping.api.schemas",
+        "app.procurement.api.schemas",
+        "app.quality.api.ncr_schemas",
         "app.workforce.api.schemas",
     )
     violations = []

@@ -89,9 +89,11 @@ export async function loadMessages(locale: Locale) {
 
   const reports = await readLocaleFile(locale, "reports.json");
   const shipping = await readLocaleFile(locale, "shipping.json");
+  const procurement = await readLocaleFile(locale, "procurement.json");
   return {
     reports,
     shipping,
+    procurement,
     auth,
     common,
     navigation,

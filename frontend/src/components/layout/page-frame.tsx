@@ -23,6 +23,7 @@ import {
   IconShield,
   IconShieldCheck,
   IconTruck,
+  IconPackage,
   IconUserCog,
   IconUsers,
   IconX,
@@ -30,6 +31,7 @@ import {
 import { P, PRODUCTION_REPORTS } from "@/lib/production-permissions";
 import { Q, QUALITY_REPORTS } from "@/lib/quality-permissions";
 import { S } from "@/lib/shipping-permissions";
+import { PR } from "@/lib/procurement-permissions";
 
 type PageFrameProps = {
   title: string;
@@ -314,6 +316,15 @@ const staticNavGroups: StaticNavGroup[] = [
     links: [
       { href: "/shipments", labelKey: "links.shipments", permission: S.SHIPMENTS_READ },
       { href: "/shipment-returns", labelKey: "links.shipmentReturns", permission: S.RETURNS_READ },
+    ],
+  },
+  {
+    labelKey: "sections.procurement",
+    icon: IconPackage,
+    links: [
+      { href: "/suppliers", labelKey: "links.suppliers", permission: PR.SUPPLIERS_READ },
+      { href: "/materials", labelKey: "links.materials", permission: PR.MATERIALS_READ },
+      { href: "/goods-receipts", labelKey: "links.goodsReceipts", permission: PR.RECEIPTS_READ },
     ],
   },
   {

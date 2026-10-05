@@ -11,6 +11,7 @@ import re
 from app.production.domain import permissions as production_permissions
 from app.quality.domain import permissions as quality_permissions
 from app.shipping.domain import permissions as shipping_permissions
+from app.procurement.domain import permissions as procurement_permissions
 
 
 @dataclass(frozen=True)
@@ -35,6 +36,7 @@ MODULE_NAMES = {
     "production": {"en": "Production", "ar": "الإنتاج"},
     "quality": {"en": "Quality", "ar": "الجودة"},
     "shipping": {"en": "Shipping", "ar": "الشحن والتسليم"},
+    "procurement": {"en": "Procurement", "ar": "المشتريات"},
     "workforce": {"en": "Workforce", "ar": "القوى العاملة"},
 }
 
@@ -63,6 +65,8 @@ RESOURCE_NAMES = {
     "specifications": ("Product Specifications", "مواصفات المنتجات"),
     "certificates": ("Certificates of Analysis", "شهادات التحليل"),
     "ncr_actions": ("Corrective Actions", "الإجراءات التصحيحية"),
+    "suppliers": ("Suppliers", "الموردين"), "materials": ("Materials", "المواد"),
+    "receipts": ("Goods Receipts", "استلام المواد"),
     "shipments": ("Shipments", "الشحنات"), "returns": ("Returns", "المرتجعات"), "settings": ("Settings", "الإعدادات"),
     "members": ("Workforce Members", "أعضاء القوى العاملة"),
 }
@@ -173,6 +177,10 @@ QUALITY_PERMISSIONS = [_labelled(p, quality_permissions.LABELS)
 SHIPPING_PERMISSIONS = [_labelled(p, shipping_permissions.LABELS)
                         for p in _resource_permissions(shipping_permissions.MODULE, shipping_permissions.RESOURCES)]
 
+# PROC-001: one permission per action, from procurement/domain/permissions.py.
+PROCUREMENT_PERMISSIONS = [_labelled(p, procurement_permissions.LABELS)
+                           for p in _resource_permissions(procurement_permissions.MODULE, procurement_permissions.RESOURCES)]
+
 WORKFORCE_PERMISSIONS = _resource_permissions("workforce", {
     "members": ("read", "create", "update", "delete", "link_user"),
 })
@@ -195,7 +203,7 @@ REPORTING_PERMISSIONS += [PermissionDefinition('reports:quality:'+key, 'reports'
 
 ALL_TENANT_PERMISSIONS = (
     FOUNDATION_PERMISSIONS + COMMERCIAL_PERMISSIONS + PRODUCTION_PERMISSIONS
-    + QUALITY_PERMISSIONS + SHIPPING_PERMISSIONS + WORKFORCE_PERMISSIONS + REPORTING_PERMISSIONS
+    + QUALITY_PERMISSIONS + SHIPPING_PERMISSIONS + PROCUREMENT_PERMISSIONS + WORKFORCE_PERMISSIONS + REPORTING_PERMISSIONS
 )
 PERMISSION_BY_CODE = {permission.code: permission for permission in ALL_TENANT_PERMISSIONS}
 ALL_PERMISSION_CODES = frozenset(PERMISSION_BY_CODE)

@@ -193,3 +193,14 @@ export function IconTruck({ size = 18 }: IconProps) {
     </svg>
   );
 }
+
+export function IconPackage({ size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" />
+      <path d="M4 7.5l8 4.5 8-4.5" />
+      <path d="M12 12v9" />
+      <path d="M8 5.2l8 4.5" />
+    </svg>
+  );
+}

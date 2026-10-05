@@ -44,6 +44,7 @@ from app.quality.api.routes_specifications import router as quality_specificatio
 from app.quality.api.routes_certificates import router as quality_certificates_router
 from app.shipping.api.routes_shipments import router as shipping_router
 from app.shipping.api.routes_returns import router as shipping_returns_router
+from app.procurement.api.routes import router as procurement_router
 from app.quality.api.routes_quality_defects import router as quality_defects_router
 from app.quality.api.routes_quality_rejections import router as quality_rejections_router
 from app.workforce.api.routes_workforce import router as workforce_router
@@ -83,8 +84,10 @@ register_quality_reports()
 # Shipping and delivery notes (SHIP-001).
 from app.shipping.reporting.document import register_delivery_note
 from app.shipping.reporting.return_document import register_return_note
+from app.procurement.reporting.receipt_document import register_receipt_document
 register_delivery_note()
 register_return_note()
+register_receipt_document()
 # Quality's gate on closing a production order (QUAL-001): production asks, it never imports quality.
 from app.core.interfaces.order_close_guards import register_close_guard
 from app.quality.application.rejection_service import close_blockers as quality_close_blockers
@@ -169,6 +172,7 @@ app.include_router(quality_specifications_router, prefix=f"{settings.api_prefix}
 app.include_router(quality_certificates_router, prefix=f"{settings.api_prefix}/quality")
 app.include_router(shipping_router, prefix=f"{settings.api_prefix}/shipping")
 app.include_router(shipping_returns_router, prefix=f"{settings.api_prefix}/shipping")
+app.include_router(procurement_router, prefix=f"{settings.api_prefix}/procurement")
 app.include_router(quality_defects_router, prefix=f"{settings.api_prefix}/quality")
 app.include_router(quality_rejections_router, prefix=f"{settings.api_prefix}/quality")
 app.include_router(ncr_router, prefix=f"{settings.api_prefix}/quality")

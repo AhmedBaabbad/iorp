@@ -164,7 +164,8 @@
     "kind": "Kind",
     "action": "Action",
     "owner_name": "Owner outside the system",
-    "evidence": "Evidence (what was done, where it can be seen)"
+    "evidence": "Evidence (what was done, where it can be seen)",
+    "registered_supplier": "Registered supplier"
   },
   "itemFields": {
     "item_name": "Item",
@@ -180,7 +181,8 @@
     "supplierReference": "Delivery or invoice no., supplier's lot",
     "noOwner": "Not assigned",
     "undecided": "Not decided",
-    "outsideOwner": "Someone outside the system"
+    "outsideOwner": "Someone outside the system",
+    "unregisteredSupplier": "Not registered (write the name)"
   },
   "sections": {
     "report": "Report",
@@ -331,6 +333,7 @@
     "FILE_TOO_LARGE": "The file is larger than 10 MB.",
     "FILE_UNSUPPORTED_TYPE": "Only images (PNG, JPEG, WebP) and PDF files.",
     "FILE_INVALID_PATH": "The file could not be saved.",
-    "ATTACHMENT_NOT_FOUND": "The file was not found."
+    "ATTACHMENT_NOT_FOUND": "The file was not found.",
+    "SUPPLIER_NOT_FOUND": "The supplier was not found."
   }
 }

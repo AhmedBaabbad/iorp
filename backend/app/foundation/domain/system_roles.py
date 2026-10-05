@@ -5,6 +5,7 @@ from app.production.domain import permissions as P
 from app.quality.domain import permissions as Q
 from app.quality.domain import report_permissions as QR
 from app.shipping.domain import permissions as S
+from app.procurement.domain import permissions as PR
 from app.commercial.domain.report_permissions import ALL as CUSTOMER_REPORTS, SALES as SALES_REPORTS
 
 # Shipping and delivery (SHIP-004): the shipping manager runs it all; the warehouse prepares, dispatches and receives
@@ -14,6 +15,9 @@ _SHIP_READ = (S.SHIPMENTS_READ, S.RETURNS_READ)
 # Non-conformance (QUAL-NCR-002): quality and the factory run the reports; the departments that own a cause see them and
 # complete the corrective actions assigned to them; the warehouse also records what it finds (damaged incoming goods).
 _NCR_ACTION_OWNER = (Q.NCR_READ, Q.NCR_ACTIONS_READ, Q.NCR_ACTIONS_COMPLETE)
+# Procurement (PROC-001): the procurement manager runs it; the warehouse records goods receipts; quality approves or blocks
+# suppliers and says which materials are inspected; the factory and finance follow.
+_PROC_READ = PR.READ
 
 # Production roles list their permissions explicitly (PROD-RBAC-001), generated from the
 # production catalog: a new production permission is granted by editing these lists, never by a wildcard.
@@ -24,21 +28,22 @@ _VIEWER_REPORTS = (P.REPORT_ORDER_FULL, P.REPORT_ORDERS_SUMMARY, P.REPORT_RESULT
 
 SYSTEM_ROLES: tuple[dict[str, object], ...] = (
     {"code": "organization_admin", "name_en": "Organization Administrator", "name_ar": "مدير المنظمة", "description_en": "Full organization administration access", "description_ar": "صلاحيات إدارة المنظمة الكاملة", "is_protected": True, "permissions": ("ALL",)},
-    {"code": "factory_manager", "name_en": "Factory Manager", "name_ar": "مدير المصنع", "description_en": "Oversee factory operations and departments", "description_ar": "الإشراف على عمليات المصنع وأقسامه", "permissions": (*_PRODUCTION_FULL, *Q.ALL, *QR.ALL, "workforce:members:read", "commercial:orders:read", *_SHIP_READ, S.RETURNS_APPROVE)},
+    {"code": "factory_manager", "name_en": "Factory Manager", "name_ar": "مدير المصنع", "description_en": "Oversee factory operations and departments", "description_ar": "الإشراف على عمليات المصنع وأقسامه", "permissions": (*_PRODUCTION_FULL, *Q.ALL, *QR.ALL, "workforce:members:read", "commercial:orders:read", *_SHIP_READ, S.RETURNS_APPROVE, *_PROC_READ)},
     {"code": "commercial_manager", "name_en": "Commercial Manager", "name_ar": "المدير التجاري", "description_en": "Manage commercial operations, customers, and sales", "description_ar": "إدارة العمليات التجارية والعملاء والمبيعات", "permissions": ("commercial:*", *CUSTOMER_REPORTS, *_SHIP_READ, S.RETURNS_CREATE, S.RETURNS_APPROVE, S.RETURNS_CANCEL)},
     {"code": "sales_rep", "name_en": "Sales Representative", "name_ar": "مندوب مبيعات", "description_en": "Manage customers and commercial follow-ups", "description_ar": "إدارة العملاء والمتابعات التجارية", "permissions": (*SALES_REPORTS, P.DEMANDS_READ, "commercial:customers:read", "commercial:customers:update", "commercial:interactions:read", "commercial:interactions:create", "commercial:follow_ups:read", "commercial:follow_ups:create", "commercial:follow_ups:update", "commercial:follow_ups:complete", *_SHIP_READ, S.RETURNS_CREATE)},
     {"code": "production_manager", "name_en": "Production Manager", "name_ar": "مدير الإنتاج", "description_en": "Manage production operations and orders", "description_ar": "إدارة عمليات الإنتاج والأوامر", "permissions": (*_PRODUCTION_FULL, "workforce:members:read", *_NCR_ACTION_OWNER)},
-    {"code": "quality_manager", "name_en": "Quality Manager", "name_ar": "مدير الجودة", "description_en": "Manage quality control and inspections", "description_ar": "إدارة مراقبة الجودة والفحوصات", "permissions": (*Q.ALL, *QR.ALL, P.ORDERS_READ, *_SHIP_READ)},
+    {"code": "quality_manager", "name_en": "Quality Manager", "name_ar": "مدير الجودة", "description_en": "Manage quality control and inspections", "description_ar": "إدارة مراقبة الجودة والفحوصات", "permissions": (*Q.ALL, *QR.ALL, P.ORDERS_READ, *_SHIP_READ, *_PROC_READ, PR.SUPPLIERS_APPROVE, PR.MATERIALS_UPDATE)},
     {"code": "warehouse_manager", "name_en": "Warehouse Manager", "name_ar": "مدير المستودع", "description_en": "Oversee warehouse-related factory operations", "description_ar": "الإشراف على عمليات المستودع المرتبطة بالمصنع", "permissions": (P.ORDERS_READ, "workforce:members:read", P.REPORT_ORDER_FULL, P.REPORT_ORDERS_SUMMARY, P.REPORT_SHIFT_WORKFORCE,
-        S.SHIPMENTS_READ, S.SHIPMENTS_CREATE, S.SHIPMENTS_UPDATE, S.SHIPMENTS_DISPATCH, S.RETURNS_READ, S.RETURNS_RECEIVE, *_NCR_ACTION_OWNER, Q.NCR_CREATE)},
+        S.SHIPMENTS_READ, S.SHIPMENTS_CREATE, S.SHIPMENTS_UPDATE, S.SHIPMENTS_DISPATCH, S.RETURNS_READ, S.RETURNS_RECEIVE, *_NCR_ACTION_OWNER, Q.NCR_CREATE,
+        *_PROC_READ, PR.RECEIPTS_CREATE, PR.RECEIPTS_UPDATE, PR.RECEIPTS_RECEIVE, PR.RECEIPTS_CANCEL)},
     {"code": "shipping_manager", "name_en": "Shipping Manager", "name_ar": "مدير الشحن", "description_en": "Oversee shipping and order dispatch operations", "description_ar": "الإشراف على عمليات الشحن وتسليم الطلبات", "permissions": ("commercial:orders:read", "commercial:orders:update", P.ORDERS_READ, P.REPORT_ORDER_FULL, P.REPORT_ORDERS_SUMMARY, *S.ALL)},
     {"code": "maintenance_manager", "name_en": "Maintenance Manager", "name_ar": "مدير الصيانة", "description_en": "Manage factory maintenance and downtime", "description_ar": "إدارة صيانة المصنع وأحداث التوقف", "permissions": (P.WORK_CENTERS_READ, P.WORK_CENTERS_CREATE, P.WORK_CENTERS_UPDATE, P.WORK_CENTERS_DELETE,
         P.DOWNTIME_READ, P.DOWNTIME_CREATE, P.DOWNTIME_UPDATE, P.DOWNTIME_DELETE, P.DOWNTIME_CLOSE, *_NCR_ACTION_OWNER)},
-    {"code": "procurement_manager", "name_en": "Procurement Manager", "name_ar": "مدير المشتريات", "description_en": "Oversee factory procurement requirements", "description_ar": "الإشراف على متطلبات مشتريات المصنع", "permissions": ("commercial:orders:read", P.ORDERS_READ, P.REPORT_ORDER_FULL, P.REPORT_ORDERS_SUMMARY, *_NCR_ACTION_OWNER)},
+    {"code": "procurement_manager", "name_en": "Procurement Manager", "name_ar": "مدير المشتريات", "description_en": "Oversee factory procurement requirements", "description_ar": "الإشراف على متطلبات مشتريات المصنع", "permissions": ("commercial:orders:read", P.ORDERS_READ, P.REPORT_ORDER_FULL, P.REPORT_ORDERS_SUMMARY, *_NCR_ACTION_OWNER, *PR.ALL)},
     {"code": "hr_manager", "name_en": "Human Resources Manager", "name_ar": "مدير الموارد البشرية", "description_en": "Manage factory workforce records", "description_ar": "إدارة سجلات القوى العاملة في المصنع", "permissions": ("workforce:*", P.REPORT_SHIFT_WORKFORCE)},
     {"code": "safety_manager", "name_en": "Health and Safety Manager", "name_ar": "مدير السلامة والصحة المهنية", "description_en": "Oversee factory safety, incidents, and waste", "description_ar": "الإشراف على السلامة والحوادث والهدر في المصنع", "permissions": (P.DOWNTIME_READ, P.DOWNTIME_CREATE, P.DOWNTIME_UPDATE, P.DOWNTIME_DELETE, P.DOWNTIME_CLOSE,
         P.WASTE_READ, P.WASTE_CREATE, P.WASTE_UPDATE, P.WASTE_DELETE, Q.NCR_READ, Q.NCR_CREATE, Q.NCR_UPDATE, Q.NCR_ACTIONS_READ, Q.NCR_ACTIONS_COMPLETE, "workforce:members:read", P.REPORT_SHIFT_WORKFORCE)},
-    {"code": "finance_manager", "name_en": "Finance Manager", "name_ar": "المدير المالي", "description_en": "Review quotations and commercial orders", "description_ar": "مراجعة عروض الأسعار والأوامر التجارية", "permissions": ("commercial:quotes:read", "commercial:orders:read", *_SHIP_READ)},
+    {"code": "finance_manager", "name_en": "Finance Manager", "name_ar": "المدير المالي", "description_en": "Review quotations and commercial orders", "description_ar": "مراجعة عروض الأسعار والأوامر التجارية", "permissions": ("commercial:quotes:read", "commercial:orders:read", *_SHIP_READ, PR.SUPPLIERS_READ, PR.RECEIPTS_READ)},
     {"code": "viewer", "name_en": "Viewer", "name_ar": "مستخدم للعرض", "description_en": "Read-only access to available modules", "description_ar": "صلاحية قراءة للوحدات المتاحة", "permissions": ("*:read", *_VIEWER_REPORTS, *QR.ALL)},
 )
 

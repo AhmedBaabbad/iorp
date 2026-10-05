@@ -231,6 +231,26 @@ class ShippingReads:
         return [dict(r._mapping) for r in rows]
 
 
+class ProcurementReads:
+    """The organization's suppliers (PROC-001), read through the shared tables: a report names a registered supplier."""
+
+    def __init__(self, db, organization_id):
+        self.db, self.org = db, organization_id
+
+    def supplier(self, supplier_id) -> dict | None:
+        suppliers = _t("procurement_suppliers")
+        row = self.db.execute(select(suppliers.c.id, suppliers.c.supplier_code, suppliers.c.name, suppliers.c.status).where(
+            suppliers.c.organization_id == self.org, suppliers.c.id == supplier_id)).first()
+        return dict(row._mapping) if row else None
+
+    def search(self, text: str = "", limit: int = 30) -> list[dict]:
+        suppliers = _t("procurement_suppliers")
+        query = select(suppliers.c.id, suppliers.c.supplier_code, suppliers.c.name, suppliers.c.status).where(suppliers.c.organization_id == self.org)
+        if text:
+            query = query.where(suppliers.c.name.icontains(text, autoescape=True) | suppliers.c.supplier_code.icontains(text, autoescape=True))
+        return [dict(r._mapping) for r in self.db.execute(query.order_by(suppliers.c.name).limit(limit)).all()]
+
+
 def user_names(db, organization_id, user_ids) -> dict:
     users = _t("foundation_users")
     ids = [i for i in set(user_ids) if i]
@@ -277,4 +297,4 @@ def as_decimal(value) -> Decimal:
     return Decimal(str(value or 0))
 
 
-__all__ = ["ProductionReads", "CommercialReads", "ShippingReads", "user_names", "next_code", "record", "history", "log_activity", "as_decimal"]
+__all__ = ["ProductionReads", "CommercialReads", "ShippingReads", "ProcurementReads", "user_names", "next_code", "record", "history", "log_activity", "as_decimal"]

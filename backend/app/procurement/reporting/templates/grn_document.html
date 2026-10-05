@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><style>{{ css }}{% include 'grn_styles.css' %}</style></head>
+<body style="--brand: {{ branding.primary_color or '#24556b' }}">
+<div class="preview-header">{% include 'header_content.html' %}</div>
+{% if watermark %}<div class="watermark gr-watermark">{{ watermark }}</div>{% endif %}
+{% include body_template %}
+<div class="preview-footer">{% include 'footer_content.html' %}</div>
+</body>
+</html>

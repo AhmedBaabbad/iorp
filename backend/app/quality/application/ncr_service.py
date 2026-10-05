@@ -14,10 +14,10 @@ from app.quality.domain import ncr as N
 from app.quality.domain.permissions import NCR_ACTIONS, NCR_ACTIONS_COMPLETE, NCR_UPDATE
 from app.quality.domain.rules import QualityError
 from app.quality.infrastructure.models import NCRAction, NCRAttachment, NonConformanceItem, NonConformanceReport, QualityCheck, QualityRejection
-from .support import ProductionReads, ShippingReads, _t, history, log_activity, next_code, record, user_names
+from .support import ProcurementReads, ProductionReads, ShippingReads, _t, history, log_activity, next_code, record, user_names
 
 HEADER = ("report_date", "source_type", "report_type", "severity", "title", "description", "reference_code", "quality_check_id",
-          "quality_rejection_id", "production_order_id", "customer_name", "supplier_name", "supplier_reference", "owner_user_id",
+          "quality_rejection_id", "production_order_id", "customer_name", "supplier_id", "supplier_name", "supplier_reference", "owner_user_id",
           "due_date", "supplier_action", "supplier_response", "supplier_responded_at", *N.COSTS, "claim_amount", "claim_status")
 ITEM = ("item_reference", "item_name", "quantity_affected", "unit", "issue_description", "disposition", "disposition_notes", "notes")
 MAX_FILES = 20
@@ -138,6 +138,9 @@ class NCRService:
         today = utc_now().date()
         return [self.action_view(a, names, today, report) for a, report in rows]
 
+    def supplier_options(self, search="") -> list[dict]:
+        return ProcurementReads(self.db, self.org).search(search)
+
     def user_options(self, search="") -> list[dict]:
         users = _t("foundation_users")
         query = select(users.c.id, users.c.full_name).where(users.c.organization_id == self.org)
@@ -167,6 +170,11 @@ class NCRService:
             raise QualityError("QUALITY_REJECTION_NOT_FOUND", 404)
         if values.get("production_order_id") and not ProductionReads(self.db, self.org).numbers([values["production_order_id"]]):
             raise QualityError("PRODUCTION_ORDER_NOT_FOUND", 404)
+        if values.get("supplier_id"):  # a registered supplier: its name is kept as printed
+            supplier = ProcurementReads(self.db, self.org).supplier(values["supplier_id"])
+            if supplier is None:
+                raise QualityError("SUPPLIER_NOT_FOUND", 404)
+            values["supplier_name"] = supplier["name"]
 
     def open_report(self, *, source_type, report_type, title, description, severity="major", items=(), **refs) -> NonConformanceReport:
         """A new report (also opened by other quality flows, e.g. a customer return's decision). The caller commits."""

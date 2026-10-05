@@ -31,7 +31,7 @@ export type NcrItem = NcrItemInput & { id: string; line_no: number };
 
 export type NcrHeader = {
   report_date: string; source_type: NcrSourceType; report_type: NcrReportType; severity: NcrSeverity; title: string; description: string;
-  reference_code: string | null; customer_name: string | null; supplier_name: string | null; supplier_reference: string | null;
+  reference_code: string | null; customer_name: string | null; supplier_id: string | null; supplier_name: string | null; supplier_reference: string | null;
   owner_user_id: string | null; due_date: string | null; supplier_action: (typeof SUPPLIER_ACTIONS)[number];
   supplier_response: string | null; supplier_responded_at: string | null;
   cost_material: string | null; cost_labor: string | null; cost_scrap: string | null; cost_transport: string | null; cost_other: string | null;

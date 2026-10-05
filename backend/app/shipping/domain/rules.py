@@ -16,9 +16,9 @@ The customer is always named, whether a registered customer or not. Delivery met
   factory_delivery  the factory's driver delivers: name, phone and vehicle plate
   carrier           a carrier company delivers: its name and tracking number
 """
-import re
 from decimal import Decimal
 
+from app.core.phones import normalize_phone as _normalize_phone
 from app.core.units import to_kilograms
 
 
@@ -42,18 +42,11 @@ ZERO = Decimal("0")
 # ── contacts ────────────────────────────────────────────────────────────────────────────────────
 
 def normalize_phone(value: str | None) -> str | None:
-    """A phone in international form: "+9665…"; a Saudi local number ("05…", "011…") gets +966. Digits may be Arabic."""
-    if value is None or not str(value).strip():
-        return None
-    text = str(value).strip().translate({**{0x0660 + i: str(i) for i in range(10)}, **{0x06F0 + i: str(i) for i in range(10)}})
-    text = re.sub(r"[\s\-().]", "", text)
-    if text.startswith("00"):
-        text = "+" + text[2:]
-    if re.fullmatch(r"0\d{8,9}", text):  # a Saudi local number: mobile 05…, landline 01…
-        text = "+966" + text[1:]
-    if not re.fullmatch(r"\+\d{8,15}", text):
-        raise ShippingError("PHONE_INVALID", 400, value=str(value))
-    return text
+    """A phone in international form (app/core/phones.py); PHONE_INVALID otherwise."""
+    try:
+        return _normalize_phone(value)
+    except ValueError as exc:
+        raise ShippingError("PHONE_INVALID", 400, value=str(value)) from exc
 
 
 # ── lifecycle ───────────────────────────────────────────────────────────────────────────────────

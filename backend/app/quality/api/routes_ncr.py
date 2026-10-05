@@ -10,7 +10,8 @@ from app.core.reporting.routes import generate_response
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_current_user, get_db, permission_check, require_any_permission, require_permission
 from app.quality.api.ncr_schemas import (ActionInput, ActionRead, ActionUpdate, AttachmentRead, ContainInput, EvidenceInput, InvestigateInput,
-                                         ItemInput, ItemUpdate, NCRCreate, NCRListItem, NCRRead, NCRUpdate, ReasonInput, UserOption, VerifyInput)
+                                         ItemInput, ItemUpdate, NCRCreate, NCRListItem, NCRRead, NCRUpdate, ReasonInput, SupplierOption, UserOption,
+                                         VerifyInput)
 from app.quality.application.ncr_service import NCRService
 from app.quality.domain import permissions as Q
 from app.quality.domain.enums import NCRSourceType
@@ -67,6 +68,13 @@ def create_report(payload: NCRCreate, tenant: TenantContext = Depends(get_curren
 def user_options(q: str = Query(default="", max_length=60), tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
     """The organization's users, to own a report or a corrective action."""
     return NCRService(db, tenant).user_options(q)
+
+
+@router.get(f"{PATH}/lookups/suppliers", response_model=list[SupplierOption],
+            dependencies=[Depends(require_any_permission([Q.NCR_CREATE, Q.NCR_UPDATE]))])
+def supplier_options(q: str = Query(default="", max_length=60), tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
+    """The organization's registered suppliers (procurement), to name the one a report is about."""
+    return NCRService(db, tenant).supplier_options(q)
 
 
 @router.get(f"{PATH}/{{report_id}}", response_model=NCRRead, dependencies=[Depends(require_permission(Q.NCR_READ))])

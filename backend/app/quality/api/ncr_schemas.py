@@ -59,6 +59,7 @@ class _Header(_Input):
     quality_rejection_id: UUID | None = None
     production_order_id: UUID | None = None
     customer_name: str | None = Field(default=None, max_length=255)
+    supplier_id: UUID | None = None  # a registered supplier (procurement); its name is copied
     supplier_name: str | None = Field(default=None, max_length=255)
     supplier_reference: str | None = Field(default=None, max_length=120)
     owner_user_id: UUID | None = None
@@ -218,6 +219,7 @@ class NCRRead(NCRListItem):
     quality_rejection_id: UUID | None
     production_order_id: UUID | None
     return_id: UUID | None
+    supplier_id: UUID | None
     supplier_reference: str | None
     inspection_code: str | None = None
     rejection_code: str | None = None
@@ -256,6 +258,13 @@ class NCRRead(NCRListItem):
     history: list[HistoryEntry] = []
     can_complete_actions: bool = False
     updated_at: ISODatetime
+
+
+class SupplierOption(BaseModel):
+    id: UUID
+    supplier_code: str
+    name: str
+    status: str
 
 
 class UserOption(BaseModel):

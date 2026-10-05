@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { UnitSelect } from "@/components/forms/UnitSelect";
 import { PageFrame } from "@/components/layout/page-frame";
 import s from "@/features/production-demands/demands.module.css";
-import { createNcrReport, getNcrReport, getNcrUsers, updateNcrReport } from "../api";
+import { createNcrReport, getNcrReport, getNcrSuppliers, getNcrUsers, updateNcrReport } from "../api";
 import { DECIMAL, MONEY, ncrErrorMessage, todayIso } from "../ncr-errors";
 import {
   CLAIM_STATUSES, COSTS, DISPOSITIONS, NCR_SOURCES, NCR_TYPES, SEVERITIES, SUPPLIER_ACTIONS, SUPPLIER_SOURCES,
@@ -16,7 +16,7 @@ import {
 } from "../types";
 
 type Text = { [K in Exclude<keyof NcrHeader, "source_type" | "report_type" | "severity" | "supplier_action" | "claim_status">]: string };
-const EMPTY: Text = { report_date: "", title: "", description: "", reference_code: "", customer_name: "", supplier_name: "", supplier_reference: "",
+const EMPTY: Text = { report_date: "", title: "", description: "", reference_code: "", customer_name: "", supplier_id: "", supplier_name: "", supplier_reference: "",
   owner_user_id: "", due_date: "", supplier_response: "", supplier_responded_at: "", cost_material: "", cost_labor: "", cost_scrap: "",
   cost_transport: "", cost_other: "", claim_amount: "" };
 type Item = { [K in keyof NcrItemInput]: string };
@@ -29,14 +29,17 @@ export function NcrReportForm({ reportId }: { reportId?: string }) {
   const errors = useTranslations("ncr.errors");
   const messages = useTranslations("messages");
   const router = useRouter();
+  const params = useSearchParams();
   const editing = Boolean(reportId);
-  const [v, setV] = useState<Text>({ ...EMPTY, report_date: todayIso() });
+  // Opened from a supplier or a goods receipt: the supplier, the receipt and lot, and the item are filled in.
+  const [v, setV] = useState<Text>({ ...EMPTY, report_date: todayIso(), supplier_id: params.get("supplier") ?? "", reference_code: params.get("reference") ?? "" });
+  const [suppliers, setSuppliers] = useState<{ id: string; supplier_code: string; name: string }[]>([]);
   const [source, setSource] = useState<NcrSourceType>("incoming_material");
   const [type, setType] = useState<NcrReportType>("material_non_conformance");
   const [severity, setSeverity] = useState<NcrSeverity>("major");
   const [supplierAction, setSupplierAction] = useState<(typeof SUPPLIER_ACTIONS)[number]>("none");
   const [claim, setClaim] = useState<(typeof CLAIM_STATUSES)[number]>("none");
-  const [items, setItems] = useState<Item[]>([{ ...EMPTY_ITEM }]);
+  const [items, setItems] = useState<Item[]>([{ ...EMPTY_ITEM, item_name: params.get("item") ?? "", item_reference: params.get("reference") ?? "" }]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(editing);
@@ -44,6 +47,7 @@ export function NcrReportForm({ reportId }: { reportId?: string }) {
   const [error, setError] = useState("");
 
   useEffect(() => { getNcrUsers().then(setUsers).catch(() => setUsers([])); }, []);
+  useEffect(() => { getNcrSuppliers().then(setSuppliers).catch(() => setSuppliers([])); }, []);
   useEffect(() => {
     if (!reportId) return;
     let active = true;
@@ -109,7 +113,11 @@ export function NcrReportForm({ reportId }: { reportId?: string }) {
           <h2 style={{ marginTop: 0 }}>{supplier ? t("sections.supplier") : t("sections.party")}</h2>
           <div className={s.grid}>
             {supplier ? <>
-              {input("supplier_name", { maxLength: 255 })}
+              <label className={s.field}>{t("fields.registered_supplier")}
+                <select value={v.supplier_id} onChange={e => set("supplier_id", e.target.value)}>
+                  <option value="">{t("placeholders.unregisteredSupplier")}</option>
+                  {suppliers.map(o => <option key={o.id} value={o.id}>{o.name} — {o.supplier_code}</option>)}</select></label>
+              {!v.supplier_id && input("supplier_name", { maxLength: 255 })}
               {input("supplier_reference", { maxLength: 120, dir: "auto", placeholder: t("placeholders.supplierReference") })}
               <label className={s.field}>{t("fields.supplier_action")}
                 <select value={supplierAction} onChange={e => setSupplierAction(e.target.value as (typeof SUPPLIER_ACTIONS)[number])}>

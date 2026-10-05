@@ -107,7 +107,7 @@ export function NcrReportDetail({ ncrReportId }: { ncrReportId: string }) {
         <Item label={t("fields.owner")}>{x.owner_name ?? "—"}{x.due_date && <div className={x.overdue ? s.error : s.muted}>{t("dueOn", { date: fmt.date(x.due_date) })}</div>}</Item>
         <Item label={t("fields.detected_by")}>{x.detected_by_name ?? "—"}</Item>
         {SUPPLIER_SOURCES.includes(x.source_type) ? <>
-          <Item label={t("fields.supplier_name")}>{x.supplier_name ?? "—"}</Item>
+          <Item label={t("fields.supplier_name")}>{x.supplier_id ? <Link href={`/suppliers/${x.supplier_id}`}>{x.supplier_name}</Link> : x.supplier_name ?? "—"}</Item>
           <Item label={t("fields.supplier_reference")}><bdi>{x.supplier_reference ?? "—"}</bdi></Item>
         </> : x.customer_name && <Item label={t("fields.customer_name")}>{x.customer_name}</Item>}
         {x.order_number && <Item label={t("fields.production_order")}><Link href={`/production-orders/${x.production_order_id}`}><bdi>{x.order_number}</bdi></Link></Item>}

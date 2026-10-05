@@ -1,0 +1,39 @@
+/* Goods receipt note (PROC-001). Colours follow the company identity (--brand). */
+.gr{padding:0 18px;font-size:9pt}
+.gr-banner{display:flex;justify-content:space-between;align-items:stretch;gap:12px;margin-bottom:12px}
+.gr-title{flex:1;background:var(--brand);color:#fff;border-radius:3px;padding:10px 14px;display:flex;flex-direction:column;justify-content:center}
+.gr-title h1{margin:0;font-size:18pt;color:#fff;border:0}
+.gr-title p{margin:2px 0 0;font-size:9pt;opacity:.85}
+.gr-flag{align-self:flex-start;margin-top:6px;padding:2px 10px;border:1px solid #fff;border-radius:10px;font-size:8.5pt;font-weight:700}
+.gr-meta{margin:0;display:grid;border:1px solid var(--line);border-radius:3px;min-width:220px}
+.gr-meta div{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--line)}
+.gr-meta div:last-child{border-bottom:0}
+.gr-meta dt{color:var(--muted);font-size:8pt}
+.gr-meta dd{margin:0;font-weight:700}
+.gr-columns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gr-block{margin-bottom:10px;break-inside:avoid}
+.gr-block h2{margin:0 0 5px;font-size:9.8pt;padding-inline-start:8px;border-inline-start:4px solid var(--brand);border-bottom:0;display:block}
+.gr-fields{display:grid;grid-template-columns:auto 1fr;margin:0;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.gr-fields dt,.gr-fields dd{margin:0;padding:4px 9px;border-bottom:1px solid var(--line)}
+.gr-fields dt{background:var(--soft);color:var(--muted);font-size:8pt;white-space:nowrap}
+.gr-fields dd{font-weight:700;overflow-wrap:break-word}
+.gr-items{width:100%;border-collapse:collapse;border:1px solid var(--line);font-size:8.8pt}
+.gr-items th{background:var(--brand);color:#fff;font-weight:700;font-size:8pt;padding:6px 7px;text-align:start;white-space:nowrap}
+.gr-items td{padding:6px 7px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:break-word}
+.gr-items tbody tr{break-inside:avoid}
+.gr-items tbody tr:nth-child(even) td{background:#fafbfc}
+.gr-items .n{width:24px;text-align:center}
+.gr-items .num{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
+.gr-items tfoot td{font-weight:700;background:var(--soft);border-top:2px solid var(--brand)}
+.gr-items tfoot .lbl{text-align:end}
+.gr-note{margin:4px 0 0;color:var(--muted);font-size:7.8pt}
+.gr-notes{margin:0;white-space:pre-wrap}
+.gr-cancelled{color:#a12a2a;margin:6px 0}
+.gr-sign{width:100%;border-collapse:collapse;margin-top:10px;break-inside:avoid}
+.gr-sign td{width:33.3%;border:1px solid var(--line);padding:0 10px 8px;vertical-align:top}
+.gr-sign span{display:block;margin:0 -10px 6px;padding:5px 10px;background:var(--brand);color:#fff;font-weight:700;font-size:8.3pt}
+.gr-sign b{display:block;min-height:13px}
+.gr-sign small{display:block;color:var(--muted)}
+.gr-sign i{display:block;border-bottom:1px dotted var(--muted);height:30px}
+.gr-hint{margin:4px 0 0;text-align:center;color:var(--muted);font-size:7.6pt}
+.gr-watermark{font-size:46pt;color:rgba(160,30,30,.08)}
