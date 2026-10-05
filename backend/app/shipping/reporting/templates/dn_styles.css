@@ -1,0 +1,42 @@
+/* Delivery note (SHIP-001). Colours follow the company identity (--brand). */
+.dn{padding:0 18px;font-size:9pt}
+.dn-banner{display:flex;justify-content:space-between;align-items:stretch;gap:12px;margin-bottom:12px}
+.dn-title{flex:1;background:var(--brand);color:#fff;border-radius:3px;padding:10px 14px;display:flex;flex-direction:column;justify-content:center}
+.dn-title h1{margin:0;font-size:18pt;color:#fff;border:0}
+.dn-title p{margin:2px 0 0;font-size:9pt;opacity:.85}
+.dn-flag{align-self:flex-start;margin-top:6px;padding:2px 10px;border:1px solid #fff;border-radius:10px;font-size:8.5pt;font-weight:700}
+.dn-meta{margin:0;display:grid;grid-template-rows:repeat(3,1fr);border:1px solid var(--line);border-radius:3px;min-width:220px}
+.dn-meta div{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:4px 10px;border-bottom:1px solid var(--line)}
+.dn-meta div:last-child{border-bottom:0}
+.dn-meta dt{color:var(--muted);font-size:8pt}
+.dn-meta dd{margin:0;font-weight:700}
+.dn-columns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dn-block{margin-bottom:10px;break-inside:avoid}
+.dn-block h2{margin:0 0 5px;font-size:9.8pt;padding-inline-start:8px;border-inline-start:4px solid var(--brand);border-bottom:0;display:block}
+.dn-fields{display:grid;grid-template-columns:auto 1fr;margin:0;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.dn-fields dt,.dn-fields dd{margin:0;padding:4px 9px;border-bottom:1px solid var(--line)}
+.dn-fields dt{background:var(--soft);color:var(--muted);font-size:8pt;white-space:nowrap}
+.dn-fields dd{font-weight:700;overflow-wrap:break-word}
+.dn-fields dt:nth-last-of-type(1),.dn-fields dd:last-child{border-bottom:0}
+.dn-items{width:100%;border-collapse:collapse;border:1px solid var(--line);font-size:8.8pt}
+.dn-items th{background:var(--brand);color:#fff;font-weight:700;font-size:8pt;padding:6px 7px;text-align:start;white-space:nowrap}
+.dn-items td{padding:6px 7px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:break-word}
+.dn-items tbody tr{break-inside:avoid}
+.dn-items tbody tr:nth-child(even) td{background:#fafbfc}
+.dn-items .n{width:24px;text-align:center}
+.dn-items .num{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dn-items small{display:block;color:var(--muted);font-size:7.8pt;margin-top:2px}
+.dn-items tfoot td{font-weight:700;background:var(--soft);border-top:2px solid var(--brand)}
+.dn-items tfoot .lbl{text-align:end}
+.dn-notes{margin:0;white-space:pre-wrap}
+.dn-cancelled{color:#a12a2a;margin:6px 0}
+.dn-watermark{font-size:46pt;color:rgba(160,30,30,.08)}
+.dn-closing{break-inside:avoid;margin-top:10px}
+.dn-receipt{margin:0 0 6px;padding:7px 10px;background:var(--soft);border-inline-start:3px solid var(--brand);font-size:8.8pt}
+.dn-sign{width:100%;border-collapse:collapse}
+.dn-sign td{width:33.3%;border:1px solid var(--line);padding:0 10px 8px;vertical-align:top}
+.dn-sign span{display:block;margin:0 -10px 6px;padding:5px 10px;background:var(--brand);color:#fff;font-weight:700;font-size:8.3pt}
+.dn-sign b{display:block;min-height:13px}
+.dn-sign small{display:block;color:var(--muted)}
+.dn-sign i{display:block;border-bottom:1px dotted var(--muted);height:30px}
+.dn-sign-hint{margin:4px 0 0;text-align:center;color:var(--muted);font-size:7.6pt}

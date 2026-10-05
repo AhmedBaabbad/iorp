@@ -10,6 +10,7 @@ import re
 # Each module declares its own permissions (a pure domain module); the catalog registers them.
 from app.production.domain import permissions as production_permissions
 from app.quality.domain import permissions as quality_permissions
+from app.shipping.domain import permissions as shipping_permissions
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,7 @@ MODULE_NAMES = {
     "commercial": {"en": "Commercial", "ar": "التجاري"},
     "production": {"en": "Production", "ar": "الإنتاج"},
     "quality": {"en": "Quality", "ar": "الجودة"},
+    "shipping": {"en": "Shipping", "ar": "الشحن والتسليم"},
     "workforce": {"en": "Workforce", "ar": "القوى العاملة"},
 }
 
@@ -60,6 +62,7 @@ RESOURCE_NAMES = {
     "rejections": ("Rejections", "حالات الرفض"), "ncr_reports": ("NCR Reports", "تقارير عدم المطابقة"),
     "specifications": ("Product Specifications", "مواصفات المنتجات"),
     "certificates": ("Certificates of Analysis", "شهادات التحليل"),
+    "shipments": ("Shipments", "الشحنات"), "returns": ("Returns", "المرتجعات"), "settings": ("Settings", "الإعدادات"),
     "members": ("Workforce Members", "أعضاء القوى العاملة"),
 }
 
@@ -89,6 +92,10 @@ ACTION_NAMES = {
     "measure": ("Record Measurements for", "تسجيل قياسات"),
     "issue": ("Issue", "إصدار"),
     "revoke": ("Revoke", "إلغاء"),
+    "dispatch": ("Dispatch", "إخراج"),
+    "deliver": ("Confirm Delivery of", "تأكيد تسليم"),
+    "approve": ("Approve", "اعتماد"),
+    "receive": ("Receive", "استلام"),
 }
 
 
@@ -161,6 +168,10 @@ PRODUCTION_PERMISSIONS = [_labelled(p, production_permissions.LABELS)
 QUALITY_PERMISSIONS = [_labelled(p, quality_permissions.LABELS)
                        for p in _resource_permissions(quality_permissions.MODULE, quality_permissions.RESOURCES)]
 
+# SHIP-001: one permission per action, from shipping/domain/permissions.py.
+SHIPPING_PERMISSIONS = [_labelled(p, shipping_permissions.LABELS)
+                        for p in _resource_permissions(shipping_permissions.MODULE, shipping_permissions.RESOURCES)]
+
 WORKFORCE_PERMISSIONS = _resource_permissions("workforce", {
     "members": ("read", "create", "update", "delete", "link_user"),
 })
@@ -183,7 +194,7 @@ REPORTING_PERMISSIONS += [PermissionDefinition('reports:quality:'+key, 'reports'
 
 ALL_TENANT_PERMISSIONS = (
     FOUNDATION_PERMISSIONS + COMMERCIAL_PERMISSIONS + PRODUCTION_PERMISSIONS
-    + QUALITY_PERMISSIONS + WORKFORCE_PERMISSIONS + REPORTING_PERMISSIONS
+    + QUALITY_PERMISSIONS + SHIPPING_PERMISSIONS + WORKFORCE_PERMISSIONS + REPORTING_PERMISSIONS
 )
 PERMISSION_BY_CODE = {permission.code: permission for permission in ALL_TENANT_PERMISSIONS}
 ALL_PERMISSION_CODES = frozenset(PERMISSION_BY_CODE)

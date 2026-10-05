@@ -22,12 +22,14 @@ import {
   IconMenu,
   IconShield,
   IconShieldCheck,
+  IconTruck,
   IconUserCog,
   IconUsers,
   IconX,
 } from "./nav-icons";
 import { P, PRODUCTION_REPORTS } from "@/lib/production-permissions";
 import { Q, QUALITY_REPORTS } from "@/lib/quality-permissions";
+import { S } from "@/lib/shipping-permissions";
 
 type PageFrameProps = {
   title: string;
@@ -303,6 +305,14 @@ const staticNavGroups: StaticNavGroup[] = [
       { href: "/quality-specifications", labelKey: "links.qualitySpecifications", permission: Q.SPECS_READ },
       { href: "/quality-test-parameters", labelKey: "links.qualityTestParameters", permission: Q.SPECS_READ },
       { href: "/quality-reports", labelKey: "links.qualityReports", anyPermissions: QUALITY_REPORTS },
+    ],
+  },
+  {
+    labelKey: "sections.shipping",
+    icon: IconTruck,
+    links: [
+      { href: "/shipments", labelKey: "links.shipments", permission: S.SHIPMENTS_READ },
+      { href: "/shipment-returns", labelKey: "links.shipmentReturns", permission: S.RETURNS_READ },
     ],
   },
   {

@@ -26,7 +26,8 @@
     "quality": "Quality",
     "ncr": "NCR",
     "capa": "CAPA",
-    "administration": "Administration"
+    "administration": "Administration",
+    "shipping": "Shipping"
   },
   "links": {
     "productionReports": "Report center",
@@ -64,7 +65,9 @@
     "qualityReports": "Quality report center",
     "qualitySpecifications": "Product specifications",
     "qualityTestParameters": "Test parameters",
-    "qualityCertificates": "Certificates of Analysis"
+    "qualityCertificates": "Certificates of Analysis",
+    "shipments": "Shipments & delivery notes",
+    "shipmentReturns": "Returns"
   },
   "userMenu": {
     "changePassword": "Change Password",

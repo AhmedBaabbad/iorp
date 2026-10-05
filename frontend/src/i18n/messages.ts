@@ -88,8 +88,10 @@ export async function loadMessages(locale: Locale) {
   ]);
 
   const reports = await readLocaleFile(locale, "reports.json");
+  const shipping = await readLocaleFile(locale, "shipping.json");
   return {
     reports,
+    shipping,
     auth,
     common,
     navigation,

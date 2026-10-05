@@ -26,7 +26,8 @@
     "quality": "الجودة",
     "ncr": "عدم المطابقة",
     "capa": "الإجراءات التصحيحية",
-    "administration": "الإدارة"
+    "administration": "الإدارة",
+    "shipping": "الشحن والتسليم"
   },
   "links": {
     "productionReports": "مركز التقارير",
@@ -64,7 +65,9 @@
     "qualityReports": "مركز تقارير الجودة",
     "qualitySpecifications": "مواصفات المنتجات",
     "qualityTestParameters": "خصائص الفحص",
-    "qualityCertificates": "شهادات التحليل"
+    "qualityCertificates": "شهادات التحليل",
+    "shipments": "الشحنات وإشعارات التسليم",
+    "shipmentReturns": "المرتجعات"
   },
   "userMenu": {
     "changePassword": "تغيير كلمة المرور",

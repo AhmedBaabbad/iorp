@@ -1,0 +1,65 @@
+{#- Delivery note (SHIP-001, SHIP-004): number and method, customer and recipient, transport, items, signatures. -#}
+{%- set ar = lang == 'ar' %}{% set d = data.document %}
+<main class="dn">
+  <header class="dn-banner">
+    <div class="dn-title">
+      <h1>{{ 'إشعار تسليم' if ar else 'DELIVERY NOTE' }}</h1>
+      <p>{{ 'Delivery Note' if ar else 'إشعار تسليم' }}</p>
+      {% if watermark %}<span class="dn-flag">{{ watermark }}</span>{% endif %}
+      {% if d.attempt > 1 %}<span class="dn-flag">{{ ('المحاولة ' if ar else 'Attempt ') ~ d.attempt }}</span>{% endif %}
+    </div>
+    <dl class="dn-meta">
+      <div><dt>{{ 'رقم الإشعار' if ar else 'Note no.' }}</dt><dd><bdi dir="ltr">{{ d.number }}</bdi></dd></div>
+      <div><dt>{{ 'التاريخ' if ar else 'Date' }}</dt><dd><bdi dir="ltr">{{ d.date }}</bdi></dd></div>
+      <div><dt>{{ 'طريقة التسليم' if ar else 'Delivery method' }}</dt><dd>{{ d.method }}</dd></div>
+    </dl>
+  </header>
+
+  <div class="dn-columns">
+    <section class="dn-block">
+      <h2>{{ 'العميل والمستلم' if ar else 'Customer & recipient' }}</h2>
+      <dl class="dn-fields">{% for label, value in d.party %}<dt>{{ label }}</dt><dd><bdi>{{ value }}</bdi></dd>{% endfor %}</dl>
+    </section>
+    <section class="dn-block">
+      <h2>{{ 'النقل' if ar else 'Transport' }}</h2>
+      <dl class="dn-fields">{% for label, value in d.transport %}<dt>{{ label }}</dt><dd><bdi>{{ value }}</bdi></dd>{% endfor %}</dl>
+    </section>
+  </div>
+
+  <section class="dn-block" style="break-inside:auto">
+    <h2>{{ 'البنود' if ar else 'Items' }}</h2>
+    <table class="dn-items">
+      <thead><tr>
+        <th class="n">#</th><th>{{ 'الوصف' if ar else 'Description' }}</th>
+        <th>{{ 'العرض (مم)' if ar else 'Width (mm)' }}</th><th>{{ 'السماكة (مم)' if ar else 'Thickness (mm)' }}</th>
+        <th>{{ 'الكمية' if ar else 'Quantity' }}</th><th>{{ 'الوحدة' if ar else 'Unit' }}</th><th>{{ 'الوزن' if ar else 'Weight' }}</th>
+      </tr></thead>
+      <tbody>{% for l in d.lines %}<tr>
+        <td class="n">{{ l.no }}</td>
+        <td><bdi>{{ l.description }}</bdi>{% if l.batch %}<small>{{ 'أمر الإنتاج:' if ar else 'Production order:' }} <bdi dir="ltr">{{ l.batch }}</bdi></small>{% endif %}</td>
+        <td class="num">{{ l.width }}</td><td class="num">{{ l.thickness }}</td>
+        <td class="num">{{ l.quantity }}{% if l.delivered is not none %}<small>{{ 'المستلم:' if ar else 'Received:' }} {{ l.delivered }}</small>{% endif %}</td><td>{{ l.unit }}</td><td class="num"><bdi>{{ l.weight }}</bdi></td>
+      </tr>{% endfor %}</tbody>
+      <tfoot><tr>
+        <td colspan="4" class="lbl">{{ 'الإجمالي' if ar else 'Total' }}</td><td colspan="2"><bdi>{{ d.quantities }}</bdi></td>
+        <td class="num"><bdi>{{ d.weight or '—' }}</bdi></td>
+      </tr></tfoot>
+    </table>
+  </section>
+
+  {% if d.notes %}<section class="dn-block"><h2>{{ 'ملاحظات' if ar else 'Notes' }}</h2><p class="dn-notes" dir="auto">{{ d.notes }}</p></section>{% endif %}
+  {% if d.status == 'not_delivered' and d.close_reason %}<p class="dn-cancelled" dir="auto"><b>{{ 'لم تُسلَّم:' if ar else 'Not delivered:' }}</b> {{ d.close_reason }}</p>{% endif %}
+  {% if d.returns %}<p class="dn-notes">{{ 'المرتجعات:' if ar else 'Returns:' }} <bdi dir="ltr">{{ d.returns }}</bdi></p>{% endif %}
+  {% if d.status == 'cancelled' and d.cancel_reason %}<p class="dn-cancelled" dir="auto"><b>{{ 'سبب الإلغاء:' if ar else 'Cancelled:' }}</b> {{ d.cancel_reason }}</p>{% endif %}
+
+  <section class="dn-closing">
+    <p class="dn-receipt">{{ 'استلمتُ البضاعة المذكورة أعلاه كاملة وبحالة سليمة.' if ar else 'Received the goods listed above complete and in good condition.' }}</p>
+    <table class="dn-sign"><tr>
+      <td><span>{{ 'أعدّه — المستودع' if ar else 'Prepared by — Warehouse' }}</span><b><bdi>{{ d.prepared_by }}</bdi></b><i></i></td>
+      <td><span>{{ 'الناقل / السائق' if ar else 'Carrier / driver' }}</span><b><bdi>{{ d.driver or '' }}</bdi></b><i></i></td>
+      <td><span>{{ 'المستلم' if ar else 'Received by' }}</span><b><bdi>{{ d.received_by or '' }}</bdi></b>
+        {% if d.received_at %}<small><bdi dir="ltr">{{ d.received_at }}</bdi></small>{% endif %}<i></i></td>
+    </tr></table>
+    <p class="dn-sign-hint">{{ 'الاسم والتوقيع والتاريخ' if ar else 'Name, signature and date' }}</p>
+  </section>
+</main>

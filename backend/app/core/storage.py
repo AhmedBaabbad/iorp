@@ -76,3 +76,35 @@ class LocalFileStorage:
         if len(content) >= 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP":
             return "webp"
         raise InvalidLogoError("Unsupported logo type.")
+
+
+MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
+ATTACHMENT_TYPES = {"png": "image/png", "jpg": "image/jpeg", "webp": "image/webp", "pdf": "application/pdf"}
+
+
+class InvalidAttachmentError(ValueError):
+    pass
+
+
+def save_attachment(content: bytes, organization_id: uuid.UUID, folder: str, storage: LocalFileStorage | None = None) -> tuple[str, str]:
+    """A user's file (an image or a PDF, by its content, not its name) under the organization's folder:
+    (relative path, content type)."""
+    if not content:
+        raise InvalidAttachmentError("EMPTY")
+    if len(content) > MAX_ATTACHMENT_BYTES:
+        raise InvalidAttachmentError("TOO_LARGE")
+    if content.startswith(b"%PDF-"):
+        extension = "pdf"
+    else:
+        try:
+            extension = LocalFileStorage._extension(content)
+        except InvalidLogoError as exc:
+            raise InvalidAttachmentError("UNSUPPORTED_TYPE") from exc
+    storage = storage or LocalFileStorage()
+    relative = Path("organizations") / str(organization_id) / folder / f"{uuid.uuid4()}.{extension}"
+    destination = (storage.root / relative).resolve()
+    if storage.root not in destination.parents:
+        raise InvalidAttachmentError("INVALID_PATH")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes(content)
+    return relative.as_posix(), ATTACHMENT_TYPES[extension]
