@@ -8,6 +8,7 @@ import pytest
 
 from app.core.config import settings as app_settings
 from app.core.tenancy import TenantContext
+from app.core.utils import utc_now
 from app.dependencies import get_current_user
 from app.main import app
 from app.quality.domain import permissions as Q
@@ -79,7 +80,7 @@ def test_the_stages_of_a_corrective_action(ncr):
                  root_cause="The supplier's silo was not dried after maintenance").json()
     assert r["status"] == "action" and r["investigated_by_name"] == "Test User"
     r = action(kind="preventive", description="Moisture test on every incoming lot", owner_user_id=str(ncr.user.id),
-               due_date=str(date.today() + timedelta(days=7))).json()
+               due_date=str(utc_now().date() + timedelta(days=7))).json()
     first, second = r["corrective_actions"]
     r2 = ncr.step(r, "submit")
     assert r2.status_code == 409 and code(r2) == "ACTIONS_STILL_OPEN" and r2.json()["detail"]["open"] == 2
@@ -118,7 +119,7 @@ def test_the_corrective_action_list_shows_whose_and_what_is_late(ncr):
     r = ncr.create()
     ncr.step(r, "contain", containment="Quarantined")
     late = ncr.client.post(f"{ROOT}/{r['id']}/actions", json=dict(kind="corrective", description="Recalibrate the moisture meter",
-                                                                 owner_user_id=str(ncr.user.id), due_date=str(date.today() - timedelta(days=1)))).json()
+                                                                 owner_user_id=str(ncr.user.id), due_date=str(utc_now().date() - timedelta(days=1)))).json()
     both = ncr.client.post(f"{ROOT}/{r['id']}/actions", json=dict(kind="preventive", description="Monthly calibration", owner_name="Lab")).json()
     assert late["corrective_actions"][0]["overdue"] is True and both["overdue_actions"] == 1 and both["open_actions"] == 2
     rows = ncr.client.get("/api/v1/quality/ncr-actions", params=dict(overdue=True)).json()

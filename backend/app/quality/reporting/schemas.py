@@ -5,7 +5,7 @@ from uuid import UUID
 from pydantic import Field, model_validator
 
 from app.core.reporting.contracts import CommonParams
-from app.quality.domain.enums import (DefectCategory, DefectSeverity, Disposition, DispositionStatus, QualityCheckResult,
+from app.quality.domain.enums import (DefectCategory, DefectSeverity, Disposition, DispositionStatus, NCRSourceType, QualityCheckResult,
                                       QualityCheckStatus, QualityCheckType, RejectionReason)
 
 # Field labels come from the locale files (reports.params.*); the widgets from json_schema_extra.
@@ -49,3 +49,18 @@ class RejectionsParams(_Period):
 class DefectsParams(_Period):
     category: list[DefectCategory] = Field(default_factory=list, max_length=11)
     severity: list[DefectSeverity] = Field(default_factory=list, max_length=3)
+
+
+class CorrectiveActionsParams(CommonParams):
+    """QUAL-CAPA-001: the non-conformance reports dated in the period, and their corrective actions."""
+    orientation: Literal['portrait', 'landscape'] = 'landscape'
+    date_from: date | None = None
+    date_to: date | None = None
+    source_type: list[NCRSourceType] = Field(default_factory=list, max_length=6)
+    severity: list[Literal['minor', 'major', 'critical']] = Field(default_factory=list, max_length=3)
+
+    @model_validator(mode='after')
+    def dates(self):
+        if self.date_from and self.date_to and self.date_to < self.date_from:
+            raise ValueError('Invalid date range')
+        return self

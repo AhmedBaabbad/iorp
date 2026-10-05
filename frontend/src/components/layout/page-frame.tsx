@@ -8,6 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { ProtectedRoute, useAuth, useHasAnyPermission } from "@/features/auth";
+import { useCapaAlerts } from "@/features/ncr-reports/use-capa-alerts";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { API_BASE_URL } from "@/lib/api-client";
@@ -49,6 +50,8 @@ type StaticNavLink = {
   permission?: string;
   anyPermissions?: string[];
   icon?: NavIcon;
+  // A count next to the link of what needs the user's attention there.
+  badge?: "capa";
 };
 
 type StaticNavGroup = {
@@ -134,6 +137,18 @@ const styles: Record<string, CSSProperties> = {
   navLinkActive: {
     background: "var(--accent-soft)",
     color: "var(--accent-strong)",
+  },
+  navBadge: {
+    background: "var(--danger)",
+    borderRadius: "999px",
+    color: "var(--on-accent)",
+    fontSize: "11px",
+    fontWeight: 700,
+    lineHeight: "18px",
+    marginInlineStart: "auto",
+    minWidth: "18px",
+    padding: "0 6px",
+    textAlign: "center",
   },
   navBullet: {
     background: "currentColor",
@@ -339,7 +354,7 @@ const staticNavGroups: StaticNavGroup[] = [
     labelKey: "sections.capa",
     icon: IconShieldCheck,
     links: [
-      { href: "/corrective-actions", labelKey: "links.correctiveActions", anyPermissions: [Q.NCR_ACTIONS_READ, Q.NCR_READ] },
+      { href: "/corrective-actions", labelKey: "links.correctiveActions", anyPermissions: [Q.NCR_ACTIONS_READ, Q.NCR_READ], badge: "capa" },
     ],
   },
 ];
@@ -395,6 +410,8 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+  const capaAlerts = useCapaAlerts(hasPermission(Q.NCR_ACTIONS_READ) || hasPermission(Q.NCR_READ));
+  const badges: Record<string, number> = { capa: capaAlerts?.total ?? 0 };
 
   const visibleStaticNavGroups = staticNavGroups
     .map((group) => ({
@@ -508,6 +525,8 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
                       >
                         {LinkIcon ? <LinkIcon size={16} /> : <span style={styles.navBullet} />}
                         <span className="iorp-nav-label">{t(link.labelKey)}</span>
+                        {link.badge && badges[link.badge] > 0 && <span className="iorp-nav-label" style={styles.navBadge}
+                          aria-label={t("needsAttention", { count: badges[link.badge] })}>{badges[link.badge]}</span>}
                       </Link>
                     );
                   })}

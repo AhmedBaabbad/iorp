@@ -51,7 +51,8 @@
     "disposition": "Disposition",
     "disposition_status": "Decision status",
     "category": "Defect category",
-    "severity": "Severity"
+    "severity": "Severity",
+    "source_type": "Source"
   },
   "values": {
     "planned_start": "Planned start",
@@ -137,7 +138,12 @@
     "finish": "Finish / texture",
     "minor": "Minor",
     "major": "Major",
-    "critical": "Critical"
+    "critical": "Critical",
+    "incoming_material": "Incoming material",
+    "supplier": "Supplier",
+    "internal_production": "Production",
+    "warehouse": "Warehouse",
+    "customer_return": "Customer return"
   },
   "order": {
     "button": "Order report",

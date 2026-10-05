@@ -51,7 +51,12 @@
 
   {% if d.verified %}<section class="ncr-block">{{ head('التحقق من الفعالية' if ar else 'Effectiveness verification') }}
     {% if d.verified_effective %}<p><span class="ncr-verdict">{{ 'فعّالة — أُغلق التقرير' if ar else 'Effective — report closed' }}</span></p>{% endif %}
-    {% if d.verification %}<p class="ncr-text" dir="auto">{{ d.verification }}</p>{% endif %}<p class="ncr-by">{{ d.verified }}</p></section>{% endif %}
+    {% if d.verification %}<p class="ncr-text" dir="auto">{{ d.verification }}</p>{% endif %}<p class="ncr-by">{{ d.verified }}</p>
+    {#- QUAL-CAPA-001: the later review that the problem did not come back. -#}
+    {% if d.review_result %}<p><span class="ncr-verdict">{{ ('مراجعة لاحقة: فعّالة' if ar else 'Later review: effective') if d.review_result == 'effective'
+      else ('مراجعة لاحقة: غير فعّالة — أُعيد فتح التقرير' if ar else 'Later review: not effective — report reopened') }}</span></p>
+      {% if d.review_notes %}<p class="ncr-text" dir="auto">{{ d.review_notes }}</p>{% endif %}<p class="ncr-by">{{ d.reviewed }}</p>
+    {% elif d.review_due %}<p class="ncr-by">{{ 'مراجعة الفعالية مستحقة في' if ar else 'Effectiveness review due on' }} <bdi>{{ d.review_due }}</bdi></p>{% endif %}</section>{% endif %}
 
   {% if d.supplier_action or d.supplier_response %}<section class="ncr-block">{{ head('الإجراء مع المورد' if ar else 'With the supplier') }}
     <p class="ncr-text" dir="auto"><b>{{ d.supplier_action }}</b>{% if d.supplier_response %}<br>{{ d.supplier_response }}{% endif %}</p>

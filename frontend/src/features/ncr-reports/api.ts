@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import type { CorrectiveAction, NcrAttachment, NcrCreateInput, NcrHeader, NcrItemInput, NcrListItem, NcrReport, NcrSeverity, NcrSourceType, NcrStatus,
+import type { CapaAlerts, CorrectiveAction, NcrAttachment, NcrCreateInput, NcrHeader, NcrItemInput, NcrListItem, NcrReport, NcrSeverity, NcrSourceType, NcrStatus,
   UserOption } from "./types";
 
 const PATH = "/quality/non-conformance-reports";
@@ -26,7 +26,9 @@ export type InvestigateBody = { root_cause_category: string; root_cause_method: 
   no_action_justification: string | null };
 export const investigateNcr = (id: string, body: InvestigateBody) => step(id, "investigate", body);
 export const submitNcr = (id: string) => step(id, "submit");
-export const verifyNcr = (id: string, effective: boolean, notes: string | null) => step(id, "verify", { effective, notes });
+export const verifyNcr = (id: string, effective: boolean, notes: string | null, review_days = 0) => step(id, "verify", { effective, notes, review_days });
+// Some time after closing: the problem did not come back (effective), or it did and the report reopens to its actions.
+export const reviewNcrEffectiveness = (id: string, effective: boolean, notes: string | null) => step(id, "review-effectiveness", { effective, notes });
 export const cancelNcr = (id: string, reason: string) => step(id, "cancel", { reason });
 
 export const addNcrItem = (id: string, body: NcrItemInput) => apiClient<NcrReport>(`${PATH}/${id}/items`, { method: "POST", body });
@@ -44,6 +46,7 @@ export const cancelNcrAction = (id: string, actionId: string, reason: string) =>
 // Corrective actions across reports (the CAPA list).
 export type ActionFilters = { status?: "open" | "done" | "cancelled" | ""; mine?: boolean; overdue?: boolean; search?: string };
 export const getCorrectiveActions = (filters: ActionFilters = {}) => apiClient<CorrectiveAction[]>(`/quality/ncr-actions${query(filters)}`);
+export const getCapaAlerts = () => apiClient<CapaAlerts>("/quality/ncr-actions/alerts");
 
 export function uploadNcrAttachment(id: string, file: File) {
   const body = new FormData();

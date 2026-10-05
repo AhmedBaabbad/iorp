@@ -51,7 +51,8 @@
     "disposition": "القرار",
     "disposition_status": "حالة القرار",
     "category": "تصنيف العيب",
-    "severity": "الخطورة"
+    "severity": "الخطورة",
+    "source_type": "المصدر"
   },
   "values": {
     "planned_start": "البداية المخططة",
@@ -137,7 +138,12 @@
     "finish": "نعومة / الملمس",
     "minor": "بسيط",
     "major": "رئيسي",
-    "critical": "حرج"
+    "critical": "حرج",
+    "incoming_material": "مواد واردة",
+    "supplier": "مورد",
+    "internal_production": "الإنتاج",
+    "warehouse": "المستودع",
+    "customer_return": "مرتجع عميل"
   },
   "order": {
     "button": "تقرير الأمر",

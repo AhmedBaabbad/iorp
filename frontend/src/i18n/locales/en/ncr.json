@@ -231,7 +231,8 @@
     "verify": "Verify effectiveness",
     "cancel": "Cancel report",
     "complete": "Mark done",
-    "cancelAction": "Cancel action"
+    "cancelAction": "Cancel action",
+    "review_effectiveness": "Review effectiveness"
   },
   "noItems": "No items yet.",
   "noActions": "No actions yet.",
@@ -261,7 +262,8 @@
     "action_cancelled": "Action cancelled",
     "submit": "Sent to verification",
     "verify": "Verified",
-    "cancel": "Cancelled"
+    "cancel": "Cancelled",
+    "effectiveness_review": "Effectiveness reviewed"
   },
   "containDialog": {
     "title": "Containment",
@@ -272,7 +274,8 @@
     "text": "Why did it happen? Choose the category and describe the analysis.",
     "noAction": "A minor, isolated case: no corrective action is needed",
     "confirm": "Record — actions next",
-    "close": "Record and close"
+    "close": "Record and close",
+    "recurring": "This problem repeats earlier reports: it is not an isolated case and needs a corrective action."
   },
   "verifyDialog": {
     "title": "Verify effectiveness",
@@ -280,7 +283,11 @@
     "effective": "Effective — close the report",
     "notEffective": "Not effective — back to actions",
     "notes": "Notes",
-    "notesRequired": "Why it was not effective"
+    "notesRequired": "Why it was not effective",
+    "reviewAfter": "Review again after",
+    "noReview": "No later review",
+    "reviewDays": "{days} days",
+    "reviewHint": "To confirm the problem did not come back; it then appears in the follow-ups of whoever verified it."
   },
   "cancelDialog": {
     "title": "Cancel the report",
@@ -334,6 +341,37 @@
     "FILE_UNSUPPORTED_TYPE": "Only images (PNG, JPEG, WebP) and PDF files.",
     "FILE_INVALID_PATH": "The file could not be saved.",
     "ATTACHMENT_NOT_FOUND": "The file was not found.",
-    "SUPPLIER_NOT_FOUND": "The supplier was not found."
+    "SUPPLIER_NOT_FOUND": "The supplier was not found.",
+    "RECURRING_NEEDS_ACTION": "This problem repeats earlier reports: it needs a corrective action.",
+    "EFFECTIVENESS_REVIEW_NOT_PENDING": "No effectiveness review is pending on this report.",
+    "REVIEW_NOTES_REQUIRED": "Say how the problem came back."
+  },
+  "recurrence": {
+    "title": "Recurrence",
+    "recurring": "Recurring",
+    "hint": "Reports in the {days} days before this one, or after it, about the same supplier, item or cause.",
+    "recurringHint": "{count} earlier reports in {days} days repeat this one: it needs a corrective action that removes the cause.",
+    "sinceClosing": "{count} similar reports were raised after this one was closed.",
+    "matchedOn": "Same",
+    "later": "After this one",
+    "keys": {
+      "supplier": "supplier",
+      "item": "affected item",
+      "cause": "kind and cause (6M)"
+    }
+  },
+  "review": {
+    "title": "Effectiveness review",
+    "text": "Some time after closing: did the problem come back?",
+    "effective": "Effective — it did not come back",
+    "notEffective": "Not effective — it came back",
+    "reopens": "The report reopens to its corrective actions.",
+    "confirm": "Record the review",
+    "scheduled": "Effectiveness to be reviewed again on {date}.",
+    "due": "The effectiveness review is due (since {date}).",
+    "results": {
+      "effective": "Later review: effective",
+      "not_effective": "Later review: not effective"
+    }
   }
 }

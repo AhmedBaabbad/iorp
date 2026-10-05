@@ -464,6 +464,12 @@ class NonConformanceReport(Base):
     verified_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
     closed_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # QUAL-CAPA-001: the later review that the problem did not come back (effective | not_effective; not effective reopens it).
+    effectiveness_due_date: Mapped[date | None] = mapped_column(nullable=True, index=True)
+    effectiveness_result: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    effectiveness_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    effectiveness_reviewed_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    effectiveness_reviewed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
     # With the responsible party (supplier or carrier): the action asked, and its answer.
     supplier_action: Mapped[str] = mapped_column(String(16), nullable=False, default="none")
     supplier_response: Mapped[str | None] = mapped_column(Text, nullable=True)

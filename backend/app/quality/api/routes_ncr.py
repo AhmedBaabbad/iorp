@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session
 from app.core.reporting.routes import generate_response
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_current_user, get_db, permission_check, require_any_permission, require_permission
-from app.quality.api.ncr_schemas import (ActionInput, ActionRead, ActionUpdate, AttachmentRead, ContainInput, EvidenceInput, InvestigateInput,
-                                         ItemInput, ItemUpdate, NCRCreate, NCRListItem, NCRRead, NCRUpdate, ReasonInput, SupplierOption, UserOption,
-                                         VerifyInput)
+from app.quality.api.ncr_schemas import (ActionInput, ActionRead, ActionUpdate, Alerts, AttachmentRead, ContainInput, EvidenceInput,
+                                         InvestigateInput, ItemInput, ItemUpdate, NCRCreate, NCRListItem, NCRRead, NCRUpdate, ReasonInput, ReviewInput,
+                                         SupplierOption, UserOption, VerifyInput)
 from app.quality.application.ncr_service import NCRService
 from app.quality.domain import permissions as Q
 from app.quality.domain.enums import NCRSourceType
@@ -140,8 +140,15 @@ def submit(report_id: UUID, tenant: TenantContext = Depends(get_current_tenant),
 @router.post(f"{PATH}/{{report_id}}/verify", response_model=NCRRead, dependencies=[Depends(require_permission(Q.NCR_VERIFY))])
 def verify(report_id: UUID, payload: VerifyInput, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db),
            can=Depends(permission_check)):
-    """Effective: closed. Not effective (why): back to corrective actions."""
-    return _run(db, tenant, can, lambda s: s.verify(report_id, payload.effective, payload.notes))
+    """Effective: closed (and reviewed again after review_days). Not effective (why): back to corrective actions."""
+    return _run(db, tenant, can, lambda s: s.verify(report_id, payload.effective, payload.notes, payload.review_days))
+
+
+@router.post(f"{PATH}/{{report_id}}/review-effectiveness", response_model=NCRRead, dependencies=[Depends(require_permission(Q.NCR_VERIFY))])
+def review_effectiveness(report_id: UUID, payload: ReviewInput, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db),
+                         can=Depends(permission_check)):
+    """Some time after closing: the problem did not come back (effective), or it did (why) and the report reopens to its actions."""
+    return _run(db, tenant, can, lambda s: s.review_effectiveness(report_id, payload.effective, payload.notes))
 
 
 @router.post(f"{PATH}/{{report_id}}/cancel", response_model=NCRRead, dependencies=[Depends(require_permission(Q.NCR_CANCEL))])
@@ -176,6 +183,12 @@ def complete_action(report_id: UUID, action_id: UUID, payload: EvidenceInput, te
 def cancel_action(report_id: UUID, action_id: UUID, payload: ReasonInput, tenant: TenantContext = Depends(get_current_tenant),
                   db: Session = Depends(get_db), can=Depends(permission_check)):
     return _run(db, tenant, can, lambda s: s.cancel_action(report_id, action_id, payload.reason))
+
+
+@router.get("/ncr-actions/alerts", response_model=Alerts, dependencies=[Depends(require_any_permission([Q.NCR_ACTIONS_READ, Q.NCR_READ]))])
+def alerts(tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
+    """What needs the current user's attention: their actions late or due soon, their reports past due, reviews due."""
+    return NCRService(db, tenant).alerts(can)
 
 
 @router.get("/ncr-actions", response_model=list[ActionRead], dependencies=[Depends(require_any_permission([Q.NCR_ACTIONS_READ, Q.NCR_READ]))])

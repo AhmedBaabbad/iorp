@@ -110,6 +110,13 @@ class InvestigateInput(_Input):
 class VerifyInput(_Input):
     effective: bool
     notes: str | None = Text
+    # QUAL-CAPA-001: review the effectiveness again this many days after closing (0: no later review).
+    review_days: int = Field(0, ge=0, le=365)
+
+
+class ReviewInput(_Input):
+    effective: bool
+    notes: str | None = Text
 
 
 class ReasonInput(_Input):
@@ -189,6 +196,43 @@ class HistoryEntry(BaseModel):
     at: ISODatetime
 
 
+class RelatedReport(BaseModel):
+    id: UUID
+    report_number: str
+    report_date: date
+    title: str
+    status: str
+    severity: str
+    matched_on: list[str]
+    earlier: bool
+
+
+class Recurrence(BaseModel):
+    window_days: int
+    earlier: int
+    since_closing: int
+    recurring: bool
+    related: list[RelatedReport]
+
+
+class AlertItem(BaseModel):
+    kind: str
+    ncr_id: UUID
+    report_number: str
+    title: str
+    due_date: date | None
+
+
+class Alerts(BaseModel):
+    total: int
+    open_actions: int
+    overdue: int
+    report_overdue: int
+    review_due: int
+    due_soon: int
+    items: list[AlertItem]
+
+
 class NCRListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -209,6 +253,8 @@ class NCRListItem(BaseModel):
     open_actions: int = 0
     overdue_actions: int = 0
     total_cost: Decimal | None = None
+    review_pending: bool = False
+    review_due: bool = False
     actions: list[str] = []
     created_at: ISODatetime
 
@@ -242,6 +288,12 @@ class NCRRead(NCRListItem):
     verified_by_name: str | None = None
     closed_at: ISODatetime | None
     cancel_reason: str | None
+    effectiveness_due_date: date | None
+    effectiveness_result: str | None
+    effectiveness_notes: str | None
+    effectiveness_reviewed_at: ISODatetime | None
+    effectiveness_reviewed_by_name: str | None = None
+    recurrence: Recurrence | None = None
     supplier_action: str
     supplier_response: str | None
     supplier_responded_at: date | None

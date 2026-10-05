@@ -42,7 +42,7 @@ COA_READ, COA_CREATE, COA_UPDATE, COA_ISSUE, COA_REVOKE = (code("certificates", 
 CHECK_ACTIONS: dict[str, str] = {"edit": CHECKS_UPDATE, "start": CHECKS_START, "close": CHECKS_CLOSE, "cancel": CHECKS_CANCEL, "measure": CHECKS_MEASURE}
 REJECTION_ACTIONS: dict[str, str] = {"edit": REJECTIONS_UPDATE, "decide": REJECTIONS_DECIDE, "execute": REJECTIONS_EXECUTE}
 NCR_ACTIONS: dict[str, str] = {"edit": NCR_UPDATE, "contain": NCR_UPDATE, "investigate": NCR_UPDATE, "add_action": NCR_UPDATE,
-                               "submit": NCR_UPDATE, "verify": NCR_VERIFY, "cancel": NCR_CANCEL}
+                               "submit": NCR_UPDATE, "verify": NCR_VERIFY, "cancel": NCR_CANCEL, "review_effectiveness": NCR_VERIFY}
 
 # Labels where "<action> <resource>" reads badly; everything else is composed by the catalog.
 LABELS: dict[str, tuple[str, str]] = {

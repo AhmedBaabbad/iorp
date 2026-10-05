@@ -121,6 +121,26 @@ past due and open. They are added while investigating or acting; the report goes
 least one is done (`ACTIONS_STILL_OPEN`, `ACTION_REQUIRED`). `/corrective-actions` lists them across reports (`GET /quality/ncr-actions`,
 `mine`, `overdue`, `status`). Photos and documents (images or PDF, 10 MB, at most 20) are kept with the report.
 
+### Follow-up (QUAL-CAPA-001)
+
+- **Recurrence** (`recurrence` on a report): other reports not cancelled, dated within `RECURRENCE_DAYS` (180) before it or
+  after it, matched on the same registered supplier, an affected item of the same name, or the same report type with the same
+  6M cause (`domain/ncr.matched_on`). Two earlier ones make it **recurring**: it cannot be closed from the investigation as an
+  isolated case (`RECURRING_NEEDS_ACTION`). `since_closing` counts the similar reports raised after it was closed.
+- **Effectiveness review after closing**: `verify` takes `review_days` (0–365; the screen offers none, 30, 60, 90, 180), which
+  sets `effectiveness_due_date`. `POST /non-conformance-reports/{id}/review-effectiveness` (`ncr_reports:verify`): effective is
+  recorded; not effective (with notes, `REVIEW_NOTES_REQUIRED`) **reopens the report to its actions**. Only while one is pending
+  (`EFFECTIVENESS_REVIEW_NOT_PENDING`). Reports show `review_pending` and `review_due`.
+- **Alerts** (`GET /quality/ncr-actions/alerts`, ncr_actions:read or ncr_reports:read), computed, nothing stored: the user's
+  open actions late or due within `DUE_SOON_DAYS` (3), the reports they own past due, and for whoever may verify the reviews
+  that are due. The sidebar shows their number on «الإجراءات التصحيحية», and the page lists them first.
+- **Emails** (`application/capa_notices.py`, through `core.email`, best effort): to the user given an action (not to oneself,
+  nor to an owner without an account), in their language; and a daily digest of the same follow-ups (the reviews go to whoever
+  verified the report): `python -m app.cli.send_capa_reminders`, run once a day by the server's scheduler.
+- **Report** `quality.corrective_actions` (`reports:quality:corrective_actions`, needs ncr_reports:read): key figures, actions by
+  owner (open, late, done on time), overdue actions, recurring problems in the period, effectiveness reviews.
+- Migration `f6a1b2j9`: the review columns and the report permission (granted like the other quality reports).
+
 ### Document
 
 `quality.ncr` (opened from the report, not listed): the company's identity, numbered sections (report, source, description, affected

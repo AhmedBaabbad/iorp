@@ -13,13 +13,15 @@ import { useFormatter } from "@/hooks/useFormatter";
 import { Q } from "@/lib/quality-permissions";
 import {
   addNcrAction, addNcrItem, cancelNcr, cancelNcrAction, completeNcrAction, containNcr, downloadNcrDocument, getNcrReport, getNcrUsers, investigateNcr,
-  openNcrAttachment, removeNcrAttachment, removeNcrItem, submitNcr, updateNcrItem, uploadNcrAttachment, verifyNcr, type ActionBody, type InvestigateBody,
+  openNcrAttachment, removeNcrAttachment, removeNcrItem, reviewNcrEffectiveness, submitNcr, updateNcrItem, uploadNcrAttachment, verifyNcr,
+  type ActionBody, type InvestigateBody,
 } from "../api";
 import { DECIMAL, ncrErrorMessage } from "../ncr-errors";
 import {
-  ACTION_KINDS, COSTS, DISPOSITIONS, NCR_STAGES, ROOT_CAUSE_CATEGORIES, ROOT_CAUSE_METHODS, SUPPLIER_SOURCES,
-  type CorrectiveAction, type NcrItem, type NcrItemInput, type NcrReport, type UserOption,
+  ACTION_KINDS, COSTS, DISPOSITIONS, NCR_STAGES, REVIEW_DAYS, ROOT_CAUSE_CATEGORIES, ROOT_CAUSE_METHODS, SUPPLIER_SOURCES,
+  type CorrectiveAction, type NcrItem, type NcrItemInput, type NcrReport, type Recurrence, type UserOption,
 } from "../types";
+import { refreshCapaAlerts } from "../use-capa-alerts";
 import { NcrSeverityBadge, NcrStatusBadge } from "./NcrBadges";
 
 function Item({ label, children }: { label: string; children: ReactNode }) {
@@ -35,7 +37,7 @@ function Modal({ title, busy, onClose, onSubmit, children }: { title: string; bu
   </div>;
 }
 
-type Dialog = { kind: "contain" | "investigate" | "verify" | "cancel" | "action" | "item" } | { kind: "editItem"; item: NcrItem }
+type Dialog = { kind: "contain" | "investigate" | "verify" | "review" | "cancel" | "action" | "item" } | { kind: "editItem"; item: NcrItem }
   | { kind: "complete" | "cancelAction"; action: CorrectiveAction };
 
 // One non-conformance report: where it stands, what it affects, containment, root cause, corrective actions, verification,
@@ -63,7 +65,7 @@ export function NcrReportDetail({ ncrReportId }: { ncrReportId: string }) {
 
   async function run(key: string, action: () => Promise<NcrReport | void>) {
     setBusy(key); setError("");
-    try { const result = await action(); if (result) setX(result); setDialog(null); }
+    try { const result = await action(); if (result) { setX(result); void refreshCapaAlerts(); } setDialog(null); }
     catch (e) { setError(ncrErrorMessage(e, errors)); } finally { setBusy(null); }
   }
 
@@ -91,7 +93,10 @@ export function NcrReportDetail({ ncrReportId }: { ncrReportId: string }) {
           {button("contain")}{button("investigate")}
           {x.actions.includes("submit") && <button type="button" className={`${s.button} ${s.primary}`} disabled={busy !== null}
             onClick={() => void run("submit", () => submitNcr(x.id))}>{t("actions.submit")}</button>}
-          {button("verify")}{button("cancel", s.danger)}
+          {button("verify")}
+          {x.actions.includes("review_effectiveness") && <button type="button" className={`${s.button} ${x.review_due ? s.primary : ""}`} disabled={busy !== null}
+            onClick={() => setDialog({ kind: "review" })}>{t("actions.review_effectiveness")}</button>}
+          {button("cancel", s.danger)}
         </span>
       </div>
       {x.status !== "cancelled" && <ol aria-label={t("stagesAria")} style={{ display: "flex", flexWrap: "wrap", gap: 6, listStyle: "none", padding: 0, margin: "0 0 12px" }}>
@@ -117,6 +122,8 @@ export function NcrReportDetail({ ncrReportId }: { ncrReportId: string }) {
       </dl>
       <p style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>{x.description}</p>
     </section>
+
+    {x.recurrence && x.recurrence.related.length > 0 && <RecurrenceSection value={x.recurrence} closed={Boolean(x.closed_at)} />}
 
     <section className={s.panel} aria-label={t("sections.items")}>
       <div className={s.actions} style={{ justifyContent: "space-between" }}>
@@ -174,6 +181,12 @@ export function NcrReportDetail({ ncrReportId }: { ncrReportId: string }) {
       {x.verification_notes && <p style={{ whiteSpace: "pre-wrap" }}>{x.verification_notes}</p>}
       <p className={s.muted} style={{ marginBottom: 0 }}>{x.verified_by_name} · {fmt.dateTime(x.verified_at)}
         {x.verification_attempts > 1 && ` · ${t("attempts", { count: String(x.verification_attempts) })}`}</p>
+      {x.effectiveness_result ? <div style={{ marginTop: 12 }}>
+        <p className={`${s.badge} ${x.effectiveness_result === "effective" ? s.green : s.urgent}`}>{t(`review.results.${x.effectiveness_result}`)}</p>
+        {x.effectiveness_notes && <p style={{ whiteSpace: "pre-wrap" }}>{x.effectiveness_notes}</p>}
+        <p className={s.muted} style={{ marginBottom: 0 }}>{x.effectiveness_reviewed_by_name} · {x.effectiveness_reviewed_at ? fmt.dateTime(x.effectiveness_reviewed_at) : ""}</p>
+      </div> : x.review_pending && x.effectiveness_due_date && <p role="status" className={x.review_due ? s.error : s.muted} style={{ marginBottom: 0 }}>
+        {t(x.review_due ? "review.due" : "review.scheduled", { date: fmt.date(x.effectiveness_due_date) })}</p>}
     </section>}
 
     {(x.supplier_action !== "none" || x.supplier_response || costs.length > 0 || x.claim_status !== "none") && <section className={s.panel} aria-label={t("sections.costs")}>
@@ -224,10 +237,12 @@ export function NcrReportDetail({ ncrReportId }: { ncrReportId: string }) {
 
     {dialog?.kind === "contain" && <TextDialog title={t("containDialog.title")} text={t("containDialog.text")} label={t("fields.containment")}
       confirm={t("actions.contain")} busy={busy !== null} onClose={() => setDialog(null)} onConfirm={v => void run("contain", () => containNcr(x.id, v))} />}
-    {dialog?.kind === "investigate" && <InvestigateDialog busy={busy !== null} onClose={() => setDialog(null)}
+    {dialog?.kind === "investigate" && <InvestigateDialog busy={busy !== null} recurring={Boolean(x.recurrence?.recurring)} onClose={() => setDialog(null)}
       onConfirm={body => void run("investigate", () => investigateNcr(x.id, body))} />}
     {dialog?.kind === "verify" && <VerifyDialog busy={busy !== null} onClose={() => setDialog(null)}
-      onConfirm={(effective, notes) => void run("verify", () => verifyNcr(x.id, effective, notes))} />}
+      onConfirm={(effective, notes, days) => void run("verify", () => verifyNcr(x.id, effective, notes, days))} />}
+    {dialog?.kind === "review" && <ReviewDialog sinceClosing={x.recurrence?.since_closing ?? 0} busy={busy !== null} onClose={() => setDialog(null)}
+      onConfirm={(effective, notes) => void run("review", () => reviewNcrEffectiveness(x.id, effective, notes))} />}
     {dialog?.kind === "cancel" && <ReasonDialog title={t("cancelDialog.title")} description={t("cancelDialog.text")} confirmLabel={t("actions.cancel")}
       danger busy={busy !== null} onClose={() => setDialog(null)} onConfirm={reason => void run("cancel", () => cancelNcr(x.id, reason))} />}
     {dialog?.kind === "action" && <ActionDialog busy={busy !== null} onClose={() => setDialog(null)} onConfirm={body => void run("action", () => addNcrAction(x.id, body))} />}
@@ -283,7 +298,58 @@ export function TextDialog({ title, text, label, confirm, busy, onClose, onConfi
   </Modal>;
 }
 
-function InvestigateDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: () => void; onConfirm: (body: InvestigateBody) => void }) {
+// The earlier reports this one repeats, and those that came after it was closed (QUAL-CAPA-001).
+function RecurrenceSection({ value, closed }: { value: Recurrence; closed: boolean }) {
+  const t = useTranslations("ncr");
+  const fmt = useFormatter();
+  return <section className={s.panel} aria-label={t("recurrence.title")}>
+    <div className={s.actions} style={{ justifyContent: "space-between" }}>
+      <h2 style={{ margin: 0 }}>{t("recurrence.title")}</h2>
+      {value.recurring && <span className={`${s.badge} ${s.urgent}`}>{t("recurrence.recurring")}</span>}
+    </div>
+    <p className={value.recurring ? s.error : s.muted}>{value.recurring
+      ? t("recurrence.recurringHint", { count: String(value.earlier), days: String(value.window_days) })
+      : t("recurrence.hint", { days: String(value.window_days) })}</p>
+    {closed && value.since_closing > 0 && <p role="status" className={s.error}>{t("recurrence.sinceClosing", { count: String(value.since_closing) })}</p>}
+    <div className={s.tableWrap}><table className={s.table}>
+      <thead><tr><th>{t("fields.number")}</th><th>{t("fields.date")}</th><th>{t("fields.title")}</th><th>{t("fields.status")}</th><th>{t("recurrence.matchedOn")}</th></tr></thead>
+      <tbody>{value.related.map(r => <tr key={r.id}>
+        <td><Link href={`/non-conformance-reports/${r.id}`}><bdi>{r.report_number}</bdi></Link>{!r.earlier && <div className={s.muted}>{t("recurrence.later")}</div>}</td>
+        <td>{fmt.date(r.report_date)}</td>
+        <td>{r.title}</td>
+        <td><NcrStatusBadge status={r.status} /></td>
+        <td>{r.matched_on.map(k => t(`recurrence.keys.${k}`)).join("، ")}</td>
+      </tr>)}</tbody>
+    </table></div>
+  </section>;
+}
+
+function ReviewDialog({ sinceClosing, busy, onClose, onConfirm }: { sinceClosing: number; busy: boolean; onClose: () => void;
+  onConfirm: (effective: boolean, notes: string | null) => void }) {
+  const t = useTranslations("ncr");
+  const [effective, setEffective] = useState<"yes" | "no" | "">("");
+  const [notes, setNotes] = useState("");
+  const ok = effective === "yes" || (effective === "no" && Boolean(notes.trim()));
+  return <Modal title={t("review.title")} busy={busy} onClose={onClose}
+    onSubmit={e => { e.preventDefault(); if (ok && !busy) onConfirm(effective === "yes", notes.trim() || null); }}>
+    <p className={s.muted} style={{ margin: 0 }}>{t("review.text")}</p>
+    {sinceClosing > 0 && <p role="status" className={s.error} style={{ margin: 0 }}>{t("recurrence.sinceClosing", { count: String(sinceClosing) })}</p>}
+    <div className={s.actions} role="radiogroup" aria-label={t("review.title")}>
+      <label><input type="radio" checked={effective === "yes"} disabled={busy} onChange={() => setEffective("yes")} /> {t("review.effective")}</label>
+      <label><input type="radio" checked={effective === "no"} disabled={busy} onChange={() => setEffective("no")} /> {t("review.notEffective")}</label>
+    </div>
+    {effective === "no" && <p className={s.error} style={{ margin: 0 }}>{t("review.reopens")}</p>}
+    <label className={s.field}>{effective === "no" ? t("verifyDialog.notesRequired") : t("verifyDialog.notes")}
+      <textarea maxLength={4000} required={effective === "no"} value={notes} disabled={busy} onChange={e => setNotes(e.target.value)} /></label>
+    <div className={s.actions}>
+      <button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("cancel")}</button>
+      <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy || !ok}>{t("review.confirm")}</button>
+    </div>
+  </Modal>;
+}
+
+function InvestigateDialog({ busy, recurring, onClose, onConfirm }: { busy: boolean; recurring: boolean; onClose: () => void;
+  onConfirm: (body: InvestigateBody) => void }) {
   const t = useTranslations("ncr");
   const [category, setCategory] = useState("");
   const [method, setMethod] = useState("");
@@ -304,7 +370,8 @@ function InvestigateDialog({ busy, onClose, onConfirm }: { busy: boolean; onClos
           <option value="">—</option>{ROOT_CAUSE_METHODS.map(c => <option key={c} value={c}>{t(`methods.${c}`)}</option>)}</select></label>
     </div>
     <label className={s.field}>{t("fields.root_cause")}<textarea required maxLength={8000} value={cause} disabled={busy} onChange={e => setCause(e.target.value)} /></label>
-    <label><input type="checkbox" checked={!required} disabled={busy} onChange={e => setRequired(!e.target.checked)} /> {t("investigateDialog.noAction")}</label>
+    {recurring ? <p role="status" className={s.error} style={{ margin: 0 }}>{t("investigateDialog.recurring")}</p>
+      : <label><input type="checkbox" checked={!required} disabled={busy} onChange={e => setRequired(!e.target.checked)} /> {t("investigateDialog.noAction")}</label>}
     {!required && <label className={s.field}>{t("fields.no_action_justification")}<textarea required maxLength={4000} value={why} disabled={busy} onChange={e => setWhy(e.target.value)} /></label>}
     <div className={s.actions}>
       <button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("cancel")}</button>
@@ -313,18 +380,24 @@ function InvestigateDialog({ busy, onClose, onConfirm }: { busy: boolean; onClos
   </Modal>;
 }
 
-function VerifyDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: () => void; onConfirm: (effective: boolean, notes: string | null) => void }) {
+function VerifyDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: () => void;
+  onConfirm: (effective: boolean, notes: string | null, reviewDays: number) => void }) {
   const t = useTranslations("ncr");
   const [effective, setEffective] = useState<"yes" | "no" | "">("");
   const [notes, setNotes] = useState("");
+  const [days, setDays] = useState("90");
   const ok = effective === "yes" || (effective === "no" && Boolean(notes.trim()));
   return <Modal title={t("verifyDialog.title")} busy={busy} onClose={onClose}
-    onSubmit={e => { e.preventDefault(); if (ok && !busy) onConfirm(effective === "yes", notes.trim() || null); }}>
+    onSubmit={e => { e.preventDefault(); if (ok && !busy) onConfirm(effective === "yes", notes.trim() || null, effective === "yes" ? Number(days) : 0); }}>
     <p className={s.muted} style={{ margin: 0 }}>{t("verifyDialog.text")}</p>
     <div className={s.actions} role="radiogroup" aria-label={t("verifyDialog.title")}>
       <label><input type="radio" checked={effective === "yes"} disabled={busy} onChange={() => setEffective("yes")} /> {t("verifyDialog.effective")}</label>
       <label><input type="radio" checked={effective === "no"} disabled={busy} onChange={() => setEffective("no")} /> {t("verifyDialog.notEffective")}</label>
     </div>
+    {effective === "yes" && <label className={s.field}>{t("verifyDialog.reviewAfter")}
+      <select value={days} disabled={busy} onChange={e => setDays(e.target.value)}>
+        {REVIEW_DAYS.map(d => <option key={d} value={String(d)}>{d === 0 ? t("verifyDialog.noReview") : t("verifyDialog.reviewDays", { days: String(d) })}</option>)}
+      </select><span className={s.muted}>{t("verifyDialog.reviewHint")}</span></label>}
     <label className={s.field}>{effective === "no" ? t("verifyDialog.notesRequired") : t("verifyDialog.notes")}
       <textarea maxLength={4000} required={effective === "no"} value={notes} disabled={busy} onChange={e => setNotes(e.target.value)} /></label>
     <div className={s.actions}>

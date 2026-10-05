@@ -46,6 +46,7 @@ export const QUALITY_REPORT = {
   CHECKS_SUMMARY: report("checks_summary"),
   REJECTIONS_ANALYSIS: report("rejections_analysis"),
   DEFECTS_ANALYSIS: report("defects_analysis"),
+  CORRECTIVE_ACTIONS: report("corrective_actions"),
 } as const;
 
 /** Any one of these opens the quality reports screen. */

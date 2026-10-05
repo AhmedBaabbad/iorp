@@ -3,18 +3,27 @@
 open ─contain→ investigation ─investigate→ action ─submit→ verification ─verify→ closed (or back to action), a minor
 case closed from the investigation with a justification, any stage cancelled with a reason (domain/ncr.py). Every step
 writes the quality history and the activity log. Sources and names in other modules are read through the shared tables.
+
+Follow-up (QUAL-CAPA-001): the earlier reports a report repeats, the later review of a closed one's effectiveness, what
+needs each person's attention, and an email to whoever is given an action.
 """
 from __future__ import annotations
+
+import logging
+from datetime import timedelta
 
 from sqlalchemy import func, or_, select
 
 from app.core.storage import InvalidAttachmentError, LocalFileStorage, save_attachment
 from app.core.utils import utc_now
 from app.quality.domain import ncr as N
-from app.quality.domain.permissions import NCR_ACTIONS, NCR_ACTIONS_COMPLETE, NCR_UPDATE
+from app.quality.domain.permissions import NCR_ACTIONS, NCR_ACTIONS_COMPLETE, NCR_UPDATE, NCR_VERIFY
 from app.quality.domain.rules import QualityError
 from app.quality.infrastructure.models import NCRAction, NCRAttachment, NonConformanceItem, NonConformanceReport, QualityCheck, QualityRejection
+from . import capa_notices
 from .support import ProcurementReads, ProductionReads, ShippingReads, _t, history, log_activity, next_code, record, user_names
+
+logger = logging.getLogger(__name__)
 
 HEADER = ("report_date", "source_type", "report_type", "severity", "title", "description", "reference_code", "quality_check_id",
           "quality_rejection_id", "production_order_id", "customer_name", "supplier_id", "supplier_name", "supplier_reference", "owner_user_id",
@@ -80,7 +89,7 @@ class NCRService:
         ids = [r.id for r in reports]
         actions = self._actions_of(ids)
         people = [u for r in reports for u in (r.owner_user_id, r.detected_by_user_id, r.contained_by_user_id, r.investigated_by_user_id,
-                                               r.verified_by_user_id)]
+                                               r.verified_by_user_id, r.effectiveness_reviewed_by_user_id)]
         people += [u for found in actions.values() for a in found for u in (a.owner_user_id, a.completed_by_user_id)]
         names = user_names(self.db, self.org, people)
         orders = ProductionReads(self.db, self.org).numbers([r.production_order_id for r in reports])
@@ -99,10 +108,12 @@ class NCRService:
                         total_cost=N.total_cost(r), open_actions=sum(1 for a in mine if a.status == N.ACTION_OPEN),
                         overdue_actions=sum(1 for a in mine if N.is_overdue(a, today)),
                         overdue=r.status not in N.FINAL and r.due_date is not None and r.due_date < today,
-                        actions=N.actions(r.status, lambda a: can(NCR_ACTIONS[a])))
+                        review_pending=N.review_pending(r), review_due=N.review_due(r, today),
+                        actions=N.actions(r.status, lambda a: can(NCR_ACTIONS[a]), N.review_pending(r)))
             if detail:
                 view.update(contained_by_name=names.get(r.contained_by_user_id), investigated_by_name=names.get(r.investigated_by_user_id),
                             verified_by_name=names.get(r.verified_by_user_id), items=self.items(r.id),
+                            effectiveness_reviewed_by_name=names.get(r.effectiveness_reviewed_by_user_id), recurrence=self.recurrence(r),
                             corrective_actions=[self.action_view(a, names, today) for a in mine],
                             attachments=self.attachments(r.id), history=history(self.db, self.org, "ncr", r.id),
                             can_complete_actions=can_complete(can) and r.status not in N.FINAL)
@@ -137,6 +148,67 @@ class NCRService:
         names = user_names(self.db, self.org, [u for a, _r in rows for u in (a.owner_user_id, a.completed_by_user_id)])
         today = utc_now().date()
         return [self.action_view(a, names, today, report) for a, report in rows]
+
+    def _basis(self, report, category=None) -> dict:
+        names = self.db.scalars(select(NonConformanceItem.item_name).where(NonConformanceItem.non_conformance_report_id == report.id)).all()
+        return N.basis(report.supplier_id, report.report_type, category or report.root_cause_category, names)
+
+    def recurrence(self, report, category=None) -> dict:
+        """The reports this one repeats (within the window before it) and those that came after it, matched on the same
+        supplier, an affected item of the same name, or the same kind with the same 6M cause. Cancelled reports do not count."""
+        this = self._basis(report, category)
+        clauses = []
+        if this["supplier"]:
+            clauses.append(NonConformanceReport.supplier_id == this["supplier"])
+        if this["items"]:
+            clauses.append(NonConformanceReport.id.in_(select(NonConformanceItem.non_conformance_report_id).where(
+                func.lower(func.trim(NonConformanceItem.item_name)).in_(list(this["items"])))))
+        if this["category"]:
+            clauses.append((NonConformanceReport.report_type == report.report_type) & (NonConformanceReport.root_cause_category == this["category"]))
+        found = []
+        if clauses:
+            found = list(self.db.scalars(select(NonConformanceReport).where(
+                NonConformanceReport.organization_id == self.org, NonConformanceReport.id != report.id,
+                NonConformanceReport.status != N.CANCELLED, NonConformanceReport.report_date >= report.report_date - timedelta(days=N.RECURRENCE_DAYS),
+                or_(*clauses)).order_by(NonConformanceReport.report_date.desc(), NonConformanceReport.created_at.desc()).limit(50)))
+        related, earlier, since_closing = [], 0, 0
+        for other in found:
+            matched = N.matched_on(this, self._basis(other))
+            if not matched:  # SQL lower() and Python casefold() may differ on some letters
+                continue
+            before = (other.report_date, other.created_at) < (report.report_date, report.created_at)
+            earlier += before
+            since_closing += bool(report.closed_at and other.created_at > report.closed_at)
+            related.append(dict(id=other.id, report_number=other.report_number, report_date=other.report_date, title=other.title,
+                                status=other.status, severity=other.severity, matched_on=matched, earlier=before))
+        return dict(window_days=N.RECURRENCE_DAYS, earlier=earlier, since_closing=since_closing, recurring=N.is_recurring(earlier), related=related)
+
+    def alerts(self, can) -> dict:
+        """What needs this user's attention: their open actions late or due soon, their reports past due, and (for whoever
+        verifies) effectiveness reviews that are due."""
+        today, me = utc_now().date(), self.tenant.user_id
+        rows = self.db.execute(select(NCRAction, NonConformanceReport).join(NonConformanceReport, NonConformanceReport.id == NCRAction.ncr_id).where(
+            NCRAction.organization_id == self.org, NCRAction.owner_user_id == me, NCRAction.status == N.ACTION_OPEN,
+            NonConformanceReport.status.notin_(N.FINAL))).all()
+        items = []
+        for action, report in rows:
+            kind = "overdue" if N.is_overdue(action, today) else "due_soon" if N.due_soon(action, today) else None
+            if kind:
+                items.append(dict(kind=kind, ncr_id=report.id, report_number=report.report_number, title=action.description, due_date=action.due_date))
+        for report in self.db.scalars(select(NonConformanceReport).where(
+                NonConformanceReport.organization_id == self.org, NonConformanceReport.owner_user_id == me,
+                NonConformanceReport.status.notin_(N.FINAL), NonConformanceReport.due_date < today)):
+            items.append(dict(kind="report_overdue", ncr_id=report.id, report_number=report.report_number, title=report.title, due_date=report.due_date))
+        if can(NCR_VERIFY):
+            for report in self.db.scalars(select(NonConformanceReport).where(
+                    NonConformanceReport.organization_id == self.org, NonConformanceReport.status == N.CLOSED,
+                    NonConformanceReport.effectiveness_result.is_(None), NonConformanceReport.effectiveness_due_date <= today)):
+                items.append(dict(kind="review_due", ncr_id=report.id, report_number=report.report_number, title=report.title,
+                                  due_date=report.effectiveness_due_date))
+        order = {"overdue": 0, "report_overdue": 1, "review_due": 2, "due_soon": 3}
+        items.sort(key=lambda i: (order[i["kind"]], i["due_date"]))
+        counts = {k: sum(1 for i in items if i["kind"] == k) for k in order}
+        return dict(total=len(items), open_actions=len(rows), **counts, items=items[:50])
 
     def supplier_options(self, search="") -> list[dict]:
         return ProcurementReads(self.db, self.org).search(search)
@@ -248,7 +320,9 @@ class NCRService:
 
     def investigate(self, report_id, data) -> NonConformanceReport:
         report = self._get(report_id, lock=True)
-        N.assert_can_investigate(report.status, data.root_cause_category, data.root_cause, data.action_required, data.no_action_justification)
+        recurring = not data.action_required and self.recurrence(report, data.root_cause_category)["recurring"]
+        N.assert_can_investigate(report.status, data.root_cause_category, data.root_cause, data.action_required, data.no_action_justification,
+                                 recurring)
         if data.root_cause_method is not None and data.root_cause_method not in N.ROOT_CAUSE_METHODS:
             raise QualityError("ROOT_CAUSE_METHOD_UNKNOWN", 400)
         report.root_cause_category, report.root_cause_method, report.root_cause = data.root_cause_category, data.root_cause_method, data.root_cause.strip()
@@ -266,7 +340,8 @@ class NCRService:
         report.status = N.VERIFICATION
         return self._commit(report, "submit", N.ACTION)
 
-    def verify(self, report_id, effective, notes) -> NonConformanceReport:
+    def verify(self, report_id, effective, notes, review_days=0) -> NonConformanceReport:
+        """Effective: closed, and reviewed again after review_days (0: no later review). Not effective: back to the actions."""
         report = self._get(report_id, lock=True)
         N.assert_can_verify(report.status, effective, notes)
         report.verification_attempts += 1
@@ -274,7 +349,22 @@ class NCRService:
         report.status = N.CLOSED if effective else N.ACTION
         if effective:
             report.closed_at = utc_now()
-        return self._commit(report, "verify", N.VERIFICATION, reason=report.verification_notes, detail=dict(effective=str(bool(effective))))
+            report.effectiveness_due_date = report.closed_at.date() + timedelta(days=review_days) if review_days else None
+            report.effectiveness_result = report.effectiveness_notes = report.effectiveness_reviewed_at = report.effectiveness_reviewed_by_user_id = None
+        return self._commit(report, "verify", N.VERIFICATION, reason=report.verification_notes,
+                            detail=dict(effective=str(bool(effective)), review_days=str(review_days if effective else 0)))
+
+    def review_effectiveness(self, report_id, effective, notes) -> NonConformanceReport:
+        """The later review of a closed report: the problem did not come back (effective), or it did and the report reopens
+        to its corrective actions."""
+        report = self._get(report_id, lock=True)
+        N.assert_can_review(report, effective, notes)
+        report.effectiveness_result = N.EFFECTIVE if effective else N.NOT_EFFECTIVE
+        report.effectiveness_notes = (notes or "").strip() or None
+        report.effectiveness_reviewed_at, report.effectiveness_reviewed_by_user_id = utc_now(), self.tenant.user_id
+        if not effective:
+            report.status, report.closed_at = N.ACTION, None
+        return self._commit(report, "effectiveness_review", N.CLOSED, reason=report.effectiveness_notes, detail=dict(effective=str(bool(effective))))
 
     def cancel(self, report_id, reason) -> NonConformanceReport:
         report = self._get(report_id, lock=True)
@@ -299,10 +389,21 @@ class NCRService:
         if data.owner_user_id:
             self._validate(dict(owner_user_id=data.owner_user_id))
         line_no = (self.db.scalar(select(func.max(NCRAction.line_no)).where(NCRAction.ncr_id == report.id)) or 0) + 1
-        self.db.add(NCRAction(organization_id=self.org, ncr_id=report.id, line_no=line_no, kind=data.kind, description=data.description.strip(),
-                              owner_user_id=data.owner_user_id, owner_name=(data.owner_name or "").strip() or None, due_date=data.due_date,
-                              status=N.ACTION_OPEN, created_by_user_id=self.tenant.user_id))
-        return self._commit(report, "action_added", report.status, detail=dict(kind=data.kind))
+        action = NCRAction(organization_id=self.org, ncr_id=report.id, line_no=line_no, kind=data.kind, description=data.description.strip(),
+                           owner_user_id=data.owner_user_id, owner_name=(data.owner_name or "").strip() or None, due_date=data.due_date,
+                           status=N.ACTION_OPEN, created_by_user_id=self.tenant.user_id)
+        self.db.add(action)
+        result = self._commit(report, "action_added", report.status, detail=dict(kind=data.kind))
+        self._notify(action, result)
+        return result
+
+    def _notify(self, action, report):
+        """Tell the person given an action (not someone assigning it to themselves); a failed email changes nothing."""
+        if action.owner_user_id and action.owner_user_id != self.tenant.user_id:
+            try:
+                capa_notices.action_assigned(self.db, self.org, action, report)
+            except Exception:  # noqa: BLE001
+                logger.exception("Corrective-action assignment email not sent")
 
     def update_action(self, report_id, action_id, data) -> NonConformanceReport:
         report = self._get(report_id, lock=True)
@@ -313,10 +414,14 @@ class NCRService:
             N.assert_action_kind(values["kind"])
         if values.get("owner_user_id"):
             self._validate(dict(owner_user_id=values["owner_user_id"]))
+        reassigned = "owner_user_id" in values and values["owner_user_id"] != action.owner_user_id
         for field in ("kind", "description", "owner_user_id", "owner_name", "due_date"):
             if field in values and not (field in ("kind", "description") and values[field] is None):
                 setattr(action, field, values[field])
-        return self._commit(report, "action_updated", report.status)
+        result = self._commit(report, "action_updated", report.status)
+        if reassigned:
+            self._notify(action, result)
+        return result
 
     def complete_action(self, report_id, action_id, evidence) -> NonConformanceReport:
         report = self._get(report_id, lock=True)

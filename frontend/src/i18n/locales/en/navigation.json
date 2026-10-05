@@ -83,5 +83,6 @@
   "topBar": {
     "notifications": "Notifications",
     "settings": "Settings"
-  }
+  },
+  "needsAttention": "{count} need your attention"
 }

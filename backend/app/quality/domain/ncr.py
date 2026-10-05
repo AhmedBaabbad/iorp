@@ -12,7 +12,12 @@ The report's items are what is affected (a material lot, a product batch), each 
 Its corrective actions (correction, corrective, preventive) have an owner, a due date and are completed with evidence;
 the report goes to verification only when every action is finished and at least one was done. Costs are optional, and
 so is the claim against the party responsible (a supplier or a carrier).
+
+Follow-up (QUAL-CAPA-001): a report that repeats earlier ones (same supplier, same affected item, or the same kind of
+non-conformance with the same 6M cause) is recurring and cannot be closed without a corrective action; a closed report
+may be reviewed again after a period to confirm the problem did not come back (not effective: it reopens to the actions).
 """
+from datetime import timedelta
 from decimal import Decimal
 
 from .rules import QualityError
@@ -39,6 +44,16 @@ CLAIM_STATUSES = ("none", "claimed", "accepted", "rejected", "recovered")
 COSTS = ("cost_material", "cost_labor", "cost_scrap", "cost_transport", "cost_other")
 ZERO = Decimal("0")
 
+# Recurrence: reports within this many days before this one, matched on any of these; two earlier ones make it recurring.
+RECURRENCE_DAYS = 180
+RECURRENCE_THRESHOLD = 2
+RECURRENCE_KEYS = ("supplier", "item", "cause")
+# The later review of a closed report: after this many days (0: none), then effective or not.
+REVIEW_DAYS_MAX = 365
+EFFECTIVE, NOT_EFFECTIVE = "effective", "not_effective"
+# An open action is "due soon" this many days before its date.
+DUE_SOON_DAYS = 3
+
 
 def _text(value) -> bool:
     return bool((value or "").strip())
@@ -56,11 +71,13 @@ def assert_can_contain(status, containment) -> None:
         raise QualityError("CONTAINMENT_REQUIRED", 400)
 
 
-def assert_can_investigate(status, category, root_cause, action_required, justification) -> None:
+def assert_can_investigate(status, category, root_cause, action_required, justification, recurring=False) -> None:
     if status != INVESTIGATION:
         raise QualityError("NCR_NOT_UNDER_INVESTIGATION", ncr_status=status)
     if category not in ROOT_CAUSE_CATEGORIES or not _text(root_cause):
         raise QualityError("ROOT_CAUSE_REQUIRED", 400)
+    if not action_required and recurring:  # a repeated problem is not an isolated case
+        raise QualityError("RECURRING_NEEDS_ACTION", 400)
     if not action_required and not _text(justification):
         raise QualityError("NO_ACTION_JUSTIFICATION_REQUIRED", 400)
 
@@ -80,6 +97,22 @@ def assert_can_verify(status, effective, notes) -> None:
         raise QualityError("NCR_NOT_IN_VERIFICATION", ncr_status=status)
     if not effective and not _text(notes):
         raise QualityError("VERIFICATION_NOTES_REQUIRED", 400)
+
+
+def review_pending(report) -> bool:
+    """Closed, with a later review of its effectiveness still to do."""
+    return report.status == CLOSED and report.effectiveness_due_date is not None and report.effectiveness_result is None
+
+
+def review_due(report, today) -> bool:
+    return review_pending(report) and report.effectiveness_due_date <= today
+
+
+def assert_can_review(report, effective, notes) -> None:
+    if not review_pending(report):
+        raise QualityError("EFFECTIVENESS_REVIEW_NOT_PENDING", ncr_status=report.status)
+    if not effective and not _text(notes):
+        raise QualityError("REVIEW_NOTES_REQUIRED", 400)
 
 
 def assert_can_cancel(status, reason) -> None:
@@ -105,13 +138,14 @@ def total_cost(report) -> Decimal | None:
     return sum(values, ZERO) if values else None
 
 
-def actions(status, can) -> list[str]:
+def actions(status, can, pending_review=False) -> list[str]:
     """What may be done on the report now; can(name) checks the permission (see permissions.NCR_ACTIONS)."""
     offered = {
         OPEN: ["edit", "contain", "cancel"],
         INVESTIGATION: ["edit", "investigate", "add_action", "cancel"],
         ACTION: ["edit", "add_action", "submit", "cancel"],
         VERIFICATION: ["edit", "verify", "cancel"],
+        CLOSED: ["review_effectiveness"] if pending_review else [],
     }.get(status, [])
     return [a for a in offered if can(a)]
 
@@ -123,3 +157,30 @@ def assert_action_kind(kind) -> None:
 
 def is_overdue(action, today) -> bool:
     return action.status == ACTION_OPEN and action.due_date is not None and action.due_date < today
+
+
+def due_soon(action, today) -> bool:
+    return (action.status == ACTION_OPEN and action.due_date is not None
+            and today <= action.due_date <= today + timedelta(days=DUE_SOON_DAYS))
+
+
+def basis(supplier_id, report_type, category, item_names) -> dict:
+    """What a report is matched on for recurrence."""
+    return dict(supplier=supplier_id, report_type=report_type, category=category,
+                items=frozenset(n.strip().casefold() for n in item_names if n and n.strip()))
+
+
+def matched_on(this: dict, other: dict) -> list[str]:
+    """Why another report repeats this one: the same supplier, an affected item of the same name, or the same kind with the same cause."""
+    found = []
+    if this["supplier"] and this["supplier"] == other["supplier"]:
+        found.append("supplier")
+    if this["items"] & other["items"]:
+        found.append("item")
+    if this["category"] and this["category"] == other["category"] and this["report_type"] == other["report_type"]:
+        found.append("cause")
+    return found
+
+
+def is_recurring(earlier: int) -> bool:
+    return earlier >= RECURRENCE_THRESHOLD

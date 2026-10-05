@@ -50,8 +50,8 @@ def decide(env, rejection_id, disposition, **extra):
 
 def test_center_lists_the_four_quality_reports_by_permission(rq):
     keys = {d["key"] for d in rq.client.get(f"{REPORTS}/definitions?module=quality").json()}
-    assert keys == {"quality.check_full", "quality.checks_summary", "quality.rejections_analysis", "quality.defects_analysis"}
-    rq.ctx.auth_user.permissions -= {Q.REJECTIONS_READ, R.REPORT_DEFECTS_ANALYSIS}
+    assert keys == {"quality.check_full", "quality.checks_summary", "quality.rejections_analysis", "quality.defects_analysis", "quality.corrective_actions"}
+    rq.ctx.auth_user.permissions -= {Q.REJECTIONS_READ, R.REPORT_DEFECTS_ANALYSIS, R.REPORT_CORRECTIVE_ACTIONS}
     keys = {d["key"] for d in rq.client.get(f"{REPORTS}/definitions?module=quality").json()}
     assert keys == {"quality.check_full", "quality.checks_summary"}  # rejections need their data; defects their report
     assert preview(rq, "rejections_analysis").status_code == 403

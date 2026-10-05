@@ -83,5 +83,6 @@
   "topBar": {
     "notifications": "الإشعارات",
     "settings": "الإعدادات"
-  }
+  },
+  "needsAttention": "{count} تحتاج متابعتك"
 }

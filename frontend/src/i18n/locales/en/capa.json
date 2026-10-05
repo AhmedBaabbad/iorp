@@ -6,5 +6,20 @@
   "mine": "Mine",
   "overdueOnly": "Overdue only",
   "empty": "No actions",
-  "emptyHint": "Actions are added to a non-conformance report during its investigation."
+  "emptyHint": "Actions are added to a non-conformance report during its investigation.",
+  "attention": {
+    "title": "Needs your attention",
+    "counts": {
+      "overdue": "{count} late",
+      "report_overdue": "{count} reports past due",
+      "review_due": "{count} reviews due",
+      "due_soon": "{count} due soon"
+    },
+    "kinds": {
+      "overdue": "Late action",
+      "report_overdue": "Report past due",
+      "review_due": "Review due",
+      "due_soon": "Due soon"
+    }
+  }
 }

@@ -8,9 +8,10 @@ from app.quality.domain import permissions as Q
 from app.quality.domain import report_permissions as R
 from app.quality.infrastructure.models import QualityCheckMeasurement, QualityDefect, QualityRejection
 from app.quality.reporting import builders as b
+from app.quality.reporting.capa_report import corrective_actions
 from app.quality.reporting.certificate import register_certificate
 from app.quality.reporting.ncr_document import register_ncr_document
-from app.quality.reporting.schemas import CheckParams, ChecksSummaryParams, DefectsParams, RejectionsParams
+from app.quality.reporting.schemas import CheckParams, ChecksSummaryParams, CorrectiveActionsParams, DefectsParams, RejectionsParams
 
 
 def watermark(data, lang):
@@ -47,6 +48,11 @@ def register_reports():
          (Section('pareto', 'العيوب الأكثر تكرارًا', 'Most frequent defects'), Section('severity', 'العيوب حسب الخطورة', 'Defects by severity'),
           Section('serious', 'العيوب الرئيسية والحرجة', 'Major and critical defects')),
          b.defects_analysis, 'landscape', (Q.DEFECTS_READ,), ()),
+        ('corrective_actions', 'متابعة الإجراءات التصحيحية', 'Corrective actions follow-up', CorrectiveActionsParams,
+         (Section('kpis', 'المؤشرات الرئيسية', 'Key figures'), Section('owners', 'الإجراءات حسب المسؤول', 'Actions by owner'),
+          Section('overdue', 'الإجراءات المتأخرة', 'Overdue actions'), Section('recurrence', 'المشكلات المتكررة', 'Recurring problems'),
+          Section('effectiveness', 'مراجعات الفعالية', 'Effectiveness reviews')),
+         corrective_actions, 'landscape', (Q.NCR_READ,), ()),
     ]
     for key, ar, en, schema, sections, builder, orientation, required, context in reports:
         registry.register(ReportDefinition('quality.' + key, 'quality', ar, en, schema, sections, 'reports:quality:' + key, builder, 'quality_body.html',

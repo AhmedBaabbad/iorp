@@ -4,7 +4,7 @@ export type NcrSourceType = "incoming_material" | "supplier" | "internal_product
 export type NcrReportType = "material_non_conformance" | "product_non_conformance" | "process_non_conformance" | "packaging_non_conformance"
   | "documentation_non_conformance" | "other";
 export type NcrSeverity = "minor" | "major" | "critical";
-export type NcrAction = "edit" | "contain" | "investigate" | "add_action" | "submit" | "verify" | "cancel";
+export type NcrAction = "edit" | "contain" | "investigate" | "add_action" | "submit" | "verify" | "cancel" | "review_effectiveness";
 
 export const NCR_STATUSES: NcrStatus[] = ["open", "investigation", "action", "verification", "closed", "cancelled"];
 // The stages a report moves through, in order (cancelled is not a stage).
@@ -53,8 +53,23 @@ export type NcrListItem = {
   id: string; report_number: string; report_date: string; source_type: NcrSourceType; report_type: NcrReportType; status: NcrStatus;
   severity: NcrSeverity; title: string; reference_code: string | null; supplier_name: string | null; customer_name: string | null;
   owner_user_id: string | null; owner_name: string | null; due_date: string | null; overdue: boolean; open_actions: number;
-  overdue_actions: number; total_cost: string | null; actions: NcrAction[]; created_at: string;
+  overdue_actions: number; total_cost: string | null; review_pending: boolean; review_due: boolean; actions: NcrAction[]; created_at: string;
 };
+// QUAL-CAPA-001: the reports this one repeats (same supplier, affected item, or kind with the same 6M cause), and after it.
+export type RecurrenceKey = "supplier" | "item" | "cause";
+export type Recurrence = {
+  window_days: number; earlier: number; since_closing: number; recurring: boolean;
+  related: { id: string; report_number: string; report_date: string; title: string; status: NcrStatus; severity: NcrSeverity;
+    matched_on: RecurrenceKey[]; earlier: boolean }[];
+};
+// What needs the current user's attention.
+export type AlertKind = "overdue" | "report_overdue" | "review_due" | "due_soon";
+export type CapaAlerts = {
+  total: number; open_actions: number; overdue: number; report_overdue: number; review_due: number; due_soon: number;
+  items: { kind: AlertKind; ncr_id: string; report_number: string; title: string; due_date: string | null }[];
+};
+// Days after closing when a report's effectiveness is reviewed again (0: no later review).
+export const REVIEW_DAYS = [0, 30, 60, 90, 180] as const;
 export type NcrReport = NcrListItem & NcrHeader & {
   quality_check_id: string | null; quality_rejection_id: string | null; production_order_id: string | null; return_id: string | null;
   inspection_code: string | null; rejection_code: string | null; order_number: string | null; return_no: string | null; detected_by_name: string | null;
@@ -63,6 +78,8 @@ export type NcrReport = NcrListItem & NcrHeader & {
   no_action_justification: string | null; investigated_at: string | null; investigated_by_name: string | null;
   verification_attempts: number; verification_notes: string | null; verified_at: string | null; verified_by_name: string | null;
   closed_at: string | null; cancel_reason: string | null;
+  effectiveness_due_date: string | null; effectiveness_result: "effective" | "not_effective" | null; effectiveness_notes: string | null;
+  effectiveness_reviewed_at: string | null; effectiveness_reviewed_by_name: string | null; recurrence: Recurrence | null;
   items: NcrItem[]; corrective_actions: CorrectiveAction[]; attachments: NcrAttachment[]; history: NcrHistoryEntry[];
   can_complete_actions: boolean; updated_at: string;
 };
