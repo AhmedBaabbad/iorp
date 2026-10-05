@@ -56,7 +56,7 @@ const returnStep = <B,>(id: string, name: string, body: B) => apiClient<Shipment
 export const approveReturn = (id: string, note: string | null) => returnStep(id, "approve", { note });
 export const rejectReturn = (id: string, reason: string) => returnStep(id, "reject", { reason });
 export const cancelReturn = (id: string, reason: string) => returnStep(id, "cancel", { reason });
-export type ReceiveBody = { notes: string | null; lines: { return_line_id: string; received_quantity: string; received_weight: string | null }[] };
+export type ReceiveBody = { notes: string | null; send_to_quality?: boolean; lines: { return_line_id: string; received_quantity: string; received_weight: string | null }[] };
 export const receiveReturn = (id: string, body: ReceiveBody) => returnStep(id, "receive", body);
 
 // ── files: the signed note (proof of delivery), photos of returned goods ────────────────────────

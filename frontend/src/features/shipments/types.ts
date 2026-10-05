@@ -65,6 +65,18 @@ export const CUSTOMER_REASONS = ["quality_defect", "spec_mismatch", "wrong_item"
 export type DeliveryReason = (typeof DELIVERY_REASONS)[number];
 export type CustomerReason = (typeof CUSTOMER_REASONS)[number];
 
+// Reasons that put the goods in question: quality inspects them on receipt (mirrors returns.QUALITY_REASONS).
+export const QUALITY_REASONS = ["quality_issue", "quality_defect", "spec_mismatch", "transit_damage", "other"];
+// Where returned goods stand once received: back in stock, or with quality (awaiting, inspecting, decided, done).
+export type ReturnQualityStatus = "not_required" | "awaiting" | "inspecting" | "decided" | "done";
+export type ReturnQuality = {
+  expected: boolean;
+  inspections: { id: string; inspection_code: string; status: string; result: string | null; return_line_id: string | null;
+    qty_inspected: string; qty_accepted: string }[];
+  decisions: { id: string; rejection_code: string; disposition: string | null; disposition_status: string; quantity: string; unit: string;
+    return_line_id: string | null }[];
+};
+
 export type ReturnSummary = { id: string; return_no: string; kind: ReturnKind; status: ReturnStatus; reason: string; attempt: number; requested_at: string };
 
 export type ReturnLine = {
@@ -77,14 +89,14 @@ export type ReturnListItem = {
   id: string; return_no: string; kind: ReturnKind; status: ReturnStatus; shipment_id: string; shipment_no: string; attempt: number;
   customer_id: string | null; customer_name: string; reason: string; responsibility: string; customer_reference: string | null;
   requested_at: string; is_late: boolean; received_at: string | null; quantities: { unit: string; quantity: string }[]; weight_kg: string | null;
-  actions: ReturnAction[];
+  quality_required: boolean; quality_status: ReturnQualityStatus | null; actions: ReturnAction[];
 };
 
 export type ShipmentReturn = ReturnListItem & {
   details: string | null; carrier_claim_ref: string | null; delivery_method: DeliveryMethod; delivered_at: string | null;
   decided_at: string | null; decision_note: string | null; receipt_notes: string | null; cancel_reason: string | null;
   received_weight_kg: string | null; created_by_name: string | null; decided_by_name: string | null; received_by_name: string | null;
-  lines: ReturnLine[]; history: HistoryEntry[]; attachments: Attachment[]; updated_at: string;
+  lines: ReturnLine[]; history: HistoryEntry[]; attachments: Attachment[]; quality: ReturnQuality | null; updated_at: string;
 };
 
 export type ReturnInput = {

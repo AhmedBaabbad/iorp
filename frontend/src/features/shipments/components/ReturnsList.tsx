@@ -72,7 +72,8 @@ export function ReturnsList() {
           <td>{t(`reasons.${r.reason}`)}<div className={s.muted}>{t(`responsibility.${r.responsibility}`)}</div></td>
           <td><bdi>{r.quantities.map(q => fmt.quantity(q.quantity, unit(q.unit))).join(" · ") || "—"}</bdi>
             {r.weight_kg && <div className={s.muted}><bdi>{fmt.quantity(r.weight_kg, unit("kg"))}</bdi></div>}</td>
-          <td><ReturnStatusBadge status={r.status} />{r.is_late && <div className={s.error}>{t("late")}</div>}</td>
+          <td><ReturnStatusBadge status={r.status} />{r.is_late && <div className={s.error}>{t("late")}</div>}
+            {r.quality_status && <div className={s.muted}>{t(`quality.status.${r.quality_status}`)}</div>}</td>
         </tr>)}</tbody>
       </table></div>
     </section>}

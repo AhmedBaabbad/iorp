@@ -150,6 +150,9 @@ class QualityCheck(Base):
     unit: Mapped[str | None] = mapped_column(String(32), nullable=True)
     # A sample inspection refers to a commercial sample instead of a production order (plain UUID, no FK).
     sample_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    # QUAL-RET-001: an inspection of goods a customer returned (a shipping return and its line, plain UUIDs, no FK).
+    return_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    return_line_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     started_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
     closed_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
     closed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
@@ -337,6 +340,9 @@ class QualityRejection(Base):
         nullable=True,
     )
 
+    # QUAL-RET-001: a rejected part of returned goods (the shipping return and its line, plain UUIDs, no FK).
+    return_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    return_line_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     rejection_date: Mapped[date] = mapped_column(nullable=False, index=True)
     rejection_reason: Mapped[RejectionReason] = mapped_column(
         SqlEnum(

@@ -398,9 +398,44 @@
       "title": "Receive the returned goods",
       "text": "Enter what actually arrived; a quantity left as is arrived in full.",
       "notes": "Receipt notes",
-      "confirm": "Received"
+      "confirm": "Received",
+      "toQuality": "Send to quality",
+      "qualityRequired": "The reason puts the goods in question: quality inspects them before any decision.",
+      "toStockHint": "Unless sent to quality, the goods go back to stock on receipt."
     },
-    "qualityLater": "The decision on returned goods (back to stock, rework or scrap «هالك») is made by quality — coming later.",
-    "historyTitle": "Return history"
+    "qualityLater": "On receipt, goods not in question go back to stock; damaged or defective goods are inspected by quality, which decides (stock, second grade, rework, recycle, scrap).",
+    "historyTitle": "Return history",
+    "quality": {
+      "title": "Quality",
+      "decision": "Decision",
+      "quantity": "Quantity",
+      "state": "State",
+      "toStock": "back to stock {quantity}",
+      "status": {
+        "not_required": "Back in stock (not sent to quality).",
+        "awaiting": "Waiting for quality to inspect the goods.",
+        "inspecting": "Quality is inspecting the goods.",
+        "decided": "Quality decided; some parts are still being carried out.",
+        "done": "Quality's decision is carried out."
+      },
+      "checkStatus": {
+        "open": "Open",
+        "under_inspection": "Under inspection",
+        "closed": "Decided",
+        "cancelled": "Cancelled"
+      },
+      "dispositions": {
+        "use_as_is": "Second grade",
+        "rework": "Rework",
+        "return_to_process": "Recycle",
+        "scrap": "Scrap",
+        "hold": "Hold"
+      },
+      "decisionStatus": {
+        "pending": "Pending",
+        "decided": "To carry out",
+        "executed": "Carried out"
+      }
+    }
   }
 }

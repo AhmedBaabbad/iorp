@@ -10,8 +10,11 @@ itself never changes. Two kinds:
             requested / approved ─cancel(reason)→ cancelled
 A customer may return at most what was delivered, less what earlier returns (not rejected or cancelled) took back.
 A return requested after the return window (days after delivery, in the settings) is late: approving it needs a note.
-The reason says who is responsible: the factory, the carrier, or the customer. The decision on returned goods
-(back to stock, rework, هالك) is quality's, later; "return.received" in the events is its hook.
+The reason says who is responsible: the factory, the carrier, or the customer.
+On receipt (SHIP-005) the goods either go back to stock — the warehouse's call, for returns whose reason says nothing
+about the goods themselves (refused, site closed, wrong address, excess quantity…) — or to quality, which inspects them
+and decides (back to stock, second grade, rework, back to the process, scrap «هالك»): always for a quality reason,
+transit damage or "other", and whenever the warehouse sends them. Quality reads the return; shipping reads its decision.
 """
 from datetime import timedelta
 from decimal import Decimal
@@ -41,6 +44,27 @@ CUSTOMER_REASONS: dict[str, str | None] = {
     "excess_quantity": CUSTOMER_PARTY, "customer_cancelled": CUSTOMER_PARTY, OTHER: UNDETERMINED,
 }
 REASONS = {DELIVERY: DELIVERY_REASONS, CUSTOMER: CUSTOMER_REASONS}
+# Reasons that put the goods themselves in question: quality inspects them before any decision.
+QUALITY_REASONS = frozenset({"quality_issue", "quality_defect", "spec_mismatch", TRANSIT_DAMAGE, OTHER})
+
+
+def needs_quality(reason) -> bool:
+    return reason in QUALITY_REASONS
+
+
+def quality_status(received: bool, required: bool, lines_to_inspect: int, checks: list[dict], rejections: list[dict]) -> str | None:
+    """Where returned goods stand: not yet back (None); back in stock (not_required); waiting for quality (awaiting);
+    being inspected (inspecting); decided, some parts still to carry out (decided); finished (done)."""
+    if not received:
+        return None
+    if not required:
+        return "not_required"
+    live = [c for c in checks if c["status"] != "cancelled"]
+    if not live:
+        return "awaiting"
+    if len({c["return_line_id"] for c in live}) < lines_to_inspect or any(c["status"] != "closed" for c in live):
+        return "inspecting"
+    return "decided" if any(r["disposition_status"] != "executed" for r in rejections) else "done"
 
 
 def assert_reason(kind, reason, note) -> None:

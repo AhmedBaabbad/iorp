@@ -164,6 +164,73 @@ class CommercialReads:
                 for r in self.db.execute(query.order_by(samples.c.created_at.desc()).limit(limit)).all()]
 
 
+class ShippingReads:
+    """Returned goods as quality needs them (QUAL-RET-001), read through the shared tables: the shipping returns received
+    for quality, their lines, and the shipments that carried the same production order (read only, ADR-004)."""
+    LEFT_OR_LEAVING = ("ready", "dispatched", "delivered", "partially_delivered", "returned", "not_delivered")
+
+    def __init__(self, db, organization_id):
+        self.db, self.org = db, organization_id
+
+    def _lines(self):
+        returns, lines, notes, note_lines = (_t("shipping_returns"), _t("shipping_return_lines"), _t("shipping_shipments"),
+                                             _t("shipping_shipment_lines"))
+        query = (select(lines.c.id.label("line_id"), lines.c.line_no, lines.c.description, lines.c.width_mm, lines.c.thickness_mm, lines.c.unit,
+                        lines.c.weight_unit, lines.c.production_order_no, lines.c.received_quantity, lines.c.received_weight,
+                        returns.c.id.label("return_id"), returns.c.return_no, returns.c.kind, returns.c.reason, returns.c.responsibility,
+                        returns.c.details, returns.c.customer_name, returns.c.received_at, returns.c.status, returns.c.quality_required,
+                        notes.c.id.label("shipment_id"), notes.c.shipment_no, note_lines.c.production_order_id)
+                 .join(returns, returns.c.id == lines.c.return_id).join(notes, notes.c.id == returns.c.shipment_id)
+                 .join(note_lines, note_lines.c.id == lines.c.shipment_line_id).where(returns.c.organization_id == self.org))
+        return returns, lines, query
+
+    @staticmethod
+    def _row(r) -> dict:
+        row = dict(r._mapping)
+        row["awaiting_quality"] = r.status == "received" and bool(r.quality_required) and (r.received_quantity or 0) > 0
+        return row
+
+    def line(self, line_id) -> dict | None:
+        _returns, lines, query = self._lines()
+        r = self.db.execute(query.where(lines.c.id == line_id)).first()
+        return self._row(r) if r else None
+
+    def refs(self, line_ids) -> dict:
+        """return line id -> the line with its return and delivery note (for showing an inspection's source)."""
+        ids = [i for i in set(line_ids) if i]
+        if not ids:
+            return {}
+        _returns, lines, query = self._lines()
+        return {r.line_id: self._row(r) for r in self.db.execute(query.where(lines.c.id.in_(ids))).all()}
+
+    def return_numbers(self, return_ids) -> dict:
+        ids = [i for i in set(return_ids) if i]
+        returns = _t("shipping_returns")
+        return dict(self.db.execute(select(returns.c.id, returns.c.return_no).where(returns.c.organization_id == self.org,
+                                                                                     returns.c.id.in_(ids))).all()) if ids else {}
+
+    def received_for_quality(self, search: str = "", limit: int = 300) -> list[dict]:
+        returns, _lines, query = self._lines()
+        query = query.where(returns.c.status == "received", returns.c.quality_required.is_(True))
+        if search:
+            query = query.where(returns.c.return_no.icontains(search, autoescape=True) | returns.c.customer_name.icontains(search, autoescape=True))
+        rows = self.db.execute(query.order_by(returns.c.received_at.desc(), returns.c.return_no, _lines.c.line_no).limit(limit)).all()
+        return [self._row(r) for r in rows]
+
+    def batch(self, production_order_id) -> list[dict]:
+        """Every note line that carried this production order, newest first, with where the goods are now."""
+        if not production_order_id:
+            return []
+        notes, note_lines = _t("shipping_shipments"), _t("shipping_shipment_lines")
+        rows = self.db.execute(select(notes.c.id.label("shipment_id"), notes.c.shipment_no, notes.c.status, notes.c.shipment_date,
+                                      notes.c.customer_name, note_lines.c.quantity, note_lines.c.delivered_quantity, note_lines.c.unit)
+                               .join(notes, notes.c.id == note_lines.c.shipment_id)
+                               .where(notes.c.organization_id == self.org, note_lines.c.production_order_id == production_order_id,
+                                      notes.c.status.in_(self.LEFT_OR_LEAVING))
+                               .order_by(notes.c.shipment_date.desc(), notes.c.shipment_no.desc())).all()
+        return [dict(r._mapping) for r in rows]
+
+
 def user_names(db, organization_id, user_ids) -> dict:
     users = _t("foundation_users")
     ids = [i for i in set(user_ids) if i]
@@ -210,4 +277,4 @@ def as_decimal(value) -> Decimal:
     return Decimal(str(value or 0))
 
 
-__all__ = ["ProductionReads", "CommercialReads", "user_names", "next_code", "record", "history", "log_activity", "as_decimal"]
+__all__ = ["ProductionReads", "CommercialReads", "ShippingReads", "user_names", "next_code", "record", "history", "log_activity", "as_decimal"]

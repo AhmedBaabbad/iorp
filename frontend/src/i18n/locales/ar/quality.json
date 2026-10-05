@@ -52,7 +52,8 @@
       "startInspection": "بدء الفحص",
       "closeInspection": "إغلاق بالنتيجة",
       "cancelInspection": "إلغاء الفحص",
-      "report": "تقرير الفحص"
+      "report": "تقرير الفحص",
+      "returnDecision": "القرار على البضاعة المرتجعة"
     },
     "hints": {
       "locked": "هذا الفحص مغلق أو ملغى، فلا يمكن تعديله.",
@@ -290,7 +291,13 @@
     "DEVIATION_NOTE_REQUIRED": "الفحص «قبول مشروط»: اذكر الانحراف المعتمد قبل الإصدار.",
     "CERTIFICATE_NUMBER_BACKWARDS": "لا يرجع الترقيم للخلف (آخر رقم {current}).",
     "REPLACEMENT_DRAFT_EXISTS": "توجد مسودة بديلة لهذه الشهادة بالفعل.",
-    "LOT_VALUE_INVALID": "قيمة الدفعة «{key}» ليست رقمًا: {value}"
+    "LOT_VALUE_INVALID": "قيمة الدفعة «{key}» ليست رقمًا: {value}",
+    "RETURN_LINE_NOT_FOUND": "البند المرتجع غير موجود.",
+    "RETURN_NOT_AWAITING_QUALITY": "هذا المرتجع ليس بانتظار الجودة.",
+    "RETURN_LINE_ALREADY_INSPECTED": "لهذا البند المرتجع فحص مفتوح من قبل.",
+    "RETURN_SPLIT_MISMATCH": "مجموع الأجزاء ({total}) يجب أن يساوي الكمية المفحوصة ({inspected}).",
+    "NOT_A_RETURN_INSPECTION": "هذا الفحص لا يخص بضاعة مرتجعة.",
+    "RETURN_INSPECTION_NEEDS_DECISION": "فحص البضاعة المرتجعة يُغلق بقرار على البضاعة."
   },
   "history": {
     "title": "سجل الحالة",
@@ -594,5 +601,57 @@
       "save": "حفظ",
       "saved": "تم الحفظ."
     }
+  },
+  "returns": {
+    "title": "مرتجعات بانتظار الجودة",
+    "subtitle": "بضاعة أرجعها العملاء تفحصها الجودة قبل أي قرار: فحص لكل بند مرتجع.",
+    "search": "بحث",
+    "searchPlaceholder": "رقم المرتجع أو العميل",
+    "empty": "لا شيء بالانتظار",
+    "emptyHint": "تظهر هنا المرتجعات المستلمة للجودة حتى يُقرَّر في كل بنودها.",
+    "responsibility": "المسؤولية",
+    "item": "البند",
+    "productionOrder": "أمر الإنتاج",
+    "received": "المستلم",
+    "inspection": "الفحص",
+    "open": "فتح الفحص",
+    "opening": "جارٍ الفتح…",
+    "notOpened": "لم يُفتح",
+    "sourceTitle": "البضاعة المرتجعة",
+    "returnNo": "المرتجع",
+    "note": "إشعار التسليم",
+    "customer": "العميل",
+    "reason": "السبب",
+    "batchTitle": "نفس أمر الإنتاج {order}: كل إشعارات التسليم",
+    "batchHint": "حصر الدفعة: من استلم بضاعة من هذه الدفعة أيضاً، وما الجاهز للخروج.",
+    "batchLeaving": "جاهز للخروج من هذه الدفعة: {notes}. أوقفه حتى يصدر القرار.",
+    "batchEmpty": "لم يحمل أي إشعار تسليم آخر أمر الإنتاج هذا.",
+    "date": "التاريخ",
+    "quantity": "الكمية",
+    "status": "الحالة",
+    "decisionTitle": "القرار على البضاعة المرتجعة",
+    "decisionText": "وزّع الكمية المفحوصة {quantity} حسب مصير كل جزء؛ مجموع الأجزاء يساويها.",
+    "parts": {
+      "to_stock": "إعادة للمخزون",
+      "use_as_is": "درجة ثانية",
+      "rework": "إعادة تشغيل",
+      "return_to_process": "إعادة تدوير (للعملية)",
+      "scrap": "هالك",
+      "hold": "حجز"
+    },
+    "partHints": {
+      "to_stock": "سليمة: تُباع كجديدة",
+      "use_as_is": "تُباع كما هي بموافقة استثنائية",
+      "rework": "إعادة لفّ أو تغيير كور أو تغليف",
+      "return_to_process": "تُطحن وتعود لخط البثق",
+      "scrap": "تُتلف وتُحسب هالكاً",
+      "hold": "حجز مؤقت بانتظار القرار"
+    },
+    "decisionTotal": "المجموع {total} من {quantity}",
+    "concessionBy": "اعتمد الاستثناء",
+    "notes": "ملاحظات",
+    "notesRequired": "ملاحظات (إلزامية للدرجة الثانية)",
+    "openNcr": "فتح تقرير عدم مطابقة لمرتجع العميل",
+    "decide": "تسجيل القرار"
   }
 }

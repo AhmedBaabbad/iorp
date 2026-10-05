@@ -52,7 +52,8 @@
       "startInspection": "Start inspection",
       "closeInspection": "Close with result",
       "cancelInspection": "Cancel check",
-      "report": "Inspection report"
+      "report": "Inspection report",
+      "returnDecision": "Decide on the returned goods"
     },
     "hints": {
       "locked": "This check is closed or cancelled and cannot be edited.",
@@ -290,7 +291,13 @@
     "DEVIATION_NOTE_REQUIRED": "Conditional accept: state the approved deviation before issuing.",
     "CERTIFICATE_NUMBER_BACKWARDS": "Numbering cannot go back (last number {current}).",
     "REPLACEMENT_DRAFT_EXISTS": "A replacement draft already exists for this certificate.",
-    "LOT_VALUE_INVALID": "The lot value «{key}» is not a number: {value}"
+    "LOT_VALUE_INVALID": "The lot value «{key}» is not a number: {value}",
+    "RETURN_LINE_NOT_FOUND": "The returned item was not found.",
+    "RETURN_NOT_AWAITING_QUALITY": "This return is not waiting for quality.",
+    "RETURN_LINE_ALREADY_INSPECTED": "This returned item already has an inspection.",
+    "RETURN_SPLIT_MISMATCH": "The parts ({total}) must add up to the inspected quantity ({inspected}).",
+    "NOT_A_RETURN_INSPECTION": "This inspection is not about returned goods.",
+    "RETURN_INSPECTION_NEEDS_DECISION": "An inspection of returned goods is closed by its decision on the goods."
   },
   "history": {
     "title": "Status history",
@@ -594,5 +601,57 @@
       "save": "Save",
       "saved": "Saved."
     }
+  },
+  "returns": {
+    "title": "Returns awaiting quality",
+    "subtitle": "Goods customers sent back that quality inspects before any decision: one inspection per returned item.",
+    "search": "Search",
+    "searchPlaceholder": "Return no. or customer",
+    "empty": "Nothing waiting",
+    "emptyHint": "Returns received for quality appear here until every item is decided.",
+    "responsibility": "Responsibility",
+    "item": "Item",
+    "productionOrder": "Production order",
+    "received": "Received",
+    "inspection": "Inspection",
+    "open": "Open the inspection",
+    "opening": "Opening…",
+    "notOpened": "Not opened",
+    "sourceTitle": "Returned goods",
+    "returnNo": "Return",
+    "note": "Delivery note",
+    "customer": "Customer",
+    "reason": "Reason",
+    "batchTitle": "Same production order {order}: every delivery note",
+    "batchHint": "Containment: who else received goods from this batch, and what is ready to leave.",
+    "batchLeaving": "Ready to leave from this batch: {notes}. Hold them until the decision.",
+    "batchEmpty": "No other delivery note carried this production order.",
+    "date": "Date",
+    "quantity": "Quantity",
+    "status": "Status",
+    "decisionTitle": "Decision on the returned goods",
+    "decisionText": "Split the inspected {quantity} between where each part goes; the parts add up to it.",
+    "parts": {
+      "to_stock": "Back to stock",
+      "use_as_is": "Second grade",
+      "rework": "Rework",
+      "return_to_process": "Recycle (back to the process)",
+      "scrap": "Scrap",
+      "hold": "Hold"
+    },
+    "partHints": {
+      "to_stock": "Sound: sold as new",
+      "use_as_is": "Sold as it is under a concession",
+      "rework": "Rewound, recored or repacked",
+      "return_to_process": "Ground and fed back to extrusion",
+      "scrap": "Destroyed and counted as scrap (هالك)",
+      "hold": "Quarantined pending a decision"
+    },
+    "decisionTotal": "Total {total} of {quantity}",
+    "concessionBy": "Concession approved by",
+    "notes": "Notes",
+    "notesRequired": "Notes (required for second grade)",
+    "openNcr": "Open a non-conformance report for the customer return",
+    "decide": "Record the decision"
   }
 }

@@ -3,6 +3,7 @@
 open ─start→ under_inspection ─close(result, quantities)→ closed, or ─cancel(reason)→ cancelled.
 A check on a production order needs the order running, held or completed, and locks it like production
 does. Closing with a rejected quantity opens a rejection awaiting a decision, in the same transaction.
+An inspection of returned goods (QUAL-RET-001, return_inspection_service.py) is closed by its return decision instead.
 """
 from __future__ import annotations
 
@@ -10,11 +11,12 @@ from sqlalchemy import select
 
 from app.core.utils import utc_now
 from app.quality.domain import rules
+from app.quality.domain.permissions import REJECTIONS_DECIDE
 from app.quality.domain.enums import DispositionStatus, QualityCheckStatus as S, QualityCheckType as T, RejectionReason
 from app.quality.domain.rules import QualityError, ZERO
 from app.quality.infrastructure.models import QualityCheck, QualityRejection
 from .measurement_service import MeasurementService
-from .support import log_activity, CommercialReads, ProductionReads, as_decimal, history, next_code, record, user_names
+from .support import log_activity, CommercialReads, ProductionReads, ShippingReads, as_decimal, history, next_code, record, user_names
 
 # Types inspecting a production lot: the production order is required.
 ORDER_TYPES = frozenset({T.IN_PROCESS_INSPECTION, T.FINISHED_PRODUCT_INSPECTION, T.REINSPECTION})
@@ -52,11 +54,21 @@ class QualityCheckService:
         lines = self.production.line_numbers([c.production_order_item_id for c in checks])
         samples = self.commercial.sample_codes([c.sample_id for c in checks])
         names = user_names(self.db, self.org, [c.checked_by_user_id for c in checks] + [c.closed_by_user_id for c in checks])
+        returned = ShippingReads(self.db, self.org).refs([c.return_line_id for c in checks])
         out = []
         for c in checks:
+            actions = rules.check_actions(c.status, can)
+            source = returned.get(c.return_line_id)
+            if c.return_line_id:  # returned goods are closed by their return decision
+                actions = ["return_decision" if a == "close" else a for a in actions if a != "close" or can(REJECTIONS_DECIDE)]
             view = dict(order_number=orders.get(c.production_order_id), item_line_no=lines.get(c.production_order_item_id),
                         sample_code=samples.get(c.sample_id), checked_by_name=names.get(c.checked_by_user_id),
-                        closed_by_name=names.get(c.closed_by_user_id), actions=rules.check_actions(c.status, can))
+                        closed_by_name=names.get(c.closed_by_user_id), actions=actions,
+                        return_source=dict(return_id=source["return_id"], return_no=source["return_no"], kind=source["kind"],
+                                           reason=source["reason"], responsibility=source["responsibility"], details=source["details"],
+                                           shipment_id=source["shipment_id"], shipment_no=source["shipment_no"],
+                                           customer_name=source["customer_name"], line_no=source["line_no"], description=source["description"],
+                                           production_order_no=source["production_order_no"]) if source else None)
             if detail:
                 view["history"] = history(self.db, self.org, "check", c.id)
                 view["measurements"] = MeasurementService(self.db, self.tenant).measurements(c.id)
@@ -149,6 +161,8 @@ class QualityCheckService:
     def close(self, check_id, data) -> QualityCheck:
         check = self._get(check_id, lock=True)
         rules.assert_can_finish(check.status)
+        if check.return_line_id:
+            raise QualityError("RETURN_INSPECTION_NEEDS_DECISION")
         if check.production_order_id:
             self.production.order(check.production_order_id, lock=True)  # serialize with the order's close
         inspected, accepted, rejected = as_decimal(data.qty_inspected), as_decimal(data.qty_accepted), as_decimal(data.qty_rejected)

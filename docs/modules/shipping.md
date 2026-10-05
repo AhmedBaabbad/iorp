@@ -108,8 +108,12 @@ Goods that come back after leaving, numbered on their own (`<return prefix>YYYY-
   `carrier_claim_ref` may be kept), the factory for its own truck, the customer for a pickup.
 - **Return window** (`return_window_days`, 30 by default): a customer return registered later is `is_late`; approving it
   needs a note (`LATE_RETURN_NEEDS_NOTE`).
-- The decision on returned goods (back to stock, rework, scrap «هالك») belongs to quality and comes later; the
-  `return.received` event is its hook.
+- **On receipt (SHIP-005)** the goods go back to stock — the warehouse's call when the reason says nothing about the goods
+  (refused, site closed, nobody to receive, wrong address or item, excess quantity, cancelled) — or to quality
+  (`quality_required`): always for a quality reason, transit damage or other, and when the warehouse ticks "send to quality"
+  (`send_to_quality`). Quality inspects each line and decides (stock, second grade, rework, recycle, scrap «هالك», hold) — see
+  `docs/modules/quality.md`, *Returned goods*. The return shows the outcome (`quality_status`: not_required, awaiting, inspecting,
+  decided, done) read from quality's tables.
 
 ## Attachments (`shipping_attachments`)
 
@@ -194,7 +198,7 @@ Frontend: `/shipments` (list, settings), `/shipments/{id}` (detail with the outc
 
 ## Next phases
 
-- Quality decision on received returns (back to stock, rework, scrap «هالك») from the `return.received` event.
+- A customer claim without a physical return (credit only), and a replacement shipment linked to its return.
 - Links: a shipment from a commercial order (lines pre-filled, ordered vs delivered); the certificate of analysis number on
   the note and the note number on the certificate; a quality gate before dispatch.
 - Finance: credit notes for accepted customer returns.

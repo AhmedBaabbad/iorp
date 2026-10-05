@@ -14,7 +14,7 @@ from app.quality.domain import rules
 from app.quality.domain.enums import Disposition, DispositionStatus as DS, QualityCheckStatus as S
 from app.quality.domain.rules import QualityError, ZERO
 from app.quality.infrastructure.models import QualityCheck, QualityDefect, QualityRejection
-from .support import log_activity, ProductionReads, as_decimal, history, next_code, record, user_names
+from .support import log_activity, ProductionReads, ShippingReads, as_decimal, history, next_code, record, user_names
 
 
 class QualityRejectionService:
@@ -56,9 +56,11 @@ class QualityRejectionService:
         codes = dict(self.db.execute(select(QualityCheck.id, QualityCheck.inspection_code).where(
             QualityCheck.organization_id == self.org, QualityCheck.id.in_(check_ids))).all()) if check_ids else {}
         names = user_names(self.db, self.org, [u for r in rejections for u in (r.rejected_by_user_id, r.decided_by_user_id, r.executed_by_user_id)])
+        returns = ShippingReads(self.db, self.org).return_numbers([r.return_id for r in rejections])
         out = []
         for r in rejections:
             view = dict(order_number=orders.get(r.production_order_id), item_line_no=lines.get(r.production_order_item_id),
+                        return_no=returns.get(r.return_id),
                         inspection_code=codes.get(r.quality_check_id), rejected_by_name=names.get(r.rejected_by_user_id),
                         decided_by_name=names.get(r.decided_by_user_id), executed_by_name=names.get(r.executed_by_user_id),
                         unresolved=rules.is_unresolved(r.disposition_status, r.disposition),
@@ -163,13 +165,14 @@ class QualityRejectionService:
 
 
 def close_blockers(db, organization_id, order_id):
-    """Production close gate (registered at the composition root): open checks and undecided or held rejections."""
+    """Production close gate (registered at the composition root): open checks and undecided or held rejections.
+    Inspections of returned goods and their rejections never block it (QUAL-RET-001)."""
     open_checks = db.scalar(select(func.count()).select_from(QualityCheck).where(
         QualityCheck.organization_id == organization_id, QualityCheck.production_order_id == order_id,
-        QualityCheck.status.in_([S.OPEN, S.UNDER_INSPECTION])))
+        QualityCheck.return_line_id.is_(None), QualityCheck.status.in_([S.OPEN, S.UNDER_INSPECTION])))
     rejections = db.execute(select(QualityRejection.disposition_status, QualityRejection.disposition).where(
         QualityRejection.organization_id == organization_id, QualityRejection.production_order_id == order_id,
-        QualityRejection.disposition_status != DS.EXECUTED)).all()
+        QualityRejection.return_id.is_(None), QualityRejection.disposition_status != DS.EXECUTED)).all()
     unresolved = sum(1 for status, disposition in rejections if rules.is_unresolved(status, disposition))
     blockers = []
     if open_checks:

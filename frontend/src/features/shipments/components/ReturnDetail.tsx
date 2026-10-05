@@ -12,7 +12,7 @@ import { useFormatter } from "@/hooks/useFormatter";
 import { S } from "@/lib/shipping-permissions";
 import { approveReturn, cancelReturn, downloadReturnNote, getReturn, receiveReturn, rejectReturn, type ReceiveBody } from "../api";
 import { DECIMAL, shippingErrorMessage } from "../shipping-errors";
-import type { ShipmentReturn } from "../types";
+import { QUALITY_REASONS, type ShipmentReturn } from "../types";
 import { Attachments } from "./Attachments";
 import { ReturnStatusBadge } from "./ShipmentStatusBadge";
 
@@ -104,8 +104,8 @@ export function ReturnDetail({ returnId }: { returnId: string }) {
       </table></div>
       <p className={s.muted} style={{ marginBottom: 0 }}>{shipping("totals", { quantities: x.quantities.map(q => fmt.quantity(q.quantity, unit(q.unit))).join(" · ") || "—",
         weight: kg(received ? x.received_weight_kg ?? x.weight_kg : x.weight_kg) })}</p>
-      {received && <p className={s.muted} style={{ marginBottom: 0 }}>{t("qualityLater")}</p>}
     </section>
+    {received && <QualityPanel value={x} />}
     <section className={s.panel} aria-label={shipping("sections.attachments")}>
       <h2 style={{ marginTop: 0 }}>{shipping("sections.attachments")}</h2>
       <Attachments owner={{ kind: "return", id: x.id }} files={x.attachments} kinds={["photo", "document"]}
@@ -140,13 +140,15 @@ function ReceiveDialog({ value, busy, onClose, onConfirm }: { value: ShipmentRet
   const [got, setGot] = useState<Record<string, { quantity: string; weight: string }>>(
     Object.fromEntries(value.lines.map(l => [l.id, { quantity: String(Number(l.quantity)), weight: l.weight !== null ? String(Number(l.weight)) : "" }])));
   const [notes, setNotes] = useState("");
+  const required = QUALITY_REASONS.includes(value.reason);
+  const [toQuality, setToQuality] = useState(required);
   const ok = value.lines.every(l => DECIMAL.test(got[l.id].quantity.trim()) && Number(got[l.id].quantity) <= Number(l.quantity)
     && (!got[l.id].weight.trim() || DECIMAL.test(got[l.id].weight.trim())));
   const set = (id: string, field: "quantity" | "weight", v: string) => setGot(old => ({ ...old, [id]: { ...old[id], [field]: v } }));
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!ok || busy) return;
-    onConfirm({ notes: notes.trim() || null, lines: value.lines.map(l => ({ return_line_id: l.id, received_quantity: got[l.id].quantity.trim(),
+    onConfirm({ notes: notes.trim() || null, send_to_quality: toQuality, lines: value.lines.map(l => ({ return_line_id: l.id, received_quantity: got[l.id].quantity.trim(),
       received_weight: got[l.id].weight.trim() || null })) });
   }
   return <div className={s.overlay} onKeyDown={e => { if (e.key === "Escape" && !busy) onClose(); }}>
@@ -162,10 +164,39 @@ function ReceiveDialog({ value, busy, onClose, onConfirm }: { value: ShipmentRet
             onChange={e => set(l.id, "weight", e.target.value)} /></label>
       </div>)}
       <label className={s.field}>{t("receiveDialog.notes")}<textarea maxLength={2000} value={notes} disabled={busy} onChange={e => setNotes(e.target.value)} /></label>
+      <label><input type="checkbox" checked={toQuality} disabled={busy || required} onChange={e => setToQuality(e.target.checked)} /> {t("receiveDialog.toQuality")}</label>
+      <p className={s.muted} style={{ margin: 0 }}>{required ? t("receiveDialog.qualityRequired") : t("receiveDialog.toStockHint")}</p>
       <div className={s.actions}>
         <button type="button" className={s.button} disabled={busy} onClick={onClose}>{shipping("cancel")}</button>
         <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy || !ok}>{t("receiveDialog.confirm")}</button>
       </div>
     </form>
   </div>;
+}
+
+// What happened to the goods once back: in stock, or quality's inspections and decisions (read from quality).
+function QualityPanel({ value }: { value: ShipmentReturn }) {
+  const t = useTranslations("shipping.returns.quality");
+  const fmt = useFormatter();
+  const units = useTranslations("common.units.units");
+  const unit = (code: string) => (units.has(code) ? units(code) : code);
+  const status = value.quality_status;
+  const quality = value.quality;
+  return <section className={s.panel} aria-label={t("title")}>
+    <h2 style={{ marginTop: 0 }}>{t("title")}</h2>
+    {status && <p className={status === "done" || status === "not_required" ? s.muted : s.error} style={{ marginTop: 0 }}>{t(`status.${status}`)}</p>}
+    {quality && quality.inspections.length > 0 && <ul style={{ margin: 0, paddingInlineStart: 18, display: "grid", gap: 6 }}>
+      {quality.inspections.map(i => <li key={i.id}><Link href={`/quality-checks/${i.id}`}><bdi>{i.inspection_code}</bdi></Link>
+        {" — "}{t.has(`checkStatus.${i.status}`) ? t(`checkStatus.${i.status}`) : i.status}
+        {i.status === "closed" && <span className={s.muted}> · {t("toStock", { quantity: fmt.quantity(i.qty_accepted, "") })}</span>}</li>)}
+    </ul>}
+    {quality && quality.decisions.length > 0 && <div className={s.tableWrap} style={{ marginTop: 12 }}><table className={s.table}>
+      <thead><tr><th>{t("decision")}</th><th>{t("quantity")}</th><th>{t("state")}</th></tr></thead>
+      <tbody>{quality.decisions.map(d => <tr key={d.id}>
+        <td>{d.disposition ? t(`dispositions.${d.disposition}`) : "—"}</td>
+        <td><bdi>{fmt.quantity(d.quantity, unit(d.unit))}</bdi></td>
+        <td>{t.has(`decisionStatus.${d.disposition_status}`) ? t(`decisionStatus.${d.disposition_status}`) : d.disposition_status}</td>
+      </tr>)}</tbody>
+    </table></div>}
+  </section>;
 }

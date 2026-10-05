@@ -162,6 +162,9 @@ class ShipmentReturn(Base):
     carrier_claim_ref: Mapped[str | None] = mapped_column(String(80), nullable=True)  # a claim against the carrier
     requested_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
     is_late: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # SHIP-005: the goods go to quality before any decision (a quality reason, transit damage, "other", or the warehouse
+    # sent them); otherwise the warehouse puts them back to stock on receipt.
+    quality_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     decided_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
     decided_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
     decision_note: Mapped[str | None] = mapped_column(Text, nullable=True)  # the approval note, or the rejection reason

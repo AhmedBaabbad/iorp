@@ -310,10 +310,39 @@ class ReceivedLine(_Input):
 
 
 class ReceiveInput(_Input):
-    """What actually arrived back; lines left out arrived as expected."""
+    """What actually arrived back; lines left out arrived as expected. send_to_quality: the warehouse sends goods to
+    quality although the reason does not require it (e.g. damage seen on arrival)."""
     received_at: datetime | None = None
+    send_to_quality: bool = False
     notes: str | None = Field(default=None, max_length=2000)
     lines: list[ReceivedLine] = Field(default_factory=list, max_length=100)
+
+
+class QualityInspection(BaseModel):
+    id: UUID
+    inspection_code: str
+    status: str
+    result: str | None
+    return_line_id: UUID | None
+    qty_inspected: Decimal
+    qty_accepted: Decimal
+
+
+class QualityDecision(BaseModel):
+    id: UUID
+    rejection_code: str
+    disposition: str | None
+    disposition_status: str
+    quantity: Decimal
+    unit: str
+    return_line_id: UUID | None
+
+
+class ReturnQuality(BaseModel):
+    """What quality did with the returned goods (read from quality's tables)."""
+    expected: bool  # the reason sends them to quality
+    inspections: list[QualityInspection] = []
+    decisions: list[QualityDecision] = []
 
 
 class ReturnLineRead(BaseModel):
@@ -350,6 +379,8 @@ class ReturnListItem(BaseModel):
     requested_at: ISODatetime
     is_late: bool
     received_at: ISODatetime | None
+    quality_required: bool = False
+    quality_status: str | None = None
     quantities: list[UnitQuantity] = []
     weight_kg: Decimal | None = None
     actions: list[str] = []
@@ -371,4 +402,5 @@ class ReturnRead(ReturnListItem):
     lines: list[ReturnLineRead] = []
     history: list[HistoryEntry] = []
     attachments: list[AttachmentRead] = []
+    quality: ReturnQuality | None = None
     updated_at: ISODatetime

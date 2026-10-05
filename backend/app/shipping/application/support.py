@@ -69,6 +69,37 @@ class ProductionOrderReads:
         return [dict(r._mapping, status=getattr(r.status, "value", r.status)) for r in rows]
 
 
+class QualityReads:
+    """What quality did with returned goods: its inspections and decided parts for a return (read only)."""
+
+    def __init__(self, db, organization_id):
+        self.db, self.org = db, organization_id
+
+    def of(self, return_ids) -> dict:
+        """return id -> {"inspections": [...], "decisions": [...]}."""
+        ids = [i for i in set(return_ids) if i]
+        out = {i: dict(inspections=[], decisions=[]) for i in ids}
+        if not ids:
+            return out
+        checks, rejections = _t("quality_checks"), _t("quality_rejections")
+        for r in self.db.execute(select(checks.c.id, checks.c.inspection_code, checks.c.status, checks.c.result, checks.c.return_id,
+                                        checks.c.return_line_id, checks.c.qty_inspected, checks.c.qty_accepted)
+                                 .where(checks.c.organization_id == self.org, checks.c.return_id.in_(ids)).order_by(checks.c.created_at)).all():
+            out[r.return_id]["inspections"].append(dict(id=r.id, inspection_code=r.inspection_code, status=_value(r.status), result=_value(r.result),
+                                                        return_line_id=r.return_line_id, qty_inspected=r.qty_inspected, qty_accepted=r.qty_accepted))
+        for r in self.db.execute(select(rejections.c.id, rejections.c.rejection_code, rejections.c.disposition, rejections.c.disposition_status,
+                                        rejections.c.quantity_rejected, rejections.c.unit, rejections.c.return_id, rejections.c.return_line_id)
+                                 .where(rejections.c.organization_id == self.org, rejections.c.return_id.in_(ids)).order_by(rejections.c.created_at)).all():
+            out[r.return_id]["decisions"].append(dict(id=r.id, rejection_code=r.rejection_code, disposition=_value(r.disposition),
+                                                      disposition_status=_value(r.disposition_status), quantity=r.quantity_rejected, unit=r.unit,
+                                                      return_line_id=r.return_line_id))
+        return out
+
+
+def _value(v):
+    return getattr(v, "value", v)
+
+
 def user_names(db, organization_id, user_ids) -> dict:
     users = _t("foundation_users")
     ids = [i for i in set(user_ids) if i]

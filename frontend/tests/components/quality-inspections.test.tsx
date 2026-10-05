@@ -295,3 +295,51 @@ describe("invalid readings", () => {
     expect(screen.getByLabelText("Width reading 4")).toBeTruthy();
   });
 });
+
+// QUAL-RET-001: returned goods — the list awaiting quality, the inspection's source and containment, the split decision.
+import { QualityReturnsList } from "@/features/quality-checks/components/QualityReturnsList";
+
+const returnCheck = (over: Partial<QualityCheckData> = {}) => check({ check_type: "issue_triggered", qty_inspected: "18.000", unit: "roll",
+  actions: ["edit", "measure", "return_decision", "cancel"], return_id: "ret1", return_line_id: "rl1",
+  return_source: { return_id: "ret1", return_no: "RT-2026-0001", kind: "customer", reason: "quality_defect", responsibility: "factory",
+    details: "Crushed cores", shipment_id: "s1", shipment_no: "DN-2026-0001", customer_name: "UCIC Company", line_no: 1,
+    description: "PP Strap 5 mm", production_order_no: "PO-2026-000014" }, ...over });
+
+describe("returned goods", () => {
+  it("lists returns awaiting quality and opens an inspection for a returned item", async () => {
+    api.apiClient.mockImplementation((path: string, o?: { method?: string }) => Promise.resolve(o?.method === "POST" ? returnCheck({ id: "c9" }) : [{
+      return_id: "ret1", return_no: "RT-2026-0001", kind: "customer", reason: "quality_defect", responsibility: "factory", details: null,
+      customer_name: "UCIC Company", received_at: "", shipment_id: "s1", shipment_no: "DN-2026-0001",
+      lines: [{ line_id: "rl1", line_no: 1, description: "PP Strap 5 mm", width_mm: "5.000", thickness_mm: "0.350", unit: "roll",
+        production_order_id: "po1", production_order_no: "PO-2026-000014", received_quantity: "18.000", inspection_id: null,
+        inspection_code: null, inspection_status: null }] }]));
+    ui(<QualityReturnsList />, "ar");
+    fireEvent.click(await screen.findByRole("button", { name: "فتح الفحص" }));
+    await act(async () => {});
+    expect(api.apiClient.mock.calls.some(([p, o]) => p === "/quality/returns/lines/rl1/inspection" && o?.method === "POST")).toBe(true);
+    expect(nav.push).toHaveBeenCalledWith("/quality-checks/c9");
+  });
+
+  it("shows where the goods came from, the batch's other notes, and splits the decision", async () => {
+    api.apiClient.mockImplementation((path: string, o?: { method?: string }) => Promise.resolve(
+      path.endsWith("/specifications") ? [] : path.endsWith("/batch-shipments") ? [
+        { shipment_id: "s1", shipment_no: "DN-2026-0001", status: "delivered", shipment_date: "2026-10-04", customer_name: "UCIC Company", quantity: "100.000", delivered_quantity: "100.000", unit: "roll" },
+        { shipment_id: "s3", shipment_no: "DN-2026-0003", status: "ready", shipment_date: "2026-10-05", customer_name: "Other Co", quantity: "30.000", delivered_quantity: null, unit: "roll" }]
+        : o?.method === "POST" ? returnCheck({ status: "closed", result: "rejected", actions: [] }) : returnCheck()));
+    ui(<QualityCheckDetail qualityCheckId="c1" />);
+    expect(await screen.findByRole("link", { name: "RT-2026-0001" })).toBeTruthy();
+    expect(await screen.findByText("Ready to leave from this batch: DN-2026-0003. Hold them until the decision.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Close inspection" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Decide on the returned goods" }));
+    const dialog = screen.getByRole("dialog", { name: "Decision on the returned goods" });
+    const confirm = within(dialog).getByRole("button", { name: "Record the decision" }) as HTMLButtonElement;
+    fireEvent.change(within(dialog).getByLabelText(/^Back to stock/), { target: { value: "8" } });
+    fireEvent.change(within(dialog).getByLabelText(/^Scrap/), { target: { value: "5" } });
+    expect(within(dialog).getByText("Total 13 of 18")).toBeTruthy();
+    expect(confirm.disabled).toBe(true);
+    fireEvent.change(within(dialog).getByLabelText(/^Rework/), { target: { value: "5" } });
+    await act(async () => { fireEvent.click(confirm); });
+    expect(posted("/quality/quality-checks/c1/return-decision")).toEqual({ to_stock: "8", use_as_is: "0", rework: "5", return_to_process: "0",
+      scrap: "5", hold: "0", notes: null, concession_approved_by: null, open_ncr: true });
+  });
+});

@@ -301,6 +301,7 @@ const staticNavGroups: StaticNavGroup[] = [
     links: [
       { href: "/quality-checks", labelKey: "links.qualityChecks", permission: Q.CHECKS_READ },
       { href: "/quality-rejections", labelKey: "links.qualityRejections", permission: Q.REJECTIONS_READ },
+      { href: "/quality-returns", labelKey: "links.qualityReturns", permission: Q.CHECKS_READ },
       { href: "/quality-certificates", labelKey: "links.qualityCertificates", permission: Q.COA_READ },
       { href: "/quality-specifications", labelKey: "links.qualitySpecifications", permission: Q.SPECS_READ },
       { href: "/quality-test-parameters", labelKey: "links.qualityTestParameters", permission: Q.SPECS_READ },

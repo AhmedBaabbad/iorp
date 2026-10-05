@@ -67,7 +67,8 @@
     "qualityTestParameters": "خصائص الفحص",
     "qualityCertificates": "شهادات التحليل",
     "shipments": "الشحنات وإشعارات التسليم",
-    "shipmentReturns": "المرتجعات"
+    "shipmentReturns": "المرتجعات",
+    "qualityReturns": "مرتجعات بانتظار الجودة"
   },
   "userMenu": {
     "changePassword": "تغيير كلمة المرور",

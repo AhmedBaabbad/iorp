@@ -167,6 +167,8 @@ Production asks the composition-root guards before closing an order (`app/core/i
 - rejections `pending`, or `decided` as `hold` → `QUALITY_REJECTIONS_UNRESOLVED`
 
 The order page shows a quality section with these counts, and the status panel lists the blockers.
+Inspections of returned goods (`return_line_id` set) and their rejections (`return_id` set) are left out: the goods were produced
+and shipped long before (QUAL-RET-001).
 
 ## Permissions
 
@@ -250,6 +252,31 @@ Rules: `quality/domain/certificates.py`. Writer: `application/certificate_servic
   "PENDING RELEASE APPROVAL"; revoked ones "REVOKED". English by default, Arabic on request. Nothing is stored.
 - Migration `f6a1b2i9` creates the tables and grants the certificate permissions to the organization admin, factory manager and
   quality manager (read also to the viewer). Its downgrade refuses while issued or revoked certificates exist.
+
+## Returned goods (QUAL-RET-001)
+
+Goods a customer sent back (shipping returns, SHIP-004) that the warehouse received **for quality**: always when the return reason
+puts the goods in question (quality issue or defect, not to specification, transit damage, other), and whenever the warehouse
+sends them. Other returns go back to stock on receipt without quality. Contract between the modules (no imports, ADR-004):
+
+| Quality reads from shipping (`support.ShippingReads`) | Shipping reads from quality (`support.QualityReads`) |
+|-------------------------------------------------------|------------------------------------------------------|
+| `shipping_returns` (received, `quality_required`), `shipping_return_lines`, `shipping_shipments`, `shipping_shipment_lines` (`production_order_id`) | `quality_checks` and `quality_rejections` by `return_id` |
+
+- **`/quality-returns`** lists them; **one inspection per returned line** (`POST /quality/returns/lines/{line_id}/inspection`):
+  type `issue_triggered`, the quantity that came back, the line's unit, its production order (so the specification in force applies
+  as the plan, as for any lot), the line's width and thickness as `lot_values`; `return_id` / `return_line_id` keep the source.
+  `RETURN_NOT_AWAITING_QUALITY`, `RETURN_LINE_ALREADY_INSPECTED`.
+- It is measured like any inspection, then **closed by the return decision** (`POST /quality/quality-checks/{id}/return-decision`,
+  needs `quality_checks:close` and `rejections:decide`; the plain close answers `RETURN_INSPECTION_NEEDS_DECISION`): the inspected
+  quantity is split (`RETURN_SPLIT_MISMATCH` otherwise) between back to stock (accepted), second grade (`use_as_is`, with the
+  concession's approver and notes), rework, recycle (`return_to_process`), scrap (هالك) and hold. Each rejected part becomes a
+  rejection already **decided**, executed later as usual; the result is accepted when nothing is rejected, else rejected.
+  `open_ncr` adds a draft NCR (`customer_return`, reference = the return number).
+- **Containment** (`GET /quality/quality-checks/{id}/batch-shipments`): every delivery note that carried the same production order
+  (ready, dispatched, delivered…), with a warning for those ready to leave.
+- Shipping shows the outcome on the return: back in stock, awaiting, inspecting, decided (parts still to carry out) or done.
+- Migration `f6a1b2j5` adds the return references (and `shipping_returns.quality_required`); no new permissions.
 
 ## Quality report center (QUAL-REPORT-001)
 

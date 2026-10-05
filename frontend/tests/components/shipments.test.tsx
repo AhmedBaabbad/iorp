@@ -214,6 +214,7 @@ function customerReturn(over: Partial<ShipmentReturn> = {}): ShipmentReturn {
   return { id: "r1", return_no: "RT-2026-0001", kind: "customer", status: "requested", shipment_id: "s1", shipment_no: "DN-2026-0001", attempt: 1,
     customer_id: "c1", customer_name: "UCIC Company", reason: "quality_defect", responsibility: "factory", customer_reference: "RMA-9", requested_at: "",
     is_late: false, received_at: null, quantities: [{ unit: "roll", quantity: "20.000" }], weight_kg: "200.000", actions: ["approve", "reject", "cancel"],
+    quality_required: false, quality_status: null, quality: null,
     details: null, carrier_claim_ref: null, delivery_method: "factory_delivery", delivered_at: null, decided_at: null, decision_note: null, receipt_notes: null,
     cancel_reason: null, received_weight_kg: null, created_by_name: "Ahmed", decided_by_name: null, received_by_name: null, history: [], attachments: [],
     lines: [{ id: "rl1", shipment_line_id: "l1", line_no: 1, description: "PP Strap black", width_mm: "5.000", thickness_mm: "0.350", unit: "roll",
@@ -253,8 +254,10 @@ describe("returns", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Receive at the factory" }));
     const dialog = screen.getByRole("dialog", { name: "Receive the returned goods" });
     fireEvent.change(within(dialog).getByLabelText("Received 1"), { target: { value: "18" } });
+    expect((within(dialog).getByLabelText("Send to quality") as HTMLInputElement).disabled).toBe(true);  // a quality reason
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Received" })); });
-    expect(sent("/shipping/returns/r1/receive", "POST")).toEqual({ notes: null, lines: [{ return_line_id: "rl1", received_quantity: "18", received_weight: "200" }] });
+    expect(sent("/shipping/returns/r1/receive", "POST")).toEqual({ notes: null, send_to_quality: true,
+      lines: [{ return_line_id: "rl1", received_quantity: "18", received_weight: "200" }] });
   });
 
   it("lists returns with their delivery note, kind and responsibility", async () => {

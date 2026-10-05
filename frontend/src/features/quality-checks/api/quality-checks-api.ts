@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 import type {
-  CloseQualityCheckRequest, CreateQualityCheckRequest, InspectableOrder, MeasurementInput, PlanCandidate, QualityCheckData, QualityCheckListFilters,
+  AwaitingReturn, BatchShipment, ReturnDecisionRequest, CloseQualityCheckRequest, CreateQualityCheckRequest, InspectableOrder, MeasurementInput, PlanCandidate, QualityCheckData, QualityCheckListFilters,
   QualityCheckListItem, SampleOption, UpdateQualityCheckRequest,
 } from "../types";
 
@@ -59,4 +59,21 @@ export function applyPlan(id: string, specificationId: string, lotValues?: Recor
 
 export function recordMeasurement(id: string, measurementId: string, body: MeasurementInput) {
   return apiClient<QualityCheckData>(`${PATH}/${id}/measurements/${measurementId}`, { method: "PUT", body });
+}
+
+// QUAL-RET-001: returned goods received for quality, an inspection per returned line, the split decision, containment.
+export function getAwaitingReturns(search = "") {
+  return apiClient<AwaitingReturn[]>(`/quality/returns/awaiting?q=${encodeURIComponent(search)}`);
+}
+
+export function openReturnInspection(returnLineId: string) {
+  return apiClient<QualityCheckData>(`/quality/returns/lines/${returnLineId}/inspection`, { method: "POST" });
+}
+
+export function decideReturn(id: string, body: ReturnDecisionRequest) {
+  return apiClient<QualityCheckData>(`${PATH}/${id}/return-decision`, { method: "POST", body });
+}
+
+export function getBatchShipments(id: string) {
+  return apiClient<BatchShipment[]>(`${PATH}/${id}/batch-shipments`);
 }

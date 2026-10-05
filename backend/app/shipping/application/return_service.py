@@ -18,7 +18,7 @@ from app.shipping.domain import returns as R
 from app.shipping.domain import rules
 from app.shipping.domain.rules import ShippingError
 from app.shipping.infrastructure.models import Shipment, ShipmentReturn, ShipmentReturnLine
-from .support import attachments, history, log_activity, next_return_number, record, settings, user_names
+from .support import QualityReads, attachments, history, log_activity, next_return_number, record, settings, user_names
 
 ZERO = Decimal("0")
 
@@ -91,6 +91,7 @@ class ReturnService:
     def views(self, found, can, detail=False) -> list[dict]:
         shipments = {s.id: s for s in self.db.scalars(select(Shipment).where(Shipment.id.in_({r.shipment_id for r in found})))} if found else {}
         names = user_names(self.db, self.org, [u for r in found for u in (r.created_by_user_id, r.decided_by_user_id, r.received_by_user_id)])
+        quality = QualityReads(self.db, self.org).of([r.id for r in found if r.status == R.RECEIVED and r.quality_required])
         out = []
         for r in found:
             shipment = shipments[r.shipment_id]
@@ -105,10 +106,14 @@ class ReturnService:
                         quantities=[dict(unit=u, quantity=q) for u, q in quantities.items()],
                         weight_kg=sum(expected, ZERO).quantize(Decimal("0.001")) if expected else None,
                         received_weight_kg=sum(received, ZERO).quantize(Decimal("0.001")) if received else None,
+                        quality_status=R.quality_status(r.status == R.RECEIVED, r.quality_required,
+                                                        sum(1 for line in r.lines if (line.received_quantity or ZERO) > ZERO),
+                                                        quality.get(r.id, {}).get("inspections", []), quality.get(r.id, {}).get("decisions", [])),
                         actions=R.actions(r.kind, r.status, lambda a: can(P.RETURN_ACTIONS[a])))
             if detail:
                 view["history"] = history(self.db, self.org, return_id=r.id)
                 view["attachments"] = attachments(self.db, self.org, return_id=r.id)
+                view["quality"] = dict(expected=R.needs_quality(r.reason), **quality.get(r.id, dict(inspections=[], decisions=[])))
             out.append(view)
         return out
 
@@ -188,6 +193,10 @@ class ReturnService:
                 line.weight if line.received_quantity == line.quantity else R.share(line.weight, line.received_quantity, line.quantity))
         ret.received_at, ret.received_by_user_id = data.received_at or utc_now(), self.tenant.user_id
         ret.receipt_notes = (data.notes or "").strip() or None
+        # Quality inspects what came back when the reason requires it or the warehouse sends it; else it is back in stock.
+        ret.quality_required = R.needs_quality(ret.reason) or bool(data.send_to_quality)
+        if not any((line.received_quantity or ZERO) > ZERO for line in ret.lines):
+            ret.quality_required = False  # nothing arrived: nothing to inspect
         return self._move(ret, R.RECEIVED, "return.received", ret.receipt_notes)
 
     def cancel(self, return_id, reason) -> ShipmentReturn:

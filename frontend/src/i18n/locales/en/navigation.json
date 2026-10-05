@@ -67,7 +67,8 @@
     "qualityTestParameters": "Test parameters",
     "qualityCertificates": "Certificates of Analysis",
     "shipments": "Shipments & delivery notes",
-    "shipmentReturns": "Returns"
+    "shipmentReturns": "Returns",
+    "qualityReturns": "Returns awaiting quality"
   },
   "userMenu": {
     "changePassword": "Change Password",

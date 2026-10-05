@@ -3,7 +3,8 @@ export type QualityCheckType =
   | "in_process_inspection" | "finished_product_inspection" | "sample_inspection" | "reinspection" | "issue_triggered" | "general";
 export type QualityCheckStatus = "open" | "under_inspection" | "closed" | "cancelled";
 export type QualityCheckResult = "accepted" | "rejected" | "conditional_accept" | "needs_reinspection";
-export type QualityCheckAction = "edit" | "measure" | "start" | "close" | "cancel";
+// "return_decision" replaces "close" on an inspection of returned goods (QUAL-RET-001).
+export type QualityCheckAction = "edit" | "measure" | "start" | "close" | "return_decision" | "cancel";
 
 export const CHECK_TYPES: QualityCheckType[] = ["in_process_inspection", "finished_product_inspection", "reinspection", "sample_inspection", "issue_triggered", "general"];
 export const CHECK_STATUSES: QualityCheckStatus[] = ["open", "under_inspection", "closed", "cancelled"];
@@ -32,9 +33,40 @@ export type QualityCheckListItem = {
   item_line_no: number | null;
   sample_code: string | null;
   checked_by_name: string | null;
+  return_id?: string | null;
+  return_line_id?: string | null;
+  return_source?: ReturnSource | null;
   actions: QualityCheckAction[];
   created_at: string;
   updated_at: string;
+};
+
+// The returned goods an inspection is about (read from shipping).
+export type ReturnSource = {
+  return_id: string; return_no: string; kind: string; reason: string; responsibility: string; details: string | null;
+  shipment_id: string; shipment_no: string; customer_name: string; line_no: number; description: string; production_order_no: string | null;
+};
+
+// Returned goods received for quality, each line with its inspection once opened.
+export type AwaitingReturnLine = {
+  line_id: string; line_no: number; description: string; width_mm: string | null; thickness_mm: string | null; unit: string;
+  production_order_id: string | null; production_order_no: string | null; received_quantity: string | null;
+  inspection_id: string | null; inspection_code: string | null; inspection_status: QualityCheckStatus | null;
+};
+export type AwaitingReturn = {
+  return_id: string; return_no: string; kind: string; reason: string; responsibility: string; details: string | null; customer_name: string;
+  received_at: string | null; shipment_id: string; shipment_no: string; lines: AwaitingReturnLine[];
+};
+
+// Where the inspected quantity of returned goods goes; the parts add up to it.
+export const RETURN_PARTS = ["to_stock", "use_as_is", "rework", "return_to_process", "scrap", "hold"] as const;
+export type ReturnPart = (typeof RETURN_PARTS)[number];
+export type ReturnDecisionRequest = Record<ReturnPart, string> & { notes: string | null; concession_approved_by: string | null; open_ncr: boolean };
+
+// A delivery note that carried the same production order (containment).
+export type BatchShipment = {
+  shipment_id: string; shipment_no: string; status: string; shipment_date: string; customer_name: string;
+  quantity: string; delivered_quantity: string | null; unit: string;
 };
 
 export type CheckRejectionSummary = { id: string; rejection_code: string; disposition_status: string; disposition: string | null;

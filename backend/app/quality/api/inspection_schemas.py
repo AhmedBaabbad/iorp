@@ -90,9 +90,28 @@ class QualityCheckListItem(BaseModel):
     item_line_no: int | None = None
     sample_code: str | None = None
     checked_by_name: str | None = None
+    return_id: UUID | None = None
+    return_line_id: UUID | None = None
+    return_source: "ReturnSource | None" = None
     actions: list[str] = []
     created_at: ISODatetime
     updated_at: ISODatetime
+
+
+class ReturnSource(BaseModel):
+    """The returned goods an inspection is about (QUAL-RET-001), read from shipping."""
+    return_id: UUID
+    return_no: str
+    kind: str
+    reason: str
+    responsibility: str
+    details: str | None
+    shipment_id: UUID
+    shipment_no: str
+    customer_name: str
+    line_no: int
+    description: str
+    production_order_no: str | None
 
 
 class MeasurementRead(BaseModel):
@@ -210,6 +229,8 @@ class QualityRejectionListItem(BaseModel):
     order_number: str | None = None
     item_line_no: int | None = None
     inspection_code: str | None = None
+    return_id: UUID | None = None
+    return_no: str | None = None
     unresolved: bool = False
     actions: list[str] = []
     created_at: ISODatetime
@@ -254,3 +275,61 @@ class SampleOption(BaseModel):
     product_type: str
     unit: str | None
     customer: str
+
+
+# ── returned goods (QUAL-RET-001) ─────────────────────────────────────────────────────────────
+Part = Field(default=Decimal("0"), ge=0, decimal_places=3, max_digits=14)
+
+
+class ReturnDecision(_Input):
+    """Where the inspected quantity goes; the parts add up to it."""
+    to_stock: Quantity = Part
+    use_as_is: Quantity = Part  # second grade, under a concession
+    rework: Quantity = Part
+    return_to_process: Quantity = Part  # ground and fed back to the process
+    scrap: Quantity = Part  # هالك
+    hold: Quantity = Part
+    notes: str | None = Field(default=None, max_length=2000)
+    concession_approved_by: str | None = Field(default=None, max_length=255)
+    open_ncr: bool = False
+
+
+class AwaitingReturnLine(BaseModel):
+    line_id: UUID
+    line_no: int
+    description: str
+    width_mm: Decimal | None
+    thickness_mm: Decimal | None
+    unit: str
+    production_order_id: UUID | None
+    production_order_no: str | None
+    received_quantity: Decimal | None
+    inspection_id: UUID | None
+    inspection_code: str | None
+    inspection_status: str | None
+
+
+class AwaitingReturn(BaseModel):
+    return_id: UUID
+    return_no: str
+    kind: str
+    reason: str
+    responsibility: str
+    details: str | None
+    customer_name: str
+    received_at: ISODatetime | None
+    shipment_id: UUID
+    shipment_no: str
+    lines: list[AwaitingReturnLine]
+
+
+class BatchShipment(BaseModel):
+    """A delivery note that carried the same production order (containment)."""
+    shipment_id: UUID
+    shipment_no: str
+    status: str
+    shipment_date: date
+    customer_name: str
+    quantity: Decimal
+    delivered_quantity: Decimal | None
+    unit: str
