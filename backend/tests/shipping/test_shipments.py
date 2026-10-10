@@ -191,11 +191,11 @@ def test_delivery_note_document_in_arabic_and_english(ship):
     r = preview("ar")
     assert r.status_code == 200, r.text
     for text in ("إشعار تسليم", s["shipment_no"], "UCIC Company", "UCIC-PO-77", "توصيل بسيارة المصنع", "أ ب ج 1234", "العرض (مم)",
-                 "السماكة (مم)", "0.35", "1200 كيلوجرام", "رول", "مسودة", "استلمتُ البضاعة"):
+                 "السماكة (مم)", "0.35", "1200 كجم", "رول", "مسودة", "استلمتُ البضاعة"):
         assert text in r.text, text
     english = preview("en").text
     assert "DELIVERY NOTE" in english and "Factory delivery" in english and "Received the goods" in english
-    assert "1200 Kilogram" in english and "Width (mm)" in english and ">Roll<" in english
+    assert "1200 kg" in english and "Width (mm)" in english and ">roll<" in english
 
 
 # ── architecture ────────────────────────────────────────────────────────────────────────────────

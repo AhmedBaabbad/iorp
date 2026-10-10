@@ -15,6 +15,7 @@ import { getCurrentUser, login as loginRequest, logoutSession } from "./auth-cli
 import { getStoredAccessToken, removeStoredAccessToken } from "@/lib/auth";
 import { SessionGuard } from "./session-guard";
 import { markActivity } from "@/lib/session-policy";
+import { isSessionRejected } from "@/lib/api-client";
 import type { AuthState, CurrentUser, LoginRequest } from "@/types/auth";
 import { isLocale, LOCALE_COOKIE_NAME, type Locale } from "@/i18n/config";
 
@@ -76,7 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(storedToken);
       setUser(currentUser);
       return currentUser;
-    } catch {
+    } catch (error) {
+      if (!isSessionRejected(error)) return null;
       removeStoredAccessToken();
       setToken(null);
       setUser(null);

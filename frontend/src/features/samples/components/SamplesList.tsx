@@ -3,19 +3,22 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
-import { listCustomers } from "@/features/customers";
+import { PermissionGuard } from "@/components/PermissionGuard";
+import { ListToolbar } from "@/components/pagination/ListToolbar";
+import { Pagination } from "@/components/pagination/Pagination";
+import { useListQuery, type Page } from "@/lib/pagination";
 import { useFormatter } from "@/hooks/useFormatter";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { displayValue } from "@/lib/utils";
 import { sharedStyles } from "@/styles/shared-styles";
-import type { CustomerListItem } from "@/types/customers";
 import { deleteSample, getSampleDeletionImpact, listSamples } from "../api/samples-api";
 import type { SampleDeletionImpact, SampleListItem } from "../types";
 import { SampleDecisionBadge } from "./SampleDecisionBadge";
 import { SampleStatusBadge } from "./SampleStatusBadge";
+import { useProductName } from "@/features/masterdata";
 
 const styles: Record<string, CSSProperties> = {
   panel: {
@@ -151,9 +154,15 @@ export function SamplesList() {
   const messages = useTranslations("messages");
   const common = useTranslations("common");
   const t = useTranslations("commercial.samples");
+  const productName = useProductName();  // MD-001: the product's name, not its key
   const fmt = useFormatter();
-  const [samples, setSamples] = useState<SampleListItem[]>([]);
-  const [customers, setCustomers] = useState<CustomerListItem[]>([]);
+  const tStatus = useTranslations("enums.sample.status");
+  // ARCH-PAGE-001: one page from the server (50 rows by default); page, search and status live in the address.
+  const list = useListQuery(["search", "status"] as const);
+  const apiQuery = list.apiQuery();
+  const [data, setData] = useState<Page<SampleListItem> | null>(null);
+  const samples = data?.items ?? [];
+  const filtered = Boolean(list.filters.search || list.filters.status);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -163,22 +172,15 @@ export function SamplesList() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
-  const customerNamesById = useMemo(() => {
-    return new Map(customers.map((customer) => [customer.id, customer.name]));
-  }, [customers]);
-
   const loadSamples = useCallback(async () => {
     if (!isMountedRef.current) return;
     setIsLoading(true);
     setError(null);
     try {
-      const [samplesResponse, customersResponse] = await Promise.all([
-        listSamples(),
-        listCustomers().catch(() => []),
-      ]);
+      const response = await listSamples(apiQuery);
       if (isMountedRef.current) {
-        setSamples(samplesResponse);
-        setCustomers(customersResponse);
+        setData(response);
+        if (response.items.length === 0 && response.total > 0 && list.page > response.pages) list.setPage(response.pages);
       }
     } catch (caughtError) {
       if (isMountedRef.current) {
@@ -189,7 +191,7 @@ export function SamplesList() {
         setIsLoading(false);
       }
     }
-  }, [messages]);
+  }, [messages, apiQuery]); // eslint-disable-line react-hooks/exhaustive-deps -- list changes every render; apiQuery is what matters
 
   async function handleDelete(sampleId: string) {
     setLoadingImpactId(sampleId);
@@ -252,9 +254,9 @@ export function SamplesList() {
       title={t("listTitle")}
       subtitle={t("subtitle")}
       action={
-        <Link href="/samples/new" style={sharedStyles.button}>
+        <PermissionGuard code="commercial:samples:create"><Link href="/samples/new" style={sharedStyles.button}>
           {t("newButton")}
-        </Link>
+        </Link></PermissionGuard>
       }
     >
       {pendingDelete ? (
@@ -310,7 +312,14 @@ export function SamplesList() {
         </div>
       ) : null}
 
-      {isLoading ? (
+      <ListToolbar search={list.filters.search} onSearch={(v) => list.setFilter("search", v)} searchHint={t("searchHint")}
+
+        status={list.filters.status} onStatus={(v) => list.setFilter("status", v)} statusLabel={t("fields.status")}
+
+        statuses={["requested", "in_preparation", "delivered", "evaluated", "cancelled"].map((value) => ({ value, label: tStatus(value) }))} onClear={list.clearFilters} />
+
+
+      {isLoading && !data ? (
         <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>{messages("loading.default")}</div>
       ) : null}
 
@@ -335,17 +344,24 @@ export function SamplesList() {
         </div>
       ) : null}
 
-      {!isLoading && !error && samples.length === 0 ? (
+      {!isLoading && !error && samples.length === 0 && filtered ? (
+
+        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>{common("listFilters.noMatches")}</section>
+
+      ) : null}
+
+
+      {!isLoading && !error && samples.length === 0 && !filtered ? (
         <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("empty")}</h2>
           <p style={{ margin: "0 0 18px" }}>{messages("empty.addFirst")}</p>
-          <Link href="/samples/new" style={sharedStyles.button}>
+          <PermissionGuard code="commercial:samples:create"><Link href="/samples/new" style={sharedStyles.button}>
             {t("newButton")}
-          </Link>
+          </Link></PermissionGuard>
         </section>
       ) : null}
 
-      {!isLoading && !error && samples.length > 0 ? (
+      {!error && samples.length > 0 ? (
         <section style={styles.panel} aria-label={t("listAria")}>
           <div style={styles.tableWrap}>
             <table style={styles.table}>
@@ -371,9 +387,9 @@ export function SamplesList() {
                       </Link>
                     </td>
                     <td style={styles.td}>
-                      {displayValue(customerNamesById.get(sample.customer_id) ?? sample.customer_id)}
+                      {displayValue(sample.customer_name ?? sample.customer_id)}
                     </td>
-                    <td style={styles.td}>{sample.product_type}</td>
+                    <td style={styles.td}>{productName(sample.product_type)}</td>
                     <td style={styles.td}>
                       <SampleStatusBadge status={sample.status} />
                     </td>
@@ -391,10 +407,10 @@ export function SamplesList() {
                     <td style={styles.td}>{fmt.date(sample.request_date)}</td>
                     <td style={styles.td}>
                       <div style={styles.actions}>
-                        <Link href={`/samples/${sample.id}/edit`} style={styles.actionButton}>
+                        <PermissionGuard code="commercial:samples:update"><Link href={`/samples/${sample.id}/edit`} style={styles.actionButton}>
                           {common("actions.edit")}
-                        </Link>
-                        <button
+                        </Link></PermissionGuard>
+                        <PermissionGuard code="commercial:samples:delete"><button
                           type="button"
                           style={styles.deleteButton}
                           disabled={deletingId === sample.id || loadingImpactId === sample.id}
@@ -403,7 +419,7 @@ export function SamplesList() {
                           {deletingId === sample.id || loadingImpactId === sample.id
                             ? "..."
                             : common("actions.delete")}
-                        </button>
+                        </button></PermissionGuard>
                       </div>
                     </td>
                   </tr>
@@ -411,6 +427,10 @@ export function SamplesList() {
               </tbody>
             </table>
           </div>
+
+          {data ? <Pagination page={data.page} pageSize={data.page_size} total={data.total} pages={data.pages}
+
+            disabled={isLoading} onPage={list.setPage} onPageSize={list.setPageSize} /> : null}
         </section>
       ) : null}
     </PageFrame>

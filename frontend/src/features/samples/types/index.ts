@@ -8,10 +8,17 @@ export type SampleStatus =
 export type SampleDecision = "pending" | "accepted" | "rejected";
 
 export type RequestedSpec = Record<string, unknown>;
+export type SampleProductDefinition = {
+  key: string; name_ar: string; name_en: string; active: boolean; default_unit: string | null;
+  properties: import('@/lib/spec-rows').SpecTemplateProperty[];
+};
 
 export type SampleListItem = {
   id: string;
   customer_id: string;
+  /** On a list page: the customer, read once for the page. */
+  customer_name?: string | null;
+  customer_code?: string | null;
   sample_code: string;
   product_type: string;
   requested_spec_json: RequestedSpec | null;
@@ -29,6 +36,8 @@ export type SampleListItem = {
 
 export type SampleData = SampleListItem & {
   notes: string | null;
+  property_values: RequestedSpec | null;
+  product_definition: SampleProductDefinition | null;
 };
 
 export type CreateSampleRequest = {
@@ -39,7 +48,7 @@ export type CreateSampleRequest = {
   requested_sample_quantity?: number | null;
   unit?: string | null;
   request_date: string;
-  requested_spec_json?: RequestedSpec | null;
+  property_values?: RequestedSpec | null;
   notes?: string | null;
 };
 
@@ -49,7 +58,7 @@ export type UpdateSampleRequest = {
   requested_sample_quantity?: number | null;
   unit?: string | null;
   request_date?: string;
-  requested_spec_json?: RequestedSpec | null;
+  property_values?: RequestedSpec | null;
   status?: SampleStatus;
   sample_decision?: SampleDecision | null;
   notes?: string | null;

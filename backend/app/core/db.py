@@ -13,6 +13,8 @@ class Base(DeclarativeBase):
 engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,
+    pool_timeout=5,
+    connect_args={"connect_timeout": 5} if settings.database_url.startswith("postgresql") else {},
 )
 
 SessionLocal = sessionmaker(
@@ -33,5 +35,7 @@ def get_db_session() -> Generator[Session, None, None]:
 
 def check_database_connection() -> bool:
     with engine.connect() as connection:
+        if connection.dialect.name == "postgresql":
+            connection.execute(text("SET LOCAL statement_timeout = 3000"))
         connection.execute(text("SELECT 1"))
     return True

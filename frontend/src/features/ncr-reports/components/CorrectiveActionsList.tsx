@@ -23,7 +23,7 @@ export function CorrectiveActionsList() {
   const capa = useTranslations("capa");
   const errors = useTranslations("ncr.errors");
   const messages = useTranslations("messages");
-  const canComplete = useHasAnyPermission([Q.NCR_ACTIONS_COMPLETE, Q.NCR_UPDATE]);
+  const canComplete = useHasAnyPermission([Q.NCR_ACTIONS_COMPLETE]);
   const alerts = useCapaAlerts(true);
   const [filters, setFilters] = useState(EMPTY);
   const [rows, setRows] = useState<CorrectiveAction[] | null>(null);

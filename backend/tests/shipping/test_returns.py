@@ -155,7 +155,7 @@ def test_returns_only_against_delivered_notes_and_late_ones_need_a_note(ship):
 def test_each_return_step_needs_its_permission(ship):
     s = delivered(ship)
     ret = ship.client.post(RETURNS, json=dict(shipment_id=s["id"], reason="quality_defect", lines=[dict(shipment_line_id=s["lines"][0]["id"], quantity="5")])).json()
-    for permission in (S.RETURNS_APPROVE, S.RETURNS_RECEIVE, S.RETURNS_CANCEL):
+    for permission in (S.RETURNS_APPROVE, S.RETURNS_REJECT, S.RETURNS_RECEIVE, S.RETURNS_CANCEL):
         ship.ctx.auth_user.permissions.discard(permission)
     ship.ctx.tenant = type(ship.ctx.tenant)(ship.user.id, ship.org.id, permissions=frozenset(ship.ctx.auth_user.permissions))
     assert ship.client.get(f"{RETURNS}/{ret['id']}").json()["actions"] == []

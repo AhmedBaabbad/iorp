@@ -3,394 +3,205 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import type { CSSProperties, ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
-import { SuccessModal } from "@/components/ui/SuccessModal";
+import { Money } from "@/components/money/Money";
 import { getCustomer } from "@/features/customers";
+import { useProductName } from "@/features/masterdata";
+import { ReasonDialog } from "@/features/production-demands/reason-dialog";
+import s from "@/features/production-demands/demands.module.css";
 import { getQuoteById } from "@/features/quotes";
 import { useFormatter } from "@/hooks/useFormatter";
-import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { ApiClientError } from "@/lib/api-client";
-import { displayValue } from "@/lib/utils";
-import { sharedStyles } from "@/styles/shared-styles";
-import { deleteCommercialOrder, getCommercialOrderById } from "../api/commercial-orders-api";
+import {
+  cancelCommercialOrder,
+  confirmCommercialOrder,
+  deleteCommercialOrder,
+  getCommercialOrderById,
+  reviseCommercialOrder,
+} from "../api/commercial-orders-api";
 import type { CommercialOrderData } from "../types";
 import { CommercialOrderStatusBadge } from "./CommercialOrderStatusBadge";
-import { OrderItemsTable } from "./OrderItemsTable";
+import { SpecList, StatusHistory, salesErrorMessage } from "./sales-lifecycle";
 
-const styles: Record<string, CSSProperties> = {
-  backdrop: {
-    position: "fixed",
-    inset: 0,
-    background: "var(--overlay)",
-    backdropFilter: "blur(2px)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1000,
-  },
-  modal: {
-    background: "var(--surface)",
-    borderRadius: "14px",
-    boxShadow: "0 24px 64px rgba(15, 23, 42, 0.28), 0 4px 16px rgba(15, 23, 42, 0.12)",
-    padding: "32px",
-    maxWidth: "460px",
-    width: "90%",
-    display: "grid",
-    gap: "20px",
-  },
-  modalIcon: {
-    width: "48px",
-    height: "48px",
-    borderRadius: "50%",
-    background: "var(--surface-muted)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "22px",
-    margin: "0 auto",
-  },
-  modalTitle: {
-    fontSize: "18px",
-    fontWeight: 700,
-    color: "var(--text)",
-    margin: 0,
-    textAlign: "center" as const,
-  },
-  modalBody: {
-    fontSize: "14px",
-    color: "var(--text-muted)",
-    margin: 0,
-    lineHeight: "1.7",
-    textAlign: "center" as const,
-  },
-  modalActions: {
-    display: "flex",
-    gap: "12px",
-    justifyContent: "center",
-    flexWrap: "wrap" as const,
-  },
-  modalCancelButton: {
-    ...sharedStyles.secondaryButton,
-    minHeight: "40px",
-    padding: "10px 24px",
-    fontSize: "14px",
-  },
-  modalDeleteButton: {
-    background: "var(--danger)",
-    border: "none",
-    borderRadius: "8px",
-    color: "var(--on-accent)",
-    cursor: "pointer",
-    fontSize: "14px",
-    fontWeight: 600,
-    minHeight: "40px",
-    padding: "10px 24px",
-  },
-  headerActions: {
-    display: "flex",
-    gap: "8px",
-    flexWrap: "wrap" as const,
-  },
-  deleteButton: {
-    ...sharedStyles.secondaryButton,
-    borderColor: "color-mix(in srgb, var(--danger) 35%, var(--surface))",
-    color: "var(--danger)",
-  },
-  detailGrid: {
-    display: "grid",
-    gap: "1px",
-    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-    background: "var(--border)",
-    borderRadius: "8px",
-    overflow: "hidden",
-  },
-  detailItem: {
-    background: "var(--surface)",
-    padding: "18px",
-  },
-  detailLabel: {
-    color: "var(--text-muted)",
-    fontSize: "13px",
-    fontWeight: 700,
-    margin: "0 0 8px",
-  },
-  detailValue: {
-    margin: 0,
-    overflowWrap: "anywhere",
-  },
-  sections: {
-    display: "grid",
-    gap: "24px",
-  },
-};
-
+/**
+ * One sales order (SALES-001): its source (an accepted quotation or the customer's reference), the lines with what was
+ * sent to production and what remains, the next step (confirm, send to production, revise, cancel) and its history.
+ */
 export function CommercialOrderDetail() {
+  const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const t = useTranslations("commercial.commercialOrders");
+  const errors = useTranslations("commercial.salesErrors");
   const messages = useTranslations("messages");
   const common = useTranslations("common");
-  const t = useTranslations("commercial.commercialOrders");
+  const currencies = useTranslations("common.currencies");
+  const units = useTranslations("common.units.units");
+  const unit = (code: string) => (units.has(code) ? units(code) : code);
   const fmt = useFormatter();
-  const router = useRouter();
-  const params = useParams<{ id: string }>();
-  const orderId = params.id;
+  const productName = useProductName();
   const [order, setOrder] = useState<CommercialOrderData | null>(null);
-  const [customerName, setCustomerName] = useState<string | null>(null);
-  const [quoteNumber, setQuoteNumber] = useState<string | null>(null);
-  const [quoteCurrency, setQuoteCurrency] = useState<string>("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isNotFound, setIsNotFound] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deleteSuccessRedirect, setDeleteSuccessRedirect] = useState<string | null>(null);
+  const [customerName, setCustomerName] = useState("");
+  const [quoteNumber, setQuoteNumber] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [missing, setMissing] = useState(false);
+  const [dialog, setDialog] = useState<"revise" | "cancel" | "delete" | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadOrder() {
-      try {
-        setIsLoading(true);
-        setError(null);
-        setIsNotFound(false);
-        const response = await getCommercialOrderById(orderId);
-
-        if (isMounted) {
-          setOrder(response);
-        }
-
-        const secondaryFetches: Promise<void>[] = [
-          getCustomer(response.customer_id)
-            .then((customer) => {
-              if (isMounted) {
-                setCustomerName(customer.name);
-              }
-            })
-            .catch(() => undefined),
-        ];
-
-        if (response.quote_id) {
-          secondaryFetches.push(
-            getQuoteById(response.quote_id)
-              .then((quote) => {
-                if (isMounted) {
-                  setQuoteNumber(quote.quote_number);
-                  setQuoteCurrency(quote.currency);
-                }
-              })
-              .catch(() => undefined),
-          );
-        }
-
-        await Promise.all(secondaryFetches);
-      } catch (caughtError) {
-        if (!isMounted) {
-          return;
-        }
-
-        if (caughtError instanceof ApiClientError && caughtError.status === 404) {
-          setIsNotFound(true);
-          return;
-        }
-
-        setError(getApiErrorMessage(caughtError, messages));
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void loadOrder();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [orderId]);
-
-  async function handleConfirmDelete() {
-    setIsDeleting(true);
-    setDeleteError(null);
+  const load = useCallback(async () => {
     try {
-      await deleteCommercialOrder(orderId);
-      setDeleteSuccessRedirect("/commercial-orders");
-    } catch (caughtError) {
-      setDeleteError(getApiErrorMessage(caughtError, messages));
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteConfirm(false);
-    }
+      const found = await getCommercialOrderById(id);
+      setOrder(found);
+      getCustomer(found.customer_id).then((c) => setCustomerName(c.name)).catch(() => undefined);
+      if (found.quote_id) getQuoteById(found.quote_id).then((q) => setQuoteNumber(q.quote_number)).catch(() => undefined);
+    } catch (e) {
+      if (e instanceof ApiClientError && e.status === 404) setMissing(true);
+      else setError(salesErrorMessage(e, errors, messages));
+    } finally { setLoading(false); }
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void load(); }, [load]);
+
+  async function run(key: string, action: () => Promise<CommercialOrderData | void>) {
+    setBusy(key); setError("");
+    try {
+      const result = await action();
+      if (result) setOrder(result);
+      setDialog(null);
+    } catch (e) { setError(salesErrorMessage(e, errors, messages)); } finally { setBusy(null); }
   }
 
-  return (
-    <>
-      {deleteSuccessRedirect ? (
-        <SuccessModal
-          message={t("deleteSuccess")}
-          okLabel={common("actions.ok")}
-          onOk={() => router.replace(deleteSuccessRedirect)}
-        />
-      ) : null}
+  const back = <Link href="/commercial-orders" className={s.button}>{t("backToList")}</Link>;
+  if (loading) return <PageFrame title={t("detailTitle")} action={back}><p className={s.muted}>{messages("loading.default")}</p></PageFrame>;
+  if (missing || !order) {
+    return <PageFrame title={t("detailTitle")} action={back}><p role="alert" className={s.error}>{error || t("notFound")}</p></PageFrame>;
+  }
 
-      {showDeleteConfirm ? (
-        <div style={styles.backdrop} onClick={() => setShowDeleteConfirm(false)}>
-          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalIcon}>!</div>
-            <h2 style={styles.modalTitle}>{t("deleteConfirmTitle")}</h2>
-            <p style={styles.modalBody}>{t("deleteConfirm")}</p>
-            {deleteError ? (
-              <div style={sharedStyles.error} role="alert">
-                {deleteError}
-              </div>
-            ) : null}
-            <div style={styles.modalActions}>
-              <button
-                type="button"
-                style={styles.modalCancelButton}
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={isDeleting}
-              >
-                {common("actions.cancel")}
+  const actions = order.allowed_actions ?? [];
+  const sent = order.transferred_quantities ?? {};
+  const currency = order.currency ?? "";
+  const priced = order.items.some((i) => i.agreed_unit_price != null);
+  const total = order.items.reduce((sum, i) => sum + Number(i.line_total ?? 0), 0);
+  const showSent = order.status !== "draft";
+
+  return (
+    <PageFrame title={order.order_number} subtitle={customerName || t("detailSubtitle")} action={back}>
+      {error && <p role="alert" className={s.error}>{error}</p>}
+      <section className={s.panel}>
+        <div className={s.actions} style={{ justifyContent: "space-between", marginBottom: 12 }}>
+          <span className={s.actions}>
+            <CommercialOrderStatusBadge status={order.status} />
+            <span className={s.badge}>{t("revisionBadge", { number: order.revision ?? 1 })}</span>
+            {order.status === "confirmed" && <span className={s.badge}>{t(`fulfilment.${order.fulfilment ?? "none"}`)}</span>}
+          </span>
+          <span className={s.actions}>
+            {actions.includes("edit") && <Link href={`/commercial-orders/${order.id}/edit`} className={s.button}>{common("actions.edit")}</Link>}
+            {actions.includes("confirm") && (
+              <button type="button" className={`${s.button} ${s.primary}`} disabled={busy !== null}
+                onClick={() => void run("confirm", () => confirmCommercialOrder(order.id))}>
+                {busy === "confirm" ? messages("loading.saving") : t("lifecycle.actions.confirm")}
               </button>
-              <button
-                type="button"
-                style={styles.modalDeleteButton}
-                onClick={() => void handleConfirmDelete()}
-                disabled={isDeleting}
-              >
-                {common("actions.delete")}
+            )}
+            {actions.includes("transfer") && (
+              <Link href={`/production/demands/new?sales_order=${order.id}&customer=${order.customer_id}`} className={`${s.button} ${s.primary}`}>
+                {t("lifecycle.actions.transfer")}
+              </Link>
+            )}
+            {actions.includes("revise") && (
+              <button type="button" className={s.button} disabled={busy !== null} onClick={() => setDialog("revise")}>{t("lifecycle.actions.revise")}</button>
+            )}
+            {actions.includes("cancel") && (
+              <button type="button" className={`${s.button} ${s.danger}`} disabled={busy !== null} onClick={() => setDialog("cancel")}>
+                {t("lifecycle.actions.cancel")}
+              </button>
+            )}
+            {actions.includes("delete") && (
+              <button type="button" className={s.button} disabled={busy !== null} onClick={() => setDialog("delete")}>{common("actions.delete")}</button>
+            )}
+          </span>
+        </div>
+        <p className={s.muted} style={{ marginTop: 0 }}>{t(`lifecycle.hints.${order.status}`)}</p>
+        <dl className={s.grid} style={{ margin: 0 }}>
+          <Item label={t("fields.customer")}><Link href={`/customers/${order.customer_id}`}>{customerName || "—"}</Link></Item>
+          <Item label={t("fields.source")}>
+            {order.quote_id
+              ? <>{t("sources.quote")}: <Link href={`/quotes/${order.quote_id}`}><bdi>{quoteNumber || "…"}</bdi></Link></>
+              : t("sources.direct")}
+          </Item>
+          <Item label={t("fields.customerReference")}><bdi>{order.customer_reference || "—"}</bdi></Item>
+          <Item label={t("fields.orderDate")}>{fmt.date(order.order_date)}</Item>
+          <Item label={t("fields.requestedDelivery")}>{order.requested_delivery_date ? fmt.date(order.requested_delivery_date) : "—"}</Item>
+          <Item label={t("fields.currency")}>{currency ? currencies(currency) : "—"}</Item>
+          <Item label={t("fields.confirmedAt")}>{order.confirmed_at ? fmt.dateTime(order.confirmed_at) : "—"}</Item>
+        </dl>
+      </section>
+
+      <section className={s.panel} aria-label={t("items.sectionTitle")}>
+        <h2 style={{ marginTop: 0 }}>{t("items.sectionTitle")}</h2>
+        <div className={s.tableWrap}>
+          <table className={s.table}>
+            <thead>
+              <tr>
+                <th>#</th><th>{t("items.fields.productType")}</th><th>{t("items.fields.quantity")}</th>
+                {showSent && <><th>{t("items.fields.sent")}</th><th>{t("items.fields.remaining")}</th></>}
+                <th>{t("items.fields.unitPrice")}</th><th>{t("items.fields.lineTotal")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...order.items].sort((a, b) => a.line_no - b.line_no).map((item) => {
+                const taken = Number(sent[item.id ?? ""] ?? 0);
+                const left = Math.max(0, Number(item.quantity) - taken);
+                return (
+                  <tr key={item.id ?? item.line_no}>
+                    <td>{item.line_no}</td>
+                    <td>{productName(item.product_type)}<SpecList productKey={item.product_type} spec={item.requested_spec_json} /></td>
+                    <td><bdi>{fmt.quantity(item.quantity, unit(item.unit))}</bdi></td>
+                    {showSent && <>
+                      <td><bdi>{fmt.quantity(String(taken), unit(item.unit))}</bdi></td>
+                      <td className={left > 0 ? undefined : s.muted}><bdi>{fmt.quantity(String(left), unit(item.unit))}</bdi></td>
+                    </>}
+                    <td>{item.agreed_unit_price != null && currency ? <Money amount={item.agreed_unit_price} currency={currency} /> : "—"}</td>
+                    <td>{item.line_total != null && currency ? <Money amount={item.line_total} currency={currency} /> : "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {priced && currency && <p style={{ marginBottom: 0 }}><strong>{t("fields.total")}:</strong> <Money amount={total} currency={currency} /></p>}
+      </section>
+
+      {order.notes && <section className={s.panel}><p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{order.notes}</p></section>}
+      <StatusHistory entries={order.history ?? []} />
+
+      {dialog === "revise" && (
+        <ReasonDialog title={t("lifecycle.reviseTitle")} description={t("lifecycle.reviseText")} confirmLabel={t("lifecycle.actions.revise")}
+          busy={busy !== null} onClose={() => setDialog(null)} onConfirm={(reason) => void run("revise", () => reviseCommercialOrder(order.id, reason))} />
+      )}
+      {dialog === "cancel" && (
+        <ReasonDialog title={t("lifecycle.cancelTitle")} description={t("lifecycle.cancelText")} confirmLabel={t("lifecycle.actions.cancel")} danger
+          busy={busy !== null} onClose={() => setDialog(null)} onConfirm={(reason) => void run("cancel", () => cancelCommercialOrder(order.id, reason))} />
+      )}
+      {dialog === "delete" && (
+        <div className={s.overlay}>
+          <div role="dialog" aria-modal="true" aria-label={t("delete.confirmTitle")} className={`${s.panel} ${s.dialog}`}>
+            <h2 style={{ margin: 0 }}>{t("delete.confirmTitle")}</h2>
+            <p className={s.muted}>{t("delete.confirmMessage")} {t("delete.itemsCount", { count: order.items.length })}</p>
+            <div className={s.actions}>
+              <button type="button" className={s.button} disabled={busy !== null} onClick={() => setDialog(null)}>{t("delete.cancel")}</button>
+              <button type="button" className={`${s.button} ${s.danger}`} disabled={busy !== null}
+                onClick={() => void run("delete", async () => { await deleteCommercialOrder(order.id); router.replace("/commercial-orders"); })}>
+                {busy === "delete" ? t("delete.deleting") : t("delete.confirm")}
               </button>
             </div>
           </div>
         </div>
-      ) : null}
-
-      <PageFrame
-        title={order?.order_number ?? t("detailTitle")}
-        subtitle={t("detailSubtitle")}
-        action={
-          <div style={styles.headerActions}>
-            {order ? (
-              <Link
-                href={`/commercial-orders/${orderId}/edit`}
-                style={sharedStyles.secondaryButton}
-              >
-                {common("actions.edit")}
-              </Link>
-            ) : null}
-            {order ? (
-              <button
-                type="button"
-                style={styles.deleteButton}
-                onClick={() => setShowDeleteConfirm(true)}
-              >
-                {common("actions.delete")}
-              </button>
-            ) : null}
-            <Link href="/commercial-orders" style={sharedStyles.secondaryButton}>
-              {t("backToList")}
-            </Link>
-          </div>
-        }
-      >
-        {isLoading ? (
-          <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>{messages("loading.default")}</div>
-        ) : null}
-
-        {!isLoading && isNotFound ? (
-          <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
-            <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("notFound")}</h2>
-            <p style={{ margin: "0 0 18px" }}>{t("notFoundDescription")}</p>
-            <Link href="/commercial-orders" style={sharedStyles.button}>
-              {t("returnToList")}
-            </Link>
-          </section>
-        ) : null}
-
-        {!isLoading && error ? (
-          <div style={sharedStyles.error} role="alert">
-            {error}
-          </div>
-        ) : null}
-
-        {!isLoading && !error && !isNotFound && order ? (
-          <div style={styles.sections}>
-            {order.status === "converted_to_production" ? (
-              <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
-                {t("productionConvertedNotice")}
-              </div>
-            ) : null}
-
-            <section style={styles.detailGrid} aria-label={t("detailsAria")}>
-              <DetailItem
-                label={t("fields.orderNumber")}
-                value={`${order.order_number} (${t("autoGeneratedNumber")})`}
-              />
-              <DetailItem
-                label={t("fields.status")}
-                value={<CommercialOrderStatusBadge status={order.status} />}
-              />
-              <DetailItem
-                label={t("fields.customer")}
-                value={
-                  <Link href={`/customers/${order.customer_id}`} style={{ color: "var(--accent-strong)" }}>
-                    {customerName ?? order.customer_id}
-                  </Link>
-                }
-              />
-              <DetailItem
-                label={t("fields.quote")}
-                value={
-                  order.quote_id ? (
-                    <Link href={`/quotes/${order.quote_id}`} style={{ color: "var(--accent-strong)" }}>
-                      {quoteNumber ?? order.quote_id}
-                    </Link>
-                  ) : null
-                }
-              />
-              <DetailItem label={t("fields.orderDate")} value={fmt.date(order.order_date)} />
-              <DetailItem
-                label={t("fields.requestedDelivery")}
-                value={
-                  order.requested_delivery_date
-                    ? fmt.date(order.requested_delivery_date)
-                    : null
-                }
-              />
-              <DetailItem label={t("fields.notes")} value={order.notes} />
-            </section>
-
-            <OrderItemsTable items={order.items} currency={quoteCurrency} />
-
-            <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
-              {order.quote_id
-                ? t("totalsInheritedNotice")
-                : t("noQuoteTotalsNotice")}
-            </section>
-          </div>
-        ) : null}
-      </PageFrame>
-    </>
+      )}
+    </PageFrame>
   );
 }
 
-function DetailItem({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number | null | ReactNode;
-}) {
-  return (
-    <div style={styles.detailItem}>
-      <p style={styles.detailLabel}>{label}</p>
-      <p style={styles.detailValue}>
-        {typeof value === "string" || typeof value === "number" || value === null
-          ? displayValue(value)
-          : value}
-      </p>
-    </div>
-  );
+function Item({ label, children }: { label: string; children: ReactNode }) {
+  return <div><dt className={s.muted}>{label}</dt><dd style={{ margin: "4px 0 0" }}>{children}</dd></div>;
 }

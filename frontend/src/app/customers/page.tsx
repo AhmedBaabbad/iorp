@@ -1,5 +1,7 @@
+import { Suspense } from "react";
+
 import { CustomersListPage } from "@/features/customers";
 
 export default function Page() {
-  return <CustomersListPage />;
+  return <Suspense><CustomersListPage /></Suspense>;
 }

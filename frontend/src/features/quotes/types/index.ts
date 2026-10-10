@@ -33,6 +33,9 @@ export type QuoteListItem = {
   valid_until: string;
   status: QuoteStatus;
   currency: string;
+  /** On a list page: the customer, read once for the page. */
+  customer_name?: string | null;
+  customer_code?: string | null;
   subtotal_amount: string;
   discount_amount: string;
   tax_amount: string;
@@ -42,7 +45,24 @@ export type QuoteListItem = {
   updated_at: string;
 };
 
+/** One step of a quotation's or a sales order's life (SALES-001). */
+export type StatusHistoryEntry = {
+  action: string;
+  from_status: string | null;
+  to_status: string;
+  revision: number;
+  reason: string | null;
+  actor_name: string | null;
+  created_at: string;
+};
+
+export type QuoteAction = "edit" | "issue" | "accept" | "reject" | "expire" | "revise" | "create_order";
+
 export type QuoteData = QuoteListItem & {
+  revision?: number;
+  allowed_actions?: QuoteAction[];
+  history?: StatusHistoryEntry[];
+  orders?: { id: string; order_number: string; status: string }[];
   notes: string | null;
   tax_rate?: string | null;
   attention?: string | null;
@@ -81,7 +101,6 @@ export type UpdateQuoteRequest = {
   sample_id?: string | null;
   issue_date?: string;
   valid_until?: string;
-  status?: QuoteStatus;
   currency?: string;
   discount_amount?: number;
   tax_rate?: number;
@@ -92,9 +111,12 @@ export type UpdateQuoteRequest = {
   items?: CreateQuoteItemRequest[];
 };
 
-export type QuoteTerm = { title_ar: string; title_en: string | null; body_ar: string; body_en: string | null; is_active: boolean };
+export type QuoteTerm = { title_ar: string | null; title_en: string | null; body_ar: string | null; body_en: string | null; is_active: boolean };
 
+export type DocumentLanguage = "ar" | "en";
 export type QuoteSettings = {
+  /** Every quotation is printed in this language, with the settings written in it (nothing from the other one). */
+  document_language: DocumentLanguage;
   signature_title_ar: string | null;
   signature_title_en: string | null;
   show_preparer_name: boolean;

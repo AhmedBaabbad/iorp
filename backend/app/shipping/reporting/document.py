@@ -12,6 +12,7 @@ from app.core.reporting.contracts import CommonParams, ReportData, ReportDefinit
 from app.core.reporting.registry import registry
 from app.core.reporting.service import template_roots
 from app.core.units import unit_label
+from app.core.interfaces.reference_lists import names as list_names
 from app.shipping.application.support import user_names
 from app.shipping.domain import permissions as P
 from app.shipping.domain import rules
@@ -46,7 +47,7 @@ def build(db, tenant, params, selected) -> ReportData:
     names = user_names(db, tenant.organization_id, [s.created_by_user_id])
     party = [(tr("العميل", "Customer"), s.customer_name), (tr("مرجع العميل / أمر الشراء", "Customer reference / PO"), s.customer_reference or "—"),
              (tr("المستلم", "Recipient"), s.consignee_name or s.customer_name), (tr("جوال المستلم", "Recipient phone"), s.consignee_phone or "—"),
-             (tr("المدينة", "City"), s.delivery_city or "—"), (tr("عنوان التسليم", "Delivery address"), s.delivery_address or "—")]
+             (tr("المدينة", "City"), list_names(db, tenant.organization_id, "city", [s.delivery_city], params.lang).get(s.delivery_city) or "—"), (tr("عنوان التسليم", "Delivery address"), s.delivery_address or "—")]
     if s.delivery_method == rules.CARRIER:
         transport = [(tr("شركة الشحن", "Carrier"), s.carrier_name or "—"), (tr("رقم البوليصة / التتبع", "Waybill / tracking no."), s.tracking_no or "—")]
     else:

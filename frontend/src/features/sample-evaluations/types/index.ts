@@ -17,6 +17,7 @@ export type SampleEvaluationListItem = {
   comments: string | null;
   next_action: SampleEvaluationNextAction;
   evaluated_by_user_id: string;
+  evaluated_by_name: string | null;
   created_at: string;
 };
 

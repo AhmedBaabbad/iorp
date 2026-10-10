@@ -161,11 +161,11 @@ def test_t08_organization_root_always_bypasses(scoped_env):
     assert scope == AccessScope.ORGANIZATION
 
 
-def test_t09_permission_not_granted_falls_back_to_organization(scoped_env):
+def test_t09_permission_not_granted_falls_back_to_own(scoped_env):
     from app.core.authorization.scope_resolver import resolve_effective_scope
     data = scoped_env
     scope = resolve_effective_scope(data["db"], data["owner"].id, data["org"].id, "commercial:orders:read", False)
-    assert scope == AccessScope.ORGANIZATION
+    assert scope == AccessScope.OWN
 
 
 # ── Own Scope -- Customer List ───────────────────────────────────────────────
@@ -174,7 +174,7 @@ def test_t10_t11_own_scope_customer_list_shows_only_own(client, scoped_env):
     data = scoped_env
     response = client.get("/api/v1/commercial/customers", headers=data["headers_owner"])
     assert response.status_code == 200
-    ids = {item["id"] for item in response.json()}
+    ids = {item["id"] for item in response.json()["items"]}
     assert ids == {str(data["customer_owner"].id)}
 
 
@@ -182,7 +182,7 @@ def test_t12_root_sees_all_customers(client, scoped_env):
     data = scoped_env
     response = client.get("/api/v1/commercial/customers", headers=data["headers_root"])
     assert response.status_code == 200
-    ids = {item["id"] for item in response.json()}
+    ids = {item["id"] for item in response.json()["items"]}
     assert {str(data["customer_owner"].id), str(data["customer_other"].id)} <= ids
 
 
@@ -190,7 +190,7 @@ def test_t13_organization_scope_sees_all_customers(client, scoped_env):
     data = scoped_env
     response = client.get("/api/v1/commercial/customers", headers=data["headers_org_wide"])
     assert response.status_code == 200
-    ids = {item["id"] for item in response.json()}
+    ids = {item["id"] for item in response.json()["items"]}
     assert {str(data["customer_owner"].id), str(data["customer_other"].id)} <= ids
 
 
@@ -275,7 +275,7 @@ def test_t20_root_sees_all_follow_ups(client, scoped_env):
 
 # ── Team Scope (Fail-Open) ────────────────────────────────────────────────────
 
-def test_t21_team_scope_falls_open_to_organization(scoped_env, caplog):
+def test_t21_team_scope_is_restricted_to_own(scoped_env, caplog):
     data = scoped_env
     permission = data["permissions"]["commercial:customers:read"]
     rp = data["db"].scalar(select(RolePermission).where(RolePermission.role_id == data["role_own"].id, RolePermission.permission_id == permission.id))
@@ -294,7 +294,7 @@ def test_t21_team_scope_falls_open_to_organization(scoped_env, caplog):
     with caplog.at_level("WARNING"):
         filtered = policy.apply_query_filter(ctx, query, owner_field="sales_owner_user_id")
         results = list(data["db"].scalars(filtered))
-    assert len(results) == 2  # not narrowed -- fails open
+    assert [c.id for c in results] == [data["customer_owner"].id]
 
 
 def test_t22_team_scope_logs_warning(scoped_env, caplog):
@@ -331,20 +331,12 @@ def test_t24_own_scope_can_update_own_customer(client, scoped_env):
     assert response.status_code == 200
 
 
-def test_t25_write_permission_ignores_scope_value(client, scoped_env):
-    """Per Rule #1 ("scope applies to READ only") and this section's own
-    "Write Operations Not Scoped" heading: a scope="own" grant on
-    customers:update does not restrict which customer can be updated -- that
-    remains purely permission-based, unchanged from pre-v0.2 behavior. (The
-    task's own T25 line text ["cannot update other's -> 403 or 404"]
-    contradicts Rule #1 and the section heading; the rule is authoritative.)
-    """
+def test_t25_write_permission_cannot_bypass_read_scope(client, scoped_env):
     data = scoped_env
-    response = client.patch(
-        f"/api/v1/commercial/customers/{data['customer_other'].id}", headers=data["headers_owner"],
-        json={"name": "Renamed By Non-Owner"},
-    )
-    assert response.status_code == 200
+    response = client.patch(f"/api/v1/commercial/customers/{data['customer_other'].id}", headers=data["headers_owner"], json={"name": "Forbidden edit"})
+    assert response.status_code == 404
+    data["db"].refresh(data["customer_other"])
+    assert data["customer_other"].name != "Forbidden edit"
 
 
 # ── System Role Scopes ────────────────────────────────────────────────────────
@@ -440,14 +432,24 @@ def test_t39_every_scopable_permission_owner_field_is_a_real_column():
     from app.commercial.infrastructure.models import FollowUp as FollowUpModel
     from app.commercial.infrastructure.models import CustomerInteraction
 
+    from app.commercial.infrastructure.models import CommercialOrder, Quote, Sample
+
     model_by_prefix = {
         "commercial:customers:": CustomerModel,
         "commercial:follow_ups:": FollowUpModel,
         "commercial:interactions:": CustomerInteraction,
+        # RBAC-002: a quotation, order or sample is owned through its customer ("customer.sales_owner_user_id").
+        "commercial:quotes:": Quote,
+        "commercial:orders:": CommercialOrder,
+        "commercial:samples:": Sample,
     }
     for code, owner_field in SCOPABLE_PERMISSIONS.items():
         model = next(model for prefix, model in model_by_prefix.items() if code.startswith(prefix))
-        assert hasattr(model, owner_field), f"{code} -> {owner_field} not on {model}"
+        if "." in owner_field:
+            relation, column = owner_field.split(".")
+            assert hasattr(model, f"{relation}_id") and hasattr(CustomerModel, column), f"{code} -> {owner_field}"
+        else:
+            assert hasattr(model, owner_field), f"{code} -> {owner_field} not on {model}"
 
 
 # ── Count Queries ──────────────────────────────────────────────────────────────
@@ -488,7 +490,7 @@ def test_t45_t46_scope_is_additive_to_organization_filter(client, db, scoped_env
     db.commit()
 
     response = client.get("/api/v1/commercial/customers", headers=data["headers_owner"])
-    ids = {item["id"] for item in response.json()}
+    ids = {item["id"] for item in response.json()["items"]}
     assert str(customer_b.id) not in ids
 
     detail = client.get(f"/api/v1/commercial/customers/{customer_b.id}", headers=data["headers_owner"])

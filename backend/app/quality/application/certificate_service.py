@@ -86,7 +86,9 @@ class CertificateService:
         for c in certificates:
             view = dict(prepared_by_name=names.get(c.prepared_by_user_id), issued_by_name=names.get(c.issued_by_user_id),
                         revoked_by_name=names.get(c.revoked_by_user_id), supersedes_no=numbers.get(c.supersedes_id),
-                        superseded_by_no=replaced_by.get(c.id), actions=rules.actions(c.status, can))
+                        superseded_by_no=replaced_by.get(c.id),
+                        # A replacement's issue also revokes the original (RBAC-002).
+                        actions=rules.actions(c.status, (lambda a, c=c: can(a) and (a != "issue" or not c.supersedes_id or can("revoke")))))
             if detail:
                 view["history"] = history(self.db, self.org, "certificate", c.id)
             out.append(view)

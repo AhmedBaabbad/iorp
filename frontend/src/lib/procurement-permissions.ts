@@ -18,4 +18,11 @@ export const PR = {
   RECEIPTS_RECEIVE: code("receipts", "receive"),
   RECEIPTS_CANCEL: code("receipts", "cancel"),
   SETTINGS_UPDATE: code("settings", "update"),
+  PO_READ: code("purchase_orders", "read"),
+  PO_CREATE: code("purchase_orders", "create"),
+  PO_UPDATE: code("purchase_orders", "update"),
+  PO_APPROVE: code("purchase_orders", "approve"),
+  PO_CANCEL: code("purchase_orders", "cancel"),
+  PO_SEND: code("purchase_orders", "send"),
+  PO_CLOSE: code("purchase_orders", "close"),
 } as const;

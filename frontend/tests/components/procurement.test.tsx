@@ -42,6 +42,7 @@ const material: Material = { id: "m1", material_code: "MAT-0001", name: "PP homo
   spec_product_type: "pp_resin", active: true, notes: null };
 const receipt = (over: Partial<Receipt> = {}): Receipt => ({ id: "r1", receipt_no: "GRN-2026-0001", status: "draft", receipt_date: "2026-10-05", supplier_id: "s1",
   supplier_name: "Gulf Polymers", supplier_status: "approved", supplier_delivery_no: "DN-GP-4471", supplier_invoice_no: null, purchase_reference: null,
+  purchase_order_id: null, po_number: null,
   quantities: [{ unit: "kg", quantity: "20000.000" }], weight_kg: null, inspection_lines: 1, lots_pending: 0, actions: ["edit", "receive", "cancel"], created_at: "",
   vehicle_plate: null, driver_name: null, notes: null, received_at: null, received_by_name: null, created_by_name: "Sara", cancel_reason: null,
   lines: [{ id: "l1", line_no: 1, material_id: "m1", description: "PP homopolymer H030", supplier_lot: "SUP-7781", quantity: "20000.000", unit: "kg",

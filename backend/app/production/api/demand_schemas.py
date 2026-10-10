@@ -46,6 +46,42 @@ class CreateDemandRequest(DemandInput):
     items: list[CreateDemandItemRequest] = Field(default_factory=list)
 
 
+class SalesOrderLineTransfer(DemandInput):
+    order_item_id: UUID
+    quantity: Decimal = Field(gt=0, max_digits=15, decimal_places=3)
+    notes: str | None = None
+
+
+class DemandFromSalesOrderRequest(DemandInput):
+    """Part (or all) of a confirmed sales order's lines (SALES-001). transfer_key, set once per form by the screen,
+    makes a repeated request return the same demand."""
+    sales_order_id: UUID
+    lines: list[SalesOrderLineTransfer] = Field(min_length=1)
+    transfer_key: UUID | None = None
+    requested_delivery_date: date | None = None
+    priority: ProductionDemandPriority = ProductionDemandPriority.NORMAL
+    notes: str | None = None
+
+
+class SalesOrderLookupLine(BaseModel):
+    id: UUID
+    line_no: int
+    product_type: str
+    target_spec_json: dict[str, Any] | None
+    unit: str
+    ordered_quantity: Decimal
+    transferred_quantity: Decimal
+    remaining_quantity: Decimal
+
+
+class SalesOrderLookup(BaseModel):
+    id: UUID
+    number: str
+    quote_id: UUID | None
+    requested_delivery_date: ISODatetime | None
+    lines: list[SalesOrderLookupLine]
+
+
 class UpdateDemandRequest(DemandInput):
     customer_id: UUID | None = None
     quote_id: UUID | None = None
@@ -78,6 +114,7 @@ class DemandItemAllocationResponse(BaseModel):
 
 
 class DemandItemResponse(CreateDemandItemRequest):
+    source_order_item_id: UUID | None = None
     # allocated_quantity is kept as an alias of active_allocated_quantity for existing clients.
     allocated_quantity: Decimal
     active_allocated_quantity: Decimal
@@ -102,7 +139,13 @@ class QuoteSummaryResponse(BaseModel):
     status: str
 
 
+class SalesOrderSummaryResponse(BaseModel):
+    id: UUID
+    number: str | None
+
+
 class DemandResponse(BaseModel):
+    sales_order: SalesOrderSummaryResponse | None = None
     total_required: Decimal
     total_allocated: Decimal
     total_active_allocated: Decimal

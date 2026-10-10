@@ -22,6 +22,7 @@ import { ProductionOrderPriorityBadge } from "./ProductionOrderPriorityBadge";
 import { ProductionOrderStatusBadge } from "./ProductionOrderStatusBadge";
 import { usePermission } from "@/features/auth/permission-hooks";
 import { P } from "@/lib/production-permissions";
+import { useProductName } from "@/features/masterdata";
 
 type WorkCenterOption = {
   id: string;
@@ -88,6 +89,7 @@ export function ProductionOrdersList() {
   const common = useTranslations("common");
   const enums = useTranslations();
   const messages = useTranslations("messages");
+  const productName = useProductName();  // MD-001: the product's name, not its key
   const fmt = useFormatter();
   const [orders, setOrders] = useState<ProductionOrderListItem[]>([]);
   const [workCenters, setWorkCenters] = useState<WorkCenterOption[]>([]);
@@ -264,7 +266,7 @@ export function ProductionOrdersList() {
                         {order.production_order_number}
                       </Link>
                     </td>
-                    <td style={styles.td}>{order.product_type}</td>
+                    <td style={styles.td}>{productName(order.product_type)}</td>
                     <td style={styles.td}>
                       {fmt.quantity(order.planned_quantity, order.unit)}
                     </td>

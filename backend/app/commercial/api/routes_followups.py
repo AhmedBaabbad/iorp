@@ -242,7 +242,7 @@ def complete_follow_up(
 @router.post(
     "/{follow_up_id}/reopen",
     response_model=FollowUpRead,
-    dependencies=[Depends(require_permission("commercial:follow_ups:update"))],
+    dependencies=[Depends(require_permission("commercial:follow_ups:reopen"))],
 )
 def reopen_follow_up(
     follow_up_id: UUID,
@@ -262,7 +262,7 @@ def reopen_follow_up(
 @router.post(
     "/{follow_up_id}/cancel",
     response_model=FollowUpRead,
-    dependencies=[Depends(require_permission("commercial:follow_ups:update"))],
+    dependencies=[Depends(require_permission("commercial:follow_ups:cancel"))],
 )
 def cancel_follow_up(
     follow_up_id: UUID,

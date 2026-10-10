@@ -22,6 +22,14 @@ class ProfileParams(CustomerParams):
     customer_id: UUID = Field(json_schema_extra={'lookup': 'customers', 'title_ar': 'العميل', 'title_en': 'Customer'})
 
 
+class SamplesParams(CustomerParams):
+    audience: Literal['internal'] = 'internal'
+    orientation: Literal['portrait', 'landscape'] = 'landscape'
+    product: str | None = Field(None, max_length=120, json_schema_extra={'lookup': 'sample_products', 'title_ar': 'المنتج', 'title_en': 'Product'})
+    sample_status: Literal['requested', 'in_preparation', 'delivered', 'evaluated', 'cancelled'] | None = Field(None, json_schema_extra={'title_ar': 'حالة العينة', 'title_en': 'Sample status'})
+    sample_decision: Literal['pending', 'accepted', 'rejected'] | None = Field(None, json_schema_extra={'title_ar': 'قرار العينة', 'title_en': 'Sample decision'})
+
+
 class DirectoryParams(CustomerParams):
     audience: Literal['internal'] = 'internal'
     orientation: Literal['portrait', 'landscape'] = 'landscape'

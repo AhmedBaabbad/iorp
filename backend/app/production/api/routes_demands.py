@@ -1,16 +1,16 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
-from app.dependencies import get_current_tenant, get_db, get_customer_lookup, get_quote_lookup, require_permission, require_any_permission
+from app.dependencies import get_current_tenant, get_db, get_customer_lookup, get_quote_lookup, require_permission, require_any_permission, permission_check
 from app.production.domain import permissions as P
 from app.production.domain.enums import ProductionDemandStatus
 from app.production.api.demand_schemas import (
-    CreateDemandRequest, UpdateDemandRequest, CreateDemandItemRequest, UpdateDemandItemRequest,
+    CreateDemandRequest, DemandFromSalesOrderRequest, UpdateDemandRequest, CreateDemandItemRequest, UpdateDemandItemRequest,
     DemandResponse, DemandDetailResponse, DemandItemResponse, PaginatedDemandList,
-    PaginatedPlanningList, DemandStatusRequest, ReorderRequest, PlanningFilters,
+    PaginatedPlanningList, DemandStatusRequest, ReorderRequest, PlanningFilters, SalesOrderLookup,
 )
 from app.production.application.demand_service import ProductionDemandService, DemandError
 
@@ -59,6 +59,17 @@ def quotes(customer_id: UUID, svc=Depends(service)):
 @router.get("/demand-lookups/quotes/{quote_id}/items", response_model=list[CreateDemandItemRequest], dependencies=[Depends(require_any_permission([P.DEMANDS_CREATE, P.DEMANDS_UPDATE]))])
 def quote_items(quote_id: UUID, customer_id: UUID, svc=Depends(service)):
     return svc.quote_items(customer_id, quote_id)
+
+
+@router.get("/demand-lookups/sales-orders", response_model=list[SalesOrderLookup], dependencies=[lookup_access])
+def sales_orders(customer_id: UUID, svc=Depends(service)):
+    """The customer's confirmed sales orders that still have quantities for production, line by line."""
+    return svc.sales_orders(customer_id)
+
+
+@router.post("/demands/from-sales-order", response_model=DemandResponse, status_code=201, dependencies=[allowed("create")])
+def create_from_sales_order(payload: DemandFromSalesOrderRequest, svc=Depends(service)):
+    return svc.response(svc.create_from_sales_order(payload))
 
 
 @router.post("/demands", response_model=DemandResponse, status_code=201, dependencies=[allowed("create")])
@@ -110,8 +121,10 @@ def import_items(demand_id: UUID, svc=Depends(service)):
     return {"imported_count": len(items), "items": [DemandItemResponse.model_validate(i) for i in items]}
 
 
-@router.post("/demands/{demand_id}/status", response_model=DemandResponse, dependencies=[allowed("update")])
-def change_status(demand_id: UUID, payload: DemandStatusRequest, svc=Depends(service)):
+@router.post("/demands/{demand_id}/status", response_model=DemandResponse, dependencies=[Depends(require_any_permission([P.DEMANDS_RELEASE,P.DEMANDS_CANCEL]))])
+def change_status(demand_id: UUID, payload: DemandStatusRequest, svc=Depends(service), can=Depends(permission_check)):
+    required=P.DEMANDS_CANCEL if payload.status == 'cancelled' else P.DEMANDS_RELEASE
+    if not can(required): raise HTTPException(403, 'Missing demand transition permission.')
     return svc.response(svc.update_status(demand_id, payload.status))
 
 

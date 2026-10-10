@@ -86,3 +86,20 @@ test("every background/text pair used in the code is readable in every theme", a
   }
   assert.deepEqual([...new Set(failures)], []);
 });
+
+// DASH-002: the blue sidebar keeps its labels readable at both ends of its gradient, in every theme.
+for (const [name, t] of Object.entries(THEMES)) {
+  test(`${name}: the sidebar's text is readable`, () => {
+    const failures = [];
+    const strict = name === "contrast";
+    for (const bg of ["sidebar-bg", "sidebar-bg-end"]) {
+      for (const [fg, min] of [["sidebar-text", strict ? 15 : 7], ["sidebar-muted", strict ? 15 : 4.5]]) {
+        const r = ratio(t[fg], t[bg]);
+        if (r < min) failures.push(`${fg} on ${bg}: ${r.toFixed(2)} < ${min}`);
+      }
+    }
+    const active = ratio(t["sidebar-active-text"], t["sidebar-active"]);
+    if (active < (strict ? 15 : 7)) failures.push(`sidebar-active-text on sidebar-active: ${active.toFixed(2)}`);
+    assert.deepEqual(failures, []);
+  });
+}

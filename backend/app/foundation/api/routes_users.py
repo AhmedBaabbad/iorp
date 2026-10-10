@@ -316,7 +316,7 @@ def get_user_deactivation_impact(
 @router.delete("/users/{user_id}", status_code=status.HTTP_200_OK, response_model=UserDetailResponse)
 def delete_user(
     user_id: UUID,
-    current: CurrentUserContext = Depends(require_permission("foundation:users:deactivate")),
+    current: CurrentUserContext = Depends(require_permission("foundation:users:delete")),
     db: Session = Depends(get_db),
     follow_up_queries: FollowUpQueryInterface = Depends(get_follow_up_queries),
     customer_queries: CustomerQueryInterface = Depends(get_customer_queries),

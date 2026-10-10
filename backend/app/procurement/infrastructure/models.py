@@ -13,10 +13,14 @@ from app.core.utils import TZDateTime, utc_now
 
 
 class ProcurementSettings(Base):
-    """Per organization: the goods receipt number prefix."""
+    """Per organization: the goods receipt and purchase order number prefixes, and the general terms printed on every
+    purchase order (one term per line, in each language)."""
     __tablename__ = "procurement_settings"
     organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), primary_key=True)
     receipt_prefix: Mapped[str] = mapped_column(String(20), nullable=False, default="GRN-")
+    po_prefix: Mapped[str] = mapped_column(String(20), nullable=False, default="PO-")
+    po_terms_ar: Mapped[str | None] = mapped_column(Text, nullable=True)
+    po_terms_en: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now, onupdate=utc_now)
 
 
@@ -91,7 +95,9 @@ class GoodsReceipt(Base):
     supplier_name: Mapped[str] = mapped_column(String(255), nullable=False)  # as printed
     supplier_delivery_no: Mapped[str | None] = mapped_column(String(80), nullable=True)
     supplier_invoice_no: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    purchase_reference: Mapped[str | None] = mapped_column(String(80), nullable=True)  # the purchase order, until it is managed here
+    purchase_reference: Mapped[str | None] = mapped_column(String(80), nullable=True)  # a purchase order outside the system
+    # PROC-003: the purchase order it delivers against (same supplier); its lines name the order's lines.
+    purchase_order_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("procurement_purchase_orders.id"), nullable=True, index=True)
     vehicle_plate: Mapped[str | None] = mapped_column(String(40), nullable=True)
     driver_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -122,7 +128,66 @@ class GoodsReceiptLine(Base):
     weight_unit: Mapped[str] = mapped_column(String(8), nullable=False, default="kg")
     inspection_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    po_line_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("procurement_purchase_order_lines.id"), nullable=True, index=True)
     receipt: Mapped[GoodsReceipt] = relationship(back_populates="lines")
+
+
+class PurchaseOrder(Base):
+    """An order to a supplier (PROC-003): what is bought, at what price, in which currency, with or without VAT, when and
+    where it is delivered and how it is paid. Amounts are computed by the server from the lines."""
+    __tablename__ = "procurement_purchase_orders"
+    __table_args__ = (UniqueConstraint("organization_id", "po_number", name="uq_procurement_purchase_orders_no"),
+                      Index("ix_procurement_purchase_orders_org_status", "organization_id", "status"))
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False, index=True)
+    po_number: Mapped[str] = mapped_column(String(40), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
+    order_date: Mapped[date] = mapped_column(nullable=False, index=True)
+    required_date: Mapped[date | None] = mapped_column(nullable=True)
+    supplier_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("procurement_suppliers.id"), nullable=False, index=True)
+    supplier_name: Mapped[str] = mapped_column(String(255), nullable=False)  # as printed
+    attention: Mapped[str | None] = mapped_column(String(200), nullable=True)  # the supplier's contact
+    supplier_quote_ref: Mapped[str | None] = mapped_column(String(80), nullable=True)  # the supplier's quotation it accepts
+    subject: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="SAR")
+    tax_rate: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=Decimal("15"))
+    subtotal_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0"))
+    discount_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0"))
+    tax_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0"))
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0"))
+    payment_terms: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    payment_terms_note: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    incoterm: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    delivery_place: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    approved_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    sent_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    close_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now, onupdate=utc_now)
+    lines: Mapped[list["PurchaseOrderLine"]] = relationship(back_populates="order", cascade="all, delete-orphan", order_by="PurchaseOrderLine.line_no")
+
+
+class PurchaseOrderLine(Base):
+    """What is ordered: a material (or a described item or service), its quantity in a unit of the catalogue and its price."""
+    __tablename__ = "procurement_purchase_order_lines"
+    __table_args__ = (UniqueConstraint("order_id", "line_no", name="uq_procurement_purchase_order_lines_no"),)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("procurement_purchase_orders.id", ondelete="CASCADE"), nullable=False, index=True)
+    line_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    material_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("procurement_materials.id"), nullable=True, index=True)
+    description: Mapped[str] = mapped_column(String(500), nullable=False)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)  # specification, brand, grade…
+    quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False)
+    unit: Mapped[str] = mapped_column(String(32), nullable=False)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(14, 4), nullable=False)
+    line_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    order: Mapped[PurchaseOrder] = relationship(back_populates="lines")
 
 
 class ProcurementEvent(Base):
@@ -131,11 +196,11 @@ class ProcurementEvent(Base):
     __table_args__ = (Index("ix_procurement_events_entity", "organization_id", "entity_type", "entity_id"),)
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False)
-    entity_type: Mapped[str] = mapped_column(String(16), nullable=False)  # supplier | receipt
+    entity_type: Mapped[str] = mapped_column(String(16), nullable=False)  # supplier | receipt | purchase_order
     entity_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     action: Mapped[str] = mapped_column(String(32), nullable=False)
-    from_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    to_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    from_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    to_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id", ondelete="SET NULL"), nullable=True)
     occurred_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)

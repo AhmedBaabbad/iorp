@@ -140,7 +140,7 @@ def test_t11_customer_endpoint_returns_all_organization_records(
     _grant_permissions(db, test_org.id, test_user.id, "commercial:customers:read")
     response = client.get("/api/v1/commercial/customers", headers=_login(client))
     assert response.status_code == 200
-    assert {item["customer_code"] for item in response.json()} == {"CUST-A", "CUST-B"}
+    assert {item["customer_code"] for item in response.json()["items"]} == {"CUST-A", "CUST-B"}
 
 
 def test_t12_follow_up_endpoint_returns_all_organization_records(
@@ -190,7 +190,7 @@ def test_t14_organization_root_still_has_full_endpoint_access(client, db, test_o
     db.commit()
     response = client.get("/api/v1/commercial/customers", headers=_login(client))
     assert response.status_code == 200
-    assert [item["customer_code"] for item in response.json()] == ["CUST-ROOT"]
+    assert [item["customer_code"] for item in response.json()["items"]] == ["CUST-ROOT"]
 
 
 def test_t15_non_root_with_read_permission_still_sees_all_endpoint_records(
@@ -205,7 +205,7 @@ def test_t15_non_root_with_read_permission_still_sees_all_endpoint_records(
     _grant_permissions(db, test_org.id, test_user.id, "commercial:customers:read")
     response = client.get("/api/v1/commercial/customers", headers=_login(client))
     assert response.status_code == 200
-    assert {item["customer_code"] for item in response.json()} == {"CUST-ONE", "CUST-OTHER"}
+    assert {item["customer_code"] for item in response.json()["items"]} == {"CUST-ONE", "CUST-OTHER"}
 
 
 def test_t16_example_policy_is_not_imported_by_production_code():

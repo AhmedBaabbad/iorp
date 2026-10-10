@@ -3,7 +3,7 @@ import { CUSTOMER_REPORTS } from "@/features/reports/customer-permissions";
 
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -12,13 +12,18 @@ import { useCapaAlerts } from "@/features/ncr-reports/use-capa-alerts";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { API_BASE_URL } from "@/lib/api-client";
+import side from "./sidebar.module.css";
+import { MENU_ICONS } from "./menu-icons";
 import {
   IconAlertTriangle,
+  IconChevron,
+  IconChevronUp,
   IconClipboardCheck,
   IconFactory,
   IconGrid,
   IconIdCard,
   IconKey,
+  IconLayers,
   IconLogOut,
   IconMenu,
   IconShield,
@@ -29,10 +34,12 @@ import {
   IconUsers,
   IconX,
 } from "./nav-icons";
+import { DEPARTMENTS } from "@/features/dashboard/departments";
 import { P, PRODUCTION_REPORTS } from "@/lib/production-permissions";
 import { Q, QUALITY_REPORTS } from "@/lib/quality-permissions";
 import { S } from "@/lib/shipping-permissions";
 import { PR } from "@/lib/procurement-permissions";
+import { MD } from "@/lib/masterdata-permissions";
 
 type PageFrameProps = {
   title: string;
@@ -65,170 +72,9 @@ const styles: Record<string, CSSProperties> = {
     display: "flex",
     flexDirection: "column",
   },
-  brand: {
-    alignItems: "center",
-    display: "flex",
-    gap: "10px",
-    padding: "18px 16px",
-    borderBottom: "1px solid var(--border)",
-  },
-  brandMark: {
-    alignItems: "center",
-    background: "var(--text)",
-    borderRadius: "8px",
-    color: "var(--surface)",
-    display: "flex",
-    flexShrink: 0,
-    fontSize: "14px",
-    fontWeight: 800,
-    height: "34px",
-    justifyContent: "center",
-    overflow: "hidden",
-    width: "34px",
-  },
-  brandMarkImage: {
-    height: "100%",
-    objectFit: "cover",
-    width: "100%",
-  },
-  brandText: {
-    minWidth: 0,
-  },
-  brandName: {
-    fontSize: "15px",
-    fontWeight: 800,
-    margin: 0,
-    whiteSpace: "nowrap",
-  },
-  brandOrg: {
-    color: "var(--text-muted)",
-    fontSize: "12px",
-    margin: 0,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
-  navSection: {
-    marginBottom: "6px",
-  },
-  navSectionHeader: {
-    alignItems: "center",
-    color: "var(--text-subtle)",
-    display: "flex",
-    fontSize: "11px",
-    fontWeight: 800,
-    gap: "8px",
-    letterSpacing: "0.06em",
-    padding: "10px 10px 6px",
-    textTransform: "uppercase",
-  },
-  navLink: {
-    alignItems: "center",
-    borderRadius: "8px",
-    color: "var(--text-muted)",
-    display: "flex",
-    fontSize: "13.5px",
-    fontWeight: 600,
-    gap: "10px",
-    margin: "1px 0",
-    padding: "9px 10px",
-    textDecoration: "none",
-  },
-  navLinkActive: {
-    background: "var(--accent-soft)",
-    color: "var(--accent-strong)",
-  },
-  navBadge: {
-    background: "var(--danger)",
-    borderRadius: "999px",
-    color: "var(--on-accent)",
-    fontSize: "11px",
-    fontWeight: 700,
-    lineHeight: "18px",
-    marginInlineStart: "auto",
-    minWidth: "18px",
-    padding: "0 6px",
-    textAlign: "center",
-  },
-  navBullet: {
-    background: "currentColor",
-    borderRadius: "999px",
-    flexShrink: 0,
-    height: "5px",
-    opacity: 0.55,
-    width: "5px",
-  },
-  navDashboardLink: {
-    alignItems: "center",
-    borderRadius: "8px",
-    color: "var(--text)",
-    display: "flex",
-    fontSize: "14px",
-    fontWeight: 800,
-    gap: "10px",
-    margin: "8px 0 10px",
-    padding: "9px 10px",
-    textDecoration: "none",
-  },
-  sidebarFooter: {
-    borderTop: "1px solid var(--border)",
-    display: "grid",
-    gap: "10px",
-    padding: "14px 16px",
-  },
-  userRow: {
-    alignItems: "center",
-    display: "flex",
-    gap: "10px",
-  },
-  avatar: {
-    alignItems: "center",
-    background: "var(--accent-soft)",
-    borderRadius: "999px",
-    color: "var(--accent-strong)",
-    display: "flex",
-    flexShrink: 0,
-    fontSize: "13px",
-    fontWeight: 800,
-    height: "32px",
-    justifyContent: "center",
-    width: "32px",
-  },
-  userDetails: {
-    minWidth: 0,
-  },
-  userName: {
-    fontSize: "13px",
-    fontWeight: 700,
-    margin: 0,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
-  userRole: {
-    color: "var(--text-subtle)",
-    fontSize: "11.5px",
-    margin: 0,
-    textTransform: "capitalize",
-  },
-  logoutButton: {
-    alignItems: "center",
-    background: "none",
-    border: "1px solid var(--border)",
-    borderRadius: "8px",
-    color: "var(--text-muted)",
-    cursor: "pointer",
-    display: "flex",
-    fontSize: "13px",
-    fontWeight: 700,
-    gap: "8px",
-    justifyContent: "center",
-    padding: "8px 10px",
-  },
   page: {
     color: "var(--text)",
-    fontFamily:
-      'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    fontFamily: "inherit",
     padding: "24px 32px 40px",
   },
   contentTop: {
@@ -274,11 +120,15 @@ const styles: Record<string, CSSProperties> = {
   },
 };
 
+// Which sections of the sidebar the user folded or unfolded (kept in this browser only).
+const SIDEBAR_GROUPS_KEY = "iorp.sidebar.groups";
+
 const staticNavGroups: StaticNavGroup[] = [
   {
     labelKey: "sections.commercial",
     icon: IconUsers,
     links: [
+      { href: "/commercial-dashboard", labelKey: "links.commercialDashboard", anyPermissions: [...DEPARTMENTS.find(d => d.key === "commercial")!.permissions] },
       { href: "/customer-reports", labelKey: "links.customerReports", anyPermissions: CUSTOMER_REPORTS },
       { href: "/customers", labelKey: "links.customers", permission: "commercial:customers:read" },
       { href: "/customer-interactions", labelKey: "links.customerInteractions", permission: "commercial:interactions:read" },
@@ -299,6 +149,8 @@ const staticNavGroups: StaticNavGroup[] = [
     labelKey: "sections.production",
     icon: IconFactory,
     links: [
+      // DASH-001: the section opens on its own dashboard.
+      { href: "/production", labelKey: "links.productionDashboard", anyPermissions: [P.ORDERS_READ, P.RESULTS_READ, P.DOWNTIME_READ, P.DEMANDS_READ] },
       { href: "/work-centers", labelKey: "links.workCenters", permission: P.WORK_CENTERS_READ },
       { href: "/shifts", labelKey: "links.shifts", permission: P.SHIFTS_READ },
       { href: "/shift-rosters", labelKey: "links.shiftRosters", permission: P.ROSTERS_READ },
@@ -316,6 +168,7 @@ const staticNavGroups: StaticNavGroup[] = [
     labelKey: "sections.quality",
     icon: IconClipboardCheck,
     links: [
+      { href: "/quality-dashboard", labelKey: "links.qualityDashboard", anyPermissions: [...DEPARTMENTS.find(d => d.key === "quality")!.permissions] },
       { href: "/quality-checks", labelKey: "links.qualityChecks", permission: Q.CHECKS_READ },
       { href: "/quality-rejections", labelKey: "links.qualityRejections", permission: Q.REJECTIONS_READ },
       { href: "/quality-returns", labelKey: "links.qualityReturns", permission: Q.CHECKS_READ },
@@ -330,6 +183,7 @@ const staticNavGroups: StaticNavGroup[] = [
     labelKey: "sections.shipping",
     icon: IconTruck,
     links: [
+      { href: "/shipping-dashboard", labelKey: "links.shippingDashboard", anyPermissions: [...DEPARTMENTS.find(d => d.key === "shipping")!.permissions] },
       { href: "/shipments", labelKey: "links.shipments", permission: S.SHIPMENTS_READ },
       { href: "/shipment-returns", labelKey: "links.shipmentReturns", permission: S.RETURNS_READ },
     ],
@@ -338,9 +192,21 @@ const staticNavGroups: StaticNavGroup[] = [
     labelKey: "sections.procurement",
     icon: IconPackage,
     links: [
+      { href: "/procurement-dashboard", labelKey: "links.procurementDashboard", anyPermissions: [...DEPARTMENTS.find(d => d.key === "procurement")!.permissions] },
       { href: "/suppliers", labelKey: "links.suppliers", permission: PR.SUPPLIERS_READ },
       { href: "/materials", labelKey: "links.materials", permission: PR.MATERIALS_READ },
+      { href: "/purchase-orders", labelKey: "links.purchaseOrders", permission: PR.PO_READ },
       { href: "/goods-receipts", labelKey: "links.goodsReceipts", permission: PR.RECEIPTS_READ },
+    ],
+  },
+  {
+    // MD-001: the organization's products and general settings, used by every module (owned by master data).
+    labelKey: "sections.masterData",
+    icon: IconLayers,
+    links: [
+      { href: "/master-data/products", labelKey: "links.products", permission: MD.PRODUCTS_READ },
+      { href: "/master-data/lists", labelKey: "links.referenceLists", permission: MD.LISTS_READ },
+      { href: "/master-data/settings", labelKey: "links.generalSettings", permission: MD.SETTINGS_READ },
     ],
   },
   {
@@ -407,9 +273,38 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
     "foundation:permissions:read",
   ]);
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const footerRef = useRef<HTMLDivElement>(null);
+
+  // Read after the first render, so the server's page and the browser's match.
+  useEffect(() => {
+    try { setOpenGroups(JSON.parse(window.localStorage.getItem(SIDEBAR_GROUPS_KEY) ?? "{}")); } catch { /* nothing remembered */ }
+  }, []);
+
+  // The user's menu closes with Escape or a click elsewhere.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (event: MouseEvent | KeyboardEvent) => {
+      if (event instanceof KeyboardEvent ? event.key === "Escape" : !footerRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", close); };
+  }, [menuOpen]);
+
   useEffect(() => {
     setMobileOpen(false);
+    setMenuOpen(false);
   }, [pathname]);
+
+  function toggleGroup(key: string, open: boolean) {
+    setOpenGroups((current) => {
+      const next = { ...current, [key]: open };
+      try { window.localStorage.setItem(SIDEBAR_GROUPS_KEY, JSON.stringify(next)); } catch { /* private mode: just this visit */ }
+      return next;
+    });
+  }
   const capaAlerts = useCapaAlerts(hasPermission(Q.NCR_ACTIONS_READ) || hasPermission(Q.NCR_READ));
   const badges: Record<string, number> = { capa: capaAlerts?.total ?? 0 };
 
@@ -475,87 +370,79 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
           style={styles.sidebar}
           aria-label={t("dashboard")}
         >
-          <div style={styles.brand}>
-            <span style={styles.brandMark}>
-              {logoSrc ? (
-                <img src={logoSrc} alt="" style={styles.brandMarkImage} />
-              ) : (
-                (user?.organization_name ?? "?").slice(0, 1).toUpperCase()
-              )}
+          <div className={side.brand}>
+            <span className={side.mark}>
+              {logoSrc ? <img src={logoSrc} alt="" /> : (user?.organization_name ?? "?").slice(0, 1).toUpperCase()}
             </span>
-            <span className="iorp-brand-text" style={styles.brandText}>
-              <p style={styles.brandName}>{t("appName")}</p>
-              <p style={styles.brandOrg}>{user?.organization_name ?? ""}</p>
+            <span className={`iorp-brand-text ${side.brandText}`}>
+              <p className={side.appName}>{t("appName")}</p>
+              <p className={side.orgName}>{user?.organization_name ?? ""}</p>
             </span>
           </div>
 
           <nav className="iorp-sidebar-nav">
-            <Link
-              href="/dashboard"
-              style={{
-                ...styles.navDashboardLink,
-                ...(isLinkActive(pathname, "/dashboard") ? styles.navLinkActive : {}),
-              }}
-            >
-              <IconGrid size={18} />
+            <Link href="/dashboard" className={`iorp-nav-link ${side.link} ${side.home} ${isLinkActive(pathname, "/dashboard") ? side.active : ""}`}
+              title={t("dashboard")} aria-current={isLinkActive(pathname, "/dashboard") ? "page" : undefined}>
+              <IconGrid size={19} />
               <span className="iorp-nav-label">{t("dashboard")}</span>
             </Link>
 
             {navGroups.map((group) => {
               const GroupIcon = group.icon;
+              const current = group.links.some((link) => isLinkActive(pathname, link.href));
+              const open = openGroups[group.labelKey] ?? current;
+              const groupBadge = group.links.reduce((sum, link) => sum + (link.badge ? badges[link.badge] ?? 0 : 0), 0);
               return (
-                <div key={group.labelKey} style={styles.navSection}>
-                  <div style={styles.navSectionHeader}>
-                    <GroupIcon size={14} />
+                <div key={group.labelKey} className={`${side.group} ${open ? side.open : side.closed}`}>
+                  <button type="button" className={`${side.groupHead} ${current ? side.groupCurrent : ""}`} aria-expanded={open}
+                    title={t(group.labelKey)} onClick={() => toggleGroup(group.labelKey, !open)}>
+                    <GroupIcon size={18} />
                     <span className="iorp-nav-label iorp-section-label">{t(group.labelKey)}</span>
+                    {!open && groupBadge > 0 ? <span className={`iorp-nav-label ${side.badge}`}>{groupBadge}</span> : null}
+                    <span className={`iorp-nav-label ${side.chevron}`}><IconChevron size={15} /></span>
+                  </button>
+                  <div className={side.groupLinks}>
+                    {group.links.map((link) => {
+                      const LinkIcon = MENU_ICONS[link.href] ?? link.icon;
+                      const active = isLinkActive(pathname, link.href);
+                      return (
+                        <Link key={link.href} href={link.href} className={`iorp-nav-link ${side.link} ${active ? side.active : ""}`}
+                          title={t(link.labelKey)} aria-current={active ? "page" : undefined}>
+                          {LinkIcon ? <LinkIcon size={17} /> : <span className={side.bullet} />}
+                          <span className="iorp-nav-label">{t(link.labelKey)}</span>
+                          {link.badge && badges[link.badge] > 0 && <span className={`iorp-nav-label ${side.badge}`}
+                            aria-label={t("needsAttention", { count: badges[link.badge] })}>{badges[link.badge]}</span>}
+                        </Link>
+                      );
+                    })}
                   </div>
-                  {group.links.map((link) => {
-                    const LinkIcon = link.icon;
-                    const active = isLinkActive(pathname, link.href);
-                    return (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        className="iorp-nav-link"
-                        style={{
-                          ...styles.navLink,
-                          ...(active ? styles.navLinkActive : {}),
-                        }}
-                        title={t(link.labelKey)}
-                      >
-                        {LinkIcon ? <LinkIcon size={16} /> : <span style={styles.navBullet} />}
-                        <span className="iorp-nav-label">{t(link.labelKey)}</span>
-                        {link.badge && badges[link.badge] > 0 && <span className="iorp-nav-label" style={styles.navBadge}
-                          aria-label={t("needsAttention", { count: badges[link.badge] })}>{badges[link.badge]}</span>}
-                      </Link>
-                    );
-                  })}
                 </div>
               );
             })}
           </nav>
 
-          <div style={styles.sidebarFooter}>
-            <div style={styles.userRow}>
-              <span style={styles.avatar}>{initials}</span>
-              <span className="iorp-user-details" style={styles.userDetails}>
-                <p style={styles.userName}>{user?.full_name}</p>
-                <p style={styles.userRole}>{user?.roles?.[0] ?? ""}</p>
+          <div className={side.footer} ref={footerRef}>
+            {menuOpen ? (
+              <div className={side.menu} role="menu" aria-label={t("userMenu.label")}>
+                <Link href="/admin/profile" className={side.menuItem} role="menuitem"><IconIdCard size={16} />{t("userMenu.profile")}</Link>
+                <Link href="/admin/change-password" className={side.menuItem} role="menuitem"><IconKey size={16} />{t("userMenu.changePassword")}</Link>
+                <div className={side.menuDivider} />
+                <div className={side.menuSetting}><LanguageSwitcher label={t("language")} /></div>
+                <div className={side.menuSetting}><ThemeToggle /></div>
+                <div className={side.menuDivider} />
+                <button type="button" className={`${side.menuItem} ${side.menuDanger}`} role="menuitem" onClick={handleSignOut}>
+                  <IconLogOut size={16} />{t("userMenu.logout")}
+                </button>
+              </div>
+            ) : null}
+            <button type="button" className={`${side.userCard} ${menuOpen ? side.userCardOpen : ""}`} aria-expanded={menuOpen} aria-haspopup="menu"
+              onClick={() => setMenuOpen((open) => !open)} title={user?.full_name}>
+              <span className={side.avatar}>{initials}</span>
+              <span className={`iorp-user-details ${side.userText}`}>
+                <p className={side.userName}>{user?.full_name}</p>
+                <p className={side.userRole}>{user?.roles?.[0] ?? ""}</p>
               </span>
-            </div>
-            <LanguageSwitcher label={t("language")} />
-            <ThemeToggle />
-            <Link href="/admin/profile" style={styles.logoutButton}>
-              <IconIdCard size={16} />
-              <span className="iorp-nav-label">{t("userMenu.profile")}</span>
-            </Link>
-            <Link href="/admin/change-password" style={styles.logoutButton}>
-              <IconKey size={16} />
-              <span className="iorp-nav-label">{t("userMenu.changePassword")}</span>
-            </Link>
-            <button type="button" style={styles.logoutButton} onClick={handleSignOut}>
-              <IconLogOut size={16} />
-              <span className="iorp-nav-label">{t("userMenu.logout")}</span>
+              <span className={`iorp-nav-label ${side.caret}`}><IconChevronUp size={16} /></span>
             </button>
           </div>
         </aside>

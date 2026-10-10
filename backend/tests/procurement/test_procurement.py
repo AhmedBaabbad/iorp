@@ -161,11 +161,11 @@ def test_receipt_prefix_and_the_document(proc):
     preview = lambda lang: proc.client.post("/api/v1/reports/procurement.goods_receipt/preview", json=dict(receipt_id=r["id"], lang=lang))  # noqa: E731
     ar = preview("ar")
     assert ar.status_code == 200, ar.text
-    for text in ("إشعار استلام مواد", r["receipt_no"], "Gulf Polymers", "DN-GP-4471", "INV-9912", "PO-778", "SUP-7781", "كيلوجرام", "مسودة",
+    for text in ("إشعار استلام مواد", r["receipt_no"], "Gulf Polymers", "DN-GP-4471", "INV-9912", "PO-778", "SUP-7781", "كجم", "مسودة",
                  "لا تُصرف للإنتاج قبل اعتماد الجودة"):
         assert text in ar.text, text
     en = preview("en").text
-    assert "GOODS RECEIPT NOTE" in en and "Materials received" in en and "20.2 Ton" in en
+    assert "GOODS RECEIPT NOTE" in en and "Materials received" in en and "20.2 t" in en
 
 
 def test_every_route_declares_a_permission_and_the_module_imports_no_other():

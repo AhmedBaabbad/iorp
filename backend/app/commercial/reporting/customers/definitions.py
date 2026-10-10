@@ -13,6 +13,7 @@ ORDER=production_permissions.ORDERS_READ
 RESULT=production_permissions.RESULTS_READ
 QUOTE='commercial:quotes:read'
 INTERNAL='reports:customers:internal_audience'
+SAMPLE='commercial:samples:read'
 LABELS={
     'customer_profile':('ملف العميل','Customer profile'), 'directory':('دليل العملاء','Customers directory'),
     'activity_summary':('نشاط العملاء وترتيبهم','Customer activity and ranking'),
@@ -48,6 +49,12 @@ def register_reports():
     template_roots.append(Path(__file__).parent/'templates')
     info=Section('information','بيانات العميل','Customer information')
     contact=Section('contacts','الاتصال','Contact information')
+    sample_sections = (
+        Section('samples', 'عينات العملاء', 'Customer samples', requires_permission=SAMPLE),
+        Section('sample_properties', 'مواصفات العينات', 'Sample properties', requires_permission=SAMPLE),
+        Section('sample_evaluations', 'تقييمات العينات', 'Sample evaluations', internal_only=True,
+                permissions=(SAMPLE, 'commercial:evaluations:read')),
+    )
     quotes=Section('quotations','عروض الأسعار','Quotations',requires_permission=QUOTE,available=available('commercial','quotations'))
     demands=Section('demands','الطلبات والتخصيص','Demand and allocation',requires_permission=DEMAND,available=available('production','demands'))
     orders=Section('orders','أوامر الإنتاج','Production orders',permissions=(DEMAND,ORDER),available=available('production','orders'))
@@ -59,7 +66,7 @@ def register_reports():
     last=Section('last_activity','آخر نشاط','Last activity',permissions=(QUOTE,DEMAND,ORDER),
         available=lambda db,t,p:providers.module_enabled(db,t,'production') and providers.module_enabled(db,t,'commercial'))
     for key,schema,sections,audiences in [
-        ('customer_profile',s.ProfileParams,(info,contact,quotes,demands,orders,results,losses,notes,activity,followups,last),('internal','customer')),
+        ('customer_profile',s.ProfileParams,(info,contact,*sample_sections,quotes,demands,orders,results,losses,notes,activity,followups,last),('internal','customer')),
         ('directory',s.DirectoryParams,(Section('directory','دليل العملاء','Customers directory'),orders,last),('internal',)),
         ('activity_summary',s.ActivityParams,(quotes,demands,orders,last),('internal',)),
         ('quotations_report',s.QuotesParams,(quotes,),('internal',)),
@@ -76,3 +83,10 @@ def register_reports():
             audiences=audiences,internal_permission=INTERNAL,required_permissions=required,
             department=('العملاء','Customers'),context_fields=('customer_id',),filename_prefix='customers.'+key,
             parameter_permissions=lambda params:(DEMAND,ORDER) if getattr(params,'has_active_orders',False) else ()))
+    # Same customer dossier access, with mandatory sample-read and internal-audience permissions.
+    registry.register(ReportDefinition('customers.samples_report', 'customers', 'تقرير عينات العملاء', 'Customer samples report',
+        s.SamplesParams, sample_sections, 'reports:customers:customer_profile',
+        lambda db,t,p,selected: build('samples_report',db,t,p,selected), 'customers_body.html',
+        default_orientation='landscape', audiences=('internal',), internal_permission=INTERNAL,
+        required_permissions=(READ,SAMPLE), context_fields=('customer_id',),
+        department=('العملاء','Customers'), filename_prefix='customers.samples_report'))

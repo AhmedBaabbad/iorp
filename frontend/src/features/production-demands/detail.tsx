@@ -15,6 +15,8 @@ export function DemandDetail({ id }: { id: string }) {
   const t = useTranslations("production.demands");
   const router = useRouter();
   const canUpdate = usePermission(P.DEMANDS_UPDATE);
+  const canRelease = usePermission(P.DEMANDS_RELEASE);
+  const canCancel = usePermission(P.DEMANDS_CANCEL);
   const canDelete = usePermission(P.DEMANDS_DELETE);
   const [d, setDemand] = useState<Demand | null>(null);
   const [error, setError] = useState("");
@@ -36,10 +38,10 @@ export function DemandDetail({ id }: { id: string }) {
     {d && <><section className={s.panel}>
       <div className={s.toolbar}><Badge value={d.status} /><Badge value={d.priority} priority />
         {canUpdate && ["draft", "ready_for_planning"].includes(d.status) && <Link className={s.button} href={`/production/demands/${id}/edit`}>{t("editTitle")}</Link>}
-        {canUpdate && transitions[d.status].map(status => <button key={status} disabled={busy} className={s.button} onClick={() => change(status)}>{t(`statuses.${status}`)}</button>)}
+        {transitions[d.status].filter(status => status === 'cancelled' ? canCancel : canRelease).map(status => <button key={status} disabled={busy} className={s.button} onClick={() => change(status)}>{t(`statuses.${status}`)}</button>)}
         {canDelete && d.status === "draft" && <button disabled={busy} className={s.button} onClick={remove}>{t("delete")}</button>}
       </div>
-      <dl className={s.grid}>{[[t("customer"), `${d.customer.code} · ${d.customer.name}`], [t("quote"), d.quote?.number ?? t("none")], [t("requestDate"), d.request_date], [t("requestedDeliveryDate"), d.requested_delivery_date ?? t("none")], [t("createdBy"), d.created_by ?? t("none")], [t("atDate"), new Date(d.created_at).toLocaleString()], [t("notes"), d.notes ?? t("none")]].map(([label, value]) => <div key={label}><dt className={s.muted}>{label}</dt><dd style={{ margin: "6px 0" }}>{value}</dd></div>)}</dl>
+      <dl className={s.grid}>{[[t("customer"), `${d.customer.code} · ${d.customer.name}`], [t("fromSalesOrder.salesOrder"), d.sales_order ? <a key="so" href={`/commercial-orders/${d.sales_order.id}`}><bdi>{d.sales_order.number}</bdi></a> : t("none")], [t("quote"), d.quote?.number ?? t("none")], [t("requestDate"), d.request_date], [t("requestedDeliveryDate"), d.requested_delivery_date ?? t("none")], [t("createdBy"), d.created_by ?? t("none")], [t("atDate"), new Date(d.created_at).toLocaleString()], [t("notes"), d.notes ?? t("none")]].map(([label, value]) => <div key={String(label)}><dt className={s.muted}>{label}</dt><dd style={{ margin: "6px 0" }}>{value}</dd></div>)}</dl>
     </section><section className={s.panel}><h2>{t("items")}</h2>{d.quote && <p className={s.muted}>{t("snapshotNote")}</p>}<div className={s.tableWrap}><table className={s.table}><thead><tr>{["lineNo", "productType", "specifications", "quantity", "unit", "itemNotes"].map(k => <th key={k}>{t(k)}</th>)}</tr></thead><tbody>{d.items.map(i => <tr key={i.id}><td>{i.line_no}</td><td>{i.product_type}</td><td><Specs value={i.target_spec_json} /></td><td>{i.required_quantity}</td><td>{i.unit}</td><td>{i.notes}</td></tr>)}</tbody></table></div></section><DemandAllocations demand={d} onChanged={() => { demandsApi.get(id).then(setDemand).catch(e => setError(errorKey(e))); }} /></>}
   </PageFrame>;
 }

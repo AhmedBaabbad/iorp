@@ -603,7 +603,14 @@
       "forbidden": "You do not have permission for this action",
       "request_failed": "The request failed. Please try again",
       "invalid_specs": "Specifications must be a valid JSON object",
-      "invalid_item": "Each item needs a product type, a positive quantity, and a unit"
+      "invalid_item": "Each item needs a product type, a positive quantity, and a unit",
+      "sales_order_not_found": "Sales order not found.",
+      "sales_order_not_confirmed": "The sales order is not confirmed; only a confirmed order goes to production.",
+      "sales_order_line_not_found": "Sales order line not found.",
+      "sales_order_required": "Choose the sales order.",
+      "quantity_exceeds_remaining": "The quantity is more than what remains on the sales order.",
+      "sales_order_lines_locked": "Sales order lines are fixed (product, specifications, unit); only the quantity changes.",
+      "duplicate_order_line": "Duplicate line."
     },
     "products": {
       "pp_strap": "PP Strap",
@@ -621,6 +628,24 @@
       "showAll": "Show all",
       "reset": "Default",
       "hidden": "{count, plural, one {# demand is} other {# demands are}} hidden by the status filter."
+    },
+    "fromSalesOrder": {
+      "title": "From a confirmed sales order",
+      "hint": "Choose the sales order, then how much of each line goes now. The rest stays for a later demand.",
+      "salesOrder": "Sales order",
+      "selectSalesOrder": "Choose the sales order",
+      "noSalesOrders": "No confirmed sales orders with remaining quantities for this customer",
+      "selectedCustomer": "Selected customer",
+      "lines": "Sales order lines",
+      "ordered": "Ordered",
+      "sent": "Sent before",
+      "remaining": "Remaining",
+      "sendNow": "Send now",
+      "sendNowFor": "Quantity sent now for line {line}",
+      "lockedLinesHint": "Product, specifications and unit are taken from the sales order as they are and do not change.",
+      "create": "Create production demand",
+      "manualInstead": "Enter a manual demand (no sales order)",
+      "fromOrderInstead": "From a confirmed sales order"
     }
   },
   "planning": {

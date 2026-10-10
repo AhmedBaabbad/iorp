@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { SamplePropertyValues } from "./SampleProperties";
+import { useLocale, useTranslations } from "next-intl";
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useState } from "react";
 
@@ -41,16 +42,6 @@ const styles: Record<string, CSSProperties> = {
     margin: 0,
     overflowWrap: "anywhere",
   },
-  specBlock: {
-    background: "var(--text)",
-    borderRadius: "8px",
-    color: "var(--surface)",
-    fontSize: "13px",
-    margin: 0,
-    overflowX: "auto",
-    padding: "16px",
-    whiteSpace: "pre-wrap",
-  },
   sections: {
     display: "grid",
     gap: "24px",
@@ -64,6 +55,7 @@ type SampleDetailProps = {
 export function SampleDetail({ sampleId }: SampleDetailProps) {
   const messages = useTranslations("messages");
   const t = useTranslations("commercial.samples");
+  const locale = useLocale();
   const fmt = useFormatter();
   const [sample, setSample] = useState<SampleData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,12 +108,16 @@ export function SampleDetail({ sampleId }: SampleDetailProps) {
     return () => {
       isMounted = false;
     };
-  }, [sampleId]);
+  }, [sampleId, messages]);
+
+  const productName = sample?.product_definition
+    ? (locale === 'ar' ? sample.product_definition.name_ar : sample.product_definition.name_en)
+    : sample?.product_type;
 
   return (
     <PageFrame
       title={sample?.sample_code ?? t("detailTitle")}
-      subtitle={sample ? sample.product_type : t("detailSubtitle")}
+      subtitle={productName ?? t("detailSubtitle")}
       action={
         <Link href="/samples" style={sharedStyles.secondaryButton}>
           {t("backToList")}
@@ -160,7 +156,7 @@ export function SampleDetail({ sampleId }: SampleDetailProps) {
                 </Link>
               }
             />
-            <DetailItem label={t("fields.productType")} value={sample.product_type} />
+            <DetailItem label={t("fields.productType")} value={productName} />
             <DetailItem
               label={t("fields.status")}
               value={<SampleStatusBadge status={sample.status} />}
@@ -189,11 +185,7 @@ export function SampleDetail({ sampleId }: SampleDetailProps) {
 
           <section aria-label={t("sections.requestedSpecifications")}>
             <h2 style={{ fontSize: "18px", margin: "0 0 12px" }}>{t("sections.requestedSpecifications")}</h2>
-            <pre style={styles.specBlock}>
-              {sample.requested_spec_json
-                ? JSON.stringify(sample.requested_spec_json, null, 2)
-                : t("labels.noRequestedSpecifications")}
-            </pre>
+            <SamplePropertyValues values={sample.property_values ?? sample.requested_spec_json} definition={sample.product_definition} />
           </section>
 
           <SampleEvaluationsList sampleId={sampleId} />

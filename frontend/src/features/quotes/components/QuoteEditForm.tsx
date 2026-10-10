@@ -8,7 +8,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
 import { SuccessModal } from "@/components/ui/SuccessModal";
-import { getEnumLabel } from "@/i18n/enum-helpers";
 import { ApiClientError } from "@/lib/api-client";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { optionalText, toDatetimeLocalValue } from "@/lib/utils";
@@ -20,7 +19,7 @@ import { QuoteTotals } from "./QuoteTotals";
 import { useFormatter } from "@/hooks/useFormatter";
 import { LineDescriptionFields, QuoteHeadingFields, UnitSelect } from "./QuoteLineFields";
 import { SpecEditor } from "@/components/forms/SpecEditor";
-import { VAT_RATE } from "../quote-units";
+import { ProductSelect, useBusinessSettings, useProducts } from "@/features/masterdata";
 
 type QuoteEditValues = {
   sample_id: string;
@@ -46,7 +45,6 @@ type QuoteItemFormValues = {
   description_en: string;
 };
 
-const QUOTE_STATUS_OPTIONS: QuoteStatus[] = ["draft", "issued", "accepted", "rejected", "expired"];
 
 const styles: Record<string, CSSProperties> = {
   panel: {
@@ -114,10 +112,14 @@ export function QuoteEditForm() {
   const t = useTranslations("commercial.quotes");
   const common = useTranslations("common");
   const messages = useTranslations("messages");
-  const tEnums = useTranslations();
   const tCurrency = useTranslations("commercial.currency");
   const fmt = useFormatter();
   const quoteId = params.id;
+  // MD-001: the organization's VAT rate (a quotation keeps the rate it was written with) and its products' templates.
+  const { vatRate: organizationRate } = useBusinessSettings();
+  const products = useProducts();
+  const [savedRate, setSavedRate] = useState<number | null>(null);
+  const vatRate = savedRate ?? organizationRate;
 
   const [values, setValues] = useState<QuoteEditValues>({
     sample_id: "",
@@ -158,6 +160,7 @@ export function QuoteEditForm() {
           const discount = Number(quote.discount_amount);
           const taxableAmount = Math.max(0, subtotal - discount);
           const hasTax = quote.tax_rate != null ? Number(quote.tax_rate) > 0 : taxAmount > 0 && taxableAmount > 0;
+          setSavedRate(quote.tax_rate != null && Number(quote.tax_rate) > 0 ? Number(quote.tax_rate) : null);
 
           setValues({
             sample_id: quote.sample_id ?? "",
@@ -229,7 +232,7 @@ export function QuoteEditForm() {
 
   const discountAmount = Number(values.discount_amount || 0);
   const taxableAmount = Math.max(0, subtotal - discountAmount);
-  const taxAmount = values.include_tax ? taxableAmount * VAT_RATE / 100 : 0;  // preview; the server computes it
+  const taxAmount = values.include_tax ? taxableAmount * vatRate / 100 : 0;  // preview; the server computes it
   const totalAmount = taxableAmount + taxAmount;
 
   function updateField<TField extends keyof QuoteEditValues>(
@@ -273,10 +276,9 @@ export function QuoteEditForm() {
         sample_id: optionalText(values.sample_id) ?? null,
         issue_date: new Date(values.issue_date).toISOString(),
         valid_until: new Date(values.valid_until).toISOString(),
-        status: values.status,
         currency: values.currency,
         discount_amount: Number(values.discount_amount || 0),
-        tax_rate: values.include_tax ? VAT_RATE : 0,
+        tax_rate: values.include_tax ? vatRate : 0,
         tax_amount: taxAmount,
         attention: optionalText(values.attention) ?? null,
         subject: optionalText(values.subject) ?? null,
@@ -327,7 +329,14 @@ export function QuoteEditForm() {
         </section>
       ) : null}
 
-      {!isLoading && !isNotFound ? (
+      {!isLoading && !isNotFound && values.status !== "draft" ? (
+        <div style={{ ...sharedStyles.state, background: "var(--surface)" }} role="status">
+          <p style={{ margin: "0 0 12px" }}>{t("lifecycle.lockedHint")}</p>
+          <Link href={`/quotes/${quoteId}`} style={sharedStyles.button}>{t("backToDetail")}</Link>
+        </div>
+      ) : null}
+
+      {!isLoading && !isNotFound && values.status === "draft" ? (
         <section style={styles.panel}>
           <form style={styles.form} onSubmit={handleSubmit}>
             <div style={styles.formGrid}>
@@ -347,22 +356,6 @@ export function QuoteEditForm() {
                   ))}
                 </select>
               </div>
-
-              <label style={sharedStyles.field}>
-                <span style={sharedStyles.label}>{t("fields.status")}</span>
-                <select
-                  style={sharedStyles.input}
-                  value={values.status}
-                  onChange={(event) => updateField("status", event.target.value as QuoteStatus)}
-                  disabled={isSubmitting}
-                >
-                  {QUOTE_STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {getEnumLabel("quote", "status", s, tEnums)}
-                    </option>
-                  ))}
-                </select>
-              </label>
 
               <label style={sharedStyles.field}>
                 <span style={sharedStyles.label}>
@@ -435,10 +428,10 @@ export function QuoteEditForm() {
                     onChange={(event) => updateField("include_tax", event.target.checked)}
                     disabled={isSubmitting}
                   />
-                  <span>{t("taxCheckboxLabel")}</span>
+                  <span>{t("taxCheckboxLabel", { rate: String(vatRate) })}</span>
                 </label>
                 {values.include_tax ? (
-                  <p style={styles.helper}>{t("taxNote")} — {fmt.decimal(taxAmount)}</p>
+                  <p style={styles.helper}>{t("taxNote", { rate: String(vatRate) })} — {fmt.decimal(taxAmount)}</p>
                 ) : null}
               </div>
             </div>
@@ -495,14 +488,12 @@ export function QuoteEditForm() {
                         {t("items.fields.productType")}
                         <span style={styles.required} aria-hidden="true"> *</span>
                       </span>
-                      <input
-                        style={sharedStyles.input}
-                        value={item.product_type}
-                        onChange={(event) => updateItemField(index, "product_type", event.target.value)}
-                        maxLength={120}
-                        disabled={isSubmitting}
-                        required
-                      />
+                      <ProductSelect style={sharedStyles.input} value={item.product_type} disabled={isSubmitting}
+                        ariaLabel={t("items.fields.productType")}
+                        onChange={(key, product) => {
+                          updateItemField(index, "product_type", key);
+                          if (product?.default_unit && !item.unit) updateItemField(index, "unit", product.default_unit);
+                        }} />
                     </label>
 
                     <label style={sharedStyles.field}>
@@ -560,6 +551,7 @@ export function QuoteEditForm() {
                   </div>
 
                   <SpecEditor value={item.requested_spec_json} disabled={isSubmitting}
+                    template={products?.find((p) => p.key === item.product_type)?.properties}
                     onChange={(json) => updateItemField(index, "requested_spec_json", json)} />
 
                   <LineDescriptionFields arabic={item.description_ar} english={item.description_en} disabled={isSubmitting}

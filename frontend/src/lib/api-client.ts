@@ -122,7 +122,12 @@ let platformRefreshPromise: Promise<string> | null = null;
 async function refreshAccessToken(isPlatform: boolean): Promise<string> {
   const current = isPlatform ? platformRefreshPromise : tenantRefreshPromise;
   if (current) return current;
-  const promise = (async () => {
+  const readToken = () => isPlatform ? getStoredPlatformToken() : getStoredAccessToken();
+  const before = readToken();
+  const renew = async () => {
+    // Another tab may have rotated the shared refresh cookie while we waited.
+    const latest = readToken();
+    if (latest && latest !== before) return latest;
     const response = await fetch(buildUrl(isPlatform ? "/platform/refresh" : "/auth/refresh"), {
       method: "POST",
       credentials: "include",
@@ -135,7 +140,10 @@ async function refreshAccessToken(isPlatform: boolean): Promise<string> {
     const token = String(data.access_token);
     if (isPlatform) storePlatformToken(token); else storeAccessToken(token);
     return token;
-  })();
+  };
+  const promise = Promise.resolve(typeof navigator !== 'undefined' && navigator.locks
+    ? navigator.locks.request(isPlatform ? 'iorp-platform-refresh' : 'iorp-tenant-refresh', renew)
+    : renew());
   if (isPlatform) platformRefreshPromise = promise; else tenantRefreshPromise = promise;
   try { return await promise; }
   finally {
@@ -146,6 +154,11 @@ async function refreshAccessToken(isPlatform: boolean): Promise<string> {
 /** Renew the tenant access token now (used by the session guard for active users). */
 export function refreshSession(): Promise<string> {
   return refreshAccessToken(false);
+}
+
+/** Network failures, rate limits and server outages do not prove that a session is invalid. */
+export function isSessionRejected(error: unknown): boolean {
+  return error instanceof ApiClientError && (error.status === 401 || error.status === 403);
 }
 
 function redirectForInvalidSession(path: string, response: Response, sentToken: boolean): Promise<never> | null {
@@ -192,7 +205,8 @@ export async function apiClient<TResponse>(
       try {
         const refreshedToken = await refreshAccessToken(isPlatform);
         return apiClient<TResponse>(path, { ...options, token: refreshedToken, skipRefresh: true });
-      } catch {
+      } catch (error) {
+        if (!isSessionRejected(error)) throw error;
         // Continue into the centralized cleanup and redirect below.
       }
     }

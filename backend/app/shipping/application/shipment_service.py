@@ -14,6 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.units import to_kilograms
 from app.core.utils import utc_now
+from app.core.interfaces.reference_lists import unknown_list_values
 from app.shipping.domain import permissions as P
 from app.shipping.domain import returns as R
 from app.shipping.domain import rules
@@ -135,6 +136,10 @@ class ShipmentService:
                                 rules.normalize_phone(customer[source])
                             except ShippingError:
                                 values[field] = None
+        # MD-002: the delivery city is one of the organization's cities; the stored one (or the customer's) may stay.
+        if values.get("delivery_city") and unknown_list_values(self.db, self.org, "city", [values["delivery_city"]],
+                                                               [shipment.delivery_city, *([customer["city"]] if "customer_id" in values and values["customer_id"] else [])]):
+            raise ShippingError("LIST_VALUE_UNKNOWN", 400, field="delivery_city", value=values["delivery_city"])
         if values.get("customer_name") is not None:
             shipment.customer_name = values["customer_name"].strip()
         for field in fields:

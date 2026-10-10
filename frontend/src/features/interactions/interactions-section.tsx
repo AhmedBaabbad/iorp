@@ -10,10 +10,14 @@ import { usePermission } from "@/features/auth";
 import { useFormatter } from "@/hooks/useFormatter";
 import { getEnumLabel } from "@/i18n/enum-helpers";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
-import { displayValue } from "@/lib/utils";
+import { displayValue, toDatetimeLocalValue } from "@/lib/utils";
 import { sharedStyles } from "@/styles/shared-styles";
 import type { CustomerInteraction, InteractionType } from "@/types/interactions";
-import { createCustomerInteraction, listCustomerInteractions } from "./interaction-api";
+import { createCustomerInteraction, deleteCustomerInteraction, listCustomerInteractions, updateCustomerInteraction } from "./interaction-api";
+import { Pagination } from "@/components/pagination/Pagination";
+import type { Page } from "@/lib/pagination";
+
+const PAGE_SIZE = 25;
 import {
   createDefaultInteractionFormValues,
   toInteractionCreateRequest,
@@ -50,7 +54,17 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
   const fmt = useFormatter();
   const canRead = usePermission("commercial:interactions:read");
   const canCreate = usePermission("commercial:interactions:create");
-  const [interactions, setInteractions] = useState<CustomerInteraction[]>([]);
+  // RBAC-002: correcting and removing a recorded interaction are separate permissions.
+  const canUpdate = usePermission("commercial:interactions:update");
+  const canDelete = usePermission("commercial:interactions:delete");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [rowError, setRowError] = useState<string | null>(null);
+  // ARCH-PAGE-001: the latest 25 interactions, then older ones page by page.
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<Page<CustomerInteraction> | null>(null);
+  const interactions = data?.items ?? [];
   const [values, setValues] = useState<InteractionFormValues>(
     createDefaultInteractionFormValues,
   );
@@ -70,9 +84,9 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
     setError(null);
 
     try {
-      const response = await listCustomerInteractions(customerId);
+      const response = await listCustomerInteractions(customerId, page, PAGE_SIZE);
       if (isMountedRef.current) {
-        setInteractions(response);
+        setData(response);
       }
     } catch (caughtError) {
       if (isMountedRef.current) {
@@ -83,7 +97,7 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
         setIsLoading(false);
       }
     }
-  }, [customerId, messages, canRead]);
+  }, [customerId, messages, canRead, page]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -113,9 +127,16 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
     setIsSubmitting(true);
 
     try {
+      if (editingId) {
+        await updateCustomerInteraction(customerId, editingId, toInteractionCreateRequest(values));
+        setEditingId(null);
+        setValues(createDefaultInteractionFormValues());
+        await loadInteractions();
+        return;
+      }
       await createCustomerInteraction(customerId, toInteractionCreateRequest(values));
       setValues(createDefaultInteractionFormValues());
-      await loadInteractions();
+      if (page === 1) await loadInteractions(); else setPage(1);  // the new one is on the first page
       setFormSuccess(true);
     } catch (caughtError) {
       setFormError(getApiErrorMessage(caughtError, messages));
@@ -123,6 +144,35 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
       if (isMountedRef.current) {
         setIsSubmitting(false);
       }
+    }
+  }
+
+  function startEditing(interaction: CustomerInteraction) {
+    setEditingId(interaction.id);
+    setFormError(null);
+    setValues({
+      interaction_type: interaction.interaction_type, interaction_date: toDatetimeLocalValue(new Date(interaction.interaction_date)),
+      subject: interaction.subject, summary: interaction.summary ?? "", outcome: interaction.outcome ?? "",
+      next_step_hint: interaction.next_step_hint ?? "",
+    });
+  }
+
+  function stopEditing() {
+    setEditingId(null);
+    setValues(createDefaultInteractionFormValues());
+  }
+
+  async function remove(interactionId: string) {
+    setBusyId(interactionId);
+    setRowError(null);
+    try {
+      await deleteCustomerInteraction(customerId, interactionId);
+      setConfirmingId(null);
+      await loadInteractions();
+    } catch (caughtError) {
+      setRowError(getApiErrorMessage(caughtError, messages));
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -144,8 +194,9 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
       title={t("sectionTitle")}
       subtitle={t("sectionDescription")}
     >
-      {canCreate ? (
+      {canCreate || editingId ? (
       <form style={styles.form} onSubmit={handleSubmit}>
+        {editingId ? <p style={sharedStyles.meta}>{t("editingNotice")}</p> : null}
         <div style={styles.formGrid}>
           <label style={sharedStyles.field}>
             <span style={sharedStyles.label}>{t("fields.interactionType")}</span>
@@ -237,13 +288,16 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
           </div>
         ) : null}
 
-        <button style={styles.button} type="submit" disabled={isSubmitting}>
-          {isSubmitting ? messages("loading.saving") : t("addButton")}
-        </button>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <button style={styles.button} type="submit" disabled={isSubmitting}>
+            {isSubmitting ? messages("loading.saving") : editingId ? t("saveChanges") : t("addButton")}
+          </button>
+          {editingId ? <button type="button" style={sharedStyles.secondaryButton} onClick={stopEditing}>{common("actions.cancel")}</button> : null}
+        </div>
       </form>
       ) : null}
 
-      {isLoading ? <div style={sharedStyles.state}>{messages("loading.default")}</div> : null}
+      {isLoading && !data ? <div style={sharedStyles.state}>{messages("loading.default")}</div> : null}
 
       {!isLoading && error ? (
         <div style={sharedStyles.error} role="alert">
@@ -255,7 +309,7 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
         <div style={sharedStyles.state}>{t("empty")}</div>
       ) : null}
 
-      {!isLoading && !error && interactions.length > 0 ? (
+      {!error && interactions.length > 0 ? (
         <div style={sharedStyles.list}>
           {interactions.map((interaction) => (
             <article key={interaction.id} style={sharedStyles.item}>
@@ -283,8 +337,35 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
               <p style={sharedStyles.meta}>
                 {t("fields.created")}: {fmt.dateTime(interaction.created_at)}
               </p>
+              {canUpdate || canDelete ? (
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                  {canUpdate ? (
+                    <button type="button" style={sharedStyles.secondaryButton} disabled={busyId !== null} onClick={() => startEditing(interaction)}>
+                      {common("actions.edit")}
+                    </button>
+                  ) : null}
+                  {canDelete && confirmingId !== interaction.id ? (
+                    <button type="button" style={sharedStyles.secondaryButton} disabled={busyId !== null} onClick={() => setConfirmingId(interaction.id)}>
+                      {common("actions.delete")}
+                    </button>
+                  ) : null}
+                  {canDelete && confirmingId === interaction.id ? (
+                    <>
+                      <span style={sharedStyles.meta}>{t("deleteConfirm")}</span>
+                      <button type="button" style={{ ...sharedStyles.button, background: "var(--danger)", borderColor: "var(--danger)" }}
+                        disabled={busyId !== null} onClick={() => void remove(interaction.id)}>{t("deleteYes")}</button>
+                      <button type="button" style={sharedStyles.secondaryButton} disabled={busyId !== null} onClick={() => setConfirmingId(null)}>
+                        {common("actions.cancel")}
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+              {rowError && confirmingId === interaction.id ? <p style={sharedStyles.error} role="alert">{rowError}</p> : null}
             </article>
           ))}
+          {data ? <Pagination page={data.page} pageSize={data.page_size} total={data.total} pages={data.pages} disabled={isLoading}
+            onPage={setPage} /> : null}
         </div>
       ) : null}
     </SectionShell>

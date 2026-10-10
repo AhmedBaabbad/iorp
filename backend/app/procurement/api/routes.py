@@ -167,5 +167,5 @@ def read_settings(tenant: TenantContext = Depends(get_current_tenant), db: Sessi
 
 @router.patch("/settings", response_model=SettingsRead, dependencies=[Depends(require_permission(P.SETTINGS_UPDATE))])
 def update_settings(payload: SettingsInput, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
-    """The goods receipt number prefix (GRN- by default); numbers already issued keep theirs."""
-    return ReceiptService(db, tenant).update_settings(payload.receipt_prefix)
+    """Number prefixes (GRN-, PO- by default; numbers already issued keep theirs) and the purchase order terms."""
+    return ReceiptService(db, tenant).update_settings(payload.model_dump(exclude_unset=True))

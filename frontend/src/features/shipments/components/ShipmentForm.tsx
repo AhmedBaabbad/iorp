@@ -12,6 +12,7 @@ import s from "@/features/production-demands/demands.module.css";
 import { createShipment, getShipment, getShippingCustomers, getShippingProductionOrders, updateShipment } from "../api";
 import { DECIMAL, shippingErrorMessage, todayIso } from "../shipping-errors";
 import { DELIVERY_METHODS, type CustomerOption, type DeliveryMethod, type ProductionOrderOption, type ShipmentHeader, type ShipmentLineInput } from "../types";
+import { ListSelect } from "@/features/masterdata";
 
 // A line as edited (numbers as typed): description, width and thickness in mm, quantity and unit, one full weight, and
 // the production order (batch) it comes from.
@@ -158,7 +159,8 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
             {input("consignee_name", { maxLength: 255, placeholder: t("recipientPlaceholder") })}
             {input("consignee_phone", { maxLength: 30, dir: "ltr", inputMode: "tel", placeholder: "05xxxxxxxx" })}
             {input("consignee_email", { maxLength: 255, dir: "ltr", type: "email" })}
-            {input("delivery_city", { maxLength: 120 })}
+            <label className={s.field}>{t("fields.delivery_city")}<ListSelect list="city" ariaLabel={t("fields.delivery_city")} value={h.delivery_city}
+              disabled={busy || locked} onChange={key => set("delivery_city", key)} /></label>
             {input("location_url", { maxLength: 500, dir: "ltr", type: "url", placeholder: "https://maps.google.com/…" })}
           </div>
           <label className={s.field}>{t("fields.delivery_address")}<textarea maxLength={1000} value={h.delivery_address} onChange={e => set("delivery_address", e.target.value)} /></label>

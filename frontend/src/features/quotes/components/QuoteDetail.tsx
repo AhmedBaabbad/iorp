@@ -19,6 +19,7 @@ import { getQuoteById } from "../api/quotes-api";
 import type { QuoteData } from "../types";
 import { QuoteItemsTable } from "./QuoteItemsTable";
 import { QuoteDocumentButtons } from "./QuoteDocumentButtons";
+import { QuoteLifecycle } from "./QuoteLifecycle";
 import { QuoteStatusBadge } from "./QuoteStatusBadge";
 import { QuoteTotals } from "./QuoteTotals";
 import { formatCommercialCurrency } from "./quote-utils";
@@ -167,6 +168,7 @@ export function QuoteDetail() {
 
       {!isLoading && !error && !isNotFound && quote ? (
         <div style={styles.sections}>
+          <QuoteLifecycle quote={quote} onChange={setQuote} />
           <section style={styles.detailGrid} aria-label={t("detailsAria")}>
             <DetailItem
               label={t("fields.quoteNumber")}

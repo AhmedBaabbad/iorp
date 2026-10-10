@@ -21,7 +21,7 @@ PERMISSIONS = frozenset(
     ["production:production_orders:read", "production:production_orders:update", "production:production_orders:manage_items", "production:planning:read", "production:planning:allocate",
      "production:production_orders:create", "production:waste_records:read", "production:waste_records:create", "production:waste_records:update", "production:waste_records:delete", "production:results:read", "production:results:create", "production:results:update", "production:results:delete"]
     + [f"production:production_orders:{a}" for a in ("release", "start", "hold", "complete", "close", "cancel")]
-    + [f"production:demands:{a}" for a in ("read", "create", "update")])
+    + [f"production:demands:{a}" for a in ("read", "create", "update", "release", "cancel")])
 CATEGORIES = ["startup_setup", "changeover", "process", "material_defect", "machine_fault", "handling_damage", "contamination", "other"]
 
 

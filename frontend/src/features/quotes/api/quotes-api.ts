@@ -1,11 +1,13 @@
 import { apiClient } from "@/lib/api-client";
+import type { Page } from "@/lib/pagination";
 import type { CreateQuoteRequest, QuoteData, QuoteDeletionImpact, QuoteListItem, QuoteSampleOption, QuoteSettings, UpdateQuoteRequest } from "../types";
 
 const QUOTES_PATH = "/commercial/quotes";
 const CUSTOMERS_PATH = "/commercial/customers";
 
-export function listQuotes() {
-  return apiClient<QuoteListItem[]>(QUOTES_PATH);
+/** One page of quotations, searched and filtered by the server: query = "page=2&search=gulf&status=issued". */
+export function listQuotes(query = "") {
+  return apiClient<Page<QuoteListItem>>(query ? `${QUOTES_PATH}?${query}` : QUOTES_PATH);
 }
 
 export function listQuotesForCustomer(customerId: string) {
@@ -42,6 +44,14 @@ export function deleteQuote(quoteId: string) {
   });
 }
 
+/** issue · accept · reject (reason) · expire · revise (reason): the quotation's next step (SALES-001). */
+export function quoteStep(quoteId: string, action: "issue" | "accept" | "reject" | "expire" | "revise", reason?: string) {
+  return apiClient<QuoteData>(`${QUOTES_PATH}/${quoteId}/${action}`, {
+    method: "POST",
+    ...(reason !== undefined ? { body: { reason } } : {}),
+  });
+}
+
 export function getQuoteDeletionImpact(quoteId: string) {
   return apiClient<QuoteDeletionImpact>(`${QUOTES_PATH}/${quoteId}/deletion-impact`);
 }
@@ -54,15 +64,15 @@ export function updateQuoteSettings(payload: QuoteSettings) {
   return apiClient<QuoteSettings>("/commercial/quote-settings", { method: "PUT", body: payload });
 }
 
-/** Downloads the quotation document (PDF) in the chosen language, named as the server suggests. */
-export async function downloadQuoteDocument(quoteId: string, lang: "ar" | "en") {
-  const response = await apiClient<Response>(`${QUOTES_PATH}/${quoteId}/document.pdf?lang=${lang}`, { raw: true });
+/** Downloads the quotation document (PDF) in the language of the quotation settings, named as the server suggests. */
+export async function downloadQuoteDocument(quoteId: string) {
+  const response = await apiClient<Response>(`${QUOTES_PATH}/${quoteId}/document.pdf`, { raw: true });
   const disposition = response.headers.get("content-disposition") ?? "";
   const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
   const url = URL.createObjectURL(await response.blob());
   const link = document.createElement("a");
   link.href = url;
-  link.download = encoded ? decodeURIComponent(encoded) : `quotation-${lang}.pdf`;
+  link.download = encoded ? decodeURIComponent(encoded) : "quotation.pdf";
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

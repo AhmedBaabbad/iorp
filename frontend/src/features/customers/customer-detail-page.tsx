@@ -19,6 +19,7 @@ import { deleteCustomer, getCustomer, getCustomerDeletionImpact } from "./custom
 import { CustomerReportButtons } from "@/features/reports/CustomerReportButtons";
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth";
+import { useListName } from "@/features/masterdata";
 
 const styles: Record<string, CSSProperties> = {
   detailGrid: {
@@ -127,6 +128,11 @@ export function CustomerDetailPage() {
   const t = useTranslations("commercial.customers");
   const tEnums = useTranslations();
   const messages = useTranslations("messages");
+  // MD-002: list values by their names, not their keys
+  const sectorName = useListName("sector");
+  const cityName = useListName("city");
+  const countryName = useListName("country");
+  const sourceName = useListName("opportunity_source");
   const fmt = useFormatter();
   const customerId = params.id;
   const router = useRouter();
@@ -340,9 +346,9 @@ export function CustomerDetailPage() {
           <section style={styles.detailGrid} aria-label={t("detailsAria")}>
             <DetailItem label={t("fields.customerCode")} value={customer.customer_code} />
             <DetailItem label={t("fields.name")} value={customer.name} />
-            <DetailItem label={t("fields.sector")} value={customer.sector} />
-            <DetailItem label={t("fields.city")} value={customer.city} />
-            <DetailItem label={t("fields.country")} value={customer.country} />
+            <DetailItem label={t("fields.sector")} value={customer.sector ? sectorName(customer.sector) : customer.sector} />
+            <DetailItem label={t("fields.city")} value={customer.city ? cityName(customer.city) : customer.city} />
+            <DetailItem label={t("fields.country")} value={customer.country ? countryName(customer.country) : customer.country} />
             <DetailItem label={t("fields.phone")} value={customer.phone} />
             <DetailItem label={t("fields.email")} value={customer.email} />
             <DetailItem
@@ -362,7 +368,7 @@ export function CustomerDetailPage() {
               label={t("fields.priority")}
               value={getEnumLabel("customer", "priorityLevel", customer.priority_level, tEnums)}
             />
-            <DetailItem label={t("fields.opportunitySource")} value={customer.opportunity_source} />
+            <DetailItem label={t("fields.opportunitySource")} value={customer.opportunity_source ? sourceName(customer.opportunity_source) : customer.opportunity_source} />
             <DetailItem label={t("fields.estimatedConsumption")} value={customer.estimated_consumption} />
             <DetailItem
               label={t("fields.salesOwner")}

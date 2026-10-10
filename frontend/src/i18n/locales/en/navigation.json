@@ -28,7 +28,8 @@
     "capa": "CAPA",
     "administration": "Administration",
     "shipping": "Shipping",
-    "procurement": "Procurement"
+    "procurement": "Procurement",
+    "masterData": "Master data"
   },
   "links": {
     "productionReports": "Report center",
@@ -73,12 +74,22 @@
     "suppliers": "Suppliers",
     "materials": "Materials",
     "goodsReceipts": "Goods receipts",
-    "qualityIncoming": "Incoming inspection"
+    "qualityIncoming": "Incoming inspection",
+    "purchaseOrders": "Purchase orders",
+    "products": "Products",
+    "generalSettings": "General settings",
+    "referenceLists": "Reference lists",
+    "productionDashboard": "Production dashboard",
+    "commercialDashboard": "Dashboard · Customers & sales",
+    "qualityDashboard": "Dashboard · Quality",
+    "shippingDashboard": "Dashboard · Shipping & delivery",
+    "procurementDashboard": "Dashboard · Procurement"
   },
   "userMenu": {
     "changePassword": "Change Password",
     "profile": "Profile",
-    "logout": "Sign out"
+    "logout": "Sign out",
+    "label": "User menu"
   },
   "topBar": {
     "notifications": "Notifications",

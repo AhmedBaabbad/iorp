@@ -28,7 +28,8 @@
     "capa": "الإجراءات التصحيحية",
     "administration": "الإدارة",
     "shipping": "الشحن والتسليم",
-    "procurement": "المشتريات"
+    "procurement": "المشتريات",
+    "masterData": "البيانات الأساسية"
   },
   "links": {
     "productionReports": "مركز التقارير",
@@ -73,12 +74,22 @@
     "suppliers": "الموردون",
     "materials": "المواد",
     "goodsReceipts": "استلام المواد",
-    "qualityIncoming": "فحص المواد الواردة"
+    "qualityIncoming": "فحص المواد الواردة",
+    "purchaseOrders": "أوامر الشراء",
+    "products": "المنتجات",
+    "generalSettings": "الإعدادات العامة",
+    "referenceLists": "القوائم المرجعية",
+    "productionDashboard": "لوحة الإنتاج",
+    "commercialDashboard": "لوحة العملاء والمبيعات",
+    "qualityDashboard": "لوحة الجودة",
+    "shippingDashboard": "لوحة الشحن والتسليم",
+    "procurementDashboard": "لوحة المشتريات"
   },
   "userMenu": {
     "changePassword": "تغيير كلمة المرور",
     "profile": "الملف الشخصي",
-    "logout": "تسجيل الخروج"
+    "logout": "تسجيل الخروج",
+    "label": "قائمة المستخدم"
   },
   "topBar": {
     "notifications": "الإشعارات",

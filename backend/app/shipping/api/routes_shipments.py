@@ -100,13 +100,13 @@ def update_shipment(shipment_id: UUID, payload: ShipmentUpdate, tenant: TenantCo
     return _run(db, tenant, can, lambda s: s.update(shipment_id, payload))
 
 
-@router.post(f"{PATH}/{{shipment_id}}/ready", response_model=ShipmentRead, dependencies=[Depends(require_permission(P.SHIPMENTS_UPDATE))])
+@router.post(f"{PATH}/{{shipment_id}}/ready", response_model=ShipmentRead, dependencies=[Depends(require_permission(P.SHIPMENTS_READY))])
 def ready_shipment(shipment_id: UUID, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
     """Complete and ready for loading: needs the customer, at least one line and the delivery method's details."""
     return _run(db, tenant, can, lambda s: s.ready(shipment_id))
 
 
-@router.post(f"{PATH}/{{shipment_id}}/reopen", response_model=ShipmentRead, dependencies=[Depends(require_permission(P.SHIPMENTS_UPDATE))])
+@router.post(f"{PATH}/{{shipment_id}}/reopen", response_model=ShipmentRead, dependencies=[Depends(require_permission(P.SHIPMENTS_REOPEN))])
 def reopen_shipment(shipment_id: UUID, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
     return _run(db, tenant, can, lambda s: s.reopen(shipment_id))
 
@@ -126,21 +126,21 @@ def deliver_shipment(shipment_id: UUID, payload: DeliverInput, tenant: TenantCon
     return _run(db, tenant, can, lambda s: s.deliver(shipment_id, payload))
 
 
-@router.post(f"{PATH}/{{shipment_id}}/fail", response_model=ShipmentRead, dependencies=[Depends(require_permission(P.SHIPMENTS_DELIVER))])
+@router.post(f"{PATH}/{{shipment_id}}/fail", response_model=ShipmentRead, dependencies=[Depends(require_permission(P.SHIPMENTS_FAIL))])
 def fail_shipment(shipment_id: UUID, payload: FailInput, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db),
                   can=Depends(permission_check)):
     """Not received: the load comes back to the factory under a delivery return."""
     return _run(db, tenant, can, lambda s: s.fail(shipment_id, payload))
 
 
-@router.post(f"{PATH}/{{shipment_id}}/reschedule", response_model=ShipmentRead, dependencies=[Depends(require_permission(P.SHIPMENTS_UPDATE))])
+@router.post(f"{PATH}/{{shipment_id}}/reschedule", response_model=ShipmentRead, dependencies=[Depends(require_permission(P.SHIPMENTS_RESCHEDULE))])
 def reschedule_shipment(shipment_id: UUID, payload: RescheduleInput | None = None, tenant: TenantContext = Depends(get_current_tenant),
                         db: Session = Depends(get_db), can=Depends(permission_check)):
     """A returned note, its goods back at the factory, sets out again under the same number (next attempt)."""
     return _run(db, tenant, can, lambda s: s.reschedule(shipment_id, payload or RescheduleInput()))
 
 
-@router.post(f"{PATH}/{{shipment_id}}/close", response_model=ShipmentRead, dependencies=[Depends(require_permission(P.SHIPMENTS_CANCEL))])
+@router.post(f"{PATH}/{{shipment_id}}/close", response_model=ShipmentRead, dependencies=[Depends(require_permission(P.SHIPMENTS_CLOSE))])
 def close_shipment(shipment_id: UUID, payload: ReasonInput, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db),
                    can=Depends(permission_check)):
     """Not delivered after all: a returned (or rescheduled, not yet left) note is closed."""

@@ -85,7 +85,21 @@
     "createError": "Unable to create customer.",
     "notFoundDescription": "The customer may have been removed or is unavailable.",
     "empty": "No customers yet",
-    "notFound": "Customer not found"
+    "notFound": "Customer not found",
+    "listFilters": {
+      "label": "Search and filters",
+      "search": "Search",
+      "searchHint": "Code, name, phone or e-mail",
+      "all": "All",
+      "clear": "Clear filters",
+      "noMatches": "No customers match the search or filters."
+    },
+    "picker": {
+      "search": "Search by name or code",
+      "choose": "Choose the customer",
+      "none": "No matches",
+      "loading": "Searching..."
+    }
   },
   "interactions": {
     "sectionTitle": "Interactions",
@@ -107,7 +121,11 @@
     "notFound": "Interaction not found",
     "createSuccess": "Interaction added successfully.",
     "outcomeLabel": "Outcome: {value}",
-    "nextStepLabel": "Next step: {value}"
+    "nextStepLabel": "Next step: {value}",
+    "editingNotice": "Editing a recorded interaction.",
+    "saveChanges": "Save changes",
+    "deleteConfirm": "Delete this interaction for good?",
+    "deleteYes": "Yes, delete"
   },
   "followUps": {
     "listTitle": "Follow-ups",
@@ -288,7 +306,10 @@
       "createSuccess": "Evaluation added successfully.",
       "labels": {
         "evaluatedBy": "Evaluated by: {value}"
-      }
+      },
+      "saveChanges": "Save changes",
+      "deleteConfirm": "Delete this evaluation for good?",
+      "deleteYes": "Yes, delete"
     },
     "listAria": "Samples list",
     "detailsAria": "Sample details",
@@ -297,7 +318,35 @@
     "returnToList": "Return to Samples",
     "notFoundDescription": "The sample may have been removed or is unavailable.",
     "empty": "No samples yet",
-    "notFound": "Sample not found"
+    "notFound": "Sample not found",
+    "properties": {
+      "product": "Product",
+      "choose": "Choose a Master Data product",
+      "loading": "Loading products…",
+      "title": "Product properties",
+      "empty": "No saved property values",
+      "noProperties": "No properties are defined for this product in Master Data.",
+      "noProducts": "No active products. Define a product and its properties in Master Data first.",
+      "loadError": "Could not load products and their properties. Please retry.",
+      "retry": "Retry",
+      "legacy": "Legacy value or inactive product",
+      "legacyValues": "Preserved legacy specifications",
+      "preserved": "These values are read-only because they are not in the current product template. They remain saved when other properties are edited.",
+      "unchanged": "Other changes can be saved without modifying legacy specifications. Editing specifications applies the current product rules.",
+      "yes": "Yes",
+      "no": "No",
+      "errors": {
+        "SAMPLE_PRODUCT_NOT_FOUND": "Choose a product in this organization’s Master Data.",
+        "SAMPLE_PRODUCT_INACTIVE": "An inactive product cannot be selected for a new sample.",
+        "SAMPLE_PROPERTY_UNKNOWN": "The property is not defined for this product, or a legacy property was changed.",
+        "SAMPLE_PROPERTY_REQUIRED": "Fill in the required property.",
+        "SAMPLE_PROPERTY_NUMBER": "The property value must be a valid number.",
+        "SAMPLE_PROPERTY_TEXT": "The property value must be text.",
+        "SAMPLE_PROPERTY_CHOICE": "Choose one of the property options defined in Master Data.",
+        "SAMPLE_PROPERTY_KIND": "Unsupported property type. Review the product setup."
+      }
+    },
+    "searchHint": "Sample code, product or customer"
   },
   "quotes": {
     "listTitle": "Quotes",
@@ -333,7 +382,7 @@
     "createSuccess": "Quote created successfully.",
     "updateSuccess": "Quote updated successfully.",
     "deleteSuccess": "Quote deleted successfully.",
-    "taxCheckboxLabel": "Include 15% VAT",
+    "taxCheckboxLabel": "Include {rate}% VAT",
     "fields": {
       "quoteNumber": "Quote Number",
       "quoteDate": "Quote Date",
@@ -380,7 +429,7 @@
     "validation": {
       "invalidValue": "Invalid JSON value"
     },
-    "taxNote": "VAT 15% — on net amount after discount",
+    "taxNote": "VAT {rate}% — on net amount after discount",
     "empty": "No quotes yet",
     "notFound": "Quote not found",
     "document": {
@@ -392,39 +441,69 @@
       "descriptionEn": "Printed description (English)",
       "descriptionArHint": "e.g. شريط تربيط أسود مقاس 5MM × 0.35MM × 10KG",
       "descriptionEnHint": "e.g. Black strapping band 5MM × 0.35MM × 10KG",
-      "downloadAr": "Download PDF (Arabic)",
-      "downloadEn": "Download PDF (English)",
       "preparing": "Preparing…",
       "customDescription": "Custom printed description (optional)",
-      "customDescriptionHint": "Left empty, the product and its specification are printed, e.g. strap — 5MM × 0.35MM."
+      "customDescriptionHint": "Left empty, the product and its specification are printed, e.g. strap — 5MM × 0.35MM.",
+      "download": "Download quotation PDF"
     },
     "settings": {
       "link": "Quotation settings",
       "title": "Quotation settings",
-      "subtitle": "The signature and the terms printed on every quotation",
+      "subtitle": "The language quotations are printed in, the signature and the terms",
       "backToQuotes": "Back to quotations",
       "signature": "Signature",
       "signatureHint": "Printed under “With best regards” and the company name.",
-      "signatureTitleAr": "Title (Arabic)",
-      "signatureTitleEn": "Title (English)",
       "showPreparer": "Show the name of the person who prepared the quotation",
       "terms": "Terms and conditions",
-      "termsHint": "Active terms print in this order on every quotation, in the document's language; without English text the Arabic is printed.",
+      "termsHint": "Active terms print in this order on every quotation, in the quotation language.",
       "addStandard": "Add the usual headings",
       "addTerm": "Add term",
       "noTerms": "No terms yet.",
       "newTerm": "New term",
-      "titleAr": "Title (Arabic)",
-      "titleEn": "Title (English)",
-      "bodyAr": "Text (Arabic)",
-      "bodyEn": "Text (English)",
       "active": "Active",
       "moveUp": "Move up",
       "moveDown": "Move down",
       "remove": "Remove",
       "save": "Save settings",
-      "saved": "Settings saved."
-    }
+      "saved": "Settings saved.",
+      "language": "Quotation language",
+      "languageHint": "Every quotation is printed in this language, with the signature and terms written in it. Text written in the other language is kept but not printed.",
+      "languages": {
+        "ar": "Arabic",
+        "en": "English"
+      },
+      "signatureTitle": "Title",
+      "termTitle": "Title",
+      "termBody": "Text",
+      "notWritten": "Not written in this language: it will not be printed."
+    },
+    "lifecycle": {
+      "title": "Quotation status",
+      "revision": "Revision {number}",
+      "orders": "Sales order",
+      "lockedHint": "A quotation is not edited once issued. To change it, take it back to a draft as a new revision from its page.",
+      "actions": {
+        "edit": "Edit",
+        "issue": "Issue to customer",
+        "accept": "Customer accepted",
+        "reject": "Customer rejected",
+        "expire": "Mark expired",
+        "revise": "Back to draft",
+        "create_order": "Create sales order"
+      },
+      "hints": {
+        "draft": "Draft: it can be edited, then issued to the customer.",
+        "issued": "Issued: waiting for the customer to accept or reject it.",
+        "accepted": "Accepted: final and unchanged; the sales order is made from it.",
+        "rejected": "Rejected: it can go back to a draft as a new revision.",
+        "expired": "Expired: it can go back to a draft as a new revision."
+      },
+      "rejectTitle": "Customer rejected the quotation",
+      "rejectText": "Write the reason the customer gave; it is recorded in the history.",
+      "reviseTitle": "Take the quotation back to a draft",
+      "reviseText": "The quotation becomes a draft as a new revision; the earlier steps stay in the history."
+    },
+    "searchHint": "Quotation number, customer name or code"
   },
   "commercialOrders": {
     "listTitle": "Commercial Orders",
@@ -432,8 +511,8 @@
     "detailTitle": "Commercial Order Details",
     "addButton": "Add Commercial Order",
     "newButton": "New Order",
-    "subtitle": "Review customer orders created from quotes or direct requests.",
-    "createSubtitle": "Create an order header with one or more order item lines.",
+    "subtitle": "Internal sales orders: from an accepted quotation or a direct customer order; production takes its quantities from them.",
+    "createSubtitle": "Record the customer's internal order and set the products, quantities and specifications required",
     "detailSubtitle": "View order header and item lines.",
     "backToList": "Back to Orders",
     "returnToList": "Return to Orders",
@@ -465,7 +544,7 @@
       "requestedDelivery": "Requested Delivery",
       "status": "Status",
       "customer": "Customer",
-      "quote": "Related Quote",
+      "quote": "Accepted quotation",
       "selectCustomerFirst": "Select a customer first",
       "noQuote": "No quote",
       "noAcceptedQuotes": "No accepted quotes for this customer",
@@ -475,7 +554,12 @@
       "productType": "Product Type",
       "requestedSpecJson": "Requested Specifications JSON",
       "lineTotal": "Line Total",
-      "actions": "Actions"
+      "actions": "Actions",
+      "source": "Source",
+      "customerReference": "Customer reference (PO number)",
+      "customerReferenceHint": "e.g. PO-2026-118",
+      "currency": "Currency",
+      "confirmedAt": "Confirmed on"
     },
     "items": {
       "sectionTitle": "Order Items",
@@ -490,7 +574,11 @@
         "quantity": "Qty",
         "unit": "Unit",
         "unitPrice": "Unit Price",
-        "lineTotal": "Total"
+        "lineTotal": "Total",
+        "unitPriceOptional": "Unit price (optional)",
+        "specification": "Required specifications",
+        "sent": "Sent to production",
+        "remaining": "Remaining"
       }
     },
     "productionConvertedNotice": "This order has been converted to production",
@@ -501,10 +589,83 @@
       "invalidValue": "Invalid JSON value"
     },
     "empty": "No commercial orders yet",
-    "notFound": "Commercial order not found"
+    "notFound": "Commercial order not found",
+    "saveDraft": "Save as draft",
+    "draftHint": "The order is saved as a draft and confirmed from its page.",
+    "quoteCopyHint": "The quotation's lines, specifications and prices are copied to the order; from then on the two are independent.",
+    "pricesOptionalHint": "Prices are optional; when a price is entered, the chosen currency is the order's currency.",
+    "revisionBadge": "Revision {number}",
+    "sections": {
+      "header": "Order details"
+    },
+    "sources": {
+      "quote": "From an accepted quotation",
+      "direct": "Direct customer order"
+    },
+    "fulfilment": {
+      "none": "Not sent to production",
+      "partial": "Partly sent to production",
+      "full": "Fully sent to production"
+    },
+    "lifecycle": {
+      "lockedHint": "This order is confirmed and cannot be edited. To change it, take it back to a draft as a new revision from its page (before any quantity is sent to production).",
+      "actions": {
+        "confirm": "Confirm order",
+        "transfer": "Send to production",
+        "revise": "Back to draft",
+        "cancel": "Cancel order"
+      },
+      "hints": {
+        "draft": "Draft: lines, quantities, specifications and prices can be edited. Confirming locks them.",
+        "confirmed": "Confirmed: lines, quantities and specifications are locked; quantities can be sent to production in parts.",
+        "cancelled": "Cancelled: it cannot be edited or sent to production.",
+        "converted_to_production": "Converted to production."
+      },
+      "reviseTitle": "Take the order back to a draft",
+      "reviseText": "The order becomes a draft as a new revision, to be edited and confirmed again. The reason is recorded in the history.",
+      "cancelTitle": "Cancel sales order",
+      "cancelText": "Cancelling cannot be undone. The reason is recorded in the history."
+    },
+    "searchHint": "Order number, customer reference or customer"
   },
   "currency": {
     "SAR": "SAR — Saudi Riyal",
     "USD": "$ — US Dollar"
+  },
+  "history": {
+    "title": "Status history",
+    "empty": "No steps recorded yet.",
+    "revision": "Revision {number}",
+    "events": {
+      "create": "Created",
+      "issue": "Issued",
+      "accept": "Accepted",
+      "reject": "Rejected",
+      "expire": "Expired",
+      "revise": "Back to draft",
+      "confirm": "Confirmed",
+      "cancel": "Cancelled"
+    }
+  },
+  "salesErrors": {
+    "QUOTE_NOT_DRAFT": "A quotation is edited only as a draft. Take it back to a draft first.",
+    "QUOTE_INVALID_TRANSITION": "This step is not available in the quotation's current status.",
+    "QUOTE_REASON_REQUIRED": "Write the reason.",
+    "QUOTE_ACCEPTED": "An accepted quotation is final and cannot be deleted.",
+    "ORDER_LOCKED": "The sales order is confirmed and cannot be edited or deleted.",
+    "ORDER_INVALID_TRANSITION": "This step is not available in the order's current status.",
+    "ORDER_HAS_PRODUCTION_HISTORY": "Quantities of this order were sent to production; it cannot go back to a draft or be cancelled.",
+    "ORDER_REASON_REQUIRED": "Write the reason.",
+    "ORDER_LINES_REQUIRED": "Add at least one line.",
+    "ORDER_QUOTE_NOT_ACCEPTED": "The linked quotation is not accepted yet; an order is confirmed only from an accepted quotation.",
+    "ORDER_QUOTE_REQUIRED": "Choose the accepted quotation.",
+    "ORDER_SOURCE_REQUIRED": "A direct order needs the customer's reference (PO number).",
+    "ORDER_CURRENCY_REQUIRED": "The order is priced; choose the currency.",
+    "ORDER_CURRENCY_UNKNOWN": "This currency is not supported.",
+    "ORDER_EXISTS_FOR_QUOTE": "A sales order already exists for this quotation: {value}",
+    "ORDER_DUPLICATE_LINE": "Duplicate line number.",
+    "ORDER_UNIT_INVALID": "Choose the unit from the list.",
+    "ORDER_SPEC_INVALID": "A specification value is not valid: {value}",
+    "INTERACTION_HAS_FOLLOW_UPS": "A follow-up was opened from this interaction, so it stays."
   }
 }

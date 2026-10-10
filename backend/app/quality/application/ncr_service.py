@@ -14,10 +14,10 @@ from datetime import timedelta
 
 from sqlalchemy import func, or_, select
 
-from app.core.storage import InvalidAttachmentError, LocalFileStorage, save_attachment
+from app.core.storage import InvalidAttachmentError, LocalFileStorage, save_attachment, compensate_new_file
 from app.core.utils import utc_now
 from app.quality.domain import ncr as N
-from app.quality.domain.permissions import NCR_ACTIONS, NCR_ACTIONS_COMPLETE, NCR_UPDATE, NCR_VERIFY
+from app.quality.domain.permissions import NCR_ACTIONS, NCR_ACTIONS_COMPLETE, NCR_VERIFY
 from app.quality.domain.rules import QualityError
 from app.quality.infrastructure.models import NCRAction, NCRAttachment, NonConformanceItem, NonConformanceReport, QualityCheck, QualityRejection
 from . import capa_notices
@@ -453,9 +453,11 @@ class NCRService:
             path, content_type = save_attachment(content, self.org, "quality", self._storage())
         except InvalidAttachmentError as exc:
             raise QualityError(f"FILE_{exc}", 400) from exc
-        self.db.add(NCRAttachment(organization_id=self.org, ncr_id=report.id, file_name=(file_name or "file")[-255:], content_type=content_type,
+        with compensate_new_file(self.db, self._storage(), path, lambda: self.db.scalar(select(NCRAttachment.id).where(
+                NCRAttachment.organization_id == self.org, NCRAttachment.storage_path == path)) is not None):
+            self.db.add(NCRAttachment(organization_id=self.org, ncr_id=report.id, file_name=(file_name or "file")[-255:], content_type=content_type,
                                   size_bytes=len(content), storage_path=path, uploaded_by_user_id=self.tenant.user_id))
-        self.db.commit()
+            self.db.commit()
         return self.attachments(report.id)
 
     def _attachment(self, report_id, attachment_id) -> NCRAttachment:
@@ -490,5 +492,5 @@ class NCRService:
 
 
 def can_complete(can) -> bool:
-    return bool(can(NCR_ACTIONS_COMPLETE) or can(NCR_UPDATE))
+    return bool(can(NCR_ACTIONS_COMPLETE))
 

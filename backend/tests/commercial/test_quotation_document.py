@@ -99,13 +99,48 @@ def test_arabic_document_content(doc_env):
     assert 'بند موقوف' not in text and 'لا يظهر' not in text  # inactive term and inactive bank account
 
 
-def test_english_document_falls_back_to_arabic_where_untranslated(doc_env):
+def test_a_specification_typed_without_values_is_printed_in_full(doc_env):
+    """A whole description typed as the property, with no value, prints in order with the other rows (PP Strap … then White)."""
+    long = "PP Strap 19mm X 0.85mm X 10 KG (1000 Meter) White (transparent core), export packing"
+    quote = create_quote(doc_env, items=[dict(line_no=1, product_type="PP Strap", requested_spec_json={long: "", "color": "White"},
+                                              quantity="100", unit="roll", unit_price="60")])
+    for lang in ("ar", "en"):
+        assert f"PP Strap — {long} × White" in html(doc_env, quote, lang)
+
+
+def test_english_document_prints_only_english_settings(doc_env):
     settle(doc_env)
     text = html(doc_env, create_quote(doc_env), 'en')
-    for expected in ('Quotation', 'Black strapping band', 'Roll', 'Total including VAT', 'Terms and conditions', 'Technical specification',
+    for expected in ('Quotation', 'Black strapping band', 'roll', 'Total including VAT', 'Terms and conditions', 'Technical specification',
                      'Sales Manager', 'Al Rajhi Bank', 'With best regards'):
         assert expected in text, expected
-    assert 'يتم الدفع بعد شهر' in text  # payment term has no English text yet
+    assert 'يتم الدفع بعد شهر' not in text and 'الدفع' not in text  # a term without English is not printed: no mixing
+
+
+def test_the_settings_language_is_the_quotation_language(doc_env):
+    assert doc_env.client.get(f"{QUOTES}/quote-settings").json()['document_language'] == 'ar'
+    english_only = dict(title_en='Delivery', body_en='Ex-works Al-Kharj, within 10 days of the order.')
+    r = doc_env.client.put(f"{QUOTES}/quote-settings", json=dict(document_language='en', signature_title_en='Sales Director', terms=[english_only, TERMS[0]]))
+    assert r.status_code == 200, r.text
+    assert r.json()['document_language'] == 'en' and r.json()['terms'][0]['title_ar'] is None
+    assert doc_env.client.put(f"{QUOTES}/quote-settings", json=dict(document_language='fr')).status_code == 422
+    assert doc_env.client.put(f"{QUOTES}/quote-settings", json=dict(terms=[dict(title_en='Delivery')])).status_code == 422
+    quote = create_quote(doc_env)
+    seen = {}
+    import app.commercial.reporting.customers.routes as routes
+    original = routes.generate_response
+    routes.generate_response = lambda key, params, fmt, current, db: seen.update(params) or original(key, params, 'html', current, db)
+    try:
+        doc_env.client.get(f"{QUOTES}/quotes/{quote['id']}/document.pdf")
+        assert seen['lang'] == 'en'  # no language asked: the settings' language
+        doc_env.client.get(f"{QUOTES}/quotes/{quote['id']}/document.pdf", params=dict(lang='ar'))
+        assert seen['lang'] == 'ar'
+    finally:
+        routes.generate_response = original
+    text = html(doc_env, quote, 'en')
+    assert 'Ex-works Al-Kharj' in text and 'Sales Director' in text and 'Technical specification' in text
+    arabic = html(doc_env, quote, 'ar')
+    assert 'Ex-works Al-Kharj' not in arabic and 'المواصفات الفنية' in arabic
 
 
 def test_quotation_is_not_in_the_report_center_and_needs_quote_read(doc_env):

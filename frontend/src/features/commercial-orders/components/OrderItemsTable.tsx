@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useFormatter } from "@/hooks/useFormatter";
 import { displayValue } from "@/lib/utils";
 import type { CommercialOrderItem } from "../types";
+import { useProductName } from "@/features/masterdata";
 
 type OrderItemsTableProps = {
   items: CommercialOrderItem[];
@@ -54,6 +55,7 @@ const styles: Record<string, CSSProperties> = {
 export function OrderItemsTable({ items, currency = "" }: OrderItemsTableProps) {
   const fmt = useFormatter();
   const t = useTranslations("commercial.commercialOrders");
+  const productName = useProductName();  // MD-001: the product's name, not its key
   void currency;
 
   return (
@@ -87,7 +89,7 @@ export function OrderItemsTable({ items, currency = "" }: OrderItemsTableProps) 
               <tr key={`${item.line_no}-${item.product_type}`}>
                 <td style={{ ...styles.td, textAlign: "center" }}>{item.line_no}</td>
                 <td style={{ ...styles.td, textAlign: "start" }}>
-                  {item.product_type}
+                  {productName(item.product_type)}
                   {item.requested_spec_json ? (
                     <pre style={styles.spec}>
                       {JSON.stringify(item.requested_spec_json, null, 2)}

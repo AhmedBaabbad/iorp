@@ -88,6 +88,8 @@ export function CustomerFollowUpsSection({
   const canRead = usePermission("commercial:follow_ups:read");
   const canCreate = usePermission("commercial:follow_ups:create");
   const canUpdate = usePermission("commercial:follow_ups:update");
+  const canCancel = usePermission("commercial:follow_ups:cancel");
+  const canReopen = usePermission("commercial:follow_ups:reopen");
   const canDelete = usePermission("commercial:follow_ups:delete");
   const canComplete = usePermission("commercial:follow_ups:complete");
   const canAssign = usePermission("commercial:follow_ups:assign");
@@ -433,7 +435,7 @@ export function CustomerFollowUpsSection({
                 ) : null}
 
                 {(followUp.status === "completed" || followUp.status === "cancelled") &&
-                canUpdate ? (
+                canReopen ? (
                   <button
                     style={styles.compactButton}
                     type="button"
@@ -445,7 +447,7 @@ export function CustomerFollowUpsSection({
                 ) : null}
 
                 {(followUp.status === "pending" || followUp.status === "in_progress") &&
-                canUpdate ? (
+                canCancel ? (
                   <button
                     style={styles.compactButton}
                     type="button"

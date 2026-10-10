@@ -14,11 +14,11 @@ import { useFormatter } from "@/hooks/useFormatter";
 import { PR } from "@/lib/procurement-permissions";
 import { Q } from "@/lib/quality-permissions";
 import {
-  cancelReceipt, createReceipt, downloadReceiptNote, getMaterials, getProcurementSettings, getReceipt, getReceipts, getSupplierOptions, receiveReceipt,
-  updateProcurementSettings, updateReceipt, type ReceiptFilters,
+  cancelReceipt, createReceipt, downloadReceiptNote, getMaterials, getOpenOrders, getProcurementSettings, getReceipt, getReceipts, getSupplierOptions,
+  receiveReceipt, updateProcurementSettings, updateReceipt, type ReceiptFilters,
 } from "../api";
 import { DECIMAL, procurementErrorMessage, todayIso } from "../procurement-errors";
-import { RECEIPT_STATUSES, type LotStatus, type Material, type Receipt, type ReceiptInput, type ReceiptListItem, type ReceiptStatus,
+import { RECEIPT_STATUSES, type LotStatus, type Material, type OpenOrder, type Receipt, type ReceiptInput, type ReceiptListItem, type ReceiptStatus,
   type SupplierOption } from "../types";
 import { SupplierStatusBadge } from "./Suppliers";
 
@@ -79,7 +79,7 @@ export function ReceiptsList() {
         <td><Link href={`/goods-receipts/${r.id}`}><bdi>{r.receipt_no}</bdi></Link></td>
         <td>{fmt.date(r.receipt_date)}</td>
         <td>{r.supplier_name}</td>
-        <td><bdi>{[r.supplier_delivery_no, r.supplier_invoice_no, r.purchase_reference].filter(Boolean).join(" · ") || "—"}</bdi></td>
+        <td><bdi>{[r.supplier_delivery_no, r.supplier_invoice_no, r.po_number ?? r.purchase_reference].filter(Boolean).join(" · ") || "—"}</bdi></td>
         <td><bdi>{r.quantities.map(q => fmt.quantity(q.quantity, unit(q.unit))).join(" · ") || "—"}</bdi>
           {r.lots_pending > 0 && <div className={s.error}>{t("receipts.awaitingQuality", { count: String(r.lots_pending) })}</div>}</td>
         <td><ReceiptStatusBadge status={r.status} /></td>
@@ -99,7 +99,8 @@ function PrefixSettings() {
   if (!canEdit || prefix === null) return null;
   return <form className={s.panel} aria-label={t("title")} onSubmit={async e => {
     e.preventDefault(); setMessage("");
-    try { setPrefix((await updateProcurementSettings(prefix)).receipt_prefix); setMessage(t("saved")); } catch (err) { setMessage(procurementErrorMessage(err, errors)); }
+    try { setPrefix((await updateProcurementSettings({ receipt_prefix: prefix })).receipt_prefix); setMessage(t("saved")); }
+    catch (err) { setMessage(procurementErrorMessage(err, errors)); }
   }}>
     <h2 style={{ marginTop: 0 }}>{t("title")}</h2>
     <div className={s.toolbar} style={{ marginBottom: 0 }}>
@@ -112,18 +113,22 @@ function PrefixSettings() {
 }
 
 type Line = { material_id: string; description: string; supplier_lot: string; quantity: string; unit: string; package_count: string; weight: string;
-  weight_unit: string };
-const EMPTY_LINE: Line = { material_id: "", description: "", supplier_lot: "", quantity: "", unit: "kg", package_count: "", weight: "", weight_unit: "kg" };
+  weight_unit: string; po_line_id: string };
+const EMPTY_LINE: Line = { material_id: "", description: "", supplier_lot: "", quantity: "", unit: "kg", package_count: "", weight: "", weight_unit: "kg",
+  po_line_id: "" };
 type Header = { [K in "supplier_delivery_no" | "supplier_invoice_no" | "purchase_reference" | "vehicle_plate" | "driver_name" | "notes"]: string };
 const EMPTY_HEADER: Header = { supplier_delivery_no: "", supplier_invoice_no: "", purchase_reference: "", vehicle_plate: "", driver_name: "", notes: "" };
 const blank = (v: string) => v.trim() || null;
 const text = (v: string | null) => (v === null ? "" : String(Number(v)));
 
-// A goods receipt: record a delivery (draft), or edit it until it is received.
-export function ReceiptForm({ receiptId, supplierId }: { receiptId?: string; supplierId?: string }) {
+// A goods receipt: record a delivery (draft), or edit it until it is received. It may deliver against a purchase order
+// (PROC-003): its lines are then filled with what each order line still expects.
+export function ReceiptForm({ receiptId, supplierId, orderId }: { receiptId?: string; supplierId?: string; orderId?: string }) {
   const t = useTranslations("procurement");
   const errors = useTranslations("procurement.errors");
   const messages = useTranslations("messages");
+  const units = useTranslations("common.units.units");
+  const unit = (code: string) => (units.has(code) ? units(code) : code);
   const router = useRouter();
   const [supplier, setSupplier] = useState(supplierId ?? "");
   const [query, setQuery] = useState("");
@@ -132,6 +137,9 @@ export function ReceiptForm({ receiptId, supplierId }: { receiptId?: string; sup
   const [date, setDate] = useState(todayIso());
   const [h, setH] = useState<Header>(EMPTY_HEADER);
   const [lines, setLines] = useState<Line[]>([{ ...EMPTY_LINE }]);
+  const [order, setOrder] = useState(orderId ?? "");
+  const [orders, setOrders] = useState<OpenOrder[]>([]);
+  const [prefilled, setPrefilled] = useState(!orderId);
   const [loading, setLoading] = useState(Boolean(receiptId));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -144,15 +152,38 @@ export function ReceiptForm({ receiptId, supplierId }: { receiptId?: string; sup
     return () => { active = false; clearTimeout(timer); };
   }, [query, supplier]);
   useEffect(() => {
+    if (!supplier) { setOrders([]); return; }
+    let active = true;
+    getOpenOrders(supplier).then(found => { if (active) setOrders(found); }).catch(() => { if (active) setOrders([]); });
+    return () => { active = false; };
+  }, [supplier]);
+  const fillFrom = useCallback((chosen: OpenOrder) => {
+    const open = chosen.lines.filter(l => Number(l.remaining) > 0);
+    setLines(open.length ? open.map(l => ({ ...EMPTY_LINE, material_id: l.material_id ?? "", description: l.material_id ? "" : l.description,
+      quantity: String(Number(l.remaining)), unit: l.unit, po_line_id: l.id })) : [{ ...EMPTY_LINE }]);
+  }, []);
+  useEffect(() => {  // opened from an order (?order=<id>): its remaining lines, once
+    if (prefilled) return;
+    const chosen = orders.find(o => o.id === order);
+    if (chosen) { fillFrom(chosen); setPrefilled(true); }
+  }, [orders, order, prefilled, fillFrom]);
+  function chooseOrder(id: string) {
+    setOrder(id);
+    const chosen = orders.find(o => o.id === id);
+    if (chosen) fillFrom(chosen);
+    else setLines(old => old.map(l => ({ ...l, po_line_id: "" })));
+  }
+  useEffect(() => {
     if (!receiptId) return;
     let active = true;
     getReceipt(receiptId).then(r => {
       if (!active) return;
-      setSupplier(r.supplier_id); setDate(r.receipt_date);
+      setSupplier(r.supplier_id); setDate(r.receipt_date); setOrder(r.purchase_order_id ?? "");
       setSuppliers(old => [...old, { id: r.supplier_id, supplier_code: "", name: r.supplier_name, status: r.supplier_status ?? "approved" }]);
       setH(Object.fromEntries(Object.keys(EMPTY_HEADER).map(k => [k, (r[k as keyof Header] as string | null) ?? ""])) as Header);
       setLines(r.lines.map(l => ({ material_id: l.material_id ?? "", description: l.material_id ? "" : l.description, supplier_lot: l.supplier_lot ?? "",
-        quantity: text(l.quantity), unit: l.unit, package_count: l.package_count === null ? "" : String(l.package_count), weight: text(l.weight), weight_unit: l.weight_unit })));
+        quantity: text(l.quantity), unit: l.unit, package_count: l.package_count === null ? "" : String(l.package_count), weight: text(l.weight), weight_unit: l.weight_unit,
+        po_line_id: l.po_line_id ?? "" })));
     }).catch(e => { if (active) setError(procurementErrorMessage(e, errors)); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [receiptId, errors]);
@@ -173,8 +204,10 @@ export function ReceiptForm({ receiptId, supplierId }: { receiptId?: string; sup
     if (!valid || busy) return;
     setBusy(true); setError("");
     const body: ReceiptInput = { supplier_id: supplier, receipt_date: date, ...(Object.fromEntries(Object.entries(h).map(([k, v]) => [k, blank(v)])) as Record<keyof Header, string | null>),
+      purchase_order_id: order || null,
       lines: lines.map(l => ({ material_id: l.material_id || null, description: blank(l.description), supplier_lot: blank(l.supplier_lot), quantity: l.quantity.trim(),
-        unit: l.unit, package_count: l.package_count.trim() ? Number(l.package_count) : null, weight: blank(l.weight), weight_unit: l.weight_unit, notes: null })) };
+        unit: l.unit, package_count: l.package_count.trim() ? Number(l.package_count) : null, weight: blank(l.weight), weight_unit: l.weight_unit, notes: null,
+        po_line_id: order && l.po_line_id ? l.po_line_id : null })) };
     try {
       const saved = receiptId ? await updateReceipt(receiptId, body) : await createReceipt(body);
       router.push(`/goods-receipts/${saved.id}`);
@@ -183,7 +216,7 @@ export function ReceiptForm({ receiptId, supplierId }: { receiptId?: string; sup
   const input = (field: keyof Header, extra: Record<string, unknown> = {}) =>
     <label className={s.field}>{t(`fields.${field}`)}<input value={h[field]} onChange={e => setH(old => ({ ...old, [field]: e.target.value }))} {...extra} /></label>;
   const title = receiptId ? t("receipts.editTitle") : t("receipts.createTitle");
-  const back = receiptId ? `/goods-receipts/${receiptId}` : "/goods-receipts";
+  const back = receiptId ? `/goods-receipts/${receiptId}` : orderId ? `/purchase-orders/${orderId}` : "/goods-receipts";
   const chosen = suppliers.find(o => o.id === supplier);
 
   return <PageFrame title={title} subtitle={t("receipts.formSubtitle")} action={<Link href={back} className={s.button}>{t("back")}</Link>}>
@@ -193,13 +226,17 @@ export function ReceiptForm({ receiptId, supplierId }: { receiptId?: string; sup
           <div className={s.grid}>
             <label className={s.field}>{t("receipts.findSupplier")}<input value={query} placeholder={t("suppliers.searchPlaceholder")} onChange={e => setQuery(e.target.value)} /></label>
             <label className={s.field}>{t("fields.supplier")}
-              <select required value={supplier} onChange={e => setSupplier(e.target.value)}>
+              <select required value={supplier} onChange={e => { setSupplier(e.target.value); setOrder(""); }}>
                 <option value="">{t("receipts.chooseSupplier")}</option>
                 {suppliers.map(o => <option key={o.id} value={o.id}>{o.name}{o.supplier_code ? ` — ${o.supplier_code}` : ""}</option>)}</select></label>
             <label className={s.field}>{t("fields.date")}<input type="date" required value={date} onChange={e => setDate(e.target.value)} /></label>
+            {(orders.length > 0 || order) && <label className={s.field}>{t("receipts.purchaseOrder")}
+              <select value={order} onChange={e => chooseOrder(e.target.value)}>
+                <option value="">{t("receipts.noOrder")}</option>
+                {orders.map(o => <option key={o.id} value={o.id}>{o.po_number}</option>)}</select></label>}
             {input("supplier_delivery_no", { maxLength: 80, dir: "ltr" })}
             {input("supplier_invoice_no", { maxLength: 80, dir: "ltr" })}
-            {input("purchase_reference", { maxLength: 80, dir: "ltr" })}
+            {!order && input("purchase_reference", { maxLength: 80, dir: "ltr" })}
             {input("vehicle_plate", { maxLength: 40 })}
             {input("driver_name", { maxLength: 200 })}
           </div>
@@ -208,9 +245,11 @@ export function ReceiptForm({ receiptId, supplierId }: { receiptId?: string; sup
         </section>
         <section className={s.panel} aria-label={t("receipts.lines")}>
           <h2 style={{ marginTop: 0 }}>{t("receipts.lines")}</h2>
+          {order && <p className={s.muted} style={{ marginTop: 0 }}>{t("receipts.fromOrderHint")}</p>}
           {lines.map((l, i) => <div key={i} className={s.panel} style={{ margin: "0 0 10px", padding: 14 }}>
             <div className={s.actions} style={{ justifyContent: "space-between", marginBottom: 8 }}>
-              <strong>{t("receipts.lineNo", { no: String(i + 1) })}</strong>
+              <strong>{t("receipts.lineNo", { no: String(i + 1) })}{order && l.po_line_id && <span className={s.muted}> · {t("receipts.orderLine", {
+                no: String(orders.find(o => o.id === order)?.lines.find(x => x.id === l.po_line_id)?.line_no ?? "") })}</span>}</strong>
               {lines.length > 1 && <button type="button" className={`${s.button} ${s.danger}`} onClick={() => setLines(old => old.filter((_, n) => n !== i))}>{t("remove")}</button>}
             </div>
             <div className={s.grid}>
@@ -220,7 +259,8 @@ export function ReceiptForm({ receiptId, supplierId }: { receiptId?: string; sup
               {!l.material_id && <label className={s.field}>{t("fields.description")}<input maxLength={255} value={l.description} onChange={e => setLine(i, "description", e.target.value)} /></label>}
               <label className={s.field}>{t("fields.supplier_lot")}<input dir="ltr" maxLength={80} value={l.supplier_lot} onChange={e => setLine(i, "supplier_lot", e.target.value)} /></label>
               <label className={s.field}>{t("fields.quantity")}<input required inputMode="decimal" dir="ltr" value={l.quantity} onChange={e => setLine(i, "quantity", e.target.value)} /></label>
-              <label className={s.field}>{t("fields.unit")}<UnitSelect value={l.unit} onChange={u => setLine(i, "unit", u)} ariaLabel={t("fields.unit")} /></label>
+              <label className={s.field}>{t("fields.unit")}{order && l.po_line_id ? <input value={unit(l.unit)} readOnly aria-label={t("fields.unit")} />
+                : <UnitSelect value={l.unit} onChange={u => setLine(i, "unit", u)} ariaLabel={t("fields.unit")} />}</label>
               <label className={s.field}>{t("fields.package_count")}<input inputMode="numeric" dir="ltr" value={l.package_count} onChange={e => setLine(i, "package_count", e.target.value)} /></label>
               <label className={s.field}>{t("fields.weight")}<input inputMode="decimal" dir="ltr" value={l.weight} onChange={e => setLine(i, "weight", e.target.value)} /></label>
               <label className={s.field}>{t("fields.weight_unit")}
@@ -293,7 +333,8 @@ export function ReceiptDetail({ receiptId }: { receiptId: string }) {
           {x.supplier_status && x.supplier_status !== "approved" && <div><SupplierStatusBadge status={x.supplier_status} /></div>}</Item>
         <Item label={t("fields.supplier_delivery_no")}><bdi>{x.supplier_delivery_no ?? "—"}</bdi></Item>
         <Item label={t("fields.supplier_invoice_no")}><bdi>{x.supplier_invoice_no ?? "—"}</bdi></Item>
-        <Item label={t("fields.purchase_reference")}><bdi>{x.purchase_reference ?? "—"}</bdi></Item>
+        <Item label={t("fields.purchase_reference")}>{x.purchase_order_id ? <Link href={`/purchase-orders/${x.purchase_order_id}`}><bdi>{x.po_number}</bdi></Link>
+          : <bdi>{x.purchase_reference ?? "—"}</bdi>}</Item>
         <Item label={t("fields.vehicle_plate")}><bdi>{[x.vehicle_plate, x.driver_name].filter(Boolean).join(" — ") || "—"}</bdi></Item>
         <Item label={t("receipts.receivedBy")}>{x.received_by_name ? `${x.received_by_name} — ${fmt.dateTime(x.received_at!)}` : "—"}</Item>
       </dl>

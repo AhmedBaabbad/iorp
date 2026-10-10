@@ -18,6 +18,22 @@ beforeEach(()=>{mocks.permission.mockReturnValue(true);mocks.definitions.mockRes
 afterEach(()=>{cleanup();vi.clearAllMocks();});
 const ui=(node:React.ReactNode)=>render(<NextIntlClientProvider locale="en" messages={messages}>{node}</NextIntlClientProvider>);
 describe('customer report audience',()=>{
+  it('submits sample report filters and sections for preview and PDF',async()=>{
+    const sample:Definition={...definition,key:'customers.samples_report',title_en:'Customer samples report',audiences:['internal'],
+      params_schema:{properties:{sample_status:{type:'string',title_en:'Sample status',enum:['requested','evaluated']},product:{type:'string',title_en:'Product'}}},
+      sections:[{key:'samples',title_ar:'العينات',title_en:'Samples',default_enabled:true},
+        {key:'sample_evaluations',title_ar:'التقييمات',title_en:'Evaluations',default_enabled:true}]};
+    mocks.definitions.mockResolvedValue([sample]);
+    ui(<ReportForm definition={sample}/>);
+    await screen.findByLabelText('Evaluations');
+    fireEvent.change(screen.getByLabelText('Sample status'),{target:{value:'evaluated'}});
+    fireEvent.change(screen.getByLabelText('Product'),{target:{value:'custom_product'}});
+    fireEvent.click(screen.getByRole('button',{name:'Preview'}));
+    await waitFor(()=>expect(mocks.request).toHaveBeenCalledWith(sample.key,'preview',expect.objectContaining({sample_status:'evaluated',product:'custom_product',sections:['samples','sample_evaluations']})));
+    await waitFor(()=>expect((screen.getByRole('button',{name:/Download/}) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole('button',{name:/Download/}));
+    await waitFor(()=>expect(mocks.request).toHaveBeenCalledWith(sample.key,'pdf',expect.objectContaining({sample_status:'evaluated',product:'custom_product'})));
+  });
   it('refreshes sections for customer audience and submits the fixed customer',async()=>{
     ui(<ReportForm definition={definition} fixedParams={{customer_id:'customer-1'}}/>);
     await screen.findByLabelText('Internal notes');

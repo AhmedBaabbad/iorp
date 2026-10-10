@@ -1,0 +1,68 @@
+/* DASH-002: the blue sidebar — the brand, the dashboard, the sections that fold, and the user's menu at the bottom.
+   Colours come from the --sidebar-* tokens of each theme (globals.css), checked for contrast in the theme tests. */
+
+.brand { display: flex; align-items: center; gap: 11px; padding: 18px 16px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.14); }
+.mark { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 38px; height: 38px; overflow: hidden;
+  border-radius: 10px; background: rgba(255, 255, 255, 0.16); color: var(--sidebar-text); font-size: 15px; font-weight: 800; }
+.mark img { width: 100%; height: 100%; object-fit: cover; }
+.brandText { min-width: 0; }
+.appName { margin: 0; font-size: 17px; font-weight: 800; color: var(--sidebar-text); white-space: nowrap; }
+.orgName { margin: 2px 0 0; font-size: 13px; color: var(--sidebar-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin: 2px 0; border-radius: 10px; position: relative;
+  color: var(--sidebar-muted); font-size: 15px; font-weight: 500; line-height: 1.5; text-decoration: none; }
+.link svg { flex-shrink: 0; opacity: 0.9; }
+.link:hover { color: var(--sidebar-text); }
+.active, .active:hover { background: var(--sidebar-active); color: var(--sidebar-active-text); font-weight: 700; box-shadow: var(--shadow-xs);
+}
+.active svg { opacity: 1; }
+.home { font-size: 16px; font-weight: 700; color: var(--sidebar-text); margin: 4px 0 10px; }
+.bullet { width: 6px; height: 6px; border-radius: 999px; background: currentColor; opacity: 0.6; flex-shrink: 0; margin-inline: 5px; }
+.badge { margin-inline-start: auto; min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--danger); color: var(--on-accent);
+  font-size: 11px; font-weight: 800; line-height: 20px; text-align: center; }
+
+.group { margin-bottom: 4px; }
+.groupHead { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border: 0; border-radius: 10px; background: none;
+  color: var(--sidebar-text); font: inherit; font-size: 15.5px; font-weight: 700; line-height: 1.5; cursor: pointer; text-align: start; }
+.groupHead:hover { background: rgba(255, 255, 255, 0.12); }
+.groupCurrent { background: rgba(255, 255, 255, 0.1); }
+.groupCurrent::after { content: ""; position: absolute; inset-inline-start: 0; inset-block: 10px; width: 3px; border-radius: 3px; background: var(--sidebar-accent); }
+.groupHead { position: relative; }
+.chevron { margin-inline-start: auto; transition: transform 0.2s ease; opacity: 0.8; }
+.open .chevron { transform: rotate(90deg); }
+:global([dir="rtl"]) .chevron { transform: scaleX(-1); }
+:global([dir="rtl"]) .open .chevron { transform: rotate(90deg); }
+.groupLinks { display: grid; padding-inline-start: 10px; margin-inline-start: 21px; border-inline-start: 1px solid rgba(255, 255, 255, 0.16); }
+.groupLinks .link { font-size: 14.5px; padding: 8px 10px; }
+
+/* the user's card and menu at the bottom */
+.footer { position: relative; padding: 12px; border-top: 1px solid rgba(255, 255, 255, 0.14); }
+.userCard { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: 10px; cursor: pointer;
+  background: rgba(255, 255, 255, 0.1); color: var(--sidebar-text); font: inherit; text-align: start; }
+.userCard:hover, .userCardOpen { background: rgba(255, 255, 255, 0.18); }
+.avatar { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 999px;
+  background: var(--sidebar-text); color: var(--sidebar-bg); font-size: 13px; font-weight: 800; }
+.userText { min-width: 0; flex: 1; }
+.userName { margin: 0; font-size: 14.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.userRole { margin: 1px 0 0; font-size: 12.5px; color: var(--sidebar-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.caret { flex-shrink: 0; transition: transform 0.2s ease; }
+.userCardOpen .caret { transform: rotate(180deg); }
+
+/* the menu opens above the card, on the page's own surface so its controls keep the theme */
+.menu { position: absolute; inset-inline: 12px; bottom: calc(100% - 4px); z-index: 50; display: grid; gap: 4px; padding: 10px;
+  border-radius: 12px; background: var(--surface-raised); color: var(--text); border: 1px solid var(--border); box-shadow: var(--shadow-lg); }
+.menuItem { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px; border: 0; border-radius: 8px; background: none;
+  color: var(--text); font: inherit; font-size: 15px; font-weight: 600; text-decoration: none; cursor: pointer; text-align: start; }
+.menuItem:hover { background: var(--surface-muted); }
+.menuDanger { color: var(--danger); }
+.menuDivider { height: 1px; margin: 4px 2px; background: var(--border); }
+.menuSetting { padding: 4px 6px; }
+.closed .groupLinks { display: none; }
+
+/* tablets: the narrow sidebar shows icons only, every section open */
+@media (max-width: 1023px) and (min-width: 768px) {
+  .closed .groupLinks, .groupLinks { display: grid; padding: 0; margin: 0; border: 0; }
+  .chevron, .caret { display: none; }
+  .groupHead, .link { justify-content: center; padding-inline: 0; }
+  .menu { inset-inline-start: 8px; inset-inline-end: auto; width: 240px; }
+}

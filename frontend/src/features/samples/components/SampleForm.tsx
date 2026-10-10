@@ -1,19 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useAuth } from '@/features/auth';
+import { SAMPLE_STATUS_PERMISSION } from '../permissions';
+import { UnitSelect } from "@/components/forms/UnitSelect";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
 import { SuccessModal } from "@/components/ui/SuccessModal";
-import { listCustomers } from "@/features/customers";
+import { CustomerPicker } from "@/features/customers";
 import { getEnumLabel } from "@/i18n/enum-helpers";
-import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { optionalText, toDatetimeLocalValue } from "@/lib/utils";
+import { sampleError } from "./sample-errors";
+import { SampleProductFields } from "./SampleProperties";
 import { sharedStyles } from "@/styles/shared-styles";
-import type { CustomerListItem } from "@/types/customers";
 import { createSample } from "../api/samples-api";
 import type { CreateSampleRequest, RequestedSpec, SampleStatus } from "../types";
 
@@ -25,7 +28,7 @@ type SampleFormValues = {
   requested_sample_quantity: string;
   unit: string;
   request_date: string;
-  requested_spec_json: string;
+  property_values: RequestedSpec;
   notes: string;
 };
 
@@ -84,59 +87,25 @@ const defaultValues: SampleFormValues = {
   requested_sample_quantity: "",
   unit: "",
   request_date: toDatetimeLocalValue(new Date()),
-  requested_spec_json: "",
+  property_values: {},
   notes: "",
 };
 
-class FormValidationError extends Error {}
 
 export function SampleForm() {
+  const { hasPermission } = useAuth();
   const router = useRouter();
   const messages = useTranslations("messages");
   const common = useTranslations("common");
   const t = useTranslations("commercial.samples");
   const tEnums = useTranslations();
   const [values, setValues] = useState<SampleFormValues>(defaultValues);
-  const [customers, setCustomers] = useState<CustomerListItem[]>([]);
-  const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
-  const [customerLoadError, setCustomerLoadError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [specReady, setSpecReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successRedirect, setSuccessRedirect] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadCustomers() {
-      try {
-        setIsLoadingCustomers(true);
-        setCustomerLoadError(null);
-        const response = await listCustomers();
-
-        if (isMounted) {
-          setCustomers(response);
-          setValues((current) => ({
-            ...current,
-            customer_id: current.customer_id || response[0]?.id || "",
-          }));
-        }
-      } catch (caughtError) {
-        if (isMounted) {
-          setCustomerLoadError(getApiErrorMessage(caughtError, messages));
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoadingCustomers(false);
-        }
-      }
-    }
-
-    void loadCustomers();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  // ARCH-PAGE-001: the customer is chosen with CustomerPicker (a search), never by loading every customer.
 
   function updateField<TField extends keyof SampleFormValues>(
     field: TField,
@@ -157,13 +126,11 @@ export function SampleForm() {
     setIsSubmitting(true);
 
     try {
-      const createdSample = await createSample(toCreateRequest(values, messages));
+      const createdSample = await createSample(toCreateRequest(values));
       setSuccessRedirect(`/samples/${createdSample.id}`);
     } catch (caughtError) {
       setError(
-        caughtError instanceof FormValidationError
-          ? caughtError.message
-          : getApiErrorMessage(caughtError, messages),
+        sampleError(caughtError, t, messages),
       );
     } finally {
       setIsSubmitting(false);
@@ -196,47 +163,8 @@ export function SampleForm() {
                 {t("fields.customer")}
                 <span style={styles.required} aria-hidden="true"> *</span>
               </span>
-              {customers.length > 0 ? (
-                <select
-                  style={sharedStyles.input}
-                  value={values.customer_id}
-                  onChange={(event) => updateField("customer_id", event.target.value)}
-                  disabled={isSubmitting || isLoadingCustomers}
-                  required
-                >
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name} ({customer.customer_code})
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  style={sharedStyles.input}
-                  value={values.customer_id}
-                  onChange={(event) => updateField("customer_id", event.target.value)}
-                  disabled={isSubmitting}
-                  placeholder={t("placeholders.customerId")}
-                  required
-                />
-              )}
-              {isLoadingCustomers ? <p style={styles.helper}>{messages("loading.fetching")}</p> : null}
-              {customerLoadError ? <p style={styles.helper}>{customerLoadError}</p> : null}
-            </label>
-
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>
-                {t("fields.productType")}
-                <span style={styles.required} aria-hidden="true"> *</span>
-              </span>
-              <input
-                style={sharedStyles.input}
-                value={values.product_type}
-                onChange={(event) => updateField("product_type", event.target.value)}
-                maxLength={120}
-                disabled={isSubmitting}
-                required
-              />
+              <CustomerPicker value={values.customer_id} disabled={isSubmitting}
+                onChange={(id) => updateField("customer_id", id)} />
             </label>
 
             <label style={sharedStyles.field}>
@@ -249,7 +177,7 @@ export function SampleForm() {
                 }
                 disabled={isSubmitting}
               >
-                {sampleStatusOptions.map((s) => (
+                {sampleStatusOptions.filter(s => s === 'requested' || hasPermission(SAMPLE_STATUS_PERMISSION[s])).map((s) => (
                   <option key={s} value={s} disabled={s === "evaluated"}>
                     {getEnumLabel("sample", "status", s, tEnums)}
                   </option>
@@ -295,14 +223,8 @@ export function SampleForm() {
                   {t("fields.unit")}
                   <span style={styles.required} aria-hidden="true"> *</span>
                 </span>
-                <input
-                  style={sharedStyles.input}
-                  value={values.unit}
-                  onChange={(event) => updateField("unit", event.target.value)}
-                  maxLength={32}
-                  disabled={isSubmitting}
-                  required
-                />
+                <UnitSelect value={values.unit} onChange={(unit) => updateField("unit", unit)}
+                  disabled={isSubmitting} ariaLabel={t("fields.unit")} />
               </label>
             ) : null}
 
@@ -321,17 +243,9 @@ export function SampleForm() {
               />
             </label>
           </div>
+          <SampleProductFields productKey={values.product_type} values={values.property_values} disabled={isSubmitting} onReady={setSpecReady}
+            onChange={(key, specs, unit) => { setValues(v => ({ ...v, product_type: key, property_values: specs, ...(unit !== undefined ? { unit: unit ?? "" } : {}) })); }} />
 
-          <label style={sharedStyles.field}>
-            <span style={sharedStyles.label}>{t("fields.requestedSpecJson")}</span>
-            <textarea
-              style={{ ...sharedStyles.textarea, minHeight: "130px", fontFamily: "monospace" }}
-              value={values.requested_spec_json}
-              onChange={(event) => updateField("requested_spec_json", event.target.value)}
-              disabled={isSubmitting}
-              placeholder={'{"color":"blue","thickness":"50 micron"}'}
-            />
-          </label>
 
           <label style={sharedStyles.field}>
             <span style={sharedStyles.label}>{t("fields.notes")}</span>
@@ -350,7 +264,7 @@ export function SampleForm() {
           ) : null}
 
           <div style={styles.actions}>
-            <button style={sharedStyles.button} type="submit" disabled={isSubmitting}>
+            <button style={sharedStyles.button} type="submit" disabled={isSubmitting || !specReady}>
               {isSubmitting ? messages("loading.saving") : common("actions.create")}
             </button>
             <Link href="/samples" style={sharedStyles.secondaryButton}>
@@ -367,7 +281,6 @@ export function SampleForm() {
 
 function toCreateRequest(
   values: SampleFormValues,
-  t: (key: string) => string,
 ): CreateSampleRequest {
   return {
     customer_id: values.customer_id,
@@ -379,30 +292,8 @@ function toCreateRequest(
       : null,
     unit: values.is_sample_requested ? optionalText(values.unit) : null,
     request_date: new Date(values.request_date).toISOString(),
-    requested_spec_json: parseRequestedSpec(values.requested_spec_json, t),
+    property_values: values.property_values,
     notes: optionalText(values.notes) ?? null,
   };
 }
 
-function parseRequestedSpec(
-  value: string,
-  t: (key: string) => string,
-): RequestedSpec | null {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(trimmed);
-  } catch {
-    throw new FormValidationError(t("validation.invalidValue"));
-  }
-
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new FormValidationError(t("validation.invalidValue"));
-  }
-
-  return parsed as RequestedSpec;
-}

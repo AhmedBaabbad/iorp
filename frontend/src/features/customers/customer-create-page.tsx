@@ -11,6 +11,7 @@ import { SuccessModal } from "@/components/ui/SuccessModal";
 import { useAuth, usePermission } from "@/features/auth";
 import { getEnumLabel } from "@/i18n/enum-helpers";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
+import { ListSelect } from "@/features/masterdata";
 import { sharedStyles } from "@/styles/shared-styles";
 import type {
   CustomerStatus,
@@ -204,35 +205,20 @@ export function CustomerCreatePage() {
 
             <label style={sharedStyles.field}>
               <span style={sharedStyles.label}>{t("fields.sector")}</span>
-              <input
-                style={sharedStyles.input}
-                value={values.sector}
-                onChange={(event) => updateField("sector", event.target.value)}
-                maxLength={120}
-                disabled={isSubmitting}
-              />
+              <ListSelect style={sharedStyles.input} list="sector" value={values.sector} disabled={isSubmitting} ariaLabel={t("fields.sector")}
+                onChange={(key) => updateField("sector", key)} />
             </label>
 
             <label style={sharedStyles.field}>
               <span style={sharedStyles.label}>{t("fields.city")}</span>
-              <input
-                style={sharedStyles.input}
-                value={values.city}
-                onChange={(event) => updateField("city", event.target.value)}
-                maxLength={120}
-                disabled={isSubmitting}
-              />
+              <ListSelect style={sharedStyles.input} list="city" value={values.city} parent={values.country} disabled={isSubmitting} ariaLabel={t("fields.city")}
+                onChange={(key) => updateField("city", key)} />
             </label>
 
             <label style={sharedStyles.field}>
               <span style={sharedStyles.label}>{t("fields.country")}</span>
-              <input
-                style={sharedStyles.input}
-                value={values.country}
-                onChange={(event) => updateField("country", event.target.value)}
-                maxLength={120}
-                disabled={isSubmitting}
-              />
+              <ListSelect style={sharedStyles.input} list="country" value={values.country} disabled={isSubmitting} ariaLabel={t("fields.country")}
+                onChange={(key) => updateField("country", key)} />
             </label>
 
             <label style={sharedStyles.field}>
@@ -320,13 +306,8 @@ export function CustomerCreatePage() {
 
             <label style={sharedStyles.field}>
               <span style={sharedStyles.label}>{t("fields.opportunitySource")}</span>
-              <input
-                style={sharedStyles.input}
-                value={values.opportunity_source}
-                onChange={(event) => updateField("opportunity_source", event.target.value)}
-                maxLength={120}
-                disabled={isSubmitting}
-              />
+              <ListSelect style={sharedStyles.input} list="opportunity_source" value={values.opportunity_source} disabled={isSubmitting} ariaLabel={t("fields.opportunitySource")}
+                onChange={(key) => updateField("opportunity_source", key)} />
             </label>
 
             <label style={sharedStyles.field}>

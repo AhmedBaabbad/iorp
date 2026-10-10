@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { UnitSelect } from "@/components/forms/UnitSelect";
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth/permission-hooks";
+import { ProductSelect, useProductName } from "@/features/masterdata";
 import s from "@/features/production-demands/demands.module.css";
 import { PR } from "@/lib/procurement-permissions";
 import { createMaterial, getMaterials, updateMaterial } from "../api";
@@ -20,6 +21,7 @@ export function MaterialsList() {
   const units = useTranslations("common.units.units");
   const canCreate = usePermission(PR.MATERIALS_CREATE);
   const canUpdate = usePermission(PR.MATERIALS_UPDATE);
+  const productName = useProductName();
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<Material[] | null>(null);
   const [editing, setEditing] = useState<Material | "new" | null>(null);
@@ -46,7 +48,7 @@ export function MaterialsList() {
         <td>{t(`materialCategories.${m.category}`)}</td>
         <td>{units.has(m.unit) ? units(m.unit) : m.unit}</td>
         <td>{m.inspection_required ? t("yes") : t("no")}</td>
-        <td><bdi dir="ltr">{m.spec_product_type ?? "—"}</bdi></td>
+        <td>{m.spec_product_type ? productName(m.spec_product_type) : "—"}</td>
         <td>{canUpdate && <button type="button" className={s.button} onClick={() => setEditing(m)}>{t("edit")}</button>}</td>
       </tr>)}</tbody>
     </table></div></section>}
@@ -80,8 +82,8 @@ function MaterialDialog({ value, onClose, onSaved }: { value: Material | null; o
           <select value={v.category} disabled={busy} onChange={e => setV({ ...v, category: e.target.value as MaterialInput["category"] })}>
             {MATERIAL_CATEGORIES.map(c => <option key={c} value={c}>{t(`materialCategories.${c}`)}</option>)}</select></label>
         <label className={s.field}>{t("fields.unit")}<UnitSelect value={v.unit} onChange={u => setV({ ...v, unit: u })} ariaLabel={t("fields.unit")} /></label>
-        <label className={s.field}>{t("fields.spec_product_type")}<input dir="ltr" maxLength={120} value={v.spec_product_type ?? ""} disabled={busy}
-          placeholder="pp_resin" onChange={e => setV({ ...v, spec_product_type: e.target.value })} /></label>
+        <label className={s.field}>{t("fields.spec_product_type")}<ProductSelect ariaLabel={t("fields.spec_product_type")} kind="material" required={false}
+          value={v.spec_product_type ?? ""} disabled={busy} onChange={key => setV({ ...v, spec_product_type: key })} /></label>
       </div>
       <label><input type="checkbox" checked={v.inspection_required} disabled={busy} onChange={e => setV({ ...v, inspection_required: e.target.checked })} /> {t("materials.inspectionHint")}</label>
       {value && <label><input type="checkbox" checked={v.active} disabled={busy} onChange={e => setV({ ...v, active: e.target.checked })} /> {t("materials.active")}</label>}

@@ -25,6 +25,9 @@ export const Q = {
   NCR_UPDATE: code("ncr_reports", "update"),
   NCR_VERIFY: code("ncr_reports", "verify"),
   NCR_CANCEL: code("ncr_reports", "cancel"),
+  NCR_CONTAIN: code("ncr_reports", "contain"),
+  NCR_INVESTIGATE: code("ncr_reports", "investigate"),
+  NCR_SUBMIT: code("ncr_reports", "submit"),
   NCR_ACTIONS_READ: code("ncr_actions", "read"),
   NCR_ACTIONS_COMPLETE: code("ncr_actions", "complete"),
   SPECS_READ: code("specifications", "read"),
@@ -35,6 +38,7 @@ export const Q = {
   COA_CREATE: code("certificates", "create"),
   COA_UPDATE: code("certificates", "update"),
   COA_ISSUE: code("certificates", "issue"),
+  SETTINGS_UPDATE: code("settings", "update"),
   COA_REVOKE: code("certificates", "revoke"),
 } as const;
 

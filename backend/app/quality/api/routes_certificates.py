@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.reporting.routes import generate_response
 from app.core.tenancy import TenantContext
-from app.dependencies import get_current_tenant, get_current_user, get_db, permission_check, require_permission
+from app.dependencies import get_current_tenant, get_current_user, get_db, permission_check, permission_checked_in_handler, require_permission
 from app.quality.api.certificate_schemas import (
     CertificateCreate, CertificateListItem, CertificateRead, CertificateSources, CertificateUpdate, RevokeInput, SettingsRead, SettingsUpdate,
 )
@@ -38,7 +38,7 @@ def read_settings(tenant: TenantContext = Depends(get_current_tenant), db: Sessi
     return settings
 
 
-@router.patch("/quality-settings", response_model=SettingsRead, dependencies=[Depends(require_permission(Q.COA_ISSUE))])
+@router.patch("/quality-settings", response_model=SettingsRead, dependencies=[Depends(require_permission(Q.SETTINGS_UPDATE))])
 def update_settings(payload: SettingsUpdate, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
     """Certificate numbering: prefix and the last number used (to continue from paper; never backwards)."""
     try:
@@ -97,11 +97,15 @@ def update_certificate(certificate_id: UUID, payload: CertificateUpdate, tenant:
         raise _error(exc) from exc
 
 
-@router.post(f"{PATH}/{{certificate_id}}/issue", response_model=CertificateRead, dependencies=[Depends(require_permission(Q.COA_ISSUE))])
+@router.post(f"{PATH}/{{certificate_id}}/issue", response_model=CertificateRead,
+             dependencies=[Depends(require_permission(Q.COA_ISSUE)), Depends(permission_checked_in_handler(Q.COA_REVOKE))])
 def issue_certificate(certificate_id: UUID, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
-    """Approves and numbers the certificate; it becomes final."""
+    """Approves and numbers the certificate; it becomes final. A replacement also revokes the certificate it replaces, so
+    issuing one needs the permission to revoke as well (RBAC-002)."""
     service = CertificateService(db, tenant)
     try:
+        if service.get(certificate_id).supersedes_id is not None and not can(Q.COA_REVOKE):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Issuing a replacement revokes the original: it needs the revoke permission too.")
         return _read(service, service.issue(certificate_id), can)
     except QualityError as exc:
         raise _error(exc) from exc

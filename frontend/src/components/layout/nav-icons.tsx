@@ -204,3 +204,28 @@ export function IconPackage({ size = 18 }: IconProps) {
     </svg>
   );
 }
+
+export function IconLayers({ size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <path d="M12 3l9 5-9 5-9-5z" />
+      <path d="M3 13l9 5 9-5" />
+    </svg>
+  );
+}
+
+export function IconChevron({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base} aria-hidden="true">
+      <path d="M9 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+export function IconChevronUp({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base} aria-hidden="true">
+      <path d="M6 15l6-6 6 6" />
+    </svg>
+  );
+}

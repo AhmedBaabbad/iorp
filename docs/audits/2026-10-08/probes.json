@@ -1,0 +1,23 @@
+{
+  "alembic_imported_masterdata_tables": "[]",
+  "runtime_masterdata_tables": [
+    "masterdata_settings",
+    "masterdata_counters",
+    "masterdata_products",
+    "masterdata_product_properties",
+    "masterdata_list_items"
+  ],
+  "own_scope_sample_count": {
+    "summary_status": 200,
+    "summary_count": 2,
+    "sample_list_status": 200,
+    "sample_list_total": 1,
+    "commercial_count": "1"
+  },
+  "locked_versions": {
+    "next": "15.5.18",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "production_accepts_console_email_and_debug": true
+}

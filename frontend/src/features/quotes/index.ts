@@ -5,6 +5,7 @@ export {
   listQuotes,
   listQuotesForCustomer,
   listSamplesForQuoteCustomer,
+  quoteStep,
   updateQuote,
 } from "./api/quotes-api";
 export { QuoteDetail } from "./components/QuoteDetail";
@@ -23,5 +24,6 @@ export type {
   QuoteSampleOption,
   QuoteStatus,
   QuoteTotalsData,
+  StatusHistoryEntry,
   UpdateQuoteRequest,
 } from "./types";

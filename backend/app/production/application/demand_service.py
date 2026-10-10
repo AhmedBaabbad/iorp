@@ -5,6 +5,8 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from app.core.db import Base
 from app.core.utils import utc_now
+from app.core.interfaces import sales_order_source
+from app.core.interfaces.product_catalog import unknown_product_types
 from app.production.api.demand_schemas import CreateDemandItemRequest
 from app.production.infrastructure.models import ProductionDemand, ProductionDemandItem
 from app.production.infrastructure.demand_repository import ProductionDemandRepository, PLANNABLE
@@ -56,7 +58,107 @@ class ProductionDemandService:
         if row.allocations or row.status not in ("draft", "ready_for_planning"):
             raise DemandError("demand_not_editable", 409)
 
-    def _add_item(self, row, data):
+    # --- From a confirmed sales order (SALES-001) -------------------------------------------------------------------
+    # A demand takes part (or all) of a confirmed sales order's lines. Its lines keep the order's product, specification
+    # and unit; only the quantity may change, never above what the order still has. Cancelling the demand gives the
+    # quantity back. transfer_key makes a repeated request (a retry, a double click) return the same demand.
+
+    def _sales_order(self, order_id, lock=False):
+        source = sales_order_source.source
+        order = source.get(self.db, self.org_id, order_id, lock=lock) if source else None
+        if order is None:
+            raise DemandError("sales_order_not_found", 404)
+        return order
+
+    def _sent(self, order_id, excluding=None):
+        """{order line id: quantity the demands in force took}, leaving out one demand (the one being changed)."""
+        usage = sales_order_source.usage
+        sent = dict(usage.quantities(self.db, self.org_id, order_id)) if usage else {}
+        if excluding is not None and excluding.status != "cancelled":
+            for item in excluding.items:
+                if item.source_order_item_id:
+                    sent[item.source_order_item_id] = sent.get(item.source_order_item_id, Decimal(0)) - item.required_quantity
+        return sent
+
+    @staticmethod
+    def remaining(order, sent):
+        return {line.id: max(Decimal(0), line.quantity - sent.get(line.id, Decimal(0))) for line in order.lines}
+
+    def sales_orders(self, customer_id):
+        """The customer's confirmed sales orders with what each line still has for production."""
+        self.validate_references(customer_id, None)
+        source = sales_order_source.source
+        out = []
+        for order in (source.list(self.db, self.org_id, customer_id) if source else []):
+            sent = self._sent(order.id)
+            left = self.remaining(order, sent)
+            lines = [dict(id=l.id, line_no=l.line_no, product_type=l.product_type, target_spec_json=l.properties, unit=l.unit,
+                          ordered_quantity=l.quantity, transferred_quantity=sent.get(l.id, Decimal(0)), remaining_quantity=left[l.id])
+                     for l in order.lines]
+            if any(l["remaining_quantity"] > 0 for l in lines):
+                out.append(dict(id=order.id, number=order.number, quote_id=order.quote_id, requested_delivery_date=order.delivery,
+                                lines=lines))
+        return out
+
+    def create_from_sales_order(self, data):
+        self.repo.lock_organization(self.org_id)
+        if data.transfer_key:
+            done = self.db.scalar(select(ProductionDemand).where(ProductionDemand.organization_id == self.org_id,
+                                                                 ProductionDemand.transfer_key == data.transfer_key))
+            if done is not None:
+                return done
+        order = self._sales_order(data.sales_order_id, lock=True)
+        if order.status != "confirmed":
+            raise DemandError("sales_order_not_confirmed", 409)
+        lines = {line.id: line for line in order.lines}
+        left = self.remaining(order, self._sent(order.id))
+        if len({w.order_item_id for w in data.lines}) != len(data.lines):
+            raise DemandError("duplicate_order_line")
+        for wanted in data.lines:
+            if wanted.order_item_id not in lines:
+                raise DemandError("sales_order_line_not_found", 404)
+            if wanted.quantity > left[wanted.order_item_id]:
+                raise DemandError("quantity_exceeds_remaining", 409)
+        year = date.today().year
+        counter = self.repo.lock_counter(self.org_id, year)
+        counter.last_value += 1
+        delivery = data.requested_delivery_date or (order.delivery.date() if order.delivery else None)
+        row = ProductionDemand(organization_id=self.org_id, demand_number=f"PD-{year}-{counter.last_value:06d}",
+                               created_by_user_id=self.tenant.user_id, customer_id=order.customer_id, quote_id=order.quote_id,
+                               source_order_id=order.id, source_order_number=order.number, transfer_key=data.transfer_key,
+                               request_date=date.today(), requested_delivery_date=delivery, priority=data.priority, notes=data.notes)
+        self.db.add(row)
+        for number, wanted in enumerate(sorted(data.lines, key=lambda w: lines[w.order_item_id].line_no), 1):
+            line = lines[wanted.order_item_id]
+            row.items.append(ProductionDemandItem(line_no=number, product_type=line.product_type, target_spec_json=deepcopy(line.properties),
+                                                  required_quantity=wanted.quantity, unit=line.unit, notes=wanted.notes,
+                                                  source_order_item_id=line.id))
+        self.db.commit()
+        return row
+
+    def _assert_within_order(self, row, item=None, quantity=None):
+        """A sales-order line never goes above what the order still has (this demand's own quantity counted back)."""
+        order = self._sales_order(row.source_order_id, lock=True)
+        left = self.remaining(order, self._sent(order.id, excluding=row))
+        wanted = {}
+        for i in row.items:
+            if i.source_order_item_id:
+                q = quantity if item is not None and i.id == item.id else i.required_quantity
+                wanted[i.source_order_item_id] = wanted.get(i.source_order_item_id, Decimal(0)) + q
+        if any(q > left.get(line, Decimal(0)) for line, q in wanted.items()):
+            raise DemandError("quantity_exceeds_remaining", 409)
+
+    def _assert_products(self, values, keep=()):
+        """MD-001: a product type comes from the organization's products (asked through core); one already stored may stay."""
+        if unknown_product_types(self.db, self.org_id, values, keep):
+            raise DemandError("product_type_unknown")
+
+    def _quote_types(self, row):
+        """A quotation's lines carry their product types over, even those written before the product list."""
+        return [i.product_type for i in self.quotes.get_quote_items(self.db, row.quote_id, self.org_id)] if row.quote_id else []
+
+    def _add_item(self, row, data, keep=()):
+        self._assert_products([data.product_type], keep)
         used = {item.line_no for item in row.items}
         line = data.line_no or max(used, default=0) + 1
         if line in used:
@@ -74,8 +176,9 @@ class ProductionDemandService:
         counter.last_value += 1
         row = ProductionDemand(organization_id=self.org_id, demand_number=f"PD-{year}-{counter.last_value:06d}", created_by_user_id=self.tenant.user_id, **data.model_dump(exclude={"items", "request_date"}), request_date=data.request_date or date.today())
         self.db.add(row)
+        keep = self._quote_types(row)
         for item in data.items:
-            self._add_item(row, item)
+            self._add_item(row, item, keep)
         self.db.commit()
         return row
 
@@ -83,6 +186,9 @@ class ProductionDemandService:
         row = self.get(demand_id, write=True)
         self.editable(row)
         values = data.model_dump(exclude_unset=True, exclude={"items"})
+        if row.source_order_id and (data.items is not None or values.get("customer_id", row.customer_id) != row.customer_id
+                                    or values.get("quote_id", row.quote_id) != row.quote_id):
+            raise DemandError("sales_order_lines_locked", 409)
         customer_id = values.get("customer_id", row.customer_id)
         if customer_id != row.customer_id and row.status != "draft":
             raise DemandError("customer_change_draft_only", 409)
@@ -113,6 +219,8 @@ class ProductionDemandService:
     def add_item(self, demand_id, data):
         row = self.get(demand_id, write=True)
         self.editable(row)
+        if row.source_order_id:
+            raise DemandError("sales_order_lines_locked", 409)
         item = self._add_item(row, data)
         self.db.commit()
         return item
@@ -129,6 +237,13 @@ class ProductionDemandService:
             row.items.remove(item)
         else:
             values = data.model_dump(exclude_unset=True)
+            if item.source_order_item_id:
+                if any(key in values and values[key] != getattr(item, key) for key in ("product_type", "target_spec_json", "unit")):
+                    raise DemandError("sales_order_lines_locked", 409)
+                if "required_quantity" in values:
+                    self._assert_within_order(row, item, values["required_quantity"])
+            if values.get("product_type"):
+                self._assert_products([values["product_type"]], keep=[item.product_type, *self._quote_types(row)])
             if "line_no" in values and any(other.id != item.id and other.line_no == values["line_no"] for other in row.items):
                 raise DemandError("duplicate_line_number", 409)
             for key, value in values.items():
@@ -149,7 +264,10 @@ class ProductionDemandService:
         self.editable(row)
         if not row.quote_id:
             raise DemandError("no_quote_attached")
-        imported = [self._add_item(row, item) for item in self.quote_items(row.customer_id, row.quote_id)]
+        if row.source_order_id:
+            raise DemandError("sales_order_lines_locked", 409)
+        items = self.quote_items(row.customer_id, row.quote_id)
+        imported = [self._add_item(row, item, keep=[i.product_type for i in items]) for item in items]
         self.db.commit()
         return imported
 
@@ -164,6 +282,11 @@ class ProductionDemandService:
             raise DemandError("invalid_transition", 409)
         if new_status in PLANNABLE and not row.items:
             raise DemandError("items_required")
+        if row.status == "cancelled" and row.source_order_id:
+            # Back from cancelled, it takes its quantities from the sales order again.
+            if self._sales_order(row.source_order_id, lock=True).status != "confirmed":
+                raise DemandError("sales_order_not_confirmed", 409)
+            self._assert_within_order(row)
         row.status = new_status
         row.planning_sequence = None
         self.db.flush()
@@ -193,6 +316,7 @@ class ProductionDemandService:
         users = Base.metadata.tables["foundation_users"]
         name = self.db.scalar(select(users.c.full_name).where(users.c.id == row.created_by_user_id, users.c.organization_id == self.org_id)) if row.created_by_user_id else None
         result = {key: getattr(row, key) for key in ("id", "demand_number", "request_date", "requested_delivery_date", "priority", "status", "planning_sequence", "notes", "created_at", "updated_at")}
+        result.update(sales_order={"id": row.source_order_id, "number": row.source_order_number} if row.source_order_id else None)
         result.update(customer={"id": customer.id, "code": customer.customer_code, "name": customer.customer_name}, quote={"id": quote.id, "number": quote.quote_number, "status": quote.status} if quote else None, item_count=len(row.items), created_by=name)
         totals = {}
         for item in row.items:

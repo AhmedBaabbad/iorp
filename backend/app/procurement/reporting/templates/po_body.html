@@ -1,0 +1,66 @@
+{#- Purchase order (PROC-003): number and dates, the supplier and the delivery, the items and their prices, totals with or
+    without VAT, terms, and the approvals with the supplier's acceptance. -#}
+{%- set ar = lang == 'ar' %}{% set d = data.document %}
+{#- The Saudi riyal sign (SAMA, 2025), drawn so that it prints without a font that has it. Path: saudi-riyal-font, OFL-1.1. -#}
+{%- macro riyal() -%}<svg class="po-sar" viewBox="0 0 1256 1270" role="img" aria-label="{{ 'ريال سعودي' if ar else 'Saudi riyal' }}"><path fill="currentColor" d="M750,1119C730,1163,716,1211,711,1262L1136,1172C1156,1127,1169,1079,1174,1028L750,1119ZM1136,901C1156,857,1169,809,1174,758L843,828L843,693L1136,631C1156,587,1169,538,1174,488L843,558L843,72C793,100,748,138,711,183L711,586L579,614L579,6C528,34,483,72,447,117L447,642L151,705C131,750,117,798,112,849L447,777L447,948L88,1024C68,1068,55,1117,50,1167L425,1088C456,1081,482,1063,499,1038L568,936C575,926,579,913,579,899L579,749L711,721L711,992L1136,901Z"/></svg>{%- endmacro -%}
+{%- macro cur() -%}{% if d.currency == 'SAR' %}{{ riyal() }}{% else %}<span class="po-usd">$</span>{% endif %}{%- endmacro -%}
+<main class="po">
+  <header class="po-banner">
+    <div class="po-title">
+      <h1>{{ 'أمر شراء' if ar else 'PURCHASE ORDER' }}</h1>
+      <p>{{ 'Purchase Order' if ar else 'أمر شراء' }}</p>
+      {% if watermark %}<span class="po-flag">{{ watermark }}</span>{% endif %}
+    </div>
+    <dl class="po-meta">
+      <div><dt>{{ 'رقم أمر الشراء' if ar else 'PO no.' }}</dt><dd><bdi dir="ltr">{{ d.number }}</bdi></dd></div>
+      <div><dt>{{ 'التاريخ' if ar else 'Date' }}</dt><dd><bdi dir="ltr">{{ d.date }}</bdi></dd></div>
+      {% if d.required_date %}<div><dt>{{ 'تاريخ التوريد المطلوب' if ar else 'Required by' }}</dt><dd><bdi dir="ltr">{{ d.required_date }}</bdi></dd></div>{% endif %}
+      <div><dt>{{ 'العملة' if ar else 'Currency' }}</dt><dd>{{ cur() }} {{ d.currency_name }}</dd></div>
+    </dl>
+  </header>
+
+  <div class="po-columns">
+    <section class="po-block"><h2>{{ 'المورد' if ar else 'Supplier' }}</h2>
+      <dl class="po-fields">{% for label, value in d.supplier %}<dt>{{ label }}</dt><dd><bdi>{{ value }}</bdi></dd>{% endfor %}</dl></section>
+    <section class="po-block"><h2>{{ 'التوريد والدفع' if ar else 'Delivery and payment' }}</h2>
+      <dl class="po-fields">{% for label, value in d.delivery %}<dt>{{ label }}</dt><dd><bdi>{{ value }}</bdi></dd>{% endfor %}</dl></section>
+  </div>
+
+  {% if d.subject %}<p class="po-subject"><b>{{ 'الموضوع:' if ar else 'Subject:' }}</b> <bdi>{{ d.subject }}</bdi></p>{% endif %}
+
+  <section class="po-block" style="break-inside:auto"><h2>{{ 'المواد والأسعار' if ar else 'Items and prices' }}</h2>
+    <table class="po-items">
+      <thead><tr>
+        <th class="n">{{ 'م' if ar else '#' }}</th><th>{{ 'الوصف' if ar else 'Description' }}</th>
+        <th class="num">{{ 'الكمية' if ar else 'Quantity' }}</th><th>{{ 'الوحدة' if ar else 'Unit' }}</th>
+        <th class="num">{{ 'سعر الوحدة' if ar else 'Unit price' }} {{ cur() }}</th><th class="num">{{ 'الإجمالي' if ar else 'Amount' }} {{ cur() }}</th>
+      </tr></thead>
+      <tbody>{% for l in d.lines %}<tr>
+        <td class="n">{{ l.no }}</td>
+        <td><bdi>{{ l.description }}</bdi>{% if l.code %}<small class="po-code"><bdi dir="ltr">{{ l.code }}</bdi></small>{% endif %}
+          {% if l.notes %}<small dir="auto">{{ l.notes }}</small>{% endif %}</td>
+        <td class="num">{{ l.quantity }}</td><td>{{ l.unit }}</td>
+        <td class="num">{{ l.unit_price }}</td><td class="num">{{ l.amount }}</td>
+      </tr>{% endfor %}</tbody>
+      <tfoot>{% for label, value, kind in d.totals %}<tr class="{{ kind }}">
+        <td colspan="5" class="lbl">{{ label }}</td><td class="num">{% if kind == 'total' %}{{ cur() }} {% endif %}{{ value }}</td>
+      </tr>{% endfor %}</tfoot>
+    </table>
+    {% if d.vat_note %}<p class="po-note">{{ d.vat_note }}</p>{% endif %}
+  </section>
+
+  {% if d.notes %}<section class="po-block"><h2>{{ 'ملاحظات' if ar else 'Notes' }}</h2><p class="po-notes" dir="auto">{{ d.notes }}</p></section>{% endif %}
+
+  {% if d.terms %}<section class="po-block" style="break-inside:auto"><h2>{{ 'الشروط والأحكام' if ar else 'Terms and conditions' }}</h2>
+    <ol class="po-terms">{% for t in d.terms %}<li dir="auto">{{ t }}</li>{% endfor %}</ol></section>{% endif %}
+
+  {% if d.status == 'cancelled' and d.cancel_reason %}<p class="po-cancelled" dir="auto"><b>{{ 'سبب الإلغاء:' if ar else 'Cancelled:' }}</b> {{ d.cancel_reason }}</p>{% endif %}
+
+  <table class="po-sign"><tr>
+    <td><span>{{ 'أعدّه' if ar else 'Prepared by' }}</span><b><bdi>{{ d.prepared_by }}</bdi></b><i></i></td>
+    <td><span>{{ 'اعتمده' if ar else 'Approved by' }}</span><b><bdi>{{ d.approved_by }}</bdi></b>
+      {% if d.approved_at %}<small><bdi dir="ltr">{{ d.approved_at }}</bdi></small>{% endif %}<i></i></td>
+    <td><span>{{ 'قبول المورد' if ar else "Supplier's acceptance" }}</span><b></b><i></i><small>{{ 'الاسم والتوقيع والختم والتاريخ' if ar else 'Name, signature, stamp and date' }}</small></td>
+  </tr></table>
+  <p class="po-hint">{{ 'يُرجى ذكر رقم أمر الشراء في إشعار التسليم والفاتورة.' if ar else 'Please quote this purchase order number on the delivery note and the invoice.' }}</p>
+</main>

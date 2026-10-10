@@ -1,12 +1,14 @@
 from typing import TYPE_CHECKING
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
     from app.core.interfaces.authorization_policy import AuthorizationContext, AuthorizationPolicy
 
+from app.commercial.application.product_rules import assert_list_values
 from app.commercial.api.schemas import (
     CreatedBySummary,
     CustomerCreate,
@@ -44,6 +46,21 @@ from app.foundation.application.services import FoundationService
 
 
 class CustomerService:
+    def _within_read_scope(self, tenant, permission, owner):
+        from app.core.authorization.scope_resolver import resolve_effective_scope
+        from app.core.interfaces.authorization_policy import AccessScope
+        # Without a grant of the read permission there is no read scope to apply (as in visibility.py); the route checked the action.
+        scope = resolve_effective_scope(self.db,tenant.user_id,tenant.organization_id,permission,tenant.is_organization_root,
+                                        fallback=AccessScope.ORGANIZATION)
+        return tenant.is_organization_root or scope == AccessScope.ORGANIZATION or owner == tenant.user_id
+
+    def _writable_customer(self, tenant, customer_id):
+        row=self.customers.get_by_id(tenant.organization_id,customer_id)
+        return row if row and self._within_read_scope(tenant,'commercial:customers:read',row.sales_owner_user_id) else None
+
+    def _writable_followup(self, tenant, follow_up_id):
+        row=self.follow_ups.get_by_id(tenant.organization_id,follow_up_id)
+        return row if row and self._within_read_scope(tenant,'commercial:follow_ups:read',row.assigned_user_id) else None
     def __init__(self, db: Session, demand_count=None) -> None:
         self.db = db
         self.demand_count = demand_count
@@ -55,6 +72,7 @@ class CustomerService:
         self.orders = CommercialOrderRepository(db)
 
     def create_customer(self, tenant: TenantContext, data: CustomerCreate) -> Customer:
+        assert_list_values(self.db, tenant.organization_id, data.model_dump())  # MD-002: sector, source, country, city
         eligibility = SalesOwnerEligibilityService(self.db)
         can_assign_owner = "commercial:customers:assign_owner" in tenant.permissions
 
@@ -97,7 +115,7 @@ class CustomerService:
         customer_id: UUID,
         data: CustomerInteractionCreate,
     ) -> CustomerInteraction | None:
-        customer = self.customers.get_by_id(tenant.organization_id, customer_id)
+        customer = self._writable_customer(tenant, customer_id)
         if customer is None:
             return None
 
@@ -133,13 +151,55 @@ class CustomerService:
             tenant.organization_id, customer_id, policy=policy, auth_context=auth_context,
         )
 
+    def update_interaction(self, tenant: TenantContext, customer_id: UUID, interaction_id: UUID, data,
+                           policy: "AuthorizationPolicy | None" = None, auth_context: "AuthorizationContext | None" = None):
+        """Corrects a recorded interaction (commercial:interactions:update); None when it is not one the user may see."""
+        interaction = self.interactions.get_for_customer(tenant.organization_id, customer_id, interaction_id,
+                                                         policy=policy, auth_context=auth_context)
+        if interaction is None:
+            return None
+        changes = data.model_dump(exclude_unset=True)
+        for field, value in changes.items():
+            if field in ("interaction_type", "interaction_date", "subject") and value is None:
+                raise ValueError(f"{field} cannot be empty.")
+            setattr(interaction, field, value)
+        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "interaction.updated", "interaction", interaction.id,
+                                                      actor_id=tenant.user_id, details={"customer_id": str(customer_id), "fields": sorted(changes)})
+        self.db.commit()
+        self.db.refresh(interaction)
+        return interaction
+
+    def delete_interaction(self, tenant: TenantContext, customer_id: UUID, interaction_id: UUID,
+                           policy: "AuthorizationPolicy | None" = None, auth_context: "AuthorizationContext | None" = None) -> bool:
+        """Removes a recorded interaction (commercial:interactions:delete). One a follow-up was opened from stays:
+        the follow-up keeps its history."""
+        interaction = self.interactions.get_for_customer(tenant.organization_id, customer_id, interaction_id,
+                                                         policy=policy, auth_context=auth_context)
+        if interaction is None:
+            return False
+        if self.db.scalar(select(FollowUp.id).where(FollowUp.interaction_id == interaction.id).limit(1)) is not None:
+            raise ValueError("INTERACTION_HAS_FOLLOW_UPS")
+        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "interaction.deleted", "interaction", interaction.id,
+                                                      actor_id=tenant.user_id, details={"customer_id": str(customer_id), "subject": interaction.subject})
+        self.interactions.delete(interaction)
+        self.db.commit()
+        return True
+
+    def page_interactions(self, tenant: TenantContext, customer_id: UUID, params,
+                          policy: "AuthorizationPolicy | None" = None, auth_context: "AuthorizationContext | None" = None):
+        """One page of a customer's interactions; None when the customer does not exist."""
+        if self.customers.get_by_id(tenant.organization_id, customer_id) is None:
+            return None
+        return self.interactions.page_for_customer(tenant.organization_id, customer_id, params,
+                                                   policy=policy, auth_context=auth_context)
+
     def create_follow_up(
         self,
         tenant: TenantContext,
         customer_id: UUID,
         data: FollowUpCreate,
     ) -> FollowUp | None:
-        customer = self.customers.get_by_id(tenant.organization_id, customer_id)
+        customer = self._writable_customer(tenant, customer_id)
         if customer is None:
             return None
 
@@ -234,7 +294,7 @@ class CustomerService:
         follow_up_id: UUID,
         data: FollowUpUpdate,
     ) -> FollowUp | None:
-        follow_up = self.follow_ups.get_by_id(tenant.organization_id, follow_up_id)
+        follow_up = self._writable_followup(tenant, follow_up_id)
         if follow_up is None:
             return None
 
@@ -266,7 +326,7 @@ class CustomerService:
         return self._attach_follow_up_associations(tenant, follow_up)
 
     def delete_follow_up(self, tenant: TenantContext, follow_up_id: UUID) -> bool:
-        follow_up = self.follow_ups.get_by_id(tenant.organization_id, follow_up_id)
+        follow_up = self._writable_followup(tenant, follow_up_id)
         if follow_up is None:
             return False
         self.follow_ups.delete(follow_up)
@@ -280,7 +340,7 @@ class CustomerService:
         follow_up_id: UUID,
         data: FollowUpComplete,
     ) -> FollowUp | None:
-        follow_up = self.follow_ups.get_by_id(tenant.organization_id, follow_up_id)
+        follow_up = self._writable_followup(tenant, follow_up_id)
         if follow_up is None:
             return None
         if follow_up.status not in (FollowUpStatus.PENDING, FollowUpStatus.IN_PROGRESS):
@@ -297,7 +357,7 @@ class CustomerService:
         return self._attach_follow_up_associations(tenant, follow_up)
 
     def reopen_follow_up(self, tenant: TenantContext, follow_up_id: UUID) -> FollowUp | None:
-        follow_up = self.follow_ups.get_by_id(tenant.organization_id, follow_up_id)
+        follow_up = self._writable_followup(tenant, follow_up_id)
         if follow_up is None:
             return None
         if follow_up.status not in (FollowUpStatus.COMPLETED, FollowUpStatus.CANCELLED):
@@ -312,7 +372,7 @@ class CustomerService:
         return self._attach_follow_up_associations(tenant, follow_up)
 
     def cancel_follow_up(self, tenant: TenantContext, follow_up_id: UUID) -> FollowUp | None:
-        follow_up = self.follow_ups.get_by_id(tenant.organization_id, follow_up_id)
+        follow_up = self._writable_followup(tenant, follow_up_id)
         if follow_up is None:
             return None
         if follow_up.status not in (FollowUpStatus.PENDING, FollowUpStatus.IN_PROGRESS):
@@ -448,6 +508,17 @@ class CustomerService:
         )
         return [self._attach_customer_associations(tenant, customer) for customer in customers]
 
+    def page_customers(self, tenant: TenantContext, filters, params,
+                       policy: "AuthorizationPolicy | None" = None, auth_context: "AuthorizationContext | None" = None):
+        """One page of customers; the people on it are read once each, however many customers they own."""
+        customers, total = self.customers.page(tenant.organization_id, filters, params, policy=policy, auth_context=auth_context)
+        people: dict = {}
+        return [self._attach_customer_associations(tenant, customer, people) for customer in customers], total
+
+    def lookup_customers(self, tenant: TenantContext, search, ids, limit,
+                         policy: "AuthorizationPolicy | None" = None, auth_context: "AuthorizationContext | None" = None):
+        return self.customers.lookup(tenant.organization_id, search, ids, limit, policy=policy, auth_context=auth_context)
+
     def get_customer(
         self, tenant: TenantContext, customer_id: UUID,
         policy: "AuthorizationPolicy | None" = None, auth_context: "AuthorizationContext | None" = None,
@@ -465,7 +536,7 @@ class CustomerService:
         customer_id: UUID,
         data: CustomerUpdate,
     ) -> Customer | None:
-        customer = self.customers.get_by_id(tenant.organization_id, customer_id)
+        customer = self._writable_customer(tenant, customer_id)
         if customer is None:
             return None
 
@@ -486,6 +557,7 @@ class CustomerService:
                     if not eligibility.is_user_eligible(new_owner_id, tenant.organization_id):
                         raise ValueError("User is not eligible as Sales Owner.")
 
+        assert_list_values(self.db, tenant.organization_id, payload, record=customer)  # MD-002: the stored value may stay
         for field, value in payload.items():
             setattr(customer, field, value)
 
@@ -552,7 +624,7 @@ class CustomerService:
         )
 
     def delete_customer(self, tenant: TenantContext, customer_id: UUID) -> bool:
-        customer = self.customers.get_by_id(tenant.organization_id, customer_id)
+        customer = self._writable_customer(tenant, customer_id)
         if customer is None:
             return False
 
@@ -597,41 +669,36 @@ class CustomerService:
         self,
         tenant: TenantContext,
         customer: Customer,
+        people: dict | None = None,
     ) -> Customer:
+        """people: summaries already read on this page ({("creator"|"owner", user id): summary})."""
+        people = {} if people is None else people
         foundation = FoundationService(self.db)
 
-        if customer.created_by_user_id is None:
-            customer.created_by = None
-        else:
-            creator = foundation.get_user_by_id_in_organization(
-                customer.created_by_user_id,
-                tenant.organization_id,
-            )
-            customer.created_by = (
-                CreatedBySummary(id=creator.id, full_name=creator.full_name)
-                if creator is not None
-                else None
-            )
+        def creator_of(user_id):
+            if ("creator", user_id) not in people:
+                creator = foundation.get_user_by_id_in_organization(user_id, tenant.organization_id)
+                people[("creator", user_id)] = CreatedBySummary(id=creator.id, full_name=creator.full_name) if creator else None
+            return people[("creator", user_id)]
 
-        if customer.sales_owner_user_id is None:
-            customer.sales_owner = None
-        else:
-            owner = foundation.get_user_by_id_in_organization(
-                customer.sales_owner_user_id,
-                tenant.organization_id,
-            )
-            customer.sales_owner = (
-                SalesOwnerSummary(
-                    id=owner.id,
-                    full_name=owner.full_name,
-                    email=owner.email,
-                    roles=self._get_role_summaries(owner.id, tenant.organization_id),
-                    workforce=self._get_workforce_summary(owner.id, tenant.organization_id),
+        def owner_of(user_id):
+            if ("owner", user_id) not in people:
+                owner = foundation.get_user_by_id_in_organization(user_id, tenant.organization_id)
+                people[("owner", user_id)] = (
+                    SalesOwnerSummary(
+                        id=owner.id,
+                        full_name=owner.full_name,
+                        email=owner.email,
+                        roles=self._get_role_summaries(owner.id, tenant.organization_id),
+                        workforce=self._get_workforce_summary(owner.id, tenant.organization_id),
+                    )
+                    if owner is not None
+                    else None
                 )
-                if owner is not None
-                else None
-            )
+            return people[("owner", user_id)]
 
+        customer.created_by = creator_of(customer.created_by_user_id) if customer.created_by_user_id else None
+        customer.sales_owner = owner_of(customer.sales_owner_user_id) if customer.sales_owner_user_id else None
         return customer
 
     def _get_role_summaries(self, user_id: UUID, organization_id: UUID) -> list[RoleSummary]:

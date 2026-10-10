@@ -48,6 +48,9 @@ export type EligibleSalesOwner = {
   workforce: WorkforceSummary | null;
 };
 
+/** A customer as a picker or a name on another list shows it (GET /customers/lookup). */
+export type CustomerOption = { id: string; customer_code: string; name: string; status: CustomerStatus };
+
 export type CustomerListItem = {
   id: string;
   customer_code: string;

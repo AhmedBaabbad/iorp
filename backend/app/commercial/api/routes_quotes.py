@@ -1,15 +1,37 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.commercial.api.schemas import QuoteCreate, QuoteDeletionImpact, QuoteListItem, QuoteRead, QuoteUpdate
+from app.commercial.application.visibility import QUOTES_READ, visible_owner
+from app.commercial.api.schemas import (LifecycleReason, OptionalReason, QuoteCreate, QuoteDeletionImpact, QuoteListItem,
+                                        QuotePage, QuoteRead, QuoteUpdate)
+from app.commercial.domain.enums import QuoteStatus
+from app.commercial.domain.action_permissions import QUOTE_ACTIONS
+from app.commercial.infrastructure.repositories import ListFilters
+from app.core.pagination import PageParams, page_of, page_params
 from app.commercial.application.quote_service import QuoteService
 from app.core.tenancy import TenantContext
-from app.dependencies import get_current_tenant, get_db, require_permission
+from app.dependencies import get_current_tenant, get_db, permission_check, require_permission
 
 
 router = APIRouter(tags=["commercial-quotes"])
+
+
+def _actions(can):
+    codes = {"update": "commercial:quotes:update", "edit": "commercial:quotes:update", "create_order": "commercial:orders:create", **QUOTE_ACTIONS}
+    return lambda what: can(codes[what])
+
+
+def _step(db, tenant, can, quote_id, action, reason=None) -> QuoteRead:
+    service = QuoteService(db, visible_owner(db, tenant, QUOTES_READ))
+    try:
+        quote = service.transition(tenant, quote_id, action, reason)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if quote is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quote not found.")
+    return service.get_quote(tenant, quote_id, _actions(can))
 
 
 @router.post(
@@ -23,8 +45,9 @@ def create_quote(
     payload: QuoteCreate,
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
+    can=Depends(permission_check),
 ) -> QuoteRead:
-    service = QuoteService(db)
+    service = QuoteService(db, visible_owner(db, tenant, QUOTES_READ))
     try:
         quote = service.create_quote(tenant, customer_id, payload)
     except ValueError as exc:
@@ -32,16 +55,21 @@ def create_quote(
 
     if quote is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found.")
-    return quote
+    return service.get_quote(tenant, quote.id, _actions(can))
 
 
-@router.get("/quotes", response_model=list[QuoteListItem], dependencies=[Depends(require_permission("commercial:quotes:read"))])
+@router.get("/quotes", response_model=QuotePage, dependencies=[Depends(require_permission("commercial:quotes:read"))])
 def list_quotes(
+    search: str | None = Query(None, max_length=120),
+    status_filter: QuoteStatus | None = Query(None, alias="status"),
+    customer_id: UUID | None = None,
+    params: PageParams = Depends(page_params),
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
-) -> list[QuoteListItem]:
-    service = QuoteService(db)
-    return service.list_quotes(tenant)
+) -> QuotePage:
+    """One page of quotations (ARCH-PAGE-001): search by number or customer; filter by status or customer."""
+    items, total = QuoteService(db, visible_owner(db, tenant, QUOTES_READ)).page_quotes(tenant, ListFilters(search=(search or "").strip() or None, status=status_filter.value if status_filter else None, customer_id=customer_id), params)
+    return QuotePage(**page_of(items, total, params))
 
 
 @router.get("/customers/{customer_id}/quotes", response_model=list[QuoteListItem], dependencies=[Depends(require_permission("commercial:quotes:read"))])
@@ -50,7 +78,7 @@ def list_quotes_for_customer(
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ) -> list[QuoteListItem]:
-    service = QuoteService(db)
+    service = QuoteService(db, visible_owner(db, tenant, QUOTES_READ))
     quotes = service.list_quotes_for_customer(tenant, customer_id)
     if quotes is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found.")
@@ -62,9 +90,10 @@ def get_quote(
     quote_id: UUID,
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
+    can=Depends(permission_check),
 ) -> QuoteRead:
-    service = QuoteService(db)
-    quote = service.get_quote(tenant, quote_id)
+    service = QuoteService(db, visible_owner(db, tenant, QUOTES_READ))
+    quote = service.get_quote(tenant, quote_id, _actions(can))
     if quote is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quote not found.")
     return quote
@@ -76,8 +105,10 @@ def update_quote(
     payload: QuoteUpdate,
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
+    can=Depends(permission_check),
 ) -> QuoteRead:
-    service = QuoteService(db)
+    """A draft only."""
+    service = QuoteService(db, visible_owner(db, tenant, QUOTES_READ))
     try:
         quote = service.update_quote(tenant, quote_id, payload)
     except ValueError as exc:
@@ -85,7 +116,40 @@ def update_quote(
 
     if quote is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quote not found.")
-    return quote
+    return service.get_quote(tenant, quote_id, _actions(can))
+
+
+@router.post("/quotes/{quote_id}/issue", response_model=QuoteRead, dependencies=[Depends(require_permission("commercial:quotes:issue"))])
+def issue_quote(quote_id: UUID, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db),
+                can=Depends(permission_check)) -> QuoteRead:
+    """Sent to the customer: from now on it is not edited (a change is a new revision)."""
+    return _step(db, tenant, can, quote_id, "issue")
+
+
+@router.post("/quotes/{quote_id}/accept", response_model=QuoteRead, dependencies=[Depends(require_permission("commercial:quotes:accept"))])
+def accept_quote(quote_id: UUID, payload: OptionalReason | None = None, tenant: TenantContext = Depends(get_current_tenant),
+                 db: Session = Depends(get_db), can=Depends(permission_check)) -> QuoteRead:
+    """The customer accepted it: final, a sales order is made from it."""
+    return _step(db, tenant, can, quote_id, "accept", payload.reason if payload else None)
+
+
+@router.post("/quotes/{quote_id}/reject", response_model=QuoteRead, dependencies=[Depends(require_permission("commercial:quotes:reject"))])
+def reject_quote(quote_id: UUID, payload: LifecycleReason, tenant: TenantContext = Depends(get_current_tenant),
+                 db: Session = Depends(get_db), can=Depends(permission_check)) -> QuoteRead:
+    return _step(db, tenant, can, quote_id, "reject", payload.reason)
+
+
+@router.post("/quotes/{quote_id}/expire", response_model=QuoteRead, dependencies=[Depends(require_permission("commercial:quotes:expire"))])
+def expire_quote(quote_id: UUID, payload: OptionalReason | None = None, tenant: TenantContext = Depends(get_current_tenant),
+                 db: Session = Depends(get_db), can=Depends(permission_check)) -> QuoteRead:
+    return _step(db, tenant, can, quote_id, "expire", payload.reason if payload else None)
+
+
+@router.post("/quotes/{quote_id}/revise", response_model=QuoteRead, dependencies=[Depends(require_permission("commercial:quotes:revise"))])
+def revise_quote(quote_id: UUID, payload: LifecycleReason, tenant: TenantContext = Depends(get_current_tenant),
+                 db: Session = Depends(get_db), can=Depends(permission_check)) -> QuoteRead:
+    """Back to a draft as a new revision; the history keeps the earlier steps."""
+    return _step(db, tenant, can, quote_id, "revise", payload.reason)
 
 
 @router.get("/quotes/{quote_id}/deletion-impact", response_model=QuoteDeletionImpact, dependencies=[Depends(require_permission("commercial:quotes:read"))])
@@ -94,7 +158,7 @@ def get_quote_deletion_impact(
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ) -> QuoteDeletionImpact:
-    service = QuoteService(db)
+    service = QuoteService(db, visible_owner(db, tenant, QUOTES_READ))
     impact = service.get_deletion_impact(tenant, quote_id)
     if impact is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quote not found.")
@@ -107,7 +171,7 @@ def delete_quote(
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    service = QuoteService(db)
+    service = QuoteService(db, visible_owner(db, tenant, QUOTES_READ))
     try:
         deleted = service.delete_quote(tenant, quote_id)
     except ValueError as exc:

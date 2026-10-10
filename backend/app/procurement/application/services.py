@@ -12,16 +12,20 @@ from sqlalchemy.orm import selectinload
 
 from app.core.units import to_kilograms
 from app.core.utils import utc_now
+from app.core.interfaces.product_catalog import unknown_product_types
+from app.core.interfaces.reference_lists import unknown_list_values
 from app.procurement.domain import permissions as P
+from app.procurement.domain import purchase_orders as PO
 from app.procurement.domain import rules
 from app.procurement.domain.rules import ProcurementError
-from app.procurement.infrastructure.models import GoodsReceipt, GoodsReceiptLine, Material, Supplier
+from app.procurement.infrastructure.models import GoodsReceipt, GoodsReceiptLine, Material, PurchaseOrder, Supplier
+from .purchase_order_service import PurchaseOrderService, by_line_owner
 from .support import QualityReads, history, log_activity, next_code, next_receipt_number, record, settings, user_names
 
 SUPPLIER_FIELDS = ("name", "category", "supplies", "contact_name", "email", "address", "city", "country", "vat_number", "cr_number", "notes")
 MATERIAL_FIELDS = ("name", "category", "unit", "inspection_required", "spec_product_type", "active", "notes")
 RECEIPT_FIELDS = ("receipt_date", "supplier_delivery_no", "supplier_invoice_no", "purchase_reference", "vehicle_plate", "driver_name", "notes")
-LINE_FIELDS = ("material_id", "description", "supplier_lot", "quantity", "unit", "package_count", "weight", "weight_unit", "notes")
+LINE_FIELDS = ("material_id", "description", "supplier_lot", "quantity", "unit", "package_count", "weight", "weight_unit", "notes", "po_line_id")
 
 
 def _set(target, values, fields, required=()):
@@ -85,6 +89,9 @@ class SupplierService:
     def _apply(self, supplier, values):
         if values.get("category") is not None and values["category"] not in rules.SUPPLIER_CATEGORIES:
             raise ProcurementError("CATEGORY_UNKNOWN", 400)
+        for field in ("country", "city"):  # MD-002: from the organization's lists; the value already stored may stay
+            if values.get(field) and unknown_list_values(self.db, self.org, field, [values[field]], [getattr(supplier, field)] if getattr(supplier, field, None) else ()):
+                raise ProcurementError("LIST_VALUE_UNKNOWN", 400, field=field, value=values[field])
         _set(supplier, values, SUPPLIER_FIELDS, required=("name", "category"))
         if "phone" in values:
             supplier.phone = rules.normalize_phone(values["phone"])
@@ -150,6 +157,10 @@ class MaterialService:
     def _apply(self, material, values):
         if values.get("category") is not None and values["category"] not in rules.MATERIAL_CATEGORIES:
             raise ProcurementError("CATEGORY_UNKNOWN", 400)
+        # MD-001: the specification key is a product of the organization (asked through core); the one stored may stay.
+        if values.get("spec_product_type") and unknown_product_types(self.db, self.org, [values["spec_product_type"]],
+                                                                     [material.spec_product_type] if material.spec_product_type else ()):
+            raise ProcurementError("PRODUCT_TYPE_UNKNOWN", 400, product_type=values["spec_product_type"])
         _set(material, values, MATERIAL_FIELDS, required=("name", "category", "unit", "inspection_required", "active"))
 
     def create(self, data) -> Material:
@@ -203,6 +214,8 @@ class ReceiptService:
         names = user_names(self.db, self.org, [u for r in receipts for u in (r.created_by_user_id, r.received_by_user_id)])
         statuses = dict(self.db.execute(select(Supplier.id, Supplier.status).where(Supplier.id.in_({r.supplier_id for r in receipts}))).all()) if receipts else {}
         inspections = QualityReads(self.db, self.org).inspections_of([line.id for r in receipts for line in r.lines if line.inspection_required])
+        orders = dict(self.db.execute(select(PurchaseOrder.id, PurchaseOrder.po_number).where(
+            PurchaseOrder.id.in_({r.purchase_order_id for r in receipts if r.purchase_order_id}))).all()) if receipts else {}
         out = []
         for r in receipts:
             per_unit: dict = {}
@@ -210,6 +223,7 @@ class ReceiptService:
                 per_unit[line.unit] = per_unit.get(line.unit, 0) + line.quantity
             weights = [to_kilograms(line.weight, line.weight_unit) for line in r.lines if line.weight is not None]
             view = dict(created_by_name=names.get(r.created_by_user_id), received_by_name=names.get(r.received_by_user_id),
+                        po_number=orders.get(r.purchase_order_id),
                         supplier_status=statuses.get(r.supplier_id), quantities=[dict(unit=u, quantity=q) for u, q in per_unit.items()],
                         weight_kg=sum(weights) if weights else None, inspection_lines=sum(1 for line in r.lines if line.inspection_required),
                         lots_pending=sum(1 for line in r.lines if r.status == rules.RECEIVED
@@ -228,7 +242,30 @@ class ReceiptService:
         rules.assert_supplier_usable(supplier.status)
         return supplier
 
+    def _order(self, receipt, order_id):
+        """The purchase order a receipt delivers against: the same supplier, still open for receiving."""
+        if order_id is None:
+            receipt.purchase_order_id = None
+            return
+        order = self.db.scalar(select(PurchaseOrder).where(PurchaseOrder.id == order_id, PurchaseOrder.organization_id == self.org))
+        if order is None:
+            raise ProcurementError("ORDER_NOT_FOUND", 404)
+        if order.supplier_id != receipt.supplier_id:
+            raise ProcurementError("ORDER_OF_ANOTHER_SUPPLIER", 400)
+        PO.assert_receivable(order.status)
+        receipt.purchase_order_id = order.id
+        if not receipt.purchase_reference:
+            receipt.purchase_reference = order.po_number
+
     def _write_lines(self, receipt, lines):
+        owners = by_line_owner(self.db, [d.po_line_id for d in lines if d.po_line_id])
+        for number, data in enumerate(lines, 1):
+            if data.po_line_id:  # a line of the receipt's own order, counted in its unit
+                owner = owners.get(data.po_line_id)
+                if owner is None or owner[0] != receipt.purchase_order_id:
+                    raise ProcurementError("ORDER_LINE_NOT_IN_ORDER", 400, line=number)
+                if owner[1] != data.unit:
+                    raise ProcurementError("ORDER_LINE_UNIT_MISMATCH", 400, line=number, unit=owner[1])
         materials = {m.id: m for m in self.db.scalars(select(Material).where(
             Material.organization_id == self.org, Material.id.in_([d.material_id for d in lines if d.material_id])))}
         receipt.lines.clear()
@@ -249,6 +286,7 @@ class ReceiptService:
         receipt = GoodsReceipt(organization_id=self.org, receipt_no=next_receipt_number(self.db, self.org), status=rules.DRAFT,
                                receipt_date=data.receipt_date, supplier_id=supplier.id, supplier_name=supplier.name, created_by_user_id=self.tenant.user_id)
         _set(receipt, data.model_dump(exclude={"lines", "supplier_id"}), RECEIPT_FIELDS, required=("receipt_date",))
+        self._order(receipt, data.purchase_order_id)
         self.db.add(receipt)
         self.db.flush()
         self._write_lines(receipt, data.lines)
@@ -265,6 +303,10 @@ class ReceiptService:
             supplier = self._supplier(values["supplier_id"])
             receipt.supplier_id, receipt.supplier_name = supplier.id, supplier.name
         _set(receipt, values, RECEIPT_FIELDS, required=("receipt_date",))
+        if "purchase_order_id" in values or values.get("supplier_id"):
+            self._order(receipt, values.get("purchase_order_id", receipt.purchase_order_id))
+            if data.lines is None and any(line.po_line_id for line in receipt.lines):
+                self._write_lines(receipt, [_LineData.of(line) for line in receipt.lines])
         if data.lines is not None:
             self._write_lines(receipt, data.lines)
         self.db.commit()
@@ -273,8 +315,13 @@ class ReceiptService:
     def receive(self, receipt_id) -> GoodsReceipt:
         receipt = self._get(receipt_id, lock=True)
         rules.assert_can_receive(receipt.status, len(receipt.lines), self.suppliers.get(receipt.supplier_id).status)
+        if receipt.purchase_order_id:
+            PO.assert_receivable(self.db.get(PurchaseOrder, receipt.purchase_order_id).status)
         receipt.status, receipt.received_at, receipt.received_by_user_id = rules.RECEIVED, utc_now(), self.tenant.user_id
         record(self.db, self.org, "receipt", receipt.id, "receive", self.tenant.user_id, rules.DRAFT, rules.RECEIVED)
+        if receipt.purchase_order_id:
+            self.db.flush()
+            PurchaseOrderService(self.db, self.tenant).refresh_received(receipt.purchase_order_id)
         self.db.commit()
         log_activity(self.db, self.org, self.tenant.user_id, "goods_receipt.received", "goods_receipt", receipt.id, receipt.receipt_no)
         return self._get(receipt.id)
@@ -285,6 +332,9 @@ class ReceiptService:
         before = receipt.status
         receipt.status, receipt.cancel_reason = rules.CANCELLED, reason.strip()
         record(self.db, self.org, "receipt", receipt.id, "cancel", self.tenant.user_id, before, rules.CANCELLED, receipt.cancel_reason)
+        if receipt.purchase_order_id and before == rules.RECEIVED:
+            self.db.flush()
+            PurchaseOrderService(self.db, self.tenant).refresh_received(receipt.purchase_order_id)
         self.db.commit()
         log_activity(self.db, self.org, self.tenant.user_id, "goods_receipt.cancelled", "goods_receipt", receipt.id, receipt.receipt_no)
         return self._get(receipt.id)
@@ -294,8 +344,24 @@ class ReceiptService:
         self.db.commit()
         return current
 
-    def update_settings(self, prefix):
+    def update_settings(self, values: dict):
+        """Number prefixes (numbers already issued keep theirs) and the purchase order terms."""
         current = settings(self.db, self.org)
-        current.receipt_prefix = prefix
+        for field in ("receipt_prefix", "po_prefix"):
+            if values.get(field):
+                setattr(current, field, values[field])
+        for field in ("po_terms_ar", "po_terms_en"):
+            if field in values:
+                setattr(current, field, (values[field] or "").strip() or None)
         self.db.commit()
         return current
+
+
+class _LineData:
+    """A saved receipt line in the shape of its input, to check it again against a changed order."""
+    @staticmethod
+    def of(line):
+        data = _LineData()
+        for field in LINE_FIELDS:
+            setattr(data, field, getattr(line, field))
+        return data

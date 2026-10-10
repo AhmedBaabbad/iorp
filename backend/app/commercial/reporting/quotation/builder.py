@@ -16,6 +16,7 @@ from app.core.units import spec_text
 from app.commercial.infrastructure.models import Customer, Quote
 from app.commercial.reporting.customers import providers
 from app.commercial.reporting.customers.queries import scoped
+from app.core.interfaces.product_catalog import ProductInfo, products as catalog_products
 from app.core.reporting.contracts import ReportData
 
 CURRENCY = {"SAR": ("ر.س", "SAR"), "USD": ("دولار", "USD")}
@@ -30,14 +31,35 @@ def quantity(value) -> str:
     return f"{value:,.0f}" if value == value.to_integral_value() else f"{value.normalize():,f}"
 
 
-def describe(item, ar: bool) -> str:
-    """The line as printed: its description in the document's language, else the other one, else product and spec."""
+def spec_in(product: ProductInfo | None, spec, lang: str) -> str:
+    """A specification as printed. With the product's template (MD-001): each value in the template's order, a choice by its
+    label and a number with its unit, in the document's language; values outside the template follow as written."""
+    if not product or not isinstance(spec, dict):
+        return spec_text(spec)
+    ar, parts, known = lang == "ar", [], set()
+    for prop in product.properties:
+        known.add(prop.key)
+        value = spec.get(prop.key)
+        if value in (None, ""):
+            continue
+        if prop.kind == "choice":
+            value = next((o[1] if ar else o[2] for o in prop.options if o[0] == str(value)), value)
+        parts.append(f"{value} {unit_label(prop.unit, lang)}" if prop.unit else str(value))
+    rest = spec_text({k: v for k, v in spec.items() if k not in known})
+    return " × ".join([*parts, *([rest] if rest else [])])
+
+
+def describe(item, ar: bool, product: ProductInfo | None = None) -> str:
+    """The line as printed: its description in the document's language, else the other one, else the product (its name in
+    the document's language when it is one of the organization's products) and its specification."""
     first, second = (item.description_ar, item.description_en) if ar else (item.description_en, item.description_ar)
     text = (first or second or "").strip()
     if text:
         return text
-    spec = spec_text(item.requested_spec_json)
-    return f"{item.product_type} — {spec}" if spec else item.product_type
+    lang = "ar" if ar else "en"
+    name = product.name(lang) if product else item.product_type
+    spec = spec_in(product, item.requested_spec_json, lang)
+    return f"{name} — {spec}" if spec else name
 
 
 def vat_rate(quote) -> Decimal | None:
@@ -67,19 +89,21 @@ def build(db, tenant, p, selected) -> ReportData:
     preparer = identity.user_names([quote.created_by_user_id]).get(quote.created_by_user_id) if settings["show_preparer_name"] else None
     rate = vat_rate(quote)
     items = sorted(quote.items, key=lambda i: i.line_no)
+    known = catalog_products(db, tenant.organization_id, {i.product_type for i in items})
     totals = [(tr("المجموع قبل الضريبة", "Subtotal before VAT"), amount(quote.subtotal_amount), "subtotal")]
     if quote.discount_amount:
         totals.append((tr("الخصم", "Discount"), "- " + amount(quote.discount_amount), "discount"))
     vat_label = tr("ضريبة القيمة المضافة", "VAT") + (f" ({rate}%)" if rate is not None else "")
     totals.append((vat_label, amount(quote.tax_amount), "tax"))
     totals.append((tr("الإجمالي شامل الضريبة", "Total including VAT"), amount(quote.total_amount), "total"))
-    terms = [dict(title=(t.title_ar if ar else (t.title_en or t.title_ar)), body=(t.body_ar if ar else (t.body_en or t.body_ar)))
-             for t in QuoteSettingsService(db, tenant.organization_id).terms(active_only=True)]
+    # Only what is written in the document's language: a term without it is not printed (no mixing of languages).
+    terms = [dict(title=title, body=body) for t in QuoteSettingsService(db, tenant.organization_id).terms(active_only=True)
+             for title, body in [(t.title_ar, t.body_ar) if ar else (t.title_en, t.body_en)] if title and body]
     document = dict(
         number=quote.quote_number, date=day(quote.issue_date), valid_until=day(quote.valid_until),
         customer=customer.name, attention=quote.attention or "", subject=quote.subject or "",
         currency=currency,
-        items=[dict(no=i.line_no, description=describe(i, ar), quantity=quantity(i.quantity), unit=unit_label(i.unit, p.lang),
+        items=[dict(no=i.line_no, description=describe(i, ar, known.get(i.product_type)), quantity=quantity(i.quantity), unit=unit_label(i.unit, p.lang),
                     unit_price=amount(i.unit_price), total=amount(i.line_total)) for i in items],
         totals=totals, notes=quote.notes or "", terms=terms,
         signature_title=settings["signature_title_ar"] if ar else settings["signature_title_en"], preparer=preparer or "",

@@ -19,6 +19,10 @@ const LIGHT = /^(#fff|#ffffff|white|#f8fafc|#fafafa)$/i;
 test("every CSS variable used exists in the theme", () => {
   const globals = read(join(root, "app", "globals.css"));
   const defined = new Set([...globals.matchAll(/(--[\w-]+)\s*:/g)].map(m => m[1]));
+  // Dashboard colors are scoped custom properties assigned by React, not
+  // global theme tokens. Require the actual assignment before allowing one.
+  const workspace = read(join(root, 'features', 'dashboard', 'DashboardWorkspace.tsx'));
+  if (/["']--tone["']\s*:/.test(workspace)) defined.add('--tone');
   const missing = [];
   for (const file of files) {
     for (const m of read(file).matchAll(/var\((--[\w-]+)/g)) if (!defined.has(m[1])) missing.push(`${m[1]} in ${file}`);

@@ -8,18 +8,17 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
 import { SuccessModal } from "@/components/ui/SuccessModal";
-import { listCustomers } from "@/features/customers";
+import { CustomerPicker } from "@/features/customers";
 import { useFormatter } from "@/hooks/useFormatter";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { optionalText, toDatetimeLocalValue } from "@/lib/utils";
 import { sharedStyles } from "@/styles/shared-styles";
-import type { CustomerListItem } from "@/types/customers";
 import { createQuote, listSamplesForQuoteCustomer } from "../api/quotes-api";
 import type { CreateQuoteRequest, QuoteItem, QuoteSampleOption } from "../types";
 import { QuoteItemsTable } from "./QuoteItemsTable";
 import { LineDescriptionFields, QuoteHeadingFields, UnitSelect } from "./QuoteLineFields";
 import { SpecEditor } from "@/components/forms/SpecEditor";
-import { VAT_RATE } from "../quote-units";
+import { ProductSelect, useBusinessSettings, useProducts } from "@/features/masterdata";
 import { QuoteTotals } from "./QuoteTotals";
 
 type QuoteFormValues = {
@@ -113,49 +112,21 @@ export function QuoteForm() {
   const t = useTranslations("commercial.quotes");
   const tCurrency = useTranslations("commercial.currency");
   const fmt = useFormatter();
+  // MD-001: the organization's VAT rate and default currency, and its products with their specification templates.
+  const { vatRate, currency: defaultCurrency, loaded: settingsLoaded } = useBusinessSettings();
+  const products = useProducts();
   const [values, setValues] = useState<QuoteFormValues>(createDefaultValues);
-  const [customers, setCustomers] = useState<CustomerListItem[]>([]);
+  useEffect(() => {
+    if (settingsLoaded) setValues((current) => ({ ...current, currency: defaultCurrency }));
+  }, [settingsLoaded, defaultCurrency]);
   const [samples, setSamples] = useState<QuoteSampleOption[]>([]);
-  const [isLoadingLookups, setIsLoadingLookups] = useState(true);
   const [isLoadingSamples, setIsLoadingSamples] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successRedirect, setSuccessRedirect] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadLookups() {
-      try {
-        setIsLoadingLookups(true);
-        setLookupError(null);
-        const customersResponse = await listCustomers();
-
-        if (isMounted) {
-          setCustomers(customersResponse);
-          setValues((current) => ({
-            ...current,
-            customer_id: current.customer_id || customersResponse[0]?.id || "",
-          }));
-        }
-      } catch (caughtError) {
-        if (isMounted) {
-          setLookupError(getApiErrorMessage(caughtError, messages));
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoadingLookups(false);
-        }
-      }
-    }
-
-    void loadLookups();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  // ARCH-PAGE-001: the customer is chosen with CustomerPicker (a search), never by loading every customer.
 
   useEffect(() => {
     let isMounted = true;
@@ -206,7 +177,7 @@ export function QuoteForm() {
 
   const discountAmount = Number(values.discount_amount || 0);
   const taxableAmount = Math.max(0, subtotal - discountAmount);
-  const taxAmount = values.include_tax ? taxableAmount * VAT_RATE / 100 : 0;  // preview; the server computes it
+  const taxAmount = values.include_tax ? taxableAmount * vatRate / 100 : 0;  // preview; the server computes it
   const totalAmount = taxableAmount + taxAmount;
 
   function updateField<TField extends keyof QuoteFormValues>(
@@ -254,7 +225,7 @@ export function QuoteForm() {
     setIsSubmitting(true);
 
     try {
-      const createdQuote = await createQuote(toCreateRequest(values, messages, taxAmount));
+      const createdQuote = await createQuote(toCreateRequest(values, messages, taxAmount, vatRate));
       setSuccessRedirect(`/quotes/${createdQuote.id}`);
     } catch (caughtError) {
       setError(
@@ -293,31 +264,8 @@ export function QuoteForm() {
                 {t("fields.customer")}
                 <span style={styles.required} aria-hidden="true"> *</span>
               </span>
-              {customers.length > 0 ? (
-                <select
-                  style={sharedStyles.input}
-                  value={values.customer_id}
-                  onChange={(event) => updateField("customer_id", event.target.value)}
-                  disabled={isSubmitting || isLoadingLookups}
-                  required
-                >
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name} ({customer.customer_code})
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  style={sharedStyles.input}
-                  value={values.customer_id}
-                  onChange={(event) => updateField("customer_id", event.target.value)}
-                  disabled={isSubmitting}
-                  placeholder={t("fields.customer")}
-                  required
-                />
-              )}
-              {isLoadingLookups ? <p style={styles.helper}>{messages("loading.fetching")}</p> : null}
+              <CustomerPicker value={values.customer_id} disabled={isSubmitting}
+                onChange={(id) => updateField("customer_id", id)} />
               {lookupError ? <p style={styles.helper}>{lookupError}</p> : null}
             </label>
 
@@ -327,7 +275,7 @@ export function QuoteForm() {
                 style={sharedStyles.input}
                 value={values.sample_id}
                 onChange={(event) => updateField("sample_id", event.target.value)}
-                disabled={isSubmitting || isLoadingLookups || !values.customer_id || isLoadingSamples}
+                disabled={isSubmitting || !values.customer_id || isLoadingSamples}
               >
                 <option value="">
                   {!values.customer_id
@@ -418,10 +366,10 @@ export function QuoteForm() {
                   onChange={(event) => updateField("include_tax", event.target.checked)}
                   disabled={isSubmitting}
                 />
-                <span>{t("taxCheckboxLabel")}</span>
+                <span>{t("taxCheckboxLabel", { rate: String(vatRate) })}</span>
               </label>
               {values.include_tax ? (
-                <p style={styles.helper}>{t("taxNote")} — {fmt.decimal(taxAmount)}</p>
+                <p style={styles.helper}>{t("taxNote", { rate: String(vatRate) })} — {fmt.decimal(taxAmount)}</p>
               ) : null}
             </div>
           </div>
@@ -472,16 +420,12 @@ export function QuoteForm() {
                       {t("items.fields.productType")}
                       <span style={styles.required} aria-hidden="true"> *</span>
                     </span>
-                    <input
-                      style={sharedStyles.input}
-                      value={item.product_type}
-                      onChange={(event) =>
-                        updateItemField(index, "product_type", event.target.value)
-                      }
-                      maxLength={120}
-                      disabled={isSubmitting}
-                      required
-                    />
+                    <ProductSelect style={sharedStyles.input} value={item.product_type} disabled={isSubmitting}
+                      ariaLabel={t("items.fields.productType")}
+                      onChange={(key, product) => {
+                        updateItemField(index, "product_type", key);
+                        if (product?.default_unit && !item.unit) updateItemField(index, "unit", product.default_unit);
+                      }} />
                   </label>
 
                   <label style={sharedStyles.field}>
@@ -541,6 +485,7 @@ export function QuoteForm() {
                 </div>
 
                 <SpecEditor value={item.requested_spec_json} disabled={isSubmitting}
+                  template={products?.find((p) => p.key === item.product_type)?.properties}
                   onChange={(json) => updateItemField(index, "requested_spec_json", json)} />
 
                 <LineDescriptionFields arabic={item.description_ar} english={item.description_en} disabled={isSubmitting}
@@ -618,6 +563,7 @@ function toCreateRequest(
   values: QuoteFormValues,
   t: (key: string) => string,
   taxAmount: number,
+  vatRate: number,
 ): CreateQuoteRequest {
   return {
     customer_id: values.customer_id,
@@ -626,7 +572,7 @@ function toCreateRequest(
     valid_until: new Date(values.valid_until).toISOString(),
     currency: values.currency,
     discount_amount: Number(values.discount_amount || 0),
-    tax_rate: values.include_tax ? VAT_RATE : 0,
+    tax_rate: values.include_tax ? vatRate : 0,
     tax_amount: taxAmount,
     attention: optionalText(values.attention) ?? null,
     subject: optionalText(values.subject) ?? null,

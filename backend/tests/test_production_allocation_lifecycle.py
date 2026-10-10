@@ -18,7 +18,7 @@ ROOT = "/api/v1/production"
 PERMISSIONS = frozenset([
     "production:planning:read", "production:planning:allocate", "production:planning:release_allocation",
     "production:production_orders:create", "production:production_orders:cancel", "production:production_orders:read", "production:production_orders:update", "production:production_orders:manage_items",
-] + [f"production:demands:{a}" for a in ("read", "create", "update")])
+] + [f"production:demands:{a}" for a in ("read", "create", "update", "release", "cancel")])
 ITEM = {"product_type": "film", "required_quantity": "1000", "unit": "kg", "target_spec_json": {"width": 12}}
 
 

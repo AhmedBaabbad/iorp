@@ -6,6 +6,7 @@ from typing import Protocol
 
 from app.core.interfaces.follow_up_queries import FollowUpQueryInterface
 from app.core.interfaces.organization_queries import OrganizationProvisioningInterface
+from app.core.interfaces.product_catalog import ProductCatalog
 
 APP_ROOT = Path(__file__).parents[1] / "app"
 
@@ -83,13 +84,14 @@ def test_b08_core_interfaces_are_protocols():
     for interface in (
         OrganizationProvisioningInterface,
         FollowUpQueryInterface,
+        ProductCatalog,
     ):
         assert issubclass(interface, Protocol)
         assert getattr(interface, "_is_protocol", False)
 
 
 def test_b09_operational_modules_do_not_import_platform():
-    for module in ("commercial", "production", "quality", "shipping", "procurement", "workforce"):
+    for module in ("commercial", "production", "quality", "shipping", "procurement", "masterdata", "workforce"):
         assert not {
             item
             for item in _imports(APP_ROOT / module)
@@ -110,6 +112,7 @@ def test_tenant_create_update_schemas_do_not_accept_organization_scope():
         "app.quality.api.schemas",
         "app.shipping.api.schemas",
         "app.procurement.api.schemas",
+        "app.masterdata.api.schemas",
         "app.quality.api.ncr_schemas",
         "app.workforce.api.schemas",
     )
@@ -126,3 +129,17 @@ def test_tenant_create_update_schemas_do_not_accept_organization_scope():
             if forbidden:
                 violations.append(f"{module_name}.{name}: {sorted(forbidden)}")
     assert violations == []
+
+
+def test_b11_master_data_is_reached_only_through_core():
+    """MD-001: master data imports no business module, none imports it; they ask core/interfaces/product_catalog."""
+    operational = ("app.commercial", "app.production", "app.quality", "app.shipping", "app.procurement", "app.workforce", "app.foundation")
+    assert not {item for item in _imports(APP_ROOT / "masterdata") if item.startswith(operational)}
+    for module in ("commercial", "production", "quality", "shipping", "procurement", "workforce"):
+        assert not {item for item in _imports(APP_ROOT / module) if item.startswith("app.masterdata")}, module
+    # The platform's permission catalog and system roles read every module's permission codes (pure), as for the others.
+    assert {item for item in _imports(APP_ROOT / "foundation") if item.startswith("app.masterdata")} <= {"app.masterdata.domain"}
+    from app.masterdata.infrastructure import models
+
+    tables = _model_tables(models)
+    assert tables and all(table.startswith("masterdata_") for table in tables)

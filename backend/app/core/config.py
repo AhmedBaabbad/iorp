@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     smtp_host: str = Field(default="localhost", alias="SMTP_HOST")
     smtp_port: int = Field(default=587, ge=1, le=65535, alias="SMTP_PORT")
     smtp_tls: bool = Field(default=True, alias="SMTP_TLS")
+    smtp_timeout_seconds: float = Field(default=10, ge=1, le=60, alias="SMTP_TIMEOUT_SECONDS")
     smtp_user: str | None = Field(default=None, alias="SMTP_USER")
     smtp_password: str | None = Field(default=None, alias="SMTP_PASSWORD")
     password_reset_expiry_minutes: int = Field(default=30, ge=5, le=1440, alias="PASSWORD_RESET_EXPIRY_MINUTES")
@@ -65,6 +66,12 @@ class Settings(BaseSettings):
         if self.refresh_cookie_samesite == "none" and not self.refresh_cookie_secure:
             raise ValueError("SameSite=None refresh cookies must be Secure")
         if self.app_env == "production":
+            if self.debug:
+                raise ValueError("Production DEBUG must be disabled")
+            if self.email_mode != "smtp":
+                raise ValueError("Production EMAIL_MODE must be smtp")
+            if not self.smtp_tls:
+                raise ValueError("Production SMTP must use TLS")
             if not self.refresh_cookie_secure:
                 raise ValueError("Production refresh cookies must be Secure")
             if self.secret_key == "change-me-in-local-env" or len(self.secret_key) < 32:

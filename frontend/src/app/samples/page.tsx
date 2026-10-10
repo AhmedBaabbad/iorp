@@ -1,5 +1,7 @@
+import { Suspense } from "react";
+
 import { SamplesList } from "@/features/samples";
 
 export default function Page() {
-  return <SamplesList />;
+  return <Suspense><SamplesList /></Suspense>;
 }

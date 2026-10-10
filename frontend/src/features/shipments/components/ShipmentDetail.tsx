@@ -19,6 +19,7 @@ import { DECIMAL, shippingErrorMessage, todayIso } from "../shipping-errors";
 import { DELIVERY_METHODS, DELIVERY_REASONS, type DeliveryMethod, type DeliveryReason, type Shipment } from "../types";
 import { Attachments } from "./Attachments";
 import { ReturnStatusBadge, ShipmentStatusBadge } from "./ShipmentStatusBadge";
+import { useListName } from "@/features/masterdata";
 
 function Item({ label, children }: { label: string; children: ReactNode }) {
   return <div><dt className={s.muted}>{label}</dt><dd style={{ margin: "4px 0 0", overflowWrap: "anywhere" }}>{children}</dd></div>;
@@ -35,6 +36,7 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
   const messages = useTranslations("messages");
   const fmt = useFormatter();
   const units = useTranslations("common.units.units");
+  const cityName = useListName("city");  // MD-002: the name, not the key
   // Units are codes from the shared catalogue, shown in the screen's language (older free text as written).
   const unit = (code: string) => (units.has(code) ? units(code) : code);
   const canAttach = usePermission(S.SHIPMENTS_DELIVER);
@@ -107,7 +109,7 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
         <Item label={label("consignee_name")}>{x.consignee_name ?? x.customer_name}</Item>
         <Item label={label("consignee_phone")}><bdi dir="ltr">{x.consignee_phone ?? "—"}</bdi>{x.notify_consignee && <div className={s.muted}>{t("willNotify")}</div>}</Item>
         <Item label={label("consignee_email")}><bdi dir="ltr">{x.consignee_email ?? "—"}</bdi></Item>
-        <Item label={label("delivery_city")}>{x.delivery_city ?? "—"}</Item>
+        <Item label={label("delivery_city")}>{x.delivery_city ? cityName(x.delivery_city) : "—"}</Item>
         <Item label={label("delivery_address")}>{x.delivery_address ?? "—"}{x.location_url && <div><a href={x.location_url} target="_blank" rel="noopener noreferrer">{t("openLocation")}</a></div>}</Item>
       </dl>
     </section>

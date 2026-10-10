@@ -27,6 +27,7 @@ import { getProductionOrderById } from "../api/production-orders-api";
 import type { ProductionOrderData } from "../types";
 import { ProductionOrderPriorityBadge } from "./ProductionOrderPriorityBadge";
 import { ProductionOrderStatusBadge } from "./ProductionOrderStatusBadge";
+import { useProductName } from "@/features/masterdata";
 
 type WorkCenterOption = {
   id: string;
@@ -92,6 +93,7 @@ export function ProductionOrderDetail() {
   const [error, setError] = useState<string | null>(null);
   const [isNotFound, setIsNotFound] = useState(false);
   const allocationText = useTranslations("production.allocation");
+  const productName = useProductName();  // MD-001: the product's name, not its key
   const [created, setCreated] = useState(false);
   const [revision, setRevision] = useState(0);
   useEffect(() => {
@@ -152,7 +154,7 @@ export function ProductionOrderDetail() {
   return (
     <PageFrame
       title={order?.production_order_number ?? t("detailTitle")}
-      subtitle={order ? order.product_type : t("detailSubtitle")}
+      subtitle={order ? productName(order.product_type) : t("detailSubtitle")}
       action={
         <Link href="/production-orders" style={sharedStyles.secondaryButton}>
           {t("backToList")}
@@ -198,7 +200,7 @@ export function ProductionOrderDetail() {
               label={t("fields.priority")}
               value={<ProductionOrderPriorityBadge priority={order.priority} />}
             />
-            <DetailItem label={t("fields.productType")} value={order.product_type} />
+            <DetailItem label={t("fields.productType")} value={productName(order.product_type)} />
             <DetailItem
               label={t("fields.plannedQuantity")}
               value={fmt.quantity(order.planned_quantity, order.unit)}

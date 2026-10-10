@@ -34,7 +34,10 @@
   "pagination": {
     "showing": "Showing {from} to {to} of {total}",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "label": "Pages",
+    "page": "Page {page}",
+    "perPage": "Rows per page"
   },
   "confirmation": {
     "deleteTitle": "Confirm deletion",
@@ -60,6 +63,45 @@
       "time": "Time"
     },
     "units": {
+      "piece": "pcs",
+      "unit": "unit",
+      "pair": "pair",
+      "set": "set",
+      "dozen": "doz",
+      "lot": "lot",
+      "roll": "roll",
+      "reel": "reel",
+      "coil": "coil",
+      "bundle": "bdl",
+      "pack": "pack",
+      "box": "box",
+      "carton": "ctn",
+      "bag": "bag",
+      "sack": "sack",
+      "pallet": "plt",
+      "drum": "drum",
+      "can": "can",
+      "bottle": "btl",
+      "sheet": "sheet",
+      "container": "cntr",
+      "g": "g",
+      "kg": "kg",
+      "ton": "t",
+      "lb": "lb",
+      "oz": "oz",
+      "mm": "mm",
+      "cm": "cm",
+      "m": "m",
+      "linear_m": "lm",
+      "km": "km",
+      "sqm": "m²",
+      "cbm": "m³",
+      "ml": "mL",
+      "l": "L",
+      "hour": "h",
+      "day": "day"
+    },
+    "names": {
       "piece": "Piece",
       "unit": "Unit",
       "pair": "Pair",
@@ -107,6 +149,18 @@
     "value": "Value",
     "valueHint": "e.g. 5 or black",
     "add": "Add property",
-    "remove": "Remove property"
+    "remove": "Remove property",
+    "extra": "Other properties (optional)"
+  },
+  "currencies": {
+    "SAR": "Saudi Riyal",
+    "USD": "US Dollar"
+  },
+  "listFilters": {
+    "label": "Search and filters",
+    "search": "Search",
+    "all": "All",
+    "clear": "Clear filters",
+    "noMatches": "Nothing matches the search or filters."
   }
 }

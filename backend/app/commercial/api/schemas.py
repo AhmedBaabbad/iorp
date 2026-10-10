@@ -2,7 +2,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, computed_field
+from pydantic import AliasChoices, AwareDatetime, BaseModel, ConfigDict, Field, computed_field, model_validator
 
 from app.core.types import ISOAwareDatetime, ISODatetime
 
@@ -128,6 +128,25 @@ class CustomerRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class CustomerPage(BaseModel):
+    """One page of the customer list (core/pagination.py)."""
+    items: list[CustomerRead]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class CustomerLookupItem(BaseModel):
+    """A customer as a picker shows it."""
+    id: UUID
+    customer_code: str
+    name: str
+    status: CustomerStatus
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class CustomerDeletionImpact(BaseModel):
     production_demands: int = 0
     interactions: int
@@ -164,6 +183,15 @@ class CustomerInteractionCreate(BaseModel):
     next_step_hint: str | None = Field(default=None, max_length=255)
 
 
+class CustomerInteractionUpdate(BaseModel):
+    interaction_type: InteractionType | None = None
+    interaction_date: AwareDatetime | None = None
+    subject: str | None = Field(default=None, min_length=1, max_length=255)
+    summary: str | None = None
+    outcome: str | None = Field(default=None, max_length=255)
+    next_step_hint: str | None = Field(default=None, max_length=255)
+
+
 class CustomerInteractionRead(BaseModel):
     id: UUID
     customer_id: UUID
@@ -177,6 +205,14 @@ class CustomerInteractionRead(BaseModel):
     created_at: ISODatetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CustomerInteractionPage(BaseModel):
+    items: list[CustomerInteractionRead]
+    total: int
+    page: int
+    page_size: int
+    pages: int
 
 
 class FollowUpCreate(BaseModel):
@@ -257,10 +293,19 @@ class FollowUpBulkReassignResponse(BaseModel):
     reassigned_count: int
 
 
-class SampleCreate(BaseModel):
+class SampleSpecificationInput(BaseModel):
+    @model_validator(mode='before')
+    @classmethod
+    def unambiguous_specification(cls, data):
+        if isinstance(data,dict) and 'property_values' in data and 'requested_spec_json' in data:
+            raise ValueError('Supply property_values only; the legacy alias cannot be combined with it.')
+        return data
+
+
+class SampleCreate(SampleSpecificationInput):
     product_type: str = Field(min_length=1, max_length=120)
     status: SampleStatus = SampleStatus.REQUESTED
-    requested_spec_json: dict[str, Any] | None = None
+    requested_spec_json: dict[str, Any] | None = Field(default=None, validation_alias=AliasChoices('property_values','requested_spec_json'))
     is_sample_requested: bool = False
     requested_sample_quantity: Decimal | None = None
     unit: str | None = Field(default=None, max_length=32)
@@ -268,9 +313,9 @@ class SampleCreate(BaseModel):
     notes: str | None = None
 
 
-class SampleUpdate(BaseModel):
+class SampleUpdate(SampleSpecificationInput):
     product_type: str | None = Field(default=None, min_length=1, max_length=120)
-    requested_spec_json: dict[str, Any] | None = None
+    requested_spec_json: dict[str, Any] | None = Field(default=None, validation_alias=AliasChoices('property_values','requested_spec_json'))
     is_sample_requested: bool | None = None
     requested_sample_quantity: Decimal | None = None
     unit: str | None = Field(default=None, max_length=32)
@@ -296,12 +341,54 @@ class SampleListItem(BaseModel):
     created_by_name: str | None = None
     created_at: ISODatetime
     updated_at: ISODatetime
+    # On a list page only: the customer, read once for the whole page.
+    customer_name: str | None = None
+    customer_code: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
+class SamplePage(BaseModel):
+    items: list[SampleListItem]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class SamplePropertyOption(BaseModel):
+    value: str
+    label_ar: str
+    label_en: str
+
+
+class SamplePropertyDefinition(BaseModel):
+    key: str
+    name_ar: str
+    name_en: str
+    kind: str
+    unit: str | None = None
+    required: bool = False
+    options: list[SamplePropertyOption] = Field(default_factory=list)
+
+
+class SampleProductDefinition(BaseModel):
+    key: str
+    name_ar: str
+    name_en: str
+    active: bool
+    default_unit: str | None = None
+    properties: list[SamplePropertyDefinition]
+
+
 class SampleRead(SampleListItem):
     notes: str | None
+    product_definition: SampleProductDefinition | None = None
+
+    @computed_field
+    @property
+    def property_values(self) -> dict[str, Any] | None:
+        return self.requested_spec_json
 
 
 class SampleEvaluationCreate(BaseModel):
@@ -309,6 +396,13 @@ class SampleEvaluationCreate(BaseModel):
     result_status: SampleEvaluationResultStatus
     comments: str | None = None
     next_action: SampleEvaluationNextAction
+
+
+class SampleEvaluationUpdate(BaseModel):
+    evaluation_date: AwareDatetime | None = None
+    result_status: SampleEvaluationResultStatus | None = None
+    comments: str | None = None
+    next_action: SampleEvaluationNextAction | None = None
 
 
 class SampleEvaluationRead(BaseModel):
@@ -319,6 +413,7 @@ class SampleEvaluationRead(BaseModel):
     comments: str | None
     next_action: SampleEvaluationNextAction
     evaluated_by_user_id: UUID
+    evaluated_by_name: str | None = None
     created_at: ISODatetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -370,7 +465,7 @@ class QuoteUpdate(BaseModel):
     sample_id: UUID | None = None
     issue_date: AwareDatetime | None = None
     valid_until: AwareDatetime | None = None
-    status: QuoteStatus | None = None
+    # The status changes through issue, accept, reject, expire and revise (SALES-001), never here.
     currency: str | None = Field(default=None, pattern="^(SAR|USD)$")
     discount_amount: Decimal | None = Field(default=None, ge=0)
     tax_rate: Decimal | None = Field(default=None, ge=0, le=100)
@@ -399,10 +494,49 @@ class QuoteListItem(BaseModel):
     created_at: ISODatetime
     updated_at: ISODatetime
 
+    customer_name: str | None = None
+    customer_code: str | None = None
+
     model_config = ConfigDict(from_attributes=True)
 
 
+class StatusHistoryEntry(BaseModel):
+    action: str
+    from_status: str | None = None
+    to_status: str
+    revision: int
+    reason: str | None = None
+    actor_name: str | None = None
+    created_at: ISODatetime
+
+
+class LifecycleReason(BaseModel):
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class OptionalReason(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class QuoteOrderSummary(BaseModel):
+    id: UUID
+    order_number: str
+    status: CommercialOrderStatus
+
+
+class QuotePage(BaseModel):
+    items: list[QuoteListItem]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
 class QuoteRead(QuoteListItem):
+    revision: int = 1
+    allowed_actions: list[str] = Field(default_factory=list)
+    history: list[StatusHistoryEntry] = Field(default_factory=list)
+    orders: list[QuoteOrderSummary] = Field(default_factory=list)
     notes: str | None
     tax_rate: Decimal | None = None
     attention: str | None = None
@@ -414,7 +548,7 @@ class CommercialOrderItemCreate(BaseModel):
     line_no: int = Field(ge=1)
     product_type: str = Field(min_length=1, max_length=120)
     requested_spec_json: dict[str, Any] | None = None
-    quantity: Decimal = Field(gt=0)
+    quantity: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
     unit: str = Field(min_length=1, max_length=32)
     agreed_unit_price: Decimal | None = Field(default=None, ge=0)
 
@@ -434,6 +568,9 @@ class CommercialOrderItemRead(BaseModel):
 
 
 class CommercialOrderCreate(BaseModel):
+    # Prices are optional; a priced order has a currency (the quotation's, or the organization's default).
+    currency: str | None = Field(default=None, pattern='^(SAR|USD)$')
+    customer_reference: str | None = Field(default=None, max_length=120)
     quote_id: UUID | None = None
     order_date: AwareDatetime
     requested_delivery_date: AwareDatetime | None = None
@@ -442,9 +579,11 @@ class CommercialOrderCreate(BaseModel):
 
 
 class CommercialOrderUpdate(BaseModel):
+    """A draft only. The status changes through confirm, revise and cancel (SALES-001)."""
+    currency: str | None = Field(default=None, pattern='^(SAR|USD)$')
+    customer_reference: str | None = Field(default=None, max_length=120)
     quote_id: UUID | None = None
     order_date: AwareDatetime | None = None
-    status: CommercialOrderStatus | None = None
     requested_delivery_date: AwareDatetime | None = None
     notes: str | None = None
     items: list[CommercialOrderItemCreate] | None = Field(default=None, min_length=1)
@@ -459,13 +598,35 @@ class CommercialOrderListItem(BaseModel):
     order_date: ISOAwareDatetime
     status: CommercialOrderStatus
     requested_delivery_date: ISOAwareDatetime | None
+    customer_reference: str | None = None
+    revision: int = 1
     created_by_user_id: UUID
     created_at: ISODatetime
     updated_at: ISODatetime
 
+    customer_name: str | None = None
+    customer_code: str | None = None
+    quote_number: str | None = None
+
     model_config = ConfigDict(from_attributes=True)
 
 
+class CommercialOrderPage(BaseModel):
+    items: list[CommercialOrderListItem]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
 class CommercialOrderRead(CommercialOrderListItem):
+    currency: str | None = None
+    confirmed_at: ISODatetime | None = None
+    confirmed_by_user_id: UUID | None = None
+    allowed_actions: list[str] = Field(default_factory=list)
+    # {line id: quantity the production demands in force took}; fulfilment: none · partial · full.
+    transferred_quantities: dict[str, Decimal] = Field(default_factory=dict)
+    fulfilment: str = "none"
+    history: list[StatusHistoryEntry] = Field(default_factory=list)
     notes: str | None
     items: list[CommercialOrderItemRead]

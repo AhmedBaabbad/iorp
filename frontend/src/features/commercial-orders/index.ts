@@ -1,6 +1,10 @@
 export {
+  cancelCommercialOrder,
+  confirmCommercialOrder,
   createCommercialOrder,
+  createOrderFromQuote,
   deleteCommercialOrder,
+  reviseCommercialOrder,
   getCommercialOrderById,
   listCommercialOrders,
   updateCommercialOrder,

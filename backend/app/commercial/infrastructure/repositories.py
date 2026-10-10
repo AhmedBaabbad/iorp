@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, selectinload
 
 from app.commercial.domain.enums import FollowUpPriority, FollowUpStatus
+from app.core.pagination import PageParams, paginate
 from app.core.utils import utc_now
 
 if TYPE_CHECKING:
@@ -27,7 +28,43 @@ from app.commercial.infrastructure.models import (
 )
 
 
+@dataclass(frozen=True)
+class CustomerFilters:
+    """The customer list's search and filters, applied by the query before the page is cut."""
+    search: str | None = None  # code, name, phone or e-mail
+    status: str | None = None
+    relationship_stage: str | None = None
+    sales_owner_user_id: UUID | None = None
+    sector: str | None = None
+
+
+@dataclass(frozen=True)
+class ListFilters:
+    """The filters of the quotation, sales order and sample lists (ARCH-PAGE-001)."""
+    search: str | None = None  # the document's number, or the customer's name or code
+    status: str | None = None
+    customer_id: UUID | None = None
+
+
+def _customers_matching(organization_id: UUID, text: str):
+    like = f"%{text}%"
+    return select(Customer.id).where(Customer.organization_id == organization_id,
+                                     or_(Customer.name.ilike(like), Customer.customer_code.ilike(like)))
+
+
+def customer_labels(db: Session, organization_id: UUID, ids) -> dict:
+    """{customer id: (name, code)} for the customers on one page, in one query."""
+    wanted = {i for i in ids if i}
+    if not wanted:
+        return {}
+    rows = db.execute(select(Customer.id, Customer.name, Customer.customer_code).where(
+        Customer.organization_id == organization_id, Customer.id.in_(wanted)))
+    return {row.id: (row.name, row.customer_code) for row in rows}
+
+
 class CustomerRepository:
+    owner_user_id: UUID | None = None  # RBAC-002: set by the quotation, order and sample services (visibility.py)
+
     def __init__(self, db: Session) -> None:
         self.db = db
 
@@ -52,6 +89,9 @@ class CustomerRepository:
         if customer is not None and policy is not None and auth_context is not None:
             if not policy.can_access_record(auth_context, record_owner_id=customer.sales_owner_user_id):
                 return None
+        # RBAC-002: a quotation, sales order or sample is written only for a customer the user owns, when limited to them.
+        if customer is not None and self.owner_user_id is not None and customer.sales_owner_user_id != self.owner_user_id:
+            return None
         return customer
 
     def get_by_code(self, organization_id: UUID, customer_code: str) -> Customer | None:
@@ -60,6 +100,41 @@ class CustomerRepository:
             Customer.customer_code == customer_code,
         )
         return self.db.scalar(statement)
+
+    def _visible(self, organization_id, policy, auth_context):
+        statement = select(Customer).where(Customer.organization_id == organization_id)
+        if policy is not None and auth_context is not None:
+            statement = policy.apply_query_filter(auth_context, statement, owner_field="sales_owner_user_id")
+        return statement
+
+    def page(self, organization_id: UUID, filters: CustomerFilters, params: PageParams,
+             policy: "AuthorizationPolicy | None" = None, auth_context: "AuthorizationContext | None" = None) -> tuple[list[Customer], int]:
+        """One page of the customers the user may see, newest first (id breaks ties so pages never overlap)."""
+        statement = self._visible(organization_id, policy, auth_context)
+        if filters.search:
+            like = f"%{filters.search.strip()}%"
+            statement = statement.where(or_(Customer.customer_code.ilike(like), Customer.name.ilike(like),
+                                            Customer.phone.ilike(like), Customer.email.ilike(like)))
+        if filters.status:
+            statement = statement.where(Customer.status == filters.status)
+        if filters.relationship_stage:
+            statement = statement.where(Customer.relationship_stage == filters.relationship_stage)
+        if filters.sales_owner_user_id:
+            statement = statement.where(Customer.sales_owner_user_id == filters.sales_owner_user_id)
+        if filters.sector:
+            statement = statement.where(Customer.sector == filters.sector)
+        return paginate(self.db, statement.order_by(Customer.created_at.desc(), Customer.id.desc()), params)
+
+    def lookup(self, organization_id: UUID, search: str | None, ids: list[UUID], limit: int,
+               policy: "AuthorizationPolicy | None" = None, auth_context: "AuthorizationContext | None" = None) -> list[Customer]:
+        """A few customers for choosing one (by code or name), or the named ones (to show their names on a list)."""
+        statement = self._visible(organization_id, policy, auth_context)
+        if ids:
+            statement = statement.where(Customer.id.in_(ids))
+        elif search:
+            like = f"%{search.strip()}%"
+            statement = statement.where(or_(Customer.customer_code.ilike(like), Customer.name.ilike(like)))
+        return list(self.db.scalars(statement.order_by(Customer.name, Customer.id).limit(limit)))
 
     def list_by_organization(
         self, organization_id: UUID,
@@ -157,6 +232,35 @@ class CustomerInteractionRepository:
         self.db.add(interaction)
         self.db.flush()
         return interaction
+
+    def get_for_customer(self, organization_id: UUID, customer_id: UUID, interaction_id: UUID,
+                         policy: "AuthorizationPolicy | None" = None, auth_context: "AuthorizationContext | None" = None):
+        """One interaction of the customer, if the user may see it (the read scope: own interactions only for some roles)."""
+        statement = (
+            select(CustomerInteraction)
+            .join(Customer, Customer.id == CustomerInteraction.customer_id)
+            .where(Customer.organization_id == organization_id, CustomerInteraction.customer_id == customer_id,
+                   CustomerInteraction.id == interaction_id)
+        )
+        if policy is not None and auth_context is not None:
+            statement = policy.apply_query_filter(auth_context, statement, owner_field="created_by_user_id")
+        return self.db.scalar(statement)
+
+    def delete(self, interaction: CustomerInteraction) -> None:
+        self.db.delete(interaction)
+
+    def page_for_customer(self, organization_id: UUID, customer_id: UUID, params: PageParams,
+                          policy: "AuthorizationPolicy | None" = None, auth_context: "AuthorizationContext | None" = None):
+        """One page of a customer's interactions, the latest first."""
+        statement = (
+            select(CustomerInteraction)
+            .join(Customer, Customer.id == CustomerInteraction.customer_id)
+            .where(Customer.organization_id == organization_id, CustomerInteraction.customer_id == customer_id)
+        )
+        if policy is not None and auth_context is not None:
+            statement = policy.apply_query_filter(auth_context, statement, owner_field="created_by_user_id")
+        return paginate(self.db, statement.order_by(CustomerInteraction.interaction_date.desc(),
+                                                    CustomerInteraction.created_at.desc(), CustomerInteraction.id.desc()), params)
 
     def list_for_customer(
         self,
@@ -436,6 +540,13 @@ class FollowUpRepository:
 
 
 class SampleRepository:
+    owner_user_id: UUID | None = None  # RBAC-002: only the records of this sales owner's customers (commercial/application/visibility.py)
+
+    def _mine(self, statement, customer_id_column):
+        if self.owner_user_id is None:
+            return statement
+        return statement.where(customer_id_column.in_(select(Customer.id).where(Customer.sales_owner_user_id == self.owner_user_id)))
+
     def __init__(self, db: Session) -> None:
         self.db = db
 
@@ -457,6 +568,7 @@ class SampleRepository:
                 Sample.id == sample_id,
             )
         )
+        statement = self._mine(statement, Sample.customer_id)
         return self.db.scalar(statement)
 
     def get_by_code_for_customer(
@@ -483,7 +595,21 @@ class SampleRepository:
             .where(Customer.organization_id == organization_id)
             .order_by(Sample.request_date.desc(), Sample.created_at.desc())
         )
+        statement = self._mine(statement, Sample.customer_id)
         return list(self.db.scalars(statement))
+
+    def page(self, organization_id: UUID, filters: ListFilters, params: PageParams) -> tuple[list[Sample], int]:
+        statement = select(Sample).join(Customer, Customer.id == Sample.customer_id).where(Customer.organization_id == organization_id)
+        if filters.search:
+            like = f"%{filters.search.strip()}%"
+            statement = statement.where(or_(Sample.sample_code.ilike(like), Sample.product_type.ilike(like),
+                                            Customer.name.ilike(like), Customer.customer_code.ilike(like)))
+        if filters.status:
+            statement = statement.where(Sample.status == filters.status)
+        if filters.customer_id:
+            statement = statement.where(Sample.customer_id == filters.customer_id)
+        statement = self._mine(statement, Sample.customer_id)
+        return paginate(self.db, statement.order_by(Sample.request_date.desc(), Sample.created_at.desc(), Sample.id.desc()), params)
 
     def list_by_customer(self, organization_id: UUID, customer_id: UUID) -> list[Sample]:
         statement = (
@@ -495,6 +621,7 @@ class SampleRepository:
             )
             .order_by(Sample.request_date.desc(), Sample.created_at.desc())
         )
+        statement = self._mine(statement, Sample.customer_id)
         return list(self.db.scalars(statement))
 
     def count_by_customer(self, customer_id: UUID) -> int:
@@ -572,6 +699,13 @@ class SampleRepository:
 
 
 class SampleEvaluationRepository:
+    owner_user_id: UUID | None = None  # RBAC-002: only the records of this sales owner's customers (commercial/application/visibility.py)
+
+    def _mine(self, statement, customer_id_column):
+        if self.owner_user_id is None:
+            return statement
+        return statement.where(customer_id_column.in_(select(Customer.id).where(Customer.sales_owner_user_id == self.owner_user_id)))
+
     def __init__(self, db: Session) -> None:
         self.db = db
 
@@ -594,6 +728,7 @@ class SampleEvaluationRepository:
                 SampleEvaluation.id == evaluation_id,
             )
         )
+        statement = self._mine(statement, Sample.customer_id)
         return self.db.scalar(statement)
 
     def list_by_sample(
@@ -611,6 +746,7 @@ class SampleEvaluationRepository:
             )
             .order_by(SampleEvaluation.evaluation_date.desc(), SampleEvaluation.created_at.desc())
         )
+        statement = self._mine(statement, Sample.customer_id)
         return list(self.db.scalars(statement))
 
     def count_by_sample(self, sample_id: UUID) -> int:
@@ -627,6 +763,13 @@ class SampleEvaluationRepository:
 
 
 class QuoteRepository:
+    owner_user_id: UUID | None = None  # RBAC-002: only the records of this sales owner's customers (commercial/application/visibility.py)
+
+    def _mine(self, statement, customer_id_column):
+        if self.owner_user_id is None:
+            return statement
+        return statement.where(customer_id_column.in_(select(Customer.id).where(Customer.sales_owner_user_id == self.owner_user_id)))
+
     def __init__(self, db: Session) -> None:
         self.db = db
 
@@ -635,7 +778,7 @@ class QuoteRepository:
         self.db.flush()
         return quote
 
-    def get_by_id(self, organization_id: UUID, quote_id: UUID) -> Quote | None:
+    def get_by_id(self, organization_id: UUID, quote_id: UUID, lock: bool = False) -> Quote | None:
         statement = (
             select(Quote)
             .options(selectinload(Quote.items))
@@ -644,6 +787,9 @@ class QuoteRepository:
                 Quote.id == quote_id,
             )
         )
+        if lock:
+            statement = statement.with_for_update().execution_options(populate_existing=True)
+        statement = self._mine(statement, Quote.customer_id)
         return self.db.scalar(statement)
 
     def get_by_number(self, organization_id: UUID, quote_number: str) -> Quote | None:
@@ -659,7 +805,21 @@ class QuoteRepository:
             .where(Quote.organization_id == organization_id)
             .order_by(Quote.issue_date.desc(), Quote.created_at.desc())
         )
+        statement = self._mine(statement, Quote.customer_id)
         return list(self.db.scalars(statement))
+
+    def page(self, organization_id: UUID, filters: ListFilters, params: PageParams) -> tuple[list[Quote], int]:
+        statement = select(Quote).where(Quote.organization_id == organization_id)
+        if filters.search:
+            text = filters.search.strip()
+            statement = statement.where(or_(Quote.quote_number.ilike(f"%{text}%"),
+                                            Quote.customer_id.in_(_customers_matching(organization_id, text))))
+        if filters.status:
+            statement = statement.where(Quote.status == filters.status)
+        if filters.customer_id:
+            statement = statement.where(Quote.customer_id == filters.customer_id)
+        statement = self._mine(statement, Quote.customer_id)
+        return paginate(self.db, statement.order_by(Quote.issue_date.desc(), Quote.created_at.desc(), Quote.id.desc()), params)
 
     def list_by_customer(self, organization_id: UUID, customer_id: UUID) -> list[Quote]:
         statement = (
@@ -670,6 +830,7 @@ class QuoteRepository:
             )
             .order_by(Quote.issue_date.desc(), Quote.created_at.desc())
         )
+        statement = self._mine(statement, Quote.customer_id)
         return list(self.db.scalars(statement))
 
     def count_by_customer(self, customer_id: UUID) -> int:
@@ -766,6 +927,13 @@ class QuoteRepository:
 
 
 class CommercialOrderRepository:
+    owner_user_id: UUID | None = None  # RBAC-002: only the records of this sales owner's customers (commercial/application/visibility.py)
+
+    def _mine(self, statement, customer_id_column):
+        if self.owner_user_id is None:
+            return statement
+        return statement.where(customer_id_column.in_(select(Customer.id).where(Customer.sales_owner_user_id == self.owner_user_id)))
+
     def __init__(self, db: Session) -> None:
         self.db = db
 
@@ -783,6 +951,7 @@ class CommercialOrderRepository:
                 CommercialOrder.id == order_id,
             )
         )
+        statement = self._mine(statement, CommercialOrder.customer_id)
         return self.db.scalar(statement)
 
     def get_by_number(self, organization_id: UUID, order_number: str) -> CommercialOrder | None:
@@ -798,7 +967,23 @@ class CommercialOrderRepository:
             .where(CommercialOrder.organization_id == organization_id)
             .order_by(CommercialOrder.order_date.desc(), CommercialOrder.created_at.desc())
         )
+        statement = self._mine(statement, CommercialOrder.customer_id)
         return list(self.db.scalars(statement))
+
+    def page(self, organization_id: UUID, filters: ListFilters, params: PageParams) -> tuple[list[CommercialOrder], int]:
+        statement = select(CommercialOrder).where(CommercialOrder.organization_id == organization_id)
+        if filters.search:
+            text = filters.search.strip()
+            statement = statement.where(or_(CommercialOrder.order_number.ilike(f"%{text}%"),
+                                            CommercialOrder.customer_reference.ilike(f"%{text}%"),
+                                            CommercialOrder.customer_id.in_(_customers_matching(organization_id, text))))
+        if filters.status:
+            statement = statement.where(CommercialOrder.status == filters.status)
+        if filters.customer_id:
+            statement = statement.where(CommercialOrder.customer_id == filters.customer_id)
+        statement = self._mine(statement, CommercialOrder.customer_id)
+        return paginate(self.db, statement.order_by(CommercialOrder.order_date.desc(), CommercialOrder.created_at.desc(),
+                                                    CommercialOrder.id.desc()), params)
 
     def list_by_customer(self, organization_id: UUID, customer_id: UUID) -> list[CommercialOrder]:
         statement = (
@@ -809,6 +994,7 @@ class CommercialOrderRepository:
             )
             .order_by(CommercialOrder.order_date.desc(), CommercialOrder.created_at.desc())
         )
+        statement = self._mine(statement, CommercialOrder.customer_id)
         return list(self.db.scalars(statement))
 
     def count_by_customer(self, customer_id: UUID) -> int:
@@ -818,6 +1004,13 @@ class CommercialOrderRepository:
             .where(CommercialOrder.customer_id == customer_id)
         )
         return self.db.scalar(statement) or 0
+
+    def list_by_quote(self, organization_id: UUID, quote_id: UUID) -> list[CommercialOrder]:
+        statement = select(CommercialOrder).where(
+            CommercialOrder.organization_id == organization_id, CommercialOrder.quote_id == quote_id,
+        ).order_by(CommercialOrder.created_at)
+        statement = self._mine(statement, CommercialOrder.customer_id)
+        return list(self.db.scalars(statement))
 
     def count_by_quote(self, quote_id: UUID) -> int:
         statement = (

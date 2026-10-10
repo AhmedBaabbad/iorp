@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 from fastapi import HTTPException
+from app.core.interfaces.reference_lists import names as list_names
 from app.core.reporting.contracts import ReportData, TableSection
 from . import providers
 from .queries import customers, activities, followups, bounded
@@ -87,21 +88,27 @@ def build(key, db, tenant, p, selected):
     # A customer-audience report is sent outside the company: no internal classification, sales KPI,
     # draft quotation, stock decision or other customers' quantities (shared orders) appear in it.
     external = p.audience == 'customer'
+    if {'samples', 'sample_properties', 'sample_evaluations'} & selected:
+        from .sample_sections import build_sample_sections
+        sections.extend(build_sample_sections(db, tenant, p, selected, cs, tz))
+    # MD-002: a sector or city is printed by its name in the report's language (a text written before the lists, as written).
+    printed = {f: list_names(db, tenant.organization_id, f, [getattr(c, f) for c in cs], p.lang) for f in ('sector', 'city')}
+    listed = lambda c, f: printed[f].get(getattr(c, f), getattr(c, f))  # noqa: E731
     if 'information' in selected:
         if external:
             table('information', 'بيانات العميل', 'Customer information', [('الرمز','Code'),customer_col,('القطاع','Sector'),('المدينة','City')],
-                [(c.customer_code,c.name,c.sector,c.city) for c in cs])
+                [(c.customer_code,c.name,listed(c,'sector'),listed(c,'city')) for c in cs])
         else:
             table('information', 'بيانات العميل', 'Customer information', [('الرمز','Code'),customer_col,('الحالة','Status'),('القطاع','Sector'),('المدينة','City'),('الإنشاء','Created')],
-                [(c.customer_code,c.name,value(c.status),c.sector,c.city,day(c.created_at)) for c in cs])
+                [(c.customer_code,c.name,value(c.status),listed(c,'sector'),listed(c,'city'),day(c.created_at)) for c in cs])
     table('contacts','بيانات الاتصال','Contact information',[customer_col,('الهاتف','Phone'),('البريد','Email')],[(c.name,c.phone,c.email) for c in cs])
     if 'directory' in selected:
         owner_names = providers.identity_factory(db,tenant).user_names([c.sales_owner_user_id for c in cs if c.sales_owner_user_id])
         grouping = getattr(p, 'grouping', 'none')
-        group = lambda c: value(owner_names.get(c.sales_owner_user_id)) if grouping == 'sales_owner' else value(getattr(c, grouping, ''))
+        group = lambda c: value(owner_names.get(c.sales_owner_user_id)) if grouping == 'sales_owner' else value(listed(c, grouping) if grouping in ('sector', 'city') else getattr(c, grouping, ''))
         cs.sort(key=lambda c: (group(c), day(c.created_at).isoformat() if p.sort == 'created' else c.name, str(c.id)))
         table('directory','دليل العملاء','Customers directory',[('المجموعة','Group'),('الرمز','Code'),customer_col,('القطاع','Sector'),('المدينة','City'),('الهاتف','Phone'),('الحالة','Status'),('الإنشاء','Created')],
-            [(group(c) if grouping!='none' else '—',c.customer_code,c.name,c.sector,c.city,c.phone,value(c.status),day(c.created_at)) for c in cs])
+            [(group(c) if grouping!='none' else '—',c.customer_code,c.name,listed(c,'sector'),listed(c,'city'),c.phone,value(c.status),day(c.created_at)) for c in cs])
     quote_period = [q for q in quotes if within(q.issued) and (not getattr(p,'quote_status',None) or q.status == p.quote_status)
                     and not (external and q.status == 'draft')]
     if 'quotations' in selected:
@@ -234,6 +241,15 @@ def build(key, db, tenant, p, selected):
             table('inactivity','العملاء غير النشطين','Inactive customers',[customer_col,('آخر نشاط تجاري أو إنتاجي','Last commercial or production activity'),('الإنشاء','Created')],
                 [(c.name,last[c.id],day(c.created_at)) for c in cs if (last[c.id] is None or last[c.id]<cutoff) and day(c.created_at)<cutoff],
                 tr(f'لا عرض أو طلب أو أمر خلال آخر {p.inactive_days} يومًا؛ العملاء الجدد مستبعدون.',f'No quotation, demand or order in the last {p.inactive_days} days; newer customers excluded.'))
+    filters = [f'{p.date_from or "—"} → {p.date_to or "—"}'] if p.date_from or p.date_to else []
+    if key == 'samples_report':
+        from .sample_sections import LABELS as sample_labels
+        for field, title in [('product',tr('المنتج','Product')),('sample_status',tr('حالة العينة','Sample status')),('sample_decision',tr('قرار العينة','Sample decision'))]:
+            selected_value = getattr(p,field,None)
+            if selected_value:
+                printed_value = (sample_labels.get(selected_value,selected_value) if ar else selected_value.replace('_',' ').capitalize()) if field != 'product' else selected_value
+                filters.append(f'{title}: {printed_value}')
+        if p.customer_id and cs: filters.insert(0, tr('العميل','Customer')+': '+cs[0].name)
     return ReportData(sections=sections,subject=cs[0].customer_code if p.customer_id and cs else '',
         prepared_for=cs[0].name if external and cs else '',
-        applied_filters=f'{p.date_from or "—"} → {p.date_to or "—"}' if p.date_from or p.date_to else '')
+        applied_filters=' | '.join(filters))

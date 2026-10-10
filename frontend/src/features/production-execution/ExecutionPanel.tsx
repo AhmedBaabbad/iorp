@@ -169,9 +169,9 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
         <button style={styles.secondaryButton} disabled={busy}>{t("saveMember")}</button>
         {memberDraft.id && <button style={styles.secondaryButton} type="button" onClick={() => setMemberDraft(emptyDraft)}>{t("newMember")}</button>}
       </form>}
-      {!orderId && can("update") && selected.status === "active" && <div style={{ marginTop: 16 }}>
-        {can("manage_members") && <button style={styles.secondaryButton} onClick={() => openForm(selected)}>{t("createReplacement")}</button>}
-        <label>{t("closeOn")}<input type="date" value={closeDate} onChange={e => setCloseDate(e.target.value)} /></label><button style={styles.secondaryButton} disabled={busy || !closeDate} onClick={() => mutate(`shift-rosters/${selected.id}/close`, { effective_to: closeDate })}>{t("closePeriod")}</button>
+      {!orderId && selected.status === "active" && <div style={{ marginTop: 16 }}>
+        {can("update") && can("manage_members") && <button style={styles.secondaryButton} onClick={() => openForm(selected)}>{t("createReplacement")}</button>}
+        {can("close") && <><label>{t("closeOn")}<input type="date" value={closeDate} onChange={e => setCloseDate(e.target.value)} /></label><button style={styles.secondaryButton} disabled={busy || !closeDate} onClick={() => mutate(`shift-rosters/${selected.id}/close`, { effective_to: closeDate })}>{t("closePeriod")}</button></>}
       </div>}
       {orderId && <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
         {selected.status === "planned" && selected.shift_roster_id && can("manage_members") && <button style={styles.secondaryButton} disabled={busy} onClick={() => mutate(`runs/${selected.id}/load-roster-members`)}>{t("loadRosterMembers")}</button>}

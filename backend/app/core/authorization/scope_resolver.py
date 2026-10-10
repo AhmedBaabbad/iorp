@@ -25,7 +25,7 @@ def resolve_effective_scope(
     organization_id: UUID,
     permission_code: str,
     is_organization_root: bool,
-    fallback: AccessScope = AccessScope.ORGANIZATION,
+    fallback: AccessScope = AccessScope.OWN,
 ) -> AccessScope:
     """Determine the broadest scope the user has for a permission."""
     if is_organization_root:
@@ -48,9 +48,7 @@ def resolve_effective_scope(
         if candidate.value in scope_values:
             return candidate
 
-    # No scope row found -- the ordinary permission check should already have
-    # rejected this request upstream. Fail open to the current v0.1 behavior
-    # rather than silently hiding data behind an unexpected empty scope.
+    # Missing or malformed grants must not widen access to the whole organization.
     logger.warning(
         "No role-permission scope found for user %s, permission %s -- defaulting to %s",
         user_id, permission_code, fallback.value,

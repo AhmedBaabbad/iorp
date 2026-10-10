@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useFormatter } from "@/hooks/useFormatter";
 import { displayValue } from "@/lib/utils";
 import type { QuoteItem } from "../types";
+import { useProductName } from "@/features/masterdata";
 
 type QuoteItemsTableProps = {
   items: QuoteItem[];
@@ -55,6 +56,7 @@ export function QuoteItemsTable({ items, currency }: QuoteItemsTableProps) {
   const fmt = useFormatter();
   const t = useTranslations("commercial.quotes");
   const units = useTranslations("common.units.units");
+  const productName = useProductName();  // MD-001: the product's name, not its key
   const locale = useLocale();
   const unitLabel = (code: string) => (units.has(code) ? units(code) : code);
   void currency;
@@ -90,7 +92,7 @@ export function QuoteItemsTable({ items, currency }: QuoteItemsTableProps) {
               <tr key={`${item.line_no}-${item.product_type}`}>
                 <td style={{ ...styles.td, textAlign: "center" }}>{item.line_no}</td>
                 <td style={{ ...styles.td, textAlign: "start" }}>
-                  {item.product_type}
+                  {productName(item.product_type)}
                   {(locale === "ar" ? item.description_ar || item.description_en : item.description_en || item.description_ar) ? (
                     <div style={{ marginTop: "4px" }}>{locale === "ar" ? item.description_ar || item.description_en : item.description_en || item.description_ar}</div>
                   ) : null}

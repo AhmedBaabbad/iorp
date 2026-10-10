@@ -20,9 +20,18 @@ def customer_pdf(customer_id:UUID, lang:str='ar', audience:str='customer', secti
 
 
 @router.get('/commercial/quotes/{quote_id}/document.pdf')
-def quotation_pdf(quote_id:UUID, lang:str='ar', current=Depends(get_current_user), db=Depends(get_db)):
-    """The quotation document for the customer (commercial:quotes:read, within the caller's customer scope)."""
+def quotation_pdf(quote_id:UUID, lang:str|None=Query(None, pattern='^(ar|en)$'), current=Depends(get_current_user), db=Depends(get_db)):
+    """The quotation document for the customer (commercial:quotes:read, within the caller's customer scope), in the
+    language chosen in the quotation settings unless one is asked for."""
+    from app.commercial.application.quote_settings_service import QuoteSettingsService
     from app.commercial.reporting.quotation.definitions import KEY
+    from app.commercial.application.visibility import QUOTES_READ, visible_owner
+    from app.commercial.infrastructure.repositories import QuoteRepository
+    quotes = QuoteRepository(db)
+    quotes.owner_user_id = visible_owner(db, current.tenant, QUOTES_READ)
+    if quotes.get_by_id(current.tenant.organization_id, quote_id) is None:
+        raise HTTPException(404, 'Quote not found.')  # RBAC-002: not one of the user's customers
+    lang = lang or QuoteSettingsService(db, current.tenant.organization_id).language()
     return generate_response(KEY, dict(quote_id=str(quote_id), lang=lang), 'pdf', current, db)
 
 
@@ -44,4 +53,15 @@ def lookups(kind:str,q:str=Query('',max_length=120),current=Depends(get_current_
         ids=db.scalars(query.with_only_columns(Customer.id)).all()
         products=sorted({d.product for d in providers.production_factory(db,current.tenant).demands(ids) if d.product and q.casefold() in d.product.casefold()})
         return [dict(id=p,label=p) for p in products[:50]]
+    if kind=='sample_products':
+        if not can('commercial:samples:read'):
+            raise HTTPException(403,'SECTION_PERMISSION_DENIED')
+        from app.commercial.infrastructure.models import Sample
+        from app.core.interfaces.product_catalog import products as catalog_products
+        from .queries import bounded, LIMIT
+        keys=bounded(db.scalars(select(Sample.product_type).where(Sample.customer_id.in_(query.with_only_columns(Customer.id)))
+            .distinct().order_by(Sample.product_type).limit(LIMIT + 1)))
+        definitions=catalog_products(db,current.tenant.organization_id,keys)
+        rows=[dict(id=k,label=(definitions[k].name_ar+' / '+definitions[k].name_en) if k in definitions else k) for k in keys]
+        return [r for r in rows if q.casefold() in (r['label']+' '+r['id']).casefold()][:50]
     raise HTTPException(404,'LOOKUP_NOT_FOUND')

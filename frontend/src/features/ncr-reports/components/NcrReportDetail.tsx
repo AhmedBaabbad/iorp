@@ -51,6 +51,7 @@ export function NcrReportDetail({ ncrReportId }: { ncrReportId: string }) {
   const unit = (code: string | null) => (code ? (units.has(code) ? units(code) : code) : "");
   const canFiles = useHasAnyPermission([Q.NCR_CREATE, Q.NCR_UPDATE]);
   const canUpdate = usePermission(Q.NCR_UPDATE);
+  const canCancel = usePermission(Q.NCR_CANCEL);
   const [x, setX] = useState<NcrReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [dialog, setDialog] = useState<Dialog | null>(null);
@@ -172,7 +173,7 @@ export function NcrReportDetail({ ncrReportId }: { ncrReportId: string }) {
         {x.actions.includes("add_action") && <button type="button" className={s.button} onClick={() => setDialog({ kind: "action" })}>{t("addAction")}</button>}
       </div>
       {x.corrective_actions.length === 0 ? <p className={s.muted}>{t("noActions")}</p> : <ActionsTable rows={x.corrective_actions} canComplete={x.can_complete_actions}
-        canCancel={open && canUpdate} onComplete={a => setDialog({ kind: "complete", action: a })} onCancel={a => setDialog({ kind: "cancelAction", action: a })} />}
+        canCancel={open && canCancel} onComplete={a => setDialog({ kind: "complete", action: a })} onCancel={a => setDialog({ kind: "cancelAction", action: a })} />}
     </section>}
 
     {x.verified_at && <section className={s.panel} aria-label={t("sections.verification")}>

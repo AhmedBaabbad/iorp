@@ -429,6 +429,7 @@ class ProductionDemand(Base):
     __tablename__ = "production_demands"
     __table_args__ = (
         UniqueConstraint("organization_id", "demand_number", name="uq_production_demands_org_number"),
+        UniqueConstraint("organization_id", "transfer_key", name="uq_demands_transfer_key"),
         Index("ix_production_demands_org_status", "organization_id", "status"),
         Index("ix_production_demands_org_customer", "organization_id", "customer_id"),
         Index("ix_production_demands_org_sequence", "organization_id", "planning_sequence"),
@@ -440,6 +441,9 @@ class ProductionDemand(Base):
     demand_number: Mapped[str] = mapped_column(String(30), nullable=False)
     customer_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("commercial_customers.id", ondelete="RESTRICT"), nullable=False)
     quote_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("commercial_quotes.id", ondelete="SET NULL"))
+    source_order_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
+    source_order_number: Mapped[str | None] = mapped_column(String(64))
+    transfer_key: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     request_date: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
     requested_delivery_date: Mapped[date | None] = mapped_column(Date)
     priority: Mapped[str] = mapped_column(String(10), nullable=False, default="normal")
@@ -462,6 +466,7 @@ class ProductionDemandItem(Base):
     )
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     production_demand_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("production_demands.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_order_item_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
     line_no: Mapped[int] = mapped_column(Integer, nullable=False)
     product_type: Mapped[str | None] = mapped_column(String(100))
     target_spec_json: Mapped[dict | None] = mapped_column(JSON)

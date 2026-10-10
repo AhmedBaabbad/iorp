@@ -21,7 +21,7 @@ from app.shipping.domain import permissions as P
 router = APIRouter(tags=["shipping"])
 PATH = "/returns"
 # Whoever works on a return may add its photos and papers.
-WORKS_ON_RETURNS = [P.RETURNS_CREATE, P.RETURNS_APPROVE, P.RETURNS_RECEIVE]
+WORKS_ON_RETURNS = [P.RETURNS_CREATE, P.RETURNS_APPROVE, P.RETURNS_REJECT, P.RETURNS_RECEIVE]
 
 
 def _read(service, found, can, detail=True):
@@ -64,7 +64,7 @@ def approve_return(return_id: UUID, payload: NoteInput, tenant: TenantContext = 
     return _run(db, tenant, can, lambda s: s.approve(return_id, payload.note))
 
 
-@router.post(f"{PATH}/{{return_id}}/reject", response_model=ReturnRead, dependencies=[Depends(require_permission(P.RETURNS_APPROVE))])
+@router.post(f"{PATH}/{{return_id}}/reject", response_model=ReturnRead, dependencies=[Depends(require_permission(P.RETURNS_REJECT))])
 def reject_return(return_id: UUID, payload: ReasonInput, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db),
                   can=Depends(permission_check)):
     return _run(db, tenant, can, lambda s: s.reject(return_id, payload.reason))

@@ -123,7 +123,7 @@
     "rework": "Rework",
     "return_to_process": "Return to process",
     "use_as_is": "Use as is (concession)",
-    "pending": "Awaiting decision",
+    "pending": "Pending",
     "decided": "Decided",
     "executed": "Executed",
     "dimension": "Dimension",
@@ -143,7 +143,11 @@
     "supplier": "Supplier",
     "internal_production": "Production",
     "warehouse": "Warehouse",
-    "customer_return": "Customer return"
+    "customer_return": "Customer return",
+    "requested": "Requested",
+    "in_preparation": "In preparation",
+    "delivered": "Delivered",
+    "evaluated": "Evaluated"
   },
   "order": {
     "button": "Order report",

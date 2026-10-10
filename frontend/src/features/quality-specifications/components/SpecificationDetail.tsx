@@ -13,6 +13,7 @@ import { activateSpecification, getSpecification, reviseSpecification } from "..
 import { limitsText, targetText } from "../spec-lines";
 import type { Specification } from "../types";
 import { SpecificationStatusBadge } from "./SpecificationStatusBadge";
+import { useProductName } from "@/features/masterdata";
 
 function Item({ label, children }: { label: string; children: ReactNode }) {
   return <div><dt className={s.muted}>{label}</dt><dd style={{ margin: "4px 0 0", overflowWrap: "anywhere" }}>{children}</dd></div>;
@@ -22,6 +23,7 @@ export function SpecificationDetail({ specId }: { specId: string }) {
   const t = useTranslations("quality.specifications");
   const errors = useTranslations("quality.errors");
   const messages = useTranslations("messages");
+  const productName = useProductName();  // MD-001: the product's name, not its key
   const fmt = useFormatter();
   const ar = useLocale() === "ar";
   const router = useRouter();
@@ -63,7 +65,7 @@ export function SpecificationDetail({ specId }: { specId: string }) {
         </span>
       </div>
       <dl className={s.grid} style={{ margin: 0 }}>
-        <Item label={t("fields.productType")}>{spec.product_type}</Item>
+        <Item label={t("fields.productType")}>{productName(spec.product_type)}</Item>
         <Item label={t("fields.grade")}>{spec.grade ?? "—"}</Item>
         <Item label={t("fields.createdBy")}>{spec.created_by_name ?? "—"}</Item>
         <Item label={t("fields.activatedAt")}>{spec.activated_at ? `${fmt.dateTime(spec.activated_at)} — ${spec.activated_by_name ?? ""}` : "—"}</Item>

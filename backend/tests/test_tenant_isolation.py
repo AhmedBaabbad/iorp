@@ -90,7 +90,7 @@ def test_t05_t07_customer_isolation_and_body_override(client, isolated_tenants):
     data = isolated_tenants
     listed = client.get("/api/v1/commercial/customers", headers=data["headers"])
     assert listed.status_code == 200
-    assert str(data["customer_b"].id) not in {item["id"] for item in listed.json()}
+    assert str(data["customer_b"].id) not in {item["id"] for item in listed.json()["items"]}
     assert client.get(f"/api/v1/commercial/customers/{data['customer_b'].id}", headers=data["headers"]).status_code == 404
     created = client.post(
         "/api/v1/commercial/customers",

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from sqlalchemy import select
 
-from app.core.storage import InvalidAttachmentError, LocalFileStorage, save_attachment
+from app.core.storage import InvalidAttachmentError, LocalFileStorage, save_attachment, compensate_new_file
 from app.shipping.domain import returns as R
 from app.shipping.domain import rules
 from app.shipping.domain.rules import ShippingError
@@ -45,10 +45,12 @@ class AttachmentService:
             path, content_type = save_attachment(content, self.org, "shipping", self.storage)
         except InvalidAttachmentError as exc:
             raise ShippingError(f"FILE_{exc}", 400) from exc
-        self.db.add(ShippingAttachment(organization_id=self.org, shipment_id=shipment_id, return_id=return_id, kind=kind,
+        with compensate_new_file(self.db, self.storage, path, lambda: self.db.scalar(select(ShippingAttachment.id).where(
+                ShippingAttachment.organization_id == self.org, ShippingAttachment.storage_path == path)) is not None):
+            self.db.add(ShippingAttachment(organization_id=self.org, shipment_id=shipment_id, return_id=return_id, kind=kind,
                                        file_name=(file_name or "file")[-255:], content_type=content_type, size_bytes=len(content),
                                        storage_path=path, uploaded_by_user_id=self.tenant.user_id))
-        self.db.commit()
+            self.db.commit()
         return attachments(self.db, self.org, shipment_id=shipment_id, return_id=return_id)
 
     def add_to_shipment(self, shipment_id, kind, file_name, content) -> list[dict]:

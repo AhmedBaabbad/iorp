@@ -13,7 +13,7 @@ from app.foundation.infrastructure.models import Organization
 from app.production.infrastructure.models import ProductionDemand, ProductionDemandItem, ProductionOrder, ProductionAllocation, WorkCenter
 
 ROOT = "/api/v1/production"
-PERMISSIONS = frozenset(["production:planning:allocate", "production:production_orders:create", "production:planning:read", "production:production_orders:read", "production:production_orders:update", "production:production_orders:manage_items", "production:work_centers:create", "production:work_centers:update", "production:work_centers:delete"] + [f"production:demands:{a}" for a in ("read", "create", "update")])
+PERMISSIONS = frozenset(["production:planning:allocate", "production:production_orders:create", "production:planning:read", "production:production_orders:read", "production:production_orders:update", "production:production_orders:manage_items", "production:work_centers:create", "production:work_centers:update", "production:work_centers:delete"] + [f"production:demands:{a}" for a in ("read", "create", "update", "release", "cancel")])
 ITEM = {"product_type": "film", "required_quantity": "1000", "unit": "kg", "target_spec_json": {"width": 12, "color": "blue"}}
 
 

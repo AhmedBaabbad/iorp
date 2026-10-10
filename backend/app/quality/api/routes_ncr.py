@@ -117,21 +117,21 @@ def remove_item(report_id: UUID, item_id: UUID, tenant: TenantContext = Depends(
 
 
 # ── stages ───────────────────────────────────────────────────────────────────────────────────────
-@router.post(f"{PATH}/{{report_id}}/contain", response_model=NCRRead, dependencies=[Depends(require_permission(Q.NCR_UPDATE))])
+@router.post(f"{PATH}/{{report_id}}/contain", response_model=NCRRead, dependencies=[Depends(require_permission(Q.NCR_CONTAIN))])
 def contain(report_id: UUID, payload: ContainInput, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db),
             can=Depends(permission_check)):
     """What was done at once to stop it spreading; the investigation starts."""
     return _run(db, tenant, can, lambda s: s.contain(report_id, payload.containment))
 
 
-@router.post(f"{PATH}/{{report_id}}/investigate", response_model=NCRRead, dependencies=[Depends(require_permission(Q.NCR_UPDATE))])
+@router.post(f"{PATH}/{{report_id}}/investigate", response_model=NCRRead, dependencies=[Depends(require_permission(Q.NCR_INVESTIGATE))])
 def investigate(report_id: UUID, payload: InvestigateInput, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db),
                 can=Depends(permission_check)):
     """The root cause; then corrective actions, or closed when none is needed (with the reason)."""
     return _run(db, tenant, can, lambda s: s.investigate(report_id, payload))
 
 
-@router.post(f"{PATH}/{{report_id}}/submit", response_model=NCRRead, dependencies=[Depends(require_permission(Q.NCR_UPDATE))])
+@router.post(f"{PATH}/{{report_id}}/submit", response_model=NCRRead, dependencies=[Depends(require_permission(Q.NCR_SUBMIT))])
 def submit(report_id: UUID, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
     """Every action finished: the report goes to verification."""
     return _run(db, tenant, can, lambda s: s.submit(report_id))
@@ -172,14 +172,14 @@ def update_action(report_id: UUID, action_id: UUID, payload: ActionUpdate, tenan
 
 
 @router.post(f"{PATH}/{{report_id}}/actions/{{action_id}}/complete", response_model=NCRRead,
-             dependencies=[Depends(require_any_permission([Q.NCR_ACTIONS_COMPLETE, Q.NCR_UPDATE]))])
+             dependencies=[Depends(require_permission(Q.NCR_ACTIONS_COMPLETE))])
 def complete_action(report_id: UUID, action_id: UUID, payload: EvidenceInput, tenant: TenantContext = Depends(get_current_tenant),
                     db: Session = Depends(get_db), can=Depends(permission_check)):
     """Done, with the evidence (what was changed, where it can be seen)."""
     return _run(db, tenant, can, lambda s: s.complete_action(report_id, action_id, payload.evidence))
 
 
-@router.post(f"{PATH}/{{report_id}}/actions/{{action_id}}/cancel", response_model=NCRRead, dependencies=[Depends(require_permission(Q.NCR_UPDATE))])
+@router.post(f"{PATH}/{{report_id}}/actions/{{action_id}}/cancel", response_model=NCRRead, dependencies=[Depends(require_permission(Q.NCR_CANCEL))])
 def cancel_action(report_id: UUID, action_id: UUID, payload: ReasonInput, tenant: TenantContext = Depends(get_current_tenant),
                   db: Session = Depends(get_db), can=Depends(permission_check)):
     return _run(db, tenant, can, lambda s: s.cancel_action(report_id, action_id, payload.reason))

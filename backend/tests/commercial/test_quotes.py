@@ -121,7 +121,7 @@ def test_list_quotes_returns_results(client, auth_headers, customer_id):
 
     resp = client.get("/api/v1/commercial/quotes", headers=auth_headers)
     assert resp.status_code == 200
-    items = resp.json()
+    items = resp.json()["items"]
     assert len(items) == 1
     assert re.match(r"^QT-\d{4}-\d{4}$", items[0]["quote_number"])
     assert "items" not in items[0]
@@ -157,11 +157,7 @@ def test_update_quote_status(client, auth_headers, customer_id):
     assert create_resp.status_code == 201
     quote_id = create_resp.json()["id"]
 
-    resp = client.patch(
-        f"/api/v1/commercial/quotes/{quote_id}",
-        json={"status": "issued"},
-        headers=auth_headers,
-    )
+    resp = client.post(f"/api/v1/commercial/quotes/{quote_id}/issue", headers=auth_headers)
     assert resp.status_code == 200
     assert resp.json()["status"] == "issued"
 
@@ -204,4 +200,4 @@ def test_tenant_isolation(client, db, auth_headers, customer_id):
 
     resp = client.get("/api/v1/commercial/quotes", headers=headers_b)
     assert resp.status_code == 200
-    assert resp.json() == []
+    assert resp.json()["items"] == []

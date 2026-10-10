@@ -243,7 +243,8 @@ describe("specification form", () => {
       { id: "p1", code: "WIDTH", name_ar: "العرض", name_en: "Width", kind: "numeric", unit: "mm", method: "Caliper", is_active: true, sort_order: 10 },
       { id: "p2", code: "COLOR", name_ar: "اللون", name_en: "Color", kind: "attribute", unit: null, method: "Visual", is_active: true, sort_order: 20 },
     ];
-    api.apiClient.mockImplementation((path: string, o?: { method?: string }) => Promise.resolve(o?.method === "POST" ? { id: "s1" } : parameters));
+    api.apiClient.mockImplementation((path: string, o?: { method?: string }) => Promise.resolve(o?.method === "POST" ? { id: "s1" }
+      : path.startsWith("/masterdata/") ? [] : parameters));  // no products defined yet: the product type is typed
     ui(<SpecificationForm />);
     fireEvent.change(await screen.findByLabelText("Specification no."), { target: { value: "ROF-TDS-PP-001" } });
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: "PP strap" } });

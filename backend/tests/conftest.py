@@ -24,6 +24,16 @@ from app.dependencies import get_db
 from app.foundation.domain.enums import OrganizationStatus, UserStatus
 from app.foundation.infrastructure.models import Organization, User
 from app.main import app
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.ext.compiler import compiles
+
+
+# SQLite gives a column typed "UUID" numeric affinity: an id whose hex is all digits and one "e" (e.g. "1234e567...")
+# would be stored as a number and read back as a float, failing now and then ("'float' object has no attribute
+# 'replace'"). As text (CHAR has text affinity) every id is kept exactly; PostgreSQL has a real UUID type.
+@compiles(PG_UUID, "sqlite")
+def _uuid_as_text_on_sqlite(type_, compiler, **kw):
+    return "CHAR(32)"
 
 
 # ── Database / session ────────────────────────────────────────────────────────

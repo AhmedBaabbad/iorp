@@ -24,6 +24,8 @@ from app.workforce.domain.enums import EmploymentType, WorkerType, WorkforceMemb
 from app.workforce.infrastructure.models import WorkforceMember
 
 ASSIGN_PERMS = [
+    "commercial:follow_ups:cancel",
+    "commercial:follow_ups:reopen",
     "commercial:customers:read",
     "commercial:follow_ups:read",
     "commercial:follow_ups:create",
@@ -33,12 +35,18 @@ ASSIGN_PERMS = [
     "commercial:follow_ups:complete",
 ]
 ELIGIBLE_PERMS = [
+    "commercial:customers:read",
+    "commercial:follow_ups:cancel",
+    "commercial:follow_ups:reopen",
     "commercial:follow_ups:read",
     "commercial:follow_ups:create",
     "commercial:follow_ups:update",
     "commercial:follow_ups:complete",
 ]
-NON_ELIGIBLE_PERMS = ["production:work_centers:read"]
+NON_ELIGIBLE_PERMS = [
+    "commercial:customers:read",
+    "commercial:follow_ups:cancel",
+    "commercial:follow_ups:reopen","production:work_centers:read"]
 
 
 def _make_org(db, code="test-org"):

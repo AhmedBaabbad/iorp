@@ -28,6 +28,7 @@ ADMIN_AND_ASSIGN_PERMS = [
     *ASSIGN_PERMS,
     "foundation:users:write",
     "foundation:users:deactivate",
+    "foundation:users:delete",  # RBAC-002: the permanent delete has its own permission
 ]
 OPEN_STATUSES = (FollowUpStatus.PENDING, FollowUpStatus.IN_PROGRESS)
 

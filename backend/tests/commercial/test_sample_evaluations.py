@@ -11,7 +11,7 @@ _BASE_CUSTOMER = {"customer_code": "CUST-EVAL-001", "name": "Evaluation Corp"}
 
 _BASE_SAMPLE = {
     "sample_code": "SAMP-EVAL-001",
-    "product_type": "Steel Rod",
+    "product_type": "steel_rod",
     "request_date": "2026-06-09T10:00:00Z",
 }
 
@@ -21,6 +21,21 @@ _BASE_EVALUATION = {
     "comments": "Meets baseline requirements.",
     "next_action": "proceed_to_quote",
 }
+
+
+def test_evaluator_name_comes_from_authenticated_user(client, auth_headers, sample_id, test_user):
+    response = client.post(f'/api/v1/commercial/samples/{sample_id}/evaluations', headers=auth_headers,
+        json={**_BASE_EVALUATION, 'evaluated_by_user_id': str(uuid4()), 'evaluated_by_name': 'Forged name'})
+    assert response.status_code == 201
+    result = response.json()
+    assert result['evaluated_by_user_id'] == str(test_user.id)
+    assert result['evaluated_by_name'] == test_user.full_name
+    listed = client.get(f'/api/v1/commercial/samples/{sample_id}/evaluations', headers=auth_headers)
+    assert listed.status_code == 200
+    assert listed.json()[0]['evaluated_by_name'] == test_user.full_name
+    detail = client.get(f"/api/v1/commercial/sample-evaluations/{result['id']}", headers=auth_headers)
+    assert detail.status_code == 200
+    assert detail.json()['evaluated_by_name'] == test_user.full_name
 
 
 @pytest.fixture
@@ -182,3 +197,11 @@ def test_tenant_isolation(client, db, auth_headers, sample_id):
         headers=headers_b,
     )
     assert resp.status_code == 404
+
+
+@pytest.fixture(autouse=True)
+def sample_master_product(db, test_org, test_user):
+    from app.masterdata.infrastructure.models import Product
+    db.add(Product(organization_id=test_org.id, code='PRD-SAMPLE', key='steel_rod',
+        name_ar='Test product', name_en='Test product', created_by_user_id=test_user.id))
+    db.commit()

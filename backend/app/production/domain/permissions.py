@@ -11,8 +11,8 @@ MODULE = "production"
 RESOURCES: dict[str, tuple[str, ...]] = {
     "work_centers": ("read", "create", "update", "delete"),
     "shifts": ("read", "create", "update", "delete"),
-    "shift_rosters": ("read", "create", "update", "manage_members"),
-    "demands": ("read", "create", "update", "delete"),
+    "shift_rosters": ("read", "create", "update", "manage_members", "close"),
+    "demands": ("read", "create", "update", "delete", "release", "cancel"),
     "planning": ("read", "sequence", "allocate", "release_allocation"),
     "production_orders": ("read", "update", "manage_items", "create", "release", "start", "hold", "complete", "close", "cancel"),
     "runs": ("read", "create", "update", "start", "pause", "complete", "cancel", "manage_members"),
@@ -31,8 +31,8 @@ ALL: tuple[str, ...] = tuple(code(resource, action) for resource, actions in RES
 
 WORK_CENTERS_READ, WORK_CENTERS_CREATE, WORK_CENTERS_UPDATE, WORK_CENTERS_DELETE = (code("work_centers", a) for a in RESOURCES["work_centers"])
 SHIFTS_READ, SHIFTS_CREATE, SHIFTS_UPDATE, SHIFTS_DELETE = (code("shifts", a) for a in RESOURCES["shifts"])
-ROSTERS_READ, ROSTERS_CREATE, ROSTERS_UPDATE, ROSTERS_MANAGE_MEMBERS = (code("shift_rosters", a) for a in RESOURCES["shift_rosters"])
-DEMANDS_READ, DEMANDS_CREATE, DEMANDS_UPDATE, DEMANDS_DELETE = (code("demands", a) for a in RESOURCES["demands"])
+ROSTERS_READ, ROSTERS_CREATE, ROSTERS_UPDATE, ROSTERS_MANAGE_MEMBERS, ROSTERS_CLOSE = (code("shift_rosters", a) for a in RESOURCES["shift_rosters"])
+DEMANDS_READ, DEMANDS_CREATE, DEMANDS_UPDATE, DEMANDS_DELETE, DEMANDS_RELEASE, DEMANDS_CANCEL = (code("demands", a) for a in RESOURCES["demands"])
 PLANNING_READ, PLANNING_SEQUENCE, PLANNING_ALLOCATE, PLANNING_RELEASE_ALLOCATION = (code("planning", a) for a in RESOURCES["planning"])
 (ORDERS_READ, ORDERS_UPDATE, ORDERS_MANAGE_ITEMS, ORDERS_CREATE, ORDERS_RELEASE, ORDERS_START, ORDERS_HOLD,
  ORDERS_COMPLETE, ORDERS_CLOSE, ORDERS_CANCEL) = (code("production_orders", a) for a in RESOURCES["production_orders"])

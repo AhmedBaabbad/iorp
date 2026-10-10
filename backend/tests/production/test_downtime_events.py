@@ -21,7 +21,7 @@ PERMISSIONS = frozenset(
     ["production:production_orders:read", "production:production_orders:update", "production:production_orders:manage_items", "production:planning:read", "production:planning:allocate",
      "production:production_orders:create", "production:downtime_events:read", "production:downtime_events:create", "production:downtime_events:update", "production:downtime_events:delete", "production:downtime_events:close"]
     + [f"production:production_orders:{a}" for a in ("release", "start", "hold", "complete", "close", "cancel")]
-    + [f"production:demands:{a}" for a in ("read", "create", "update")])
+    + [f"production:demands:{a}" for a in ("read", "create", "update", "release", "cancel")])
 PLANNED = {"planned_maintenance", "break_meeting", "no_orders"}
 UNPLANNED = {"changeover_setup", "breakdown", "material_shortage", "waiting_labor", "quality_issue", "utilities", "other"}
 T0 = datetime(2026, 9, 29, 8, 0, tzinfo=timezone.utc)

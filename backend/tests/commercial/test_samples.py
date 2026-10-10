@@ -25,7 +25,7 @@ _BASE_CUSTOMER = {"customer_code": "CUST-001", "name": "Test Corp"}
 
 _BASE_SAMPLE = {
     "sample_code": "SAMP-001",
-    "product_type": "Industrial Adhesive",
+    "product_type": "industrial_adhesive",
     "request_date": "2026-01-15T10:00:00+00:00",
 }
 
@@ -55,7 +55,7 @@ def test_create_sample(client, auth_headers, customer_id):
     assert resp.status_code == 201
     data = resp.json()
     assert re.match(r"^RFS-\d{4}-\d{3}$", data["sample_code"])  # server-generated; client value ignored
-    assert data["product_type"] == "Industrial Adhesive"
+    assert data["product_type"] == "industrial_adhesive"
     assert data["status"] == "requested"
     assert data["customer_id"] == customer_id
     assert "id" in data
@@ -106,7 +106,7 @@ def test_create_sample_status_is_server_set(client, auth_headers, customer_id):
 def test_list_samples_empty(client, auth_headers):
     resp = client.get("/api/v1/commercial/samples", headers=auth_headers)
     assert resp.status_code == 200
-    assert resp.json() == []
+    assert resp.json()["items"] == []
 
 
 def test_list_samples(client, auth_headers, customer_id):
@@ -117,7 +117,7 @@ def test_list_samples(client, auth_headers, customer_id):
     )
     resp = client.get("/api/v1/commercial/samples", headers=auth_headers)
     assert resp.status_code == 200
-    items = resp.json()
+    items = resp.json()["items"]
     assert len(items) == 1
     assert re.match(r"^RFS-\d{4}-\d{3}$", items[0]["sample_code"])
 
@@ -274,4 +274,12 @@ def test_tenant_isolation(client, db, auth_headers, customer_id):
 
     list_resp = client.get("/api/v1/commercial/samples", headers=headers_b)
     assert list_resp.status_code == 200
-    assert list_resp.json() == [], "Org B must not see org A's samples."
+    assert list_resp.json()["items"] == [], "Org B must not see org A's samples."
+
+
+@pytest.fixture(autouse=True)
+def sample_master_product(db, test_org, test_user):
+    from app.masterdata.infrastructure.models import Product
+    db.add(Product(organization_id=test_org.id, code='PRD-SAMPLE', key='industrial_adhesive',
+        name_ar='Test product', name_en='Test product', created_by_user_id=test_user.id))
+    db.commit()

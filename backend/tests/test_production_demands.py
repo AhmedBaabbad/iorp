@@ -15,7 +15,7 @@ from app.foundation.infrastructure.models import Organization
 from app.production.infrastructure.models import ProductionDemand
 
 ROOT = "/api/v1/production"
-PERMISSIONS = frozenset([f"production:demands:{a}" for a in ("read", "create", "update", "delete")] + ["production:planning:read", "production:planning:sequence", "commercial:customers:read", "commercial:customers:update", "commercial:customers:delete"])
+PERMISSIONS = frozenset([f"production:demands:{a}" for a in ("read", "create", "update", "delete", "release", "cancel")] + ["production:planning:read", "production:planning:sequence", "commercial:customers:read", "commercial:customers:update", "commercial:customers:delete"])
 ITEM = {"product_type": "pp_strap", "required_quantity": "500", "unit": "kg", "target_spec_json": {"width_mm": 12, "thickness_mm": .6, "color": "blue"}}
 
 

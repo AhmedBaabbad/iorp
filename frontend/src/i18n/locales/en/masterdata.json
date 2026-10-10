@@ -1,0 +1,167 @@
+{
+  "search": "Search",
+  "save": "Save",
+  "cancel": "Cancel",
+  "kinds": {
+    "finished": "Finished product",
+    "material": "Material"
+  },
+  "propertyKinds": {
+    "number": "Number",
+    "text": "Text",
+    "choice": "Choice from a list"
+  },
+  "fields": {
+    "code": "Code",
+    "name": "Name",
+    "key": "Product key",
+    "kind": "Kind",
+    "unit": "Default unit",
+    "properties": "Specification",
+    "name_ar": "Name (Arabic)",
+    "name_en": "Name (English)",
+    "notes": "Notes"
+  },
+  "products": {
+    "title": "Products",
+    "subtitle": "What the organization makes or buys, named on every document: quotations, orders, production, quality and purchasing.",
+    "new": "New product",
+    "searchPlaceholder": "Name, key or code",
+    "empty": "No products yet",
+    "emptyHint": "Until the first product is added, product types are still typed freely on every screen.",
+    "inactive": "Inactive",
+    "createTitle": "New product",
+    "editTitle": "Product",
+    "back": "Products",
+    "formSubtitle": "Its names in both languages, its key (how every module refers to it) and its specification template.",
+    "keyHint": "Saved as: {key}. Small English letters, digits and _; it cannot be changed later.",
+    "keyFixed": "Every module stores this key, so it never changes.",
+    "active": "Active (offered on every screen)"
+  },
+  "template": {
+    "title": "Specification template",
+    "hint": "The properties a line of this product carries, in the order documents print them.",
+    "empty": "No properties yet.",
+    "newProperty": "New property",
+    "name_ar": "Name (Arabic)",
+    "name_en": "Name (English)",
+    "key": "Key",
+    "kind": "Type",
+    "unit": "Unit",
+    "options": "Options",
+    "label_ar": "Arabic label",
+    "label_en": "English label",
+    "addOption": "Add option",
+    "removeOption": "Remove option",
+    "required": "Required",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "remove": "Remove",
+    "add": "Add property",
+    "keyInvalid": "The key uses small English letters, digits and _ and starts with a letter (e.g. width_mm)."
+  },
+  "legacy": {
+    "title": "Product types written before the list",
+    "hint": "These were typed freely on records. Map each one to a product: every module then stores that product's key on its own records.",
+    "value": "Written as",
+    "usedIn": "Used in",
+    "mapTo": "Map to",
+    "map": "Map",
+    "create": "Create a product from it",
+    "use": "{module}: {count}",
+    "mapped": "«{value}» now refers to the product on {count} records.",
+    "modules": {
+      "commercial": "Sales",
+      "production": "Production",
+      "quality": "Quality",
+      "procurement": "Procurement"
+    }
+  },
+  "select": {
+    "loading": "Loading…",
+    "choose": "Choose a product",
+    "add": "+ Add a product",
+    "noCatalog": "No products are defined yet: type the product type.",
+    "define": "Define products",
+    "inactive": "{name} (inactive)",
+    "legacy": "{value} (written before the list)",
+    "chooseItem": "Choose…",
+    "manageList": "Manage the list"
+  },
+  "settings": {
+    "title": "General settings",
+    "subtitle": "The VAT rate and the default currency of new quotations and purchase orders.",
+    "vatRate": "VAT rate (%)",
+    "vatHint": "15 in the Kingdom of Saudi Arabia.",
+    "currency": "Default currency",
+    "currencyHint": "Chosen first on new quotations and purchase orders; each document may change it.",
+    "vatInvalid": "Enter a rate between 0 and 100 (up to two decimals).",
+    "note": "Documents already written keep their rate; a document with VAT offers this rate or none.",
+    "save": "Save",
+    "saved": "Saved."
+  },
+  "errors": {
+    "request_failed": "The request failed.",
+    "PRODUCT_NOT_FOUND": "The product was not found.",
+    "PRODUCT_KEY_TAKEN": "Another product already has the key {key}.",
+    "PRODUCT_KEY_INVALID": "The key «{key}» is not valid.",
+    "PROPERTY_KEY_INVALID": "A property key is not valid: {key}.",
+    "PROPERTY_KEY_DUPLICATE": "Two properties have the key {key}.",
+    "PROPERTY_KIND_UNKNOWN": "Unknown property type.",
+    "OPTIONS_REQUIRED": "The choice «{key}» needs options.",
+    "OPTIONS_INVALID": "The options of «{key}» repeat a value.",
+    "OPTIONS_ONLY_FOR_CHOICE": "Only a choice has options.",
+    "UNIT_ONLY_FOR_NUMBER": "Only a number has a unit.",
+    "TOO_MANY_PROPERTIES": "At most {limit} properties.",
+    "LEGACY_VALUE_INVALID": "Choose another product.",
+    "LEGACY_VALUE_NOT_FOUND": "«{value}» is no longer used.",
+    "VAT_RATE_INVALID": "The VAT rate is between 0 and 100.",
+    "CURRENCY_UNKNOWN": "Unknown currency.",
+    "LIST_UNKNOWN": "Unknown list.",
+    "ITEM_NOT_FOUND": "The item was not found.",
+    "ITEM_KEY_INVALID": "The key «{key}» is not valid.",
+    "ITEM_KEY_TAKEN": "Another item has the key {key}.",
+    "PARENT_REQUIRED": "Choose the country.",
+    "PARENT_NOT_ALLOWED": "Only a city has a country.",
+    "TOO_MANY_ITEMS": "At most {limit} items."
+  },
+  "lists": {
+    "title": "Reference lists",
+    "subtitle": "Sectors, opportunity sources, countries and cities chosen on customers, suppliers and shipments.",
+    "names": {
+      "sector": "Sectors",
+      "opportunity_source": "Opportunity sources",
+      "country": "Countries",
+      "city": "Cities"
+    },
+    "hints": {
+      "sector": "A customer's line of business; customer reports group by it.",
+      "opportunity_source": "Where a customer came from.",
+      "country": "Countries of customers and suppliers.",
+      "city": "Each city belongs to a country; customers, suppliers and deliveries name it."
+    },
+    "addStandard": "Add the usual values",
+    "standardAdded": "{count} values added.",
+    "empty": "No values yet: the field is typed freely until one is added.",
+    "add": "Add",
+    "parentFirst": "Add a country first.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "yes": "Yes",
+    "no": "No",
+    "fields": {
+      "name_ar": "Name (Arabic)",
+      "name_en": "Name (English)",
+      "key": "Key",
+      "active": "Active"
+    },
+    "legacyTitle": "Values written before the list",
+    "legacyHint": "These were typed freely on records. Map each one to an item: every module then stores that item's key on its own records.",
+    "modules": {
+      "commercial": "Customers",
+      "procurement": "Suppliers",
+      "shipping": "Shipments"
+    }
+  }
+}

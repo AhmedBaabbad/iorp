@@ -21,7 +21,7 @@ PERMISSIONS = frozenset(
     ["production:production_orders:read", "production:production_orders:update", "production:production_orders:manage_items", "production:planning:read", "production:planning:allocate",
      "production:production_orders:create"]
     + [f"production:production_orders:{a}" for a in ("release", "start", "hold", "complete", "close", "cancel")]
-    + [f"production:results:{a}" for a in ("read", "create", "update", "delete", "correct")] + [f"production:demands:{a}" for a in ("read", "create", "update")])
+    + [f"production:results:{a}" for a in ("read", "create", "update", "delete", "correct")] + [f"production:demands:{a}" for a in ("read", "create", "update", "release", "cancel")])
 
 
 @pytest.fixture

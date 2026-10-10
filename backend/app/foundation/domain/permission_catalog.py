@@ -12,6 +12,7 @@ from app.production.domain import permissions as production_permissions
 from app.quality.domain import permissions as quality_permissions
 from app.shipping.domain import permissions as shipping_permissions
 from app.procurement.domain import permissions as procurement_permissions
+from app.masterdata.domain import permissions as masterdata_permissions
 
 
 @dataclass(frozen=True)
@@ -30,13 +31,14 @@ class PermissionDefinition:
 
 MODULE_NAMES = {
     "organization": {"en": "Organization identity", "ar": "هوية المؤسسة"},
-    "reports": {"en": "Production reports", "ar": "تقارير الإنتاج"},
+    "reports": {"en": "Reports", "ar": "التقارير"},
     "foundation": {"en": "Administration", "ar": "الإدارة"},
     "commercial": {"en": "Commercial", "ar": "التجاري"},
     "production": {"en": "Production", "ar": "الإنتاج"},
     "quality": {"en": "Quality", "ar": "الجودة"},
     "shipping": {"en": "Shipping", "ar": "الشحن والتسليم"},
     "procurement": {"en": "Procurement", "ar": "المشتريات"},
+    "masterdata": {"en": "Master data", "ar": "البيانات الأساسية"},
     "workforce": {"en": "Workforce", "ar": "القوى العاملة"},
 }
 
@@ -66,12 +68,21 @@ RESOURCE_NAMES = {
     "certificates": ("Certificates of Analysis", "شهادات التحليل"),
     "ncr_actions": ("Corrective Actions", "الإجراءات التصحيحية"),
     "suppliers": ("Suppliers", "الموردين"), "materials": ("Materials", "المواد"),
-    "receipts": ("Goods Receipts", "استلام المواد"),
+    "receipts": ("Goods Receipts", "استلام المواد"), "purchase_orders": ("Purchase Orders", "أوامر الشراء"),
     "shipments": ("Shipments", "الشحنات"), "returns": ("Returns", "المرتجعات"), "settings": ("Settings", "الإعدادات"),
     "members": ("Workforce Members", "أعضاء القوى العاملة"),
+    "products": ("Products", "المنتجات"), "lists": ("Reference Lists", "القوائم المرجعية"),
 }
 
 ACTION_NAMES = {
+    'ready': ('Mark Ready', 'تجهيز للإرسال'),
+    'contain': ('Record Containment of', 'تسجيل احتواء'), 'investigate': ('Record Root Cause of', 'تسجيل السبب الجذري لـ'),
+    'submit': ('Submit for Verification', 'إرسال للتحقق'), 'fail': ('Record Failed Delivery of', 'تسجيل تعذّر تسليم'),
+    'send': ('Send', 'إرسال'), 'map_legacy': ('Map Legacy Values to', 'ربط القيم القديمة بـ'),
+    'reschedule': ('Reschedule', 'إعادة جدولة'),
+    'confirm': ('Confirm', 'اعتماد'), 'accept': ('Accept', 'قبول'), 'reject': ('Reject', 'رفض'),
+    'expire': ('Expire', 'إنهاء صلاحية'), 'revise': ('Revise', 'فتح مراجعة'),
+    'reopen': ('Reopen', 'إعادة فتح'),
     "start": ("Start", "بدء"),
     "release": ("Release", "اعتماد"),
     "verify": ("Verify", "التحقق من"),
@@ -121,7 +132,7 @@ def _resource_permissions(module: str, definitions: dict[str, tuple[str, ...]]) 
 
 FOUNDATION_PERMISSIONS = _resource_permissions("foundation", {
     "organization": ("read", "update", "branding"),
-    "users": ("read", "write", "activate", "deactivate", "lock", "reset_password"),
+    "users": ("read", "write", "activate", "deactivate", "delete", "lock", "reset_password"),
     "roles": ("read", "write"), "permissions": ("read",),
     "user_roles": ("write",), "role_permissions": ("write",), "audit": ("read",),
     "security_log": ("read",), "activity_log": ("read",),
@@ -134,6 +145,10 @@ SCOPABLE_OWNER_FIELDS: dict[str, str] = {
     "commercial:customers:read": "sales_owner_user_id",
     "commercial:follow_ups:read": "assigned_user_id",
     "commercial:interactions:read": "created_by_user_id",
+    # RBAC-002: a quotation, sales order or sample is its customer's; "own" = the customers whose sales owner is the user.
+    "commercial:quotes:read": "customer.sales_owner_user_id",
+    "commercial:orders:read": "customer.sales_owner_user_id",
+    "commercial:samples:read": "customer.sales_owner_user_id",
 }
 
 
@@ -145,16 +160,17 @@ def _apply_scope_overrides(permissions: list["PermissionDefinition"]) -> list["P
     ]
 
 
+# RBAC-002: the vague "write" (manage) permissions were removed: create, update and delete say exactly what is allowed.
 COMMERCIAL_PERMISSIONS = _apply_scope_overrides(_resource_permissions("commercial", {
-    "customers": ("read", "create", "update", "delete", "write", "assign_owner"),
-    "interactions": ("read", "create", "update", "delete", "write"),
-    "follow_ups": ("read", "create", "update", "delete", "write", "assign", "complete"),
-    "samples": ("read", "create", "update", "delete", "write"),
+    "customers": ("read", "create", "update", "delete", "assign_owner"),
+    "interactions": ("read", "create", "update", "delete"),
+    "follow_ups": ("read", "create", "update", "delete", "assign", "complete"),
+    "samples": ("read", "create", "update", "delete"),
     "evaluations": ("read", "create", "update", "delete"),
-    "quotes": ("read", "create", "update", "delete", "write"),
+    "quotes": ("read", "create", "update", "delete"),
     # Quotation document settings: signature and the bilingual terms and conditions (QUOTE-DOC-001).
     "quote_settings": ("read", "update"),
-    "orders": ("read", "create", "update", "delete", "write"),
+    "orders": ("read", "create", "update", "delete"),
 }))
 
 def _labelled(permission: PermissionDefinition, labels: dict[str, tuple[str, str]]) -> PermissionDefinition:
@@ -163,6 +179,10 @@ def _labelled(permission: PermissionDefinition, labels: dict[str, tuple[str, str
     en, ar = labels[permission.code]
     return replace(permission, name_en=en, name_ar=ar, description_en=f"Allows the account to {en[0].lower()}{en[1:]}.",
                    description_ar=f"تسمح للحساب بـ{ar}.")
+
+
+from app.commercial.domain.action_permissions import EXTRA_ACTIONS
+COMMERCIAL_PERMISSIONS += _resource_permissions('commercial', EXTRA_ACTIONS)
 
 
 # PROD-RBAC-001: read/create/update/delete plus explicit actions, from production/domain/permissions.py.
@@ -180,6 +200,10 @@ SHIPPING_PERMISSIONS = [_labelled(p, shipping_permissions.LABELS)
 # PROC-001: one permission per action, from procurement/domain/permissions.py.
 PROCUREMENT_PERMISSIONS = [_labelled(p, procurement_permissions.LABELS)
                            for p in _resource_permissions(procurement_permissions.MODULE, procurement_permissions.RESOURCES)]
+
+# MD-001: products, their specification templates and the general settings, from masterdata/domain/permissions.py.
+MASTERDATA_PERMISSIONS = [_labelled(p, masterdata_permissions.LABELS)
+                          for p in _resource_permissions(masterdata_permissions.MODULE, masterdata_permissions.RESOURCES)]
 
 WORKFORCE_PERMISSIONS = _resource_permissions("workforce", {
     "members": ("read", "create", "update", "delete", "link_user"),
@@ -201,10 +225,21 @@ from app.quality.domain.report_permissions import LABELS as QUALITY_REPORT_LABEL
 REPORTING_PERMISSIONS += [PermissionDefinition('reports:quality:'+key, 'reports', 'quality', key, en, ar, en, ar)
                          for key, (en, ar) in QUALITY_REPORT_LABELS.items()]
 
-ALL_TENANT_PERMISSIONS = (
+# RBAC-002: every permission's name and description, as people read them (permission_labels.py); the code never changes.
+from app.foundation.domain.permission_labels import LABELS as PERMISSION_LABELS
+
+
+def _named(permission: PermissionDefinition) -> PermissionDefinition:
+    if permission.code not in PERMISSION_LABELS:
+        return permission
+    ar, en, description_ar, description_en = PERMISSION_LABELS[permission.code]
+    return replace(permission, name_ar=ar, name_en=en, description_ar=description_ar, description_en=description_en)
+
+
+ALL_TENANT_PERMISSIONS = [_named(p) for p in (
     FOUNDATION_PERMISSIONS + COMMERCIAL_PERMISSIONS + PRODUCTION_PERMISSIONS
-    + QUALITY_PERMISSIONS + SHIPPING_PERMISSIONS + PROCUREMENT_PERMISSIONS + WORKFORCE_PERMISSIONS + REPORTING_PERMISSIONS
-)
+    + QUALITY_PERMISSIONS + SHIPPING_PERMISSIONS + PROCUREMENT_PERMISSIONS + MASTERDATA_PERMISSIONS + WORKFORCE_PERMISSIONS + REPORTING_PERMISSIONS
+)]
 PERMISSION_BY_CODE = {permission.code: permission for permission in ALL_TENANT_PERMISSIONS}
 ALL_PERMISSION_CODES = frozenset(PERMISSION_BY_CODE)
 PERMISSIONS_BY_MODULE: dict[str, list[PermissionDefinition]] = {}

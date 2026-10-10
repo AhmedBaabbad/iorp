@@ -7,6 +7,7 @@ already tenant-scoped query further -- it never widens it.
 """
 
 import logging
+from sqlalchemy import false
 from typing import Any
 from uuid import UUID
 
@@ -21,7 +22,7 @@ class ScopedAuthorizationPolicy:
 
     - organization: no filter (see all org records) -- current v0.1 behavior.
     - own: filter to rows whose owner_field equals the current user.
-    - team: not implemented in v0.1 -- fails open to organization (logged).
+    - team: until team membership exists, conservatively restricted to the user's own records.
     """
 
     def can_access(self, context: AuthorizationContext) -> bool:
@@ -41,19 +42,16 @@ class ScopedAuthorizationPolicy:
 
         if context.effective_scope == AccessScope.TEAM:
             logger.warning(
-                "Team scope not implemented, falling back to organization for user %s (%s)",
+                "Team scope not implemented, restricting to own records for user %s (%s)",
                 context.user_id, context.permission_code,
             )
-            return query
-
-        if context.effective_scope == AccessScope.OWN:
+        if context.effective_scope in (AccessScope.OWN, AccessScope.TEAM):
             if not owner_field:
-                # Entity has no ownership concept -- nothing to narrow by.
-                return query
+                return query.where(false())
             entity = query.column_descriptions[0]["entity"]
             return query.where(getattr(entity, owner_field) == context.user_id)
 
-        return query
+        return query.where(false())
 
     def can_access_record(
         self,
@@ -68,15 +66,12 @@ class ScopedAuthorizationPolicy:
 
         if context.effective_scope == AccessScope.TEAM:
             logger.warning(
-                "Team scope not implemented, falling back to organization for user %s (%s)",
+                "Team scope not implemented, restricting to own records for user %s (%s)",
                 context.user_id, context.permission_code,
             )
-            return True
-
-        if context.effective_scope == AccessScope.OWN:
+        if context.effective_scope in (AccessScope.OWN, AccessScope.TEAM):
             if record_owner_id is None:
-                # No owner recorded on this row -- nothing to restrict against.
-                return True
+                return False
             return record_owner_id == context.user_id
 
-        return True
+        return False

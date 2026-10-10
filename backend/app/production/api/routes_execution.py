@@ -47,7 +47,7 @@ def replace_roster(roster_id: UUID, payload: RosterCreate, tenant: TenantContext
     return execute(db, tenant, lambda s: s.replace_roster(roster_id, payload))
 
 
-@router.post("/shift-rosters/{roster_id}/close", dependencies=[Depends(require_permission(P.ROSTERS_UPDATE))])
+@router.post("/shift-rosters/{roster_id}/close", dependencies=[Depends(require_permission(P.ROSTERS_CLOSE))])
 def close_roster(roster_id: UUID, payload: RosterClose, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
     return execute(db, tenant, lambda s: s.close_roster(roster_id, payload.effective_to))
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -87,6 +88,17 @@ export function CommercialOrderEditPage() {
   }
 
   if (!order) return null;
+
+  if (order.status !== "draft") {
+    return (
+      <PageFrame title={t("editTitle")} subtitle="">
+        <div style={{ ...sharedStyles.state, background: "var(--surface)" }} role="status">
+          <p style={{ margin: "0 0 12px" }}>{t("lifecycle.lockedHint")}</p>
+          <Link href={`/commercial-orders/${order.id}`} style={sharedStyles.button}>{t("backToDetail")}</Link>
+        </div>
+      </PageFrame>
+    );
+  }
 
   return <CommercialOrderEditForm order={order} />;
 }

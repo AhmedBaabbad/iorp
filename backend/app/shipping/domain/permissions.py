@@ -4,13 +4,16 @@ The platform catalog registers these, system roles are generated from them, and 
 frontend refer to these names only. Pure: no imports from other modules.
 
 Who does what:
-  shipments:update    prepare the note (edit, ready, reopen) and reschedule a returned one
+  shipments:update    edit the note; ready, reopen and reschedule have separate permissions
   shipments:dispatch  the gate: goods leave the factory (with the gate weight)
   shipments:deliver   the delivery outcome: received (in full or in part), or not received and on its way back;
                       and the proof of delivery
-  shipments:cancel    cancel before leaving, or close a returned note as not delivered
+  shipments:fail      record that the customer did not receive the goods (they come back)
+  shipments:cancel    cancel a shipment before it leaves
+  shipments:close     close a note whose goods came back, as not delivered
   returns:create      register a customer's return of delivered goods (against its delivery note)
-  returns:approve     accept or reject a customer's return
+  returns:approve     accept a customer's return
+  returns:reject      refuse a customer's return (with the reason)
   returns:receive     the warehouse receives returned goods back at the factory
   returns:cancel      withdraw a customer's return before it is received
 """
@@ -19,8 +22,8 @@ MODULE = "shipping"
 
 # resource -> actions, in the order the roles screen shows them.
 RESOURCES: dict[str, tuple[str, ...]] = {
-    "shipments": ("read", "create", "update", "dispatch", "deliver", "cancel"),
-    "returns": ("read", "create", "approve", "receive", "cancel"),
+    "shipments": ("read", "create", "update", "dispatch", "deliver", "cancel", "ready", "reopen", "reschedule", "fail", "close"),
+    "returns": ("read", "create", "approve", "receive", "cancel", "reject"),
     "settings": ("update",),
 }
 
@@ -33,20 +36,21 @@ def code(resource: str, action: str) -> str:
 ALL: tuple[str, ...] = tuple(code(resource, action) for resource, actions in RESOURCES.items() for action in actions)
 
 (SHIPMENTS_READ, SHIPMENTS_CREATE, SHIPMENTS_UPDATE, SHIPMENTS_DISPATCH, SHIPMENTS_DELIVER,
- SHIPMENTS_CANCEL) = (code("shipments", a) for a in RESOURCES["shipments"])
-RETURNS_READ, RETURNS_CREATE, RETURNS_APPROVE, RETURNS_RECEIVE, RETURNS_CANCEL = (code("returns", a) for a in RESOURCES["returns"])
+ SHIPMENTS_CANCEL, SHIPMENTS_READY, SHIPMENTS_REOPEN, SHIPMENTS_RESCHEDULE, SHIPMENTS_FAIL,
+ SHIPMENTS_CLOSE) = (code("shipments", a) for a in RESOURCES["shipments"])
+RETURNS_READ, RETURNS_CREATE, RETURNS_APPROVE, RETURNS_RECEIVE, RETURNS_CANCEL, RETURNS_REJECT = (code("returns", a) for a in RESOURCES["returns"])
 SETTINGS_UPDATE = code("settings", "update")
 
 # action offered on a shipment -> the permission it needs.
 SHIPMENT_ACTIONS: dict[str, str] = {
-    "edit": SHIPMENTS_UPDATE, "ready": SHIPMENTS_UPDATE, "reopen": SHIPMENTS_UPDATE, "reschedule": SHIPMENTS_UPDATE,
-    "dispatch": SHIPMENTS_DISPATCH, "deliver": SHIPMENTS_DELIVER, "fail": SHIPMENTS_DELIVER,
-    "cancel": SHIPMENTS_CANCEL, "close": SHIPMENTS_CANCEL, "return": RETURNS_CREATE,
+    "edit": SHIPMENTS_UPDATE, "ready": SHIPMENTS_READY, "reopen": SHIPMENTS_REOPEN, "reschedule": SHIPMENTS_RESCHEDULE,
+    "dispatch": SHIPMENTS_DISPATCH, "deliver": SHIPMENTS_DELIVER, "fail": SHIPMENTS_FAIL,
+    "cancel": SHIPMENTS_CANCEL, "close": SHIPMENTS_CLOSE, "return": RETURNS_CREATE,
 }
 
 # action offered on a return -> the permission it needs.
 RETURN_ACTIONS: dict[str, str] = {
-    "approve": RETURNS_APPROVE, "reject": RETURNS_APPROVE, "receive": RETURNS_RECEIVE, "cancel": RETURNS_CANCEL,
+    "approve": RETURNS_APPROVE, "reject": RETURNS_REJECT, "receive": RETURNS_RECEIVE, "cancel": RETURNS_CANCEL,
 }
 
 # Labels where "<action> <resource>" reads badly; everything else is composed by the catalog.

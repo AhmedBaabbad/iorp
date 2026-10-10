@@ -313,6 +313,8 @@ class Quote(Base):
         default=QuoteStatus.DRAFT,
     )
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    # Raised each time an issued, rejected or expired quotation goes back to a draft (SALES-001).
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     subtotal_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     tax_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
@@ -373,10 +375,13 @@ class QuoteItem(Base):
 
 
 class QuoteSettings(Base):
-    """Per-organization quotation document settings: who signs it. The terms are QuoteTerm rows."""
+    """Per-organization quotation document settings: the language quotations are printed in, and who signs them.
+    The terms are QuoteTerm rows."""
     __tablename__ = "commercial_quote_settings"
 
     organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), primary_key=True)
+    # ar | en: every quotation is printed in this language, with the settings written in it (nothing from the other one).
+    document_language: Mapped[str] = mapped_column(String(2), nullable=False, default="ar", server_default="ar")
     signature_title_ar: Mapped[str | None] = mapped_column(String(255), nullable=True)
     signature_title_en: Mapped[str | None] = mapped_column(String(255), nullable=True)
     show_preparer_name: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -395,9 +400,10 @@ class QuoteTerm(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    title_ar: Mapped[str] = mapped_column(String(120), nullable=False)
+    # Written in one language or both; a quotation prints a term only in its own language.
+    title_ar: Mapped[str | None] = mapped_column(String(120), nullable=True)
     title_en: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    body_ar: Mapped[str] = mapped_column(Text, nullable=False)
+    body_ar: Mapped[str | None] = mapped_column(Text, nullable=True)
     body_en: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
@@ -431,6 +437,11 @@ class CommercialOrder(Base):
         nullable=True,
         index=True,
     )
+    confirmed_at: Mapped[datetime | None] = mapped_column(TZDateTime)
+    confirmed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    currency: Mapped[str | None] = mapped_column(String(3))
+    customer_reference: Mapped[str | None] = mapped_column(String(120))
     order_number: Mapped[str] = mapped_column(String(64), nullable=False)
     order_date: Mapped[datetime] = mapped_column(TZDateTime, nullable=False)
     status: Mapped[CommercialOrderStatus] = mapped_column(
@@ -485,6 +496,24 @@ class CommercialOrderItem(Base):
     agreed_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     line_total: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     commercial_order: Mapped[CommercialOrder] = relationship(back_populates="items")
+
+
+class CommercialStatusHistory(Base):
+    """One row per lifecycle step of a quotation or a sales order (SALES-001); never updated or deleted."""
+    __tablename__ = "commercial_status_history"
+    __table_args__ = (Index("ix_commercial_status_history_entity", "organization_id", "entity_type", "entity_id", "created_at"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(20), nullable=False)  # quote | sales_order
+    entity_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    action: Mapped[str] = mapped_column(String(30), nullable=False)  # create, issue, accept, reject, expire, revise, confirm, cancel
+    from_status: Mapped[str | None] = mapped_column(String(30))
+    to_status: Mapped[str] = mapped_column(String(30), nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    reason: Mapped[str | None] = mapped_column(String(500))
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
 
 
 class CustomerInteraction(Base):

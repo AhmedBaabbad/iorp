@@ -20,7 +20,7 @@ from tests.test_production_allocation_lifecycle import other_org_demand
 ROOT = "/api/v1/production"
 ORDER_ACTIONS = ["release", "start", "hold", "complete", "close", "cancel"]
 PERMISSIONS = frozenset(["production:production_orders:read", "production:production_orders:update", "production:production_orders:manage_items", "production:planning:read", "production:planning:allocate",
-                         "production:production_orders:create"] + [f"production:production_orders:{a}" for a in ORDER_ACTIONS] + [f"production:demands:{a}" for a in ("read", "create", "update")])
+                         "production:production_orders:create"] + [f"production:production_orders:{a}" for a in ORDER_ACTIONS] + [f"production:demands:{a}" for a in ("read", "create", "update", "release", "cancel")])
 ALL_STATUSES = list(S)
 
 

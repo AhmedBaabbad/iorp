@@ -10,6 +10,7 @@ vi.mock("@/features/auth/auth-client", () => ({ logoutSession: calls.logout }));
 
 import { SessionGuard } from "@/features/auth/session-guard";
 import { ACCESS_TOKEN_KEY } from "@/lib/auth";
+import { ApiClientError } from "@/lib/api-client";
 
 const MIN = 60_000;
 const jwt = (expiresInMs: number) => `h.${btoa(JSON.stringify({ exp: Math.floor((Date.now() + expiresInMs) / 1000) }))}.s`;
@@ -86,11 +87,35 @@ describe("session guard", () => {
 
   it("renews the token for an active user and signs out when renewal fails", async () => {
     localStorage.setItem(ACCESS_TOKEN_KEY, jwt(30_000));
-    calls.refresh.mockRejectedValue(new Error("session revoked"));
+    calls.refresh.mockRejectedValue(new ApiClientError("session revoked", 401));
     const { redirect } = mount();
     await act(async () => { vi.advanceTimersByTime(1000); await Promise.resolve(); });
     expect(calls.refresh).toHaveBeenCalledTimes(1);
     expect(redirect).toHaveBeenCalledWith("/login?session=expired");
+  });
+
+  it.each([new TypeError('Network unavailable'), new ApiClientError('Server unavailable', 503)])('keeps an active session on a transient refresh failure and retries', async error => {
+    localStorage.setItem(ACCESS_TOKEN_KEY, jwt(30_000));
+    calls.refresh.mockRejectedValueOnce(error).mockImplementation(async () => {
+      const token = jwt(15 * MIN); localStorage.setItem(ACCESS_TOKEN_KEY, token); return token;
+    });
+    const { redirect } = mount();
+    await act(async () => { vi.advanceTimersByTime(1000); });
+    expect(redirect).not.toHaveBeenCalled();
+    expect(calls.logout).not.toHaveBeenCalled();
+    expect(localStorage.getItem(ACCESS_TOKEN_KEY)).toBeTruthy();
+    await act(async () => { vi.advanceTimersByTime(14_000); });
+    expect(calls.refresh).toHaveBeenCalledTimes(1);
+    await act(async () => { vi.advanceTimersByTime(1000); });
+    expect(calls.refresh).toHaveBeenCalledTimes(2);
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it('keeps a user typing for longer than the idle timeout signed in', () => {
+    const { redirect } = mount();
+    for (let i=0;i<12;i++) { advance(MIN); fireEvent.keyDown(window, {key:'a'}); }
+    expect(redirect).not.toHaveBeenCalled();
+    expect(calls.logout).not.toHaveBeenCalled();
   });
 });
 

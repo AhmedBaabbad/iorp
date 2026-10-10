@@ -28,7 +28,7 @@ class TenantPasswordResetService:
         self.email_service = email_service or EmailService()
 
     def request_reset(self, db: Session, email: str) -> None:
-        user = db.scalar(select(User).where(User.email == normalize_email(email), User.status != UserStatus.INACTIVE))
+        user = db.scalar(select(User).where(User.email == normalize_email(email), User.status != UserStatus.INACTIVE).with_for_update())
         if user is None:
             logger.info("Tenant password reset requested for an unknown email")
             return
@@ -43,19 +43,26 @@ class TenantPasswordResetService:
         settings = get_settings()
         reset_url = f"{settings.frontend_url.rstrip('/')}/reset-password?token={raw}"
         subject, html, text = build_tenant_reset_email(user.preferred_locale or organization.default_locale or "ar", reset_url, user.full_name, organization.name, settings.password_reset_expiry_minutes)
-        self.email_service.send_email(user.email, subject, html, text)
         db.commit()
+        self.email_service.send_email(user.email, subject, html, text)
 
     def execute_reset(self, db: Session, raw_token: str, new_password: str) -> None:
         record = db.scalar(select(TenantPasswordResetToken).where(TenantPasswordResetToken.token_hash == hash_token(raw_token), TenantPasswordResetToken.used_at.is_(None)))
         if record is None:
             raise InvalidResetTokenError
+        # Serialize on the account before locking tokens: every reset path uses
+        # this order, including invalidation of all outstanding tokens.
+        user = db.scalar(select(User).where(User.id == record.user_id, User.organization_id == record.organization_id, User.status != UserStatus.INACTIVE)
+                         .with_for_update().execution_options(populate_existing=True))
+        if user is None:
+            raise InvalidResetTokenError
+        record = db.scalar(select(TenantPasswordResetToken).where(TenantPasswordResetToken.id == record.id,
+            TenantPasswordResetToken.used_at.is_(None)).with_for_update().execution_options(populate_existing=True))
+        if record is None:
+            raise InvalidResetTokenError
         if is_token_expired(record.expires_at):
             record.used_at = utc_now(); db.commit()
             raise ResetTokenExpiredError
-        user = db.scalar(select(User).where(User.id == record.user_id, User.organization_id == record.organization_id, User.status != UserStatus.INACTIVE))
-        if user is None:
-            raise InvalidResetTokenError
         try:
             validate_password(new_password, new_password, user.email, 12)
         except ValueError as exc:

@@ -3,6 +3,29 @@
 import base64
 from pathlib import Path
 import uuid
+import logging
+from contextlib import contextmanager
+
+logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def compensate_new_file(db, storage, path, is_referenced):
+    """Clean up a new file only after DB confirms no committed reference.
+
+    A lost commit acknowledgement is ambiguous: retain the file when the DB
+    cannot be queried, allowing reconciliation instead of losing committed data.
+    """
+    try:
+        yield
+    except Exception:
+        try:
+            db.rollback()
+            if not is_referenced():
+                storage.delete(path)
+        except Exception as cleanup_error:
+            logger.error('File compensation needs reconciliation (%s)', type(cleanup_error).__name__)
+        raise
 
 from app.core.config import settings
 

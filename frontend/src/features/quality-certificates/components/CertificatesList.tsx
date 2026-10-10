@@ -66,7 +66,7 @@ export function CertificatesList() {
 function NumberingSettings() {
   const t = useTranslations("quality.certificates.settings");
   const errors = useTranslations("quality.errors");
-  const canEdit = usePermission(Q.COA_ISSUE);
+  const canEdit = usePermission(Q.SETTINGS_UPDATE);
   const [settings, setSettings] = useState<QualitySettings | null>(null);
   const [draft, setDraft] = useState<QualitySettings | null>(null);
   const [busy, setBusy] = useState(false);

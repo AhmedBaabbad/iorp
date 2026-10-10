@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { refreshSession } from "@/lib/api-client";
+import { refreshSession, isSessionRejected } from "@/lib/api-client";
 import { ACCESS_TOKEN_KEY, getStoredAccessToken, removeStoredAccessToken } from "@/lib/auth";
 import { IDLE_TIMEOUT_MS, markActivity, nextSessionAction, readLastActivity, tokenExpiry } from "@/lib/session-policy";
 import { logoutSession } from "./auth-client";
@@ -21,6 +21,7 @@ export function SessionGuard({ onSignedOut, redirect = goTo }: { onSignedOut?: (
   const lastActivity = useRef(Date.now());
   const lastWrite = useRef(0);
   const refreshing = useRef(false);
+  const nextRefreshAt = useRef(0);
   const ended = useRef(false);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 
@@ -50,9 +51,12 @@ export function SessionGuard({ onSignedOut, redirect = goTo }: { onSignedOut?: (
     const action = nextSessionAction(now, last, tokenExpiry(getStoredAccessToken()));
     if (action.type === "logout") return end("idle");
     setSecondsLeft(action.type === "warn" ? action.secondsLeft : null);
-    if (action.type === "refresh" && !refreshing.current) {
+    if (action.type === "refresh" && !refreshing.current && now >= nextRefreshAt.current) {
       refreshing.current = true;
-      refreshSession().catch(() => end("expired")).finally(() => { refreshing.current = false; });
+      refreshSession().catch(error => {
+        if (isSessionRejected(error)) end("expired");
+        else nextRefreshAt.current = Date.now() + 15_000;
+      }).finally(() => { refreshing.current = false; });
     }
   }, [end]);
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 from sqlalchemy import func, select
 
 from app.core.utils import utc_now
+from app.core.interfaces.product_catalog import unknown_product_types
 from app.quality.domain import specifications as rules
 from app.quality.domain.rules import QualityError
 from app.quality.infrastructure.models import QualitySpecification, QualitySpecificationLine, QualityTestParameter
@@ -127,8 +128,14 @@ class SpecificationService:
             rules.assert_line(parameter.kind, dict(values, parameter_code=parameter.code))
             self.db.add(QualitySpecificationLine(specification_id=spec.id, parameter_id=parameter.id, position=position, **values))
 
+    def _assert_product(self, product_type, keep=None):
+        """MD-001: the product comes from the organization's products (asked through core); the one already stored may stay."""
+        if unknown_product_types(self.db, self.org, [product_type], [keep] if keep else ()):
+            raise QualityError("PRODUCT_TYPE_UNKNOWN", 400, product_type=product_type)
+
     def create(self, data) -> QualitySpecification:
         code = data.code.strip().upper()
+        self._assert_product(data.product_type)
         if self.db.scalar(select(QualitySpecification.id).where(QualitySpecification.organization_id == self.org, QualitySpecification.code == code)):
             raise QualityError("SPECIFICATION_CODE_TAKEN", spec_code=code)
         spec = QualitySpecification(organization_id=self.org, code=code, revision=1, title=data.title, product_type=data.product_type,
@@ -144,6 +151,8 @@ class SpecificationService:
         spec = self._get(spec_id, lock=True)
         rules.assert_draft(spec.status)
         values = data.model_dump(exclude_unset=True)
+        if values.get("product_type"):
+            self._assert_product(values["product_type"], keep=spec.product_type)
         for field in ("title", "product_type", "grade", "notes"):
             if field in values:
                 setattr(spec, field, values[field])

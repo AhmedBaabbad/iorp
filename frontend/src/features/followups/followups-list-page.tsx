@@ -196,6 +196,8 @@ export function FollowUpsListPage() {
   const searchParams = useSearchParams();
 
   const canUpdate = usePermission("commercial:follow_ups:update");
+  const canCancel = usePermission("commercial:follow_ups:cancel");
+  const canReopen = usePermission("commercial:follow_ups:reopen");
   const canDelete = usePermission("commercial:follow_ups:delete");
   const canComplete = usePermission("commercial:follow_ups:complete");
   const canAssign = usePermission("commercial:follow_ups:assign");
@@ -499,7 +501,7 @@ export function FollowUpsListPage() {
                           </button>
                         ) : null}
                         {(followUp.status === "completed" || followUp.status === "cancelled") &&
-                        canUpdate ? (
+                        canReopen ? (
                           <button
                             type="button"
                             style={styles.actionButton}
@@ -512,7 +514,7 @@ export function FollowUpsListPage() {
                           </button>
                         ) : null}
                         {(followUp.status === "pending" || followUp.status === "in_progress") &&
-                        canUpdate ? (
+                        canCancel ? (
                           <button
                             type="button"
                             style={styles.actionButton}

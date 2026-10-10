@@ -20,6 +20,7 @@ from app.foundation.infrastructure.models import Organization, Permission, Role,
 def env(reports_env):
     e=reports_env
     e.ctx.auth_user.permissions.update(PERMISSIONS)
+    e.ctx.auth_user.permissions.update({'commercial:samples:read', 'commercial:evaluations:read'})
     e.ctx.auth_user.permissions.update({'commercial:customers:read','commercial:quotes:read','commercial:interactions:read',
         'production:demands:read','production:production_orders:read','production:results:read'})
     e.ctx.tenant=replace(e.ctx.tenant,is_organization_root=True)
@@ -45,7 +46,7 @@ def quote(e,status='accepted',currency='SAR',total='120',when=None):
 
 def test_definitions_permissions_and_internal_audience(env):
     ds=env.client.get('/api/v1/reports/definitions?module=customers').json()
-    assert len(ds)==7
+    assert len(ds)==8
     env.ctx.auth_user.permissions.remove('reports:customers:internal_audience')
     ds=env.client.get('/api/v1/reports/definitions?module=customers').json()
     assert {d['key'] for d in ds}=={'customers.customer_profile','customers.customer_statement','customers.demand_fulfillment'}

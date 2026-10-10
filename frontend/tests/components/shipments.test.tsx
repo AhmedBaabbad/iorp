@@ -133,7 +133,7 @@ describe("shipment lines", () => {
     for (const label of ["الوصف", "العرض (مم)", "السماكة (مم)", "الكمية", "الوزن"]) expect(screen.getByLabelText(label)).toBeTruthy();
     for (const gone of ["الوزن الصافي", "الوزن الإجمالي", "عدد العبوات", "نوع العبوة", "رقم الدفعة"]) expect(screen.queryByLabelText(gone)).toBeNull();
     const unit = screen.getByLabelText("الوحدة", { selector: "select" });
-    for (const name of ["رول", "كيلوجرام", "طن", "طبلية", "متر طولي", "قطعة"]) expect(within(unit).getByRole("option", { name })).toBeTruthy();
+    for (const name of ["رول", "كيلوجرام (كجم)", "طن", "طبلية", "متر طولي (م.ط)", "قطعة"]) expect(within(unit).getByRole("option", { name })).toBeTruthy();
     const weight = screen.getByLabelText("وحدة الوزن", { selector: "select" }) as HTMLSelectElement;
     expect(Array.from(weight.options).map(o => o.value).filter(Boolean)).toEqual(["g", "kg", "ton", "lb", "oz"]);
     expect(weight.value).toBe("kg");
@@ -144,7 +144,7 @@ describe("shipment lines", () => {
     ui(<ShipmentDetail shipmentId="s1" />, "ar");
     expect(await screen.findByText("0.35")).toBeTruthy();
     expect(screen.getByText("1.2 طن")).toBeTruthy();
-    expect(screen.getByText("الإجمالي: 120 رول · الوزن 1200 كيلوجرام")).toBeTruthy();
+    expect(screen.getByText("الإجمالي: 120 رول · الوزن 1200 كجم")).toBeTruthy();
   });
 });
 
@@ -159,7 +159,7 @@ describe("delivery outcomes", () => {
     const dialog = screen.getByRole("dialog", { name: "Confirm delivery" });
     fireEvent.change(within(dialog).getByLabelText("Received by"), { target: { value: "Khalid" } });
     fireEvent.change(within(dialog).getByLabelText("Received 1"), { target: { value: "100" } });
-    expect(within(dialog).getByText("Refused: 1: 20 Roll. It comes back under a return note.")).toBeTruthy();
+    expect(within(dialog).getByText("Refused: 1: 20 roll. It comes back under a return note.")).toBeTruthy();
     const confirm = within(dialog).getByRole("button", { name: "Confirm" }) as HTMLButtonElement;
     expect(confirm.disabled).toBe(true);  // the reason is required
     fireEvent.change(within(dialog).getByLabelText("Why was part refused?"), { target: { value: "quality_issue" } });

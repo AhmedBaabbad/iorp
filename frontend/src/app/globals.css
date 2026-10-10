@@ -13,6 +13,14 @@
  * Themes: light (default), dark, dim (low-glare night shift), contrast (high contrast, bright floors).
  */
 :root {
+  /* the sidebar (DASH-002): a blue panel; text and the active item keep their contrast */
+  --sidebar-bg: #2448c9;
+  --sidebar-bg-end: #1f3fae;
+  --sidebar-text: #ffffff;
+  --sidebar-muted: #e3eaff;
+  --sidebar-active: #ffffff;
+  --sidebar-active-text: #1f3fae;
+  --sidebar-accent: #ffd166;
   /* Tells the browser which native widgets (dropdown lists, date pickers) to draw. */
   color-scheme: light;
   --page-bg: #f4f7fb;
@@ -50,6 +58,14 @@
 }
 
 :root[data-theme="dark"] {
+  /* the sidebar (DASH-002): a blue panel; text and the active item keep their contrast */
+  --sidebar-bg: #1a2c66;
+  --sidebar-bg-end: #14214c;
+  --sidebar-text: #f3f7ff;
+  --sidebar-muted: #c9d6f5;
+  --sidebar-active: #e8efff;
+  --sidebar-active-text: #14214c;
+  --sidebar-accent: #ffd166;
   color-scheme: dark;
   --page-bg: #0b1120;
   --surface: #111a2d;
@@ -83,6 +99,14 @@
 
 /* Dim: a soft slate dark with lower glare for night shifts and long sessions. */
 :root[data-theme="dim"] {
+  /* the sidebar (DASH-002): a blue panel; text and the active item keep their contrast */
+  --sidebar-bg: #23408f;
+  --sidebar-bg-end: #1c3373;
+  --sidebar-text: #ffffff;
+  --sidebar-muted: #dbe4fb;
+  --sidebar-active: #f4f7ff;
+  --sidebar-active-text: #1c3373;
+  --sidebar-accent: #ffd166;
   color-scheme: dark;
   --page-bg: #1c222b;
   --surface: #232a35;
@@ -116,6 +140,14 @@
 
 /* High contrast: black on white with strong outlines, for bright factory floors and low vision. */
 :root[data-theme="contrast"] {
+  /* the sidebar (DASH-002): a blue panel; text and the active item keep their contrast */
+  --sidebar-bg: #000000;
+  --sidebar-bg-end: #000000;
+  --sidebar-text: #ffffff;
+  --sidebar-muted: #ffffff;
+  --sidebar-active: #ffffff;
+  --sidebar-active-text: #000000;
+  --sidebar-accent: #ffff00;
   color-scheme: light;
   --page-bg: #ffffff;
   --surface: #ffffff;
@@ -174,9 +206,11 @@ option:disabled { color: var(--text-subtle); }
   position: fixed;
   inset-block: 0;
   inset-inline-start: 0;
-  width: 260px;
-  background: var(--surface);
-  border-inline-end: 1px solid var(--border);
+  width: 276px;
+  background: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-end) 100%);
+  color: var(--sidebar-text);
+  border-inline-end: 0;
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   z-index: 40;
@@ -194,12 +228,12 @@ option:disabled { color: var(--text-subtle); }
 }
 
 .iorp-sidebar-nav::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
+  background: rgba(255, 255, 255, 0.25);
   border-radius: 999px;
 }
 
 .iorp-content {
-  margin-inline-start: 260px;
+  margin-inline-start: 276px;
   min-height: 100vh;
   transition: margin-inline-start 0.2s ease;
 }
@@ -221,7 +255,8 @@ option:disabled { color: var(--text-subtle); }
 }
 
 .iorp-nav-link:hover {
-  background: var(--surface-muted);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--sidebar-text);
 }
 
 .iorp-icon-button:hover {

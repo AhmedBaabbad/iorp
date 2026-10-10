@@ -1,5 +1,24 @@
 # CUST-REPORT-001 — Customer reporting
 
+## Customer samples extension (2026-10-06)
+
+- `customers.customer_profile` now offers `samples`, `sample_properties`, and internal-only `sample_evaluations` sections. These describe Commercial customer samples, not Production output samples.
+- `customers.samples_report` is a standalone, internal report in the existing report center. It reuses `reports:customers:customer_profile`, and additionally requires customer read, sample read, and internal-audience access. No new permission grants or database migration are needed. Evaluation sections additionally require `commercial:evaluations:read`.
+- Filters: authorized customer, request-date range (organization timezone), product, current operational status, and independent sample decision. Null legacy decisions are treated as pending. The report prints applied filters. Evaluation history includes all evaluations of matching samples, even if evaluated after the request-date period.
+- Sample count/status cards and requested quantities are grouped by stored unit; no mixed-unit sum or delivered-quantity claim. Cancelled samples remain included unless filtered out.
+- Product/property/choice labels come from the Master Data interface. Legacy product names and nested values render readably without raw JSON. Customer copies omit sample notes and evaluation details. Internal evaluation history prints evaluator names through the existing tenant-scoped identity provider.
+- Sample specifications use one row per sample: customer, sample number, and all labelled property values in a wrapping specifications cell. Customer/sample identity is not repeated for each property; heterogeneous product templates do not create sparse, ever-widening columns.
+- Product lookups and report reads intersect the authorized customer set and organization. Queries and rendered rows retain the 5,000-row bound. Existing production, quotation, growth and fulfillment calculations are unchanged.
+- Preview/PDF use the existing branding, renderer and shared report form; the UI discovers the new report and section controls from server definitions.
+
+Changed files: `backend/app/commercial/reporting/customers/{definitions,schemas,builders,routes,sample_sections}.py`,
+`frontend/src/i18n/locales/{ar,en}/reports.json`, `backend/tests/commercial/{test_customer_reports,test_customer_sample_reports}.py`,
+`frontend/tests/components/customer-reports.test.tsx`, and this document.
+
+Validation: customer report regressions and module boundaries, sample permissions/tenant/ownership filters, Master Data labels,
+unit-separated totals, internal/customer privacy, actual Arabic/English PDF rendering, frontend preview/download filter submission,
+TypeScript, ESLint and locale consistency. Synthetic PDF examples are in `backend/artifacts/customer-sample-reports/`.
+
 ## Scope and discovery
 
 Customers are owned by the commercial module. Existing fields: one customer name, code,

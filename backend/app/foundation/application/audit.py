@@ -6,8 +6,8 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.core.audit import AuditRequestContext
-from app.foundation.application.activity_log import log_tenant_activity
+from app.core.audit import AuditRequestContext, sanitize_json
+from app.foundation.infrastructure.models import TenantActivityLog
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +38,16 @@ def log_tenant_audit(
     target_display: str | None = None, details: Any = None,
     request_context: AuditRequestContext | None = None,
 ) -> None:
-    """Record a tenant business activity in its dedicated append-only table."""
+    """Governance audit is mandatory and belongs to the caller's transaction.
+
+    Unlike best-effort activity telemetry, a failed audit aborts the mutation.
+    """
     try:
-        log_tenant_activity(db, organization_id, action, entity_type,
-                            entity_id if isinstance(entity_id, UUID) else None,
-                            target_display, actor_id, actor_name or actor_email, details)
+        db.add(TenantActivityLog(organization_id=organization_id, action=action[:80], entity_type=entity_type[:50],
+            entity_id=entity_id if isinstance(entity_id, UUID) else None, entity_name=(target_display or '')[:255] or None,
+            actor_id=actor_id, actor_name=(actor_name or actor_email or '')[:255] or None,
+            details=sanitize_json(details) if details is not None else None))
+        db.flush()
     except Exception:
-        logger.exception("Tenant audit logging failed", extra={"organization_id": str(organization_id), "action": action})
+        db.rollback()
+        raise

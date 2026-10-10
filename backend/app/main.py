@@ -46,6 +46,8 @@ from app.quality.api.routes_certificates import router as quality_certificates_r
 from app.shipping.api.routes_shipments import router as shipping_router
 from app.shipping.api.routes_returns import router as shipping_returns_router
 from app.procurement.api.routes import router as procurement_router
+from app.procurement.api.routes_purchase_orders import router as purchase_orders_router
+from app.masterdata.api.routes import router as masterdata_router
 from app.quality.api.routes_quality_defects import router as quality_defects_router
 from app.quality.api.routes_quality_rejections import router as quality_rejections_router
 from app.workforce.api.routes_workforce import router as workforce_router
@@ -86,13 +88,39 @@ register_quality_reports()
 from app.shipping.reporting.document import register_delivery_note
 from app.shipping.reporting.return_document import register_return_note
 from app.procurement.reporting.receipt_document import register_receipt_document
+from app.procurement.reporting.po_document import register_purchase_order_document
 register_delivery_note()
 register_return_note()
 register_receipt_document()
+register_purchase_order_document()
 # Quality's gate on closing a production order (QUAL-001): production asks, it never imports quality.
 from app.core.interfaces.order_close_guards import register_close_guard
 from app.quality.application.rejection_service import close_blockers as quality_close_blockers
 register_close_guard(quality_close_blockers)
+# Master data (MD-001): modules ask the catalogue through core, and declare the product types they store, at this root.
+from app.core.interfaces.product_catalog import register_product_catalog
+from app.core.interfaces.product_types import register_product_type_holder
+from app.core.interfaces.reference_lists import register_reference_holder, register_reference_lists
+from app.masterdata.application.catalog_provider import MasterDataCatalog, MasterDataLists
+from app.commercial.application.product_types import HOLDER as commercial_product_types
+from app.production.application.product_types import HOLDER as production_product_types
+from app.quality.application.product_types import HOLDER as quality_product_types
+from app.procurement.application.product_types import HOLDER as procurement_product_types
+register_product_catalog(MasterDataCatalog())
+from app.core.interfaces.sales_order_source import register_sales_integration
+from app.commercial.application.sales_order_source import CommercialSalesOrderSource
+from app.production.application.sales_demand_usage import ProductionSalesDemandUsage
+from app.production.domain.permissions import DEMANDS_CREATE as _DEMANDS_CREATE
+register_sales_integration(CommercialSalesOrderSource(), ProductionSalesDemandUsage(), _DEMANDS_CREATE)
+for _holder in (commercial_product_types, production_product_types, quality_product_types, procurement_product_types):
+    register_product_type_holder(_holder)
+# MD-002: customers, suppliers and shipments declare where they store reference-list values.
+from app.commercial.application.reference_values import HOLDERS as commercial_reference_values
+from app.procurement.application.reference_values import HOLDERS as procurement_reference_values
+from app.shipping.application.reference_values import HOLDERS as shipping_reference_values
+register_reference_lists(MasterDataLists())
+for _holder in (*commercial_reference_values, *procurement_reference_values, *shipping_reference_values):
+    register_reference_holder(_holder)
 # Composition root: reporting reads the organization identity through this seam, never by importing foundation.
 reporting_providers.branding_provider = lambda db, organization_id: BrandingService(db).get_branding(organization_id)
 from app.core.interfaces.activity_log import register_activity_logger
@@ -126,6 +154,8 @@ app.include_router(customer_reports_router, prefix=settings.api_prefix)
 app.include_router(report_shortcuts_router, prefix=settings.api_prefix)
 app.include_router(quality_reports_router, prefix=settings.api_prefix)
 app.include_router(demands_router, prefix=f"{settings.api_prefix}/production")
+from app.production.api.routes_dashboard import router as production_dashboard_router
+app.include_router(production_dashboard_router, prefix=f"{settings.api_prefix}/production")
 
 
 @app.exception_handler(OrganizationAccessError)
@@ -168,18 +198,28 @@ app.include_router(result_overview_router, prefix=f"{settings.api_prefix}/produc
 app.include_router(downtime_events_router, prefix=f"{settings.api_prefix}/production")
 app.include_router(waste_records_router, prefix=f"{settings.api_prefix}/production")
 app.include_router(quality_checks_router, prefix=f"{settings.api_prefix}/quality")
+from app.quality.api.routes_dashboard import router as quality_dashboard_router
+app.include_router(quality_dashboard_router, prefix=f"{settings.api_prefix}/quality")
 app.include_router(quality_returns_router, prefix=f"{settings.api_prefix}/quality")
 app.include_router(quality_incoming_router, prefix=f"{settings.api_prefix}/quality")
 app.include_router(quality_specifications_router, prefix=f"{settings.api_prefix}/quality")
 app.include_router(quality_certificates_router, prefix=f"{settings.api_prefix}/quality")
 app.include_router(shipping_router, prefix=f"{settings.api_prefix}/shipping")
+from app.shipping.api.routes_dashboard import router as shipping_dashboard_router
+app.include_router(shipping_dashboard_router, prefix=f"{settings.api_prefix}/shipping")
 app.include_router(shipping_returns_router, prefix=f"{settings.api_prefix}/shipping")
 app.include_router(procurement_router, prefix=f"{settings.api_prefix}/procurement")
+app.include_router(purchase_orders_router, prefix=f"{settings.api_prefix}/procurement")
+app.include_router(masterdata_router, prefix=f"{settings.api_prefix}/masterdata")
 app.include_router(quality_defects_router, prefix=f"{settings.api_prefix}/quality")
 app.include_router(quality_rejections_router, prefix=f"{settings.api_prefix}/quality")
 app.include_router(ncr_router, prefix=f"{settings.api_prefix}/quality")
 app.include_router(workforce_router, prefix=settings.api_prefix)
 app.include_router(dashboard_router, prefix=settings.api_prefix)
+from app.commercial.api.routes_dashboard import router as commercial_dashboard_router
+app.include_router(commercial_dashboard_router, prefix=f"{settings.api_prefix}/commercial")
+from app.procurement.api.routes_dashboard import router as procurement_dashboard_router
+app.include_router(procurement_dashboard_router, prefix=f"{settings.api_prefix}/procurement")
 app.include_router(bootstrap_router, prefix=settings.api_prefix)
 app.include_router(platform_router, prefix=settings.api_prefix)
 app.include_router(platform_organizations_router, prefix=settings.api_prefix)
@@ -200,6 +240,16 @@ def health_check() -> dict[str, str]:
         "app": settings.app_name,
         "environment": settings.app_env,
     }
+
+@app.get("/health/ready", tags=["system"], include_in_schema=False)
+def readiness_check():
+    from app.core.db import check_database_connection
+    try:
+        check_database_connection()
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "not_ready"}, headers={"Cache-Control": "no-store"})
+    return JSONResponse(content={"status": "ready"}, headers={"Cache-Control": "no-store"})
+
 
 from app.production.api.routes_execution import router as execution_router
 app.include_router(execution_router, prefix=f"{settings.api_prefix}/production")

@@ -27,3 +27,21 @@ export function rowsToSpec(rows: Row[]): string {
   const entries = rows.filter((row) => row.key.trim()).map((row) => [row.key.trim(), parseSpecValue(row.value)] as const);
   return entries.length ? JSON.stringify(Object.fromEntries(entries)) : "";
 }
+
+/** A property of a product's specification template (master data): the value a line stores under `key`. */
+export type SpecTemplateProperty = {
+  key: string; name_ar: string; name_en: string; kind: "number" | "text" | "choice"; unit: string | null; required: boolean;
+  options: { value: string; label_ar: string; label_en: string }[] | null;
+};
+
+/** The template's values first, in its order, then any other row: the order a document prints. Empty values are left out. */
+export function templateSpec(template: SpecTemplateProperty[], values: Record<string, string>, extra: Row[]): string {
+  const entries: [string, unknown][] = [];
+  for (const prop of template) {
+    const text = (values[prop.key] ?? "").trim();
+    if (text) entries.push([prop.key, prop.kind === "number" ? parseSpecValue(text) : text]);
+  }
+  const known = new Set(template.map(p => p.key));
+  for (const row of extra) if (row.key.trim() && !known.has(row.key.trim())) entries.push([row.key.trim(), parseSpecValue(row.value)]);
+  return entries.length ? JSON.stringify(Object.fromEntries(entries)) : "";
+}

@@ -1,11 +1,14 @@
 import { apiClient } from "@/lib/api-client";
-import type { CreateSampleRequest, SampleData, SampleDeletionImpact, SampleListItem, UpdateSampleRequest } from "../types";
+import type { Page } from "@/lib/pagination";
+import type { CreateSampleRequest, SampleData, SampleDeletionImpact, SampleListItem, UpdateSampleRequest, SampleProductDefinition } from "../types";
 
 const SAMPLES_PATH = "/commercial/samples";
 const CUSTOMERS_PATH = "/commercial/customers";
+export const getSampleProducts = () => apiClient<SampleProductDefinition[]>(`${SAMPLES_PATH}/product-options`);
 
-export function listSamples() {
-  return apiClient<SampleListItem[]>(SAMPLES_PATH);
+/** One page of samples, searched and filtered by the server: query = "page=2&search=gulf&status=requested". */
+export function listSamples(query = "") {
+  return apiClient<Page<SampleListItem>>(query ? `${SAMPLES_PATH}?${query}` : SAMPLES_PATH);
 }
 
 export function getSampleById(sampleId: string) {

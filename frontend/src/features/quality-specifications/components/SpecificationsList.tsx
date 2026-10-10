@@ -13,12 +13,14 @@ import { Q } from "@/lib/quality-permissions";
 import { getSpecifications } from "../api";
 import { SPEC_STATUSES, type SpecificationListItem, type SpecificationStatus } from "../types";
 import { SpecificationStatusBadge } from "./SpecificationStatusBadge";
+import { useProductName } from "@/features/masterdata";
 
 // "مواصفات المنتجات": the factory's technical data sheets, each a controlled document with revisions.
 export function SpecificationsList() {
   const t = useTranslations("quality.specifications");
   const errors = useTranslations("quality.errors");
   const messages = useTranslations("messages");
+  const productName = useProductName();  // MD-001: the product's name, not its key
   const fmt = useFormatter();
   const canCreate = usePermission(Q.SPECS_CREATE);
   const [status, setStatus] = useState<SpecificationStatus | "">("");
@@ -54,7 +56,7 @@ export function SpecificationsList() {
         <thead><tr>{["code", "revision", "title", "productType", "grade", "status", "activatedAt"].map(c => <th key={c}>{t(`fields.${c}`)}</th>)}</tr></thead>
         <tbody>{rows.map(r => <tr key={r.id}>
           <td><Link href={`/quality-specifications/${r.id}`}><bdi>{r.code}</bdi></Link></td>
-          <td>{r.revision}</td><td>{r.title}</td><td>{r.product_type}</td><td>{r.grade ?? "—"}</td>
+          <td>{r.revision}</td><td>{r.title}</td><td>{productName(r.product_type)}</td><td>{r.grade ?? "—"}</td>
           <td><SpecificationStatusBadge status={r.status} /></td>
           <td>{r.activated_at ? `${fmt.date(r.activated_at)} — ${r.activated_by_name ?? ""}` : "—"}</td>
         </tr>)}</tbody>

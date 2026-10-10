@@ -70,6 +70,44 @@ Quality inspects each received lot marked for inspection (see quality.md, *Incom
 
   Without inspected lots there is no score. The grade only **suggests** a standing; changing it stays with `suppliers:approve`.
 
+## Purchase orders (PROC-003)
+
+Numbered `<prefix>YYYY-NNNN` (`PO-` by default, `procurement_settings.po_prefix`), to a registered supplier that is not blocked
+(`domain/purchase_orders.py`, single writer `application/purchase_order_service.py`, routes `api/routes_purchase_orders.py`).
+
+```
+draft ─approve→ approved ─send→ sent ─(goods receipts)→ partially_received → received
+approved · sent · partially_received ─close(reason)→ closed       draft · approved · sent ─cancel(reason)→ cancelled
+```
+
+- **Header:** order date, required date, the supplier's contact (its contact person by default) and quotation number, subject,
+  payment terms (advance, on delivery, net 15–90 days, letter of credit, other) with details, delivery terms (Incoterms 2020,
+  for imports) and place, notes.
+- **Currency and VAT:** Saudi riyals (`SAR`) or US dollars (`USD`); VAT is the organization's rate (master data, 15 % by
+  default) or not applied; an order keeps the rate it was written with (`TAX_RATE_UNKNOWN` otherwise). A new order starts in
+  the organization's default currency. The screen
+  ticks VAT for riyals and clears it for dollars (an import: customs VAT is settled on import); the choice stays the user's.
+- **Lines:** a material (its name, editable) or a described item or service, specification notes, quantity in a unit of the
+  catalogue, unit price up to four decimals.
+- **Amounts are computed by the server** on every save: line = quantity × price; subtotal − discount = taxable; VAT = taxable ×
+  rate; total = taxable + VAT, each rounded half-up to 0.01. A discount above the subtotal is refused (`DISCOUNT_INVALID`).
+- Only a draft is edited (`ORDER_NOT_DRAFT`). Approving needs a line, a total above zero and a supplier that is not blocked.
+- **Receiving against the order:** a goods receipt may name the order (same supplier, `ORDER_OF_ANOTHER_SUPPLIER`; approved,
+  sent or partly received, `ORDER_NOT_OPEN_FOR_RECEIPT`) and each of its lines the order line it delivers, in that line's unit
+  (`ORDER_LINE_NOT_IN_ORDER`, `ORDER_LINE_UNIT_MISMATCH`). «Receive goods» on the order opens a receipt filled with what each
+  line still expects. Confirming or cancelling such a receipt moves the order to partially received or received by itself.
+- An order with goods received (or a draft receipt) is not cancelled (`ORDER_HAS_RECEIPTS`): it is closed with the reason.
+- **General terms** (`procurement_settings.po_terms_ar|en`, one per line) are printed on every order in its language.
+
+## Purchase order document
+
+`procurement.purchase_order` (not listed): the company's identity; number, date, required date and currency; the supplier
+(code, VAT and CR numbers, address, contact) and the delivery and payment; the items and prices; totals with «VAT (15%)» and
+«Total including VAT», or «Total» with a note that the prices exclude VAT; notes; the general terms; boxes for whoever prepared
+and approved it and for the supplier's acceptance (name, signature, stamp, date). Amounts in riyals carry the Saudi riyal sign
+(drawn in SVG from the OFL-1.1 `saudi-riyal-font` path, so no font is needed); dollars carry `$`. «Draft — not approved» /
+«Cancelled» when so. Arabic or English. Nothing is stored.
+
 ## Goods receipt note
 
 `procurement.goods_receipt` (not listed): the company's identity, supplier and references, the lots received with the ones to
@@ -88,9 +126,13 @@ inspect marked ("not used before quality releases them"), totals, and signature 
 | `procurement:suppliers:approve` (approve, probation, block) | admin, procurement, quality |
 | `procurement:materials:update` | admin, procurement, quality |
 | `procurement:receipts:create`, `update`, `receive`, `cancel` | admin, procurement, warehouse |
-| `procurement:settings:update` (receipt prefix) | admin, procurement |
+| `procurement:settings:update` (number prefixes, purchase order terms) | admin, procurement |
+| `procurement:purchase_orders:read` | admin, procurement, warehouse, quality, factory, finance, viewer |
+| `procurement:purchase_orders:create`, `update` (edit a draft, mark as sent) | admin, procurement |
+| `procurement:purchase_orders:approve` (approve, close) · `cancel` | admin, procurement |
 
 Migration `f6a1b2j7` creates the tables and these grants for existing organizations; its downgrade refuses while suppliers exist.
+Migration `f6a1b2k1` adds the purchase orders, the receipt references and their permissions; its downgrade refuses while orders exist.
 
 ## API (`/api/v1/procurement`)
 
@@ -106,10 +148,15 @@ Migration `f6a1b2j7` creates the tables and these grants for existing organizati
 | GET / PATCH | `/receipts/{id}` | receipts:read / receipts:update (draft) |
 | POST | `/receipts/{id}/receive`, `/cancel` (`reason`) | receipts:receive / receipts:cancel |
 | GET | `/receipts/{id}/document.pdf?lang=ar|en` | receipts:read |
-| GET / PATCH | `/settings` (`receipt_prefix`) | receipts:read / settings:update |
+| GET / PATCH | `/settings` (`receipt_prefix`, `po_prefix`, `po_terms_ar`, `po_terms_en`) | receipts:read / settings:update |
+| GET / POST | `/purchase-orders` (`status`, `supplier_id`, `open_only`, dates, `search` incl. items) | purchase_orders:read / create |
+| GET | `/purchase-orders/open-for-receipt?supplier_id=` (what each line still expects) | receipts:create or receipts:update |
+| GET / PATCH | `/purchase-orders/{id}` | purchase_orders:read / update (draft) |
+| POST | `/purchase-orders/{id}/approve`, `/close` (`reason`) | purchase_orders:approve |
+| POST | `/purchase-orders/{id}/send` · `/cancel` (`reason`) | purchase_orders:update · purchase_orders:cancel |
+| GET | `/purchase-orders/{id}/document.pdf?lang=ar|en` | purchase_orders:read |
 
-Frontend: `/suppliers`, `/suppliers/{id}`, `/materials`, `/goods-receipts`, `/goods-receipts/{id}` (sidebar section «المشتريات»).
+Receipts take `purchase_order_id` and, per line, `po_line_id`; they show the order's number (`po_number`).
 
-## Next phases
-
-- Purchase orders, when needed.
+Frontend: `/suppliers`, `/suppliers/{id}`, `/materials`, `/purchase-orders`, `/purchase-orders/{id}`, `/goods-receipts`,
+`/goods-receipts/{id}` (sidebar section «المشتريات»).

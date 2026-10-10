@@ -3,16 +3,18 @@
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
-import { listCustomers } from "@/features/customers";
+import { PermissionGuard } from "@/components/PermissionGuard";
+import { ListToolbar } from "@/components/pagination/ListToolbar";
+import { Pagination } from "@/components/pagination/Pagination";
+import { useListQuery, type Page } from "@/lib/pagination";
 import { useFormatter } from "@/hooks/useFormatter";
 import type { Locale } from "@/i18n/config";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { displayValue } from "@/lib/utils";
 import { sharedStyles } from "@/styles/shared-styles";
-import type { CustomerListItem } from "@/types/customers";
 import { deleteQuote, getQuoteDeletionImpact, listQuotes } from "../api/quotes-api";
 import type { QuoteDeletionImpact, QuoteListItem } from "../types";
 import { QuoteStatusBadge } from "./QuoteStatusBadge";
@@ -156,8 +158,13 @@ export function QuotesList() {
   const canSettings = usePermission("commercial:quote_settings:read");
   const locale = useLocale() as Locale;
   const fmt = useFormatter();
-  const [quotes, setQuotes] = useState<QuoteListItem[]>([]);
-  const [customers, setCustomers] = useState<CustomerListItem[]>([]);
+  const tStatus = useTranslations("enums.quote.status");
+  // ARCH-PAGE-001: one page from the server (50 rows by default); page, search and status live in the address.
+  const list = useListQuery(["search", "status"] as const);
+  const apiQuery = list.apiQuery();
+  const [data, setData] = useState<Page<QuoteListItem> | null>(null);
+  const quotes = data?.items ?? [];
+  const filtered = Boolean(list.filters.search || list.filters.status);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -167,22 +174,15 @@ export function QuotesList() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
-  const customerNamesById = useMemo(() => {
-    return new Map(customers.map((customer) => [customer.id, customer.name]));
-  }, [customers]);
-
   const loadQuotes = useCallback(async () => {
     if (!isMountedRef.current) return;
     setIsLoading(true);
     setError(null);
     try {
-      const [quotesResponse, customersResponse] = await Promise.all([
-        listQuotes(),
-        listCustomers().catch(() => []),
-      ]);
+      const response = await listQuotes(apiQuery);
       if (isMountedRef.current) {
-        setQuotes(quotesResponse);
-        setCustomers(customersResponse);
+        setData(response);
+        if (response.items.length === 0 && response.total > 0 && list.page > response.pages) list.setPage(response.pages);
       }
     } catch (caughtError) {
       if (isMountedRef.current) {
@@ -193,7 +193,7 @@ export function QuotesList() {
         setIsLoading(false);
       }
     }
-  }, [messages]);
+  }, [messages, apiQuery]); // eslint-disable-line react-hooks/exhaustive-deps -- list changes every render; apiQuery is what matters
 
   async function handleDelete(quoteId: string) {
     setLoadingImpactId(quoteId);
@@ -258,9 +258,9 @@ export function QuotesList() {
       action={
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           {canSettings ? <Link href="/quotes/settings" style={sharedStyles.secondaryButton}>{t("settings.link")}</Link> : null}
-          <Link href="/quotes/new" style={sharedStyles.button}>
+          <PermissionGuard code="commercial:quotes:create"><Link href="/quotes/new" style={sharedStyles.button}>
             {t("newButton")}
-          </Link>
+          </Link></PermissionGuard>
         </div>
       }
     >
@@ -317,7 +317,14 @@ export function QuotesList() {
         </div>
       ) : null}
 
-      {isLoading ? (
+      <ListToolbar search={list.filters.search} onSearch={(v) => list.setFilter("search", v)} searchHint={t("searchHint")}
+
+        status={list.filters.status} onStatus={(v) => list.setFilter("status", v)} statusLabel={t("fields.status")}
+
+        statuses={["draft", "issued", "accepted", "rejected", "expired"].map((value) => ({ value, label: tStatus(value) }))} onClear={list.clearFilters} />
+
+
+      {isLoading && !data ? (
         <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>{messages("loading.default")}</div>
       ) : null}
 
@@ -342,17 +349,24 @@ export function QuotesList() {
         </div>
       ) : null}
 
-      {!isLoading && !error && quotes.length === 0 ? (
+      {!isLoading && !error && quotes.length === 0 && filtered ? (
+
+        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>{common("listFilters.noMatches")}</section>
+
+      ) : null}
+
+
+      {!isLoading && !error && quotes.length === 0 && !filtered ? (
         <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("empty")}</h2>
           <p style={{ margin: "0 0 18px" }}>{messages("empty.addFirst")}</p>
-          <Link href="/quotes/new" style={sharedStyles.button}>
+          <PermissionGuard code="commercial:quotes:create"><Link href="/quotes/new" style={sharedStyles.button}>
             {t("newButton")}
-          </Link>
+          </Link></PermissionGuard>
         </section>
       ) : null}
 
-      {!isLoading && !error && quotes.length > 0 ? (
+      {!error && quotes.length > 0 ? (
         <section style={styles.panel} aria-label={t("listAria")}>
           <div style={styles.tableWrap}>
             <table style={styles.table}>
@@ -376,7 +390,7 @@ export function QuotesList() {
                       </Link>
                     </td>
                     <td style={styles.td}>
-                      {displayValue(customerNamesById.get(quote.customer_id) ?? quote.customer_id)}
+                      {displayValue(quote.customer_name ?? quote.customer_id)}
                     </td>
                     <td style={styles.td}>
                       <QuoteStatusBadge status={quote.status} />
@@ -392,10 +406,12 @@ export function QuotesList() {
                     </td>
                     <td style={styles.td}>
                       <div style={styles.actions}>
-                        <Link href={`/quotes/${quote.id}/edit`} style={styles.actionButton}>
-                          {common("actions.edit")}
-                        </Link>
-                        <button
+                        {quote.status === "draft" ? (
+                          <PermissionGuard code="commercial:quotes:update"><Link href={`/quotes/${quote.id}/edit`} style={styles.actionButton}>
+                            {common("actions.edit")}
+                          </Link></PermissionGuard>
+                        ) : null}
+                        <PermissionGuard code="commercial:quotes:delete"><button
                           type="button"
                           style={styles.deleteButton}
                           disabled={deletingId === quote.id || loadingImpactId === quote.id}
@@ -404,7 +420,7 @@ export function QuotesList() {
                           {deletingId === quote.id || loadingImpactId === quote.id
                             ? "..."
                             : common("actions.delete")}
-                        </button>
+                        </button></PermissionGuard>
                       </div>
                     </td>
                   </tr>
@@ -412,6 +428,10 @@ export function QuotesList() {
               </tbody>
             </table>
           </div>
+
+          {data ? <Pagination page={data.page} pageSize={data.page_size} total={data.total} pages={data.pages}
+
+            disabled={isLoading} onPage={list.setPage} onPageSize={list.setPageSize} /> : null}
         </section>
       ) : null}
     </PageFrame>

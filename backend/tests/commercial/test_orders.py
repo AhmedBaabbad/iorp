@@ -126,7 +126,7 @@ def test_list_orders_returns_results(client, auth_headers, customer_id):
 
     resp = client.get("/api/v1/commercial/orders", headers=auth_headers)
     assert resp.status_code == 200
-    items = resp.json()
+    items = resp.json()["items"]
     assert len(items) == 1
     assert re.match(r"^RFS-\d{4}-\d{4}$", items[0]["order_number"])
     assert "items" not in items[0]
@@ -153,20 +153,17 @@ def test_get_order_not_found_returns_404(client, auth_headers):
     assert resp.status_code == 404
 
 
-def test_update_order_status(client, auth_headers, customer_id):
+def test_confirm_order(client, auth_headers, customer_id):
+    """The status changes through confirm (SALES-001), never by PATCH; a direct order names the customer's reference."""
     create_resp = client.post(
         f"/api/v1/commercial/customers/{customer_id}/orders",
-        json=_order_payload(),
+        json=_order_payload(customer_reference="PO-7781"),
         headers=auth_headers,
     )
     assert create_resp.status_code == 201
     order_id = create_resp.json()["id"]
 
-    resp = client.patch(
-        f"/api/v1/commercial/orders/{order_id}",
-        json={"status": "confirmed"},
-        headers=auth_headers,
-    )
+    resp = client.post(f"/api/v1/commercial/orders/{order_id}/confirm", headers=auth_headers)
     assert resp.status_code == 200
     assert resp.json()["status"] == "confirmed"
 
@@ -209,4 +206,4 @@ def test_tenant_isolation(client, db, auth_headers, customer_id):
 
     resp = client.get("/api/v1/commercial/orders", headers=headers_b)
     assert resp.status_code == 200
-    assert resp.json() == []
+    assert resp.json()["items"] == []

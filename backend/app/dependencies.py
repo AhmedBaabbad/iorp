@@ -191,6 +191,7 @@ def require_platform_permission(
             )
         return account
 
+    checker.platform_permission = permission.value
     return checker
 
 

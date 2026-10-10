@@ -90,10 +90,12 @@ export async function loadMessages(locale: Locale) {
   const reports = await readLocaleFile(locale, "reports.json");
   const shipping = await readLocaleFile(locale, "shipping.json");
   const procurement = await readLocaleFile(locale, "procurement.json");
+  const masterdata = await readLocaleFile(locale, "masterdata.json");
   return {
     reports,
     shipping,
     procurement,
+    masterdata,
     auth,
     common,
     navigation,

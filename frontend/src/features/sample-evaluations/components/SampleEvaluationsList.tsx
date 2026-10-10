@@ -10,7 +10,8 @@ import { getEnumLabel } from "@/i18n/enum-helpers";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { displayValue } from "@/lib/utils";
 import { sharedStyles } from "@/styles/shared-styles";
-import { listSampleEvaluations } from "../api/sample-evaluations-api";
+import { deleteSampleEvaluation, listSampleEvaluations } from "../api/sample-evaluations-api";
+import { usePermission } from "@/features/auth/permission-hooks";
 import type {
   SampleEvaluationListItem,
   SampleEvaluationNextAction,
@@ -41,6 +42,20 @@ export function SampleEvaluationsList({ sampleId }: SampleEvaluationsListProps) 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  // RBAC-002: adding, correcting and removing an evaluation are separate permissions.
+  const canCreate = usePermission("commercial:evaluations:create");
+  const canUpdate = usePermission("commercial:evaluations:update");
+  const canDelete = usePermission("commercial:evaluations:delete");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function remove(id: string) {
+    setBusyId(id);
+    try { await deleteSampleEvaluation(id); setConfirmingId(null); await loadEvaluations(); }
+    catch (caughtError) { setError(getApiErrorMessage(caughtError, messages)); }
+    finally { setBusyId(null); }
+  }
   const isMountedRef = useRef(true);
 
   const loadEvaluations = useCallback(async () => {
@@ -65,7 +80,7 @@ export function SampleEvaluationsList({ sampleId }: SampleEvaluationsListProps) 
         setIsLoading(false);
       }
     }
-  }, [sampleId]);
+  }, [sampleId, messages]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -86,15 +101,17 @@ export function SampleEvaluationsList({ sampleId }: SampleEvaluationsListProps) 
       title={t("sectionTitle")}
       subtitle={t("sectionDescription")}
     >
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <button
-          style={sharedStyles.secondaryButton}
-          type="button"
-          onClick={() => setIsFormOpen((current) => !current)}
-        >
-          {isFormOpen ? t("cancelAdd") : t("addButton")}
-        </button>
-      </div>
+      {canCreate ? (
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button
+            style={sharedStyles.secondaryButton}
+            type="button"
+            onClick={() => setIsFormOpen((current) => !current)}
+          >
+            {isFormOpen ? t("cancelAdd") : t("addButton")}
+          </button>
+        </div>
+      ) : null}
 
       {isFormOpen ? <SampleEvaluationForm sampleId={sampleId} onCreated={handleCreated} /> : null}
 
@@ -141,8 +158,37 @@ export function SampleEvaluationsList({ sampleId }: SampleEvaluationsListProps) 
                 {displayValue(truncateText(evaluation.comments, 180))}
               </p>
               <p style={sharedStyles.meta}>
-                {t("labels.evaluatedBy", { value: shortId(evaluation.evaluated_by_user_id) })}
+                {t("labels.evaluatedBy", { value: displayValue(evaluation.evaluated_by_name) })}
               </p>
+              {editingId === evaluation.id ? (
+                <SampleEvaluationForm sampleId={sampleId} evaluation={evaluation}
+                  onCreated={async () => { setEditingId(null); await loadEvaluations(); }} />
+              ) : null}
+              {(canUpdate || canDelete) ? (
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  {canUpdate ? (
+                    <button type="button" style={sharedStyles.secondaryButton} disabled={busyId !== null}
+                      onClick={() => setEditingId((current) => (current === evaluation.id ? null : evaluation.id))}>
+                      {editingId === evaluation.id ? common("actions.cancel") : common("actions.edit")}
+                    </button>
+                  ) : null}
+                  {canDelete && confirmingId !== evaluation.id ? (
+                    <button type="button" style={sharedStyles.secondaryButton} disabled={busyId !== null} onClick={() => setConfirmingId(evaluation.id)}>
+                      {common("actions.delete")}
+                    </button>
+                  ) : null}
+                  {canDelete && confirmingId === evaluation.id ? (
+                    <>
+                      <span style={sharedStyles.meta}>{t("deleteConfirm")}</span>
+                      <button type="button" style={{ ...sharedStyles.button, background: "var(--danger)", borderColor: "var(--danger)" }}
+                        disabled={busyId !== null} onClick={() => void remove(evaluation.id)}>{t("deleteYes")}</button>
+                      <button type="button" style={sharedStyles.secondaryButton} disabled={busyId !== null} onClick={() => setConfirmingId(null)}>
+                        {common("actions.cancel")}
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
             </article>
           ))}
         </div>
@@ -163,6 +209,3 @@ function truncateText(value: string | null, maxLength: number) {
   return `${value.slice(0, maxLength - 1)}...`;
 }
 
-function shortId(value: string) {
-  return value.slice(0, 8);
-}

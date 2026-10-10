@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useAuth } from '@/features/auth';
+import { SAMPLE_STATUS_PERMISSION } from '../permissions';
+import { UnitSelect } from "@/components/forms/UnitSelect";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
@@ -12,9 +15,11 @@ import { getEnumLabel } from "@/i18n/enum-helpers";
 import { ApiClientError } from "@/lib/api-client";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { optionalText, toDatetimeLocalValue } from "@/lib/utils";
+import { sampleError } from "./sample-errors";
+import { SampleProductFields } from "./SampleProperties";
 import { sharedStyles } from "@/styles/shared-styles";
 import { getSampleById, updateSample } from "../api/samples-api";
-import type { RequestedSpec, SampleDecision, SampleStatus, UpdateSampleRequest } from "../types";
+import type { SampleProductDefinition, RequestedSpec, SampleDecision, SampleStatus, UpdateSampleRequest } from "../types";
 
 type SampleEditValues = {
   product_type: string;
@@ -24,7 +29,7 @@ type SampleEditValues = {
   requested_sample_quantity: string;
   unit: string;
   request_date: string;
-  requested_spec_json: string;
+  property_values: RequestedSpec;
   notes: string;
 };
 
@@ -88,13 +93,13 @@ const defaultValues: SampleEditValues = {
   requested_sample_quantity: "",
   unit: "",
   request_date: toDatetimeLocalValue(new Date()),
-  requested_spec_json: "",
+  property_values: {},
   notes: "",
 };
 
-class FormValidationError extends Error {}
 
 export function SampleEditForm() {
+  const { hasPermission } = useAuth();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const t = useTranslations("commercial.samples");
@@ -107,6 +112,9 @@ export function SampleEditForm() {
   const [sampleCode, setSampleCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [specReady, setSpecReady] = useState(false);
+  const [specChanged, setSpecChanged] = useState(false);
+  const [productDefinition, setProductDefinition] = useState<SampleProductDefinition | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isNotFound, setIsNotFound] = useState(false);
   const [successRedirect, setSuccessRedirect] = useState<string | null>(null);
@@ -122,6 +130,8 @@ export function SampleEditForm() {
         const sample = await getSampleById(sampleId);
 
         if (isMounted) {
+          setProductDefinition(sample.product_definition ?? null);
+          setSpecChanged(false);
           setSampleCode(sample.sample_code);
           setInitialStatus(sample.status);
           setValues({
@@ -132,9 +142,7 @@ export function SampleEditForm() {
             requested_sample_quantity: sample.requested_sample_quantity ?? "",
             unit: sample.unit ?? "",
             request_date: toDatetimeLocalValue(new Date(sample.request_date)),
-            requested_spec_json: sample.requested_spec_json
-              ? JSON.stringify(sample.requested_spec_json, null, 2)
-              : "",
+            property_values: sample.property_values ?? sample.requested_spec_json ?? {},
             notes: sample.notes ?? "",
           });
         }
@@ -179,23 +187,8 @@ export function SampleEditForm() {
     setIsSubmitting(true);
 
     try {
-      let requestedSpec: RequestedSpec | null = null;
-      const trimmed = values.requested_spec_json.trim();
-      if (trimmed) {
-        let parsed: unknown;
-        try {
-          parsed = JSON.parse(trimmed);
-        } catch {
-          throw new FormValidationError(t("validation.invalidValue"));
-        }
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-          throw new FormValidationError(t("validation.invalidValue"));
-        }
-        requestedSpec = parsed as RequestedSpec;
-      }
-
       const payload: UpdateSampleRequest = {
-        product_type: values.product_type,
+        ...(specChanged ? { product_type: values.product_type, property_values: values.property_values } : {}),
         sample_decision: values.sample_decision,
         is_sample_requested: values.is_sample_requested,
         requested_sample_quantity: values.is_sample_requested
@@ -203,7 +196,6 @@ export function SampleEditForm() {
           : null,
         unit: values.is_sample_requested ? optionalText(values.unit) : null,
         request_date: new Date(values.request_date).toISOString(),
-        requested_spec_json: requestedSpec,
         notes: optionalText(values.notes) ?? null,
       };
 
@@ -215,9 +207,7 @@ export function SampleEditForm() {
       setSuccessRedirect(`/samples/${sampleId}`);
     } catch (caughtError) {
       setError(
-        caughtError instanceof FormValidationError
-          ? caughtError.message
-          : getApiErrorMessage(caughtError, messages),
+        sampleError(caughtError, t, messages),
       );
     } finally {
       setIsSubmitting(false);
@@ -264,20 +254,6 @@ export function SampleEditForm() {
             </p>
 
             <div style={styles.formGrid}>
-              <label style={sharedStyles.field}>
-                <span style={sharedStyles.label}>
-                  {t("fields.productType")}
-                  <span style={styles.required} aria-hidden="true"> *</span>
-                </span>
-                <input
-                  style={sharedStyles.input}
-                  value={values.product_type}
-                  onChange={(event) => updateField("product_type", event.target.value)}
-                  maxLength={120}
-                  disabled={isSubmitting}
-                  required
-                />
-              </label>
 
               <label style={sharedStyles.field}>
                 <span style={sharedStyles.label}>{t("fields.status")}</span>
@@ -289,7 +265,7 @@ export function SampleEditForm() {
                   }
                   disabled={isSubmitting}
                 >
-                  {sampleStatusEditOptions.map((s) => (
+                  {sampleStatusEditOptions.filter(s => s === initialStatus || hasPermission(SAMPLE_STATUS_PERMISSION[s])).map((s) => (
                     <option
                       key={s}
                       value={s}
@@ -309,7 +285,7 @@ export function SampleEditForm() {
                   onChange={(event) =>
                     updateField("sample_decision", event.target.value as SampleDecision)
                   }
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !hasPermission('commercial:samples:decide')}
                 >
                   {sampleDecisionOptions.map((d) => (
                     <option key={d} value={d}>
@@ -357,14 +333,8 @@ export function SampleEditForm() {
                     {t("fields.unit")}
                     <span style={styles.required} aria-hidden="true"> *</span>
                   </span>
-                  <input
-                    style={sharedStyles.input}
-                    value={values.unit}
-                    onChange={(event) => updateField("unit", event.target.value)}
-                    maxLength={32}
-                    disabled={isSubmitting}
-                    required
-                  />
+                  <UnitSelect value={values.unit} onChange={(unit) => updateField("unit", unit)}
+                  disabled={isSubmitting} ariaLabel={t("fields.unit")} />
                 </label>
               ) : null}
 
@@ -383,17 +353,9 @@ export function SampleEditForm() {
                 />
               </label>
             </div>
+          <SampleProductFields productKey={values.product_type} values={values.property_values} original={productDefinition} unchanged={!specChanged} disabled={isSubmitting} onReady={setSpecReady}
+            onChange={(key, specs, unit) => { setSpecChanged(true); setValues(v => ({ ...v, product_type: key, property_values: specs, ...(unit !== undefined ? { unit: unit ?? "" } : {}) })); }} />
 
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>{t("fields.requestedSpecJson")}</span>
-              <textarea
-                style={{ ...sharedStyles.textarea, minHeight: "130px", fontFamily: "monospace" }}
-                value={values.requested_spec_json}
-                onChange={(event) => updateField("requested_spec_json", event.target.value)}
-                disabled={isSubmitting}
-                placeholder={'{"color":"blue","thickness":"50 micron"}'}
-              />
-            </label>
 
             <label style={sharedStyles.field}>
               <span style={sharedStyles.label}>{t("fields.notes")}</span>
@@ -412,7 +374,7 @@ export function SampleEditForm() {
             ) : null}
 
             <div style={styles.actions}>
-              <button style={sharedStyles.button} type="submit" disabled={isSubmitting}>
+              <button style={sharedStyles.button} type="submit" disabled={isSubmitting || !specReady}>
                 {isSubmitting ? messages("loading.saving") : t("updateButton")}
               </button>
               <Link href={`/samples/${sampleId}`} style={sharedStyles.secondaryButton}>

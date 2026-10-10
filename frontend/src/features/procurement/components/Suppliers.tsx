@@ -14,6 +14,7 @@ import { Q } from "@/lib/quality-permissions";
 import { createSupplier, getSupplier, getSuppliers, setSupplierStatus, updateSupplier, type SupplierFilters } from "../api";
 import { procurementErrorMessage } from "../procurement-errors";
 import { SUPPLIER_CATEGORIES, SUPPLIER_STATUSES, type Evaluation, type Supplier, type SupplierInput, type SupplierStatus } from "../types";
+import { ListSelect, useListName } from "@/features/masterdata";
 
 const STATUS_CLASS: Record<SupplierStatus, string> = { pending: s.high, approved: s.green, conditional: s.overdue, blocked: s.cancelled };
 
@@ -133,8 +134,10 @@ export function SupplierForm({ supplierId }: { supplierId?: string }) {
           {input("contact_name", { maxLength: 200 })}
           {input("phone", { maxLength: 30, dir: "ltr", inputMode: "tel", placeholder: "05xxxxxxxx" })}
           {input("email", { maxLength: 255, dir: "ltr", type: "email" })}
-          {input("city", { maxLength: 120 })}
-          {input("country", { maxLength: 80 })}
+          <label className={s.field}>{t("fields.country")}<ListSelect list="country" ariaLabel={t("fields.country")} value={v.country}
+            onChange={key => set("country", key)} /></label>
+          <label className={s.field}>{t("fields.city")}<ListSelect list="city" ariaLabel={t("fields.city")} value={v.city} parent={v.country || null}
+            onChange={key => set("city", key)} /></label>
           {input("vat_number", { maxLength: 40, dir: "ltr" })}
           {input("cr_number", { maxLength: 40, dir: "ltr" })}
         </div>
@@ -157,8 +160,11 @@ export function SupplierDetail({ supplierId }: { supplierId: string }) {
   const ncr = useTranslations("ncr.statuses");
   const errors = useTranslations("procurement.errors");
   const messages = useTranslations("messages");
+  const cityName = useListName("city");  // MD-002: names, not keys
+  const countryName = useListName("country");
   const fmt = useFormatter();
   const canReceive = usePermission(PR.RECEIPTS_CREATE);
+  const canOrder = usePermission(PR.PO_CREATE);
   const canNcr = usePermission(Q.NCR_CREATE);
   const [x, setX] = useState<Supplier | null>(null);
   const [loading, setLoading] = useState(true);
@@ -181,6 +187,7 @@ export function SupplierDetail({ supplierId }: { supplierId: string }) {
         <span className={s.actions}>
           {x.actions.includes("edit") && <Link href={`/suppliers/${x.id}/edit`} className={s.button}>{t("edit")}</Link>}
           {x.actions.includes("set_status") && <button type="button" className={s.button} onClick={() => setDialog(true)}>{t("suppliers.setStatus")}</button>}
+          {canOrder && x.status !== "blocked" && <Link href={`/purchase-orders/new?supplier=${x.id}`} className={`${s.button} ${s.primary}`}>{t("orders.new")}</Link>}
           {canReceive && x.status !== "blocked" && <Link href={`/goods-receipts/new?supplier=${x.id}`} className={`${s.button} ${s.primary}`}>{t("receipts.new")}</Link>}
           {canNcr && <Link href={`/non-conformance-reports/new?supplier=${x.id}`} className={s.button}>{t("suppliers.newNcr")}</Link>}
         </span>
@@ -190,7 +197,7 @@ export function SupplierDetail({ supplierId }: { supplierId: string }) {
         <Item label={t("fields.contact_name")}>{x.contact_name ?? "—"}</Item>
         <Item label={t("fields.phone")}><bdi dir="ltr">{x.phone ?? "—"}</bdi></Item>
         <Item label={t("fields.email")}><bdi dir="ltr">{x.email ?? "—"}</bdi></Item>
-        <Item label={t("fields.city")}>{[x.city, x.country].filter(Boolean).join("، ") || "—"}</Item>
+        <Item label={t("fields.city")}>{[x.city ? cityName(x.city) : null, x.country ? countryName(x.country) : null].filter(Boolean).join("، ") || "—"}</Item>
         <Item label={t("fields.vat_number")}><bdi dir="ltr">{x.vat_number ?? "—"}</bdi></Item>
         <Item label={t("fields.cr_number")}><bdi dir="ltr">{x.cr_number ?? "—"}</bdi></Item>
         {x.status_changed_at && <Item label={t("suppliers.standing")}>{x.status_changed_by_name} · {fmt.dateTime(x.status_changed_at)}

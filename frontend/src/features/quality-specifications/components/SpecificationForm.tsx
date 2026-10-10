@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
+import { ProductSelect } from "@/features/masterdata";
 import s from "@/features/production-demands/demands.module.css";
 import { qualityErrorMessage } from "@/features/quality-checks/components/quality-errors";
 import { createSpecification, getParameters, getSpecification, updateSpecification } from "../api";
@@ -93,7 +94,8 @@ export function SpecificationForm({ specId }: { specId?: string }) {
               onChange={e => setHeader(h => ({ ...h, code: e.target.value }))} />
           </label>
           <label className={s.field}>{t("fields.title")}<input required maxLength={200} value={header.title} disabled={busy || locked} onChange={e => setHeader(h => ({ ...h, title: e.target.value }))} /></label>
-          <label className={s.field}>{t("fields.productType")}<input required maxLength={120} value={header.product_type} disabled={busy || locked} onChange={e => setHeader(h => ({ ...h, product_type: e.target.value }))} /></label>
+          <label className={s.field}>{t("fields.productType")}<ProductSelect ariaLabel={t("fields.productType")} value={header.product_type} disabled={busy || locked}
+            onChange={key => setHeader(h => ({ ...h, product_type: key }))} /></label>
           <label className={s.field}>{t("fields.grade")}<input maxLength={80} placeholder={t("gradePlaceholder")} value={header.grade} disabled={busy || locked} onChange={e => setHeader(h => ({ ...h, grade: e.target.value }))} /></label>
         </div>
         <p className={s.muted}>{t("productHint")}</p>

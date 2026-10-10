@@ -7,10 +7,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
 import { listCustomers } from "@/features/customers";
+import { Pagination } from "@/components/pagination/Pagination";
+import { useListQuery, type Page } from "@/lib/pagination";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { displayValue } from "@/lib/utils";
 import { sharedStyles } from "@/styles/shared-styles";
 import type { CustomerListItem } from "@/types/customers";
+import { useListName } from "@/features/masterdata";
 
 const styles: Record<string, CSSProperties> = {
   panel: {
@@ -50,7 +53,13 @@ export function CustomerInteractionsPage() {
   const customersT = useTranslations("commercial.customers");
   const common = useTranslations("common");
   const messages = useTranslations("messages");
-  const [customers, setCustomers] = useState<CustomerListItem[]>([]);
+  const sectorName = useListName("sector");  // MD-002: the name, not the key
+  // ARCH-PAGE-001: one page of customers at a time, searched by the server.
+  const list = useListQuery(["search"] as const);
+  const apiQuery = list.apiQuery();
+  const [searchText, setSearchText] = useState(list.filters.search);
+  const [data, setData] = useState<Page<CustomerListItem> | null>(null);
+  const customers = data?.items ?? [];
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
@@ -64,9 +73,9 @@ export function CustomerInteractionsPage() {
     setError(null);
 
     try {
-      const response = await listCustomers();
+      const response = await listCustomers(apiQuery);
       if (isMountedRef.current) {
-        setCustomers(response);
+        setData(response);
       }
     } catch (caughtError) {
       if (isMountedRef.current) {
@@ -77,7 +86,13 @@ export function CustomerInteractionsPage() {
         setIsLoading(false);
       }
     }
-  }, [messages]);
+  }, [messages, apiQuery]);
+
+  useEffect(() => {
+    if (searchText === list.filters.search) return;
+    const timer = setTimeout(() => list.setFilter("search", searchText.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [searchText]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -89,7 +104,13 @@ export function CustomerInteractionsPage() {
 
   return (
     <PageFrame title={t("listTitle")} subtitle={t("sectionDescription")} section="Commercial">
-      {isLoading ? (
+      <label style={{ ...sharedStyles.field, maxWidth: "420px", marginBottom: "16px" }}>
+        <span style={sharedStyles.label}>{customersT("listFilters.search")}</span>
+        <input type="search" style={sharedStyles.input} value={searchText} placeholder={customersT("listFilters.searchHint")}
+          onChange={(event) => setSearchText(event.target.value)} />
+      </label>
+
+      {isLoading && !data ? (
         <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           {messages("loading.default")}
         </div>
@@ -116,7 +137,7 @@ export function CustomerInteractionsPage() {
         </div>
       ) : null}
 
-      {!isLoading && !error && customers.length > 0 ? (
+      {!error && customers.length > 0 ? (
         <section style={styles.panel} aria-label={t("listTitle")}>
           <div style={styles.tableWrap}>
             <table style={styles.table}>
@@ -138,7 +159,7 @@ export function CustomerInteractionsPage() {
                         {customer.name}
                       </Link>
                     </td>
-                    <td style={styles.td}>{displayValue(customer.sector)}</td>
+                    <td style={styles.td}>{displayValue(customer.sector ? sectorName(customer.sector) : customer.sector)}</td>
                     <td style={styles.td}>{displayValue(customer.phone)}</td>
                     <td style={styles.td}>{displayValue(customer.email)}</td>
                   </tr>
@@ -146,6 +167,8 @@ export function CustomerInteractionsPage() {
               </tbody>
             </table>
           </div>
+          {data ? <Pagination page={data.page} pageSize={data.page_size} total={data.total} pages={data.pages} disabled={isLoading}
+            onPage={list.setPage} onPageSize={list.setPageSize} /> : null}
         </section>
       ) : null}
     </PageFrame>

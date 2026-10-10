@@ -28,7 +28,7 @@ class PlatformPasswordResetService:
         self.email_service = email_service or EmailService()
 
     def request_reset(self, db: Session, email: str) -> None:
-        account = db.scalar(select(PlatformAccount).where(PlatformAccount.email == normalize_email(email), PlatformAccount.status != PlatformAccountStatus.INACTIVE))
+        account = db.scalar(select(PlatformAccount).where(PlatformAccount.email == normalize_email(email), PlatformAccount.status != PlatformAccountStatus.INACTIVE).with_for_update())
         if account is None:
             logger.info("Platform password reset requested for an unknown email")
             return
@@ -39,19 +39,24 @@ class PlatformPasswordResetService:
         settings = get_settings()
         reset_url = f"{settings.platform_frontend_url.rstrip('/')}/platform/reset-password?token={raw}"
         subject, html, text = build_platform_reset_email("ar", reset_url, account.full_name, settings.password_reset_expiry_minutes)
-        self.email_service.send_email(account.email, subject, html, text)
         db.commit()
+        self.email_service.send_email(account.email, subject, html, text)
 
     def execute_reset(self, db: Session, raw_token: str, new_password: str) -> None:
         record = db.scalar(select(PlatformPasswordResetToken).where(PlatformPasswordResetToken.token_hash == hash_token(raw_token), PlatformPasswordResetToken.used_at.is_(None)))
         if record is None:
             raise InvalidResetTokenError
+        account = db.scalar(select(PlatformAccount).where(PlatformAccount.id == record.account_id, PlatformAccount.status != PlatformAccountStatus.INACTIVE)
+                            .with_for_update().execution_options(populate_existing=True))
+        if account is None:
+            raise InvalidResetTokenError
+        record = db.scalar(select(PlatformPasswordResetToken).where(PlatformPasswordResetToken.id == record.id,
+            PlatformPasswordResetToken.used_at.is_(None)).with_for_update().execution_options(populate_existing=True))
+        if record is None:
+            raise InvalidResetTokenError
         if is_token_expired(record.expires_at):
             record.used_at = utc_now(); db.commit()
             raise ResetTokenExpiredError
-        account = db.scalar(select(PlatformAccount).where(PlatformAccount.id == record.account_id, PlatformAccount.status != PlatformAccountStatus.INACTIVE))
-        if account is None:
-            raise InvalidResetTokenError
         try:
             validate_password(new_password, new_password, account.email, 12)
         except ValueError as exc:

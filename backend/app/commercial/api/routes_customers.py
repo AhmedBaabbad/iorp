@@ -1,11 +1,13 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.commercial.api.schemas import (
     CustomerCreate,
     CustomerDeletionImpact,
+    CustomerLookupItem,
+    CustomerPage,
     CustomerRead,
     CustomerUpdate,
     EligibleSalesOwnerResponse,
@@ -13,6 +15,9 @@ from app.commercial.api.schemas import (
     CustomerOwnerBulkReassignResponse,
 )
 from app.commercial.application.services import CustomerService
+from app.commercial.domain.enums import CustomerStatus, RelationshipStage
+from app.commercial.infrastructure.repositories import CustomerFilters
+from app.core.pagination import PageParams, page_of, page_params
 from app.core.interfaces.authorization_policy import AuthorizationPolicy
 from app.core.tenancy import TenantContext
 from app.dependencies import get_production_demand_count, build_auth_context, get_authorization_policy, get_current_tenant, get_db, require_any_permission, require_permission
@@ -50,16 +55,42 @@ def create_customer(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
-@router.get("", response_model=list[CustomerRead], dependencies=[Depends(require_permission("commercial:customers:read"))])
+@router.get("", response_model=CustomerPage, dependencies=[Depends(require_permission("commercial:customers:read"))])
 def list_customers(
+    search: str | None = Query(None, max_length=120),
+    status_filter: CustomerStatus | None = Query(None, alias="status"),
+    relationship_stage: RelationshipStage | None = None,
+    sales_owner_user_id: UUID | None = None,
+    sector: str | None = Query(None, max_length=120),
+    params: PageParams = Depends(page_params),
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
     demand_count=Depends(get_production_demand_count),
     policy: AuthorizationPolicy = Depends(get_authorization_policy),
-) -> list[CustomerRead]:
+) -> CustomerPage:
+    """One page of the customers the user may see (`page`, `page_size` up to 100), searched and filtered by the server."""
     service = CustomerService(db, demand_count)
     ctx = build_auth_context(db, tenant, "commercial:customers:read")
-    return service.list_customers(tenant, policy=policy, auth_context=ctx)
+    filters = CustomerFilters(search=(search or "").strip() or None, status=status_filter.value if status_filter else None,
+                              relationship_stage=relationship_stage.value if relationship_stage else None,
+                              sales_owner_user_id=sales_owner_user_id, sector=sector or None)
+    items, total = service.page_customers(tenant, filters, params, policy=policy, auth_context=ctx)
+    return CustomerPage(**page_of(items, total, params))
+
+
+@router.get("/lookup", response_model=list[CustomerLookupItem], dependencies=[Depends(require_permission("commercial:customers:read"))])
+def lookup_customers(
+    search: str | None = Query(None, max_length=120),
+    ids: list[UUID] = Query(default=[], max_length=100),
+    limit: int = Query(20, ge=1, le=100),
+    tenant: TenantContext = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+    policy: AuthorizationPolicy = Depends(get_authorization_policy),
+) -> list[CustomerLookupItem]:
+    """For choosing a customer: the first matches of a code or name; with `ids`, those customers (names on a list)."""
+    ctx = build_auth_context(db, tenant, "commercial:customers:read")
+    return CustomerService(db).lookup_customers(tenant, (search or "").strip() or None, ids, max(limit, len(ids)),
+                                                policy=policy, auth_context=ctx)
 
 
 @router.get(

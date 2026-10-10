@@ -41,11 +41,12 @@ def get_dashboard_summary(
         ) or 0
 
     if has_permission(auth_user, "commercial:samples:read"):
+        visible_customers = select(Customer).where(Customer.organization_id == org_id)
+        ctx = build_auth_context(db, tenant, "commercial:samples:read")
+        visible_customers = policy.apply_query_filter(ctx, visible_customers, owner_field="sales_owner_user_id")
         summary.samples_count = db.scalar(
             select(func.count(Sample.id))
-            .select_from(Sample)
-            .join(Customer, Sample.customer_id == Customer.id)
-            .where(Customer.organization_id == org_id)
+            .where(Sample.customer_id.in_(visible_customers.with_only_columns(Customer.id)))
         ) or 0
 
     if has_permission(auth_user, "workforce:members:read"):

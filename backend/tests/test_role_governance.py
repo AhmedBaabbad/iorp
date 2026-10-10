@@ -55,8 +55,10 @@ def _other_user(db, administrator):
 
 
 # Existing service-level coverage
-def test_factory_department_catalog_contains_shipping_and_maintenance_managers():
-    assert {"factory_manager", "shipping_manager", "maintenance_manager"} <= SYSTEM_ROLE_BY_CODE.keys()
+def test_factory_department_catalog_has_one_manager_per_module_and_executing_roles():
+    # RBAC-003: warehouse, maintenance, safety, finance and HR are custom roles when a factory needs them.
+    assert set(SYSTEM_ROLE_BY_CODE) == {"organization_admin", "commercial_manager", "sales_rep", "production_manager", "production_supervisor",
+                                        "quality_manager", "quality_inspector", "procurement_manager", "shipping_manager", "factory_manager", "viewer"}
     assert permission_matches("commercial:orders:update", "commercial:*")
     assert permission_matches("production:downtime_events:close", "production:downtime_events:*")
 

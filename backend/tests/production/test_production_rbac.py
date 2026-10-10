@@ -34,7 +34,7 @@ REMOVED = {"production:work_centers:write", "production:production_orders:write"
 def test_catalog_holds_exactly_the_production_permissions():
     catalog = {p.code for p in ALL_TENANT_PERMISSIONS if p.code.startswith(("production:", "reports:production:"))}
     assert catalog == set(P.ALL) | set(P.REPORTS)
-    assert len(P.ALL) == 52 and len(catalog) == 56
+    assert len(P.ALL) == 55 and len(catalog) == 59
     assert not catalog & REMOVED
     assert all(not code.endswith(":write") for code in P.ALL)  # no bundled code survives
 
@@ -48,7 +48,7 @@ def test_no_application_code_spells_a_production_permission():
     # Historical migrations keep the codes they introduced; everything else uses domain/permissions.py.
     pattern = re.compile(r"""["']production:[a-z_]+:[a-z_*]+["']""")
     offenders = [str(path.relative_to(BACKEND)) for path in (BACKEND / "app").rglob("*.py")
-                 if path.name != "permissions.py" and pattern.search(path.read_text(encoding="utf-8"))]
+                 if path.name not in ("permissions.py", "permission_labels.py") and pattern.search(path.read_text(encoding="utf-8"))]
     assert offenders == []
 
 
@@ -64,16 +64,22 @@ def test_production_manager_holds_every_production_permission_explicitly():
     role = SYSTEM_ROLE_BY_CODE["production_manager"]
     # QUAL-NCR-002: production also reads non-conformance reports and completes the corrective actions it owns.
     ncr_owner = {"quality:ncr_reports:read", "quality:ncr_actions:read", "quality:ncr_actions:complete"}
-    assert set(role["permissions"]) == set(P.ALL) | set(P.REPORTS) | {"workforce:members:read"} | ncr_owner
+    # MD-001: production defines products and their specification templates, and reads the general settings.
+    products = {"masterdata:products:read", "masterdata:products:create", "masterdata:products:update", "masterdata:products:map_legacy", "masterdata:settings:read",
+                "masterdata:lists:read"}
+    # RBAC-003: the production manager also keeps the workforce (crews) and reads the sales orders it plans from.
+    workforce = {"workforce:*", "commercial:orders:read"}
+    assert set(role["permissions"]) == set(P.ALL) | set(P.REPORTS) | workforce | ncr_owner | products
     for definition in SYSTEM_ROLES:  # no production wildcard: a new code is granted on purpose
         assert not [p for p in definition["permissions"] if str(p).startswith("production:") and "*" in str(p)], definition["code"]
 
 
-def test_specialist_roles_get_only_their_actions():
-    maintenance = set(SYSTEM_ROLE_BY_CODE["maintenance_manager"]["permissions"])
-    assert {P.DOWNTIME_CLOSE, P.WORK_CENTERS_DELETE} <= maintenance and P.ORDERS_CLOSE not in maintenance
-    safety = set(SYSTEM_ROLE_BY_CODE["safety_manager"]["permissions"])
-    assert {P.WASTE_CREATE, P.DOWNTIME_CLOSE} <= safety and P.RESULTS_CREATE not in safety and P.WORK_CENTERS_UPDATE not in safety
+def test_the_supervisor_records_the_shift_but_does_not_decide():
+    # RBAC-003: the production supervisor records; the production manager plans, releases, closes and cancels.
+    supervisor = set(SYSTEM_ROLE_BY_CODE["production_supervisor"]["permissions"])
+    assert {P.RESULTS_CREATE, P.DOWNTIME_CLOSE, P.WASTE_CREATE, P.code("runs", "start")} <= supervisor
+    assert not supervisor & {P.ORDERS_RELEASE, P.ORDERS_CLOSE, P.ORDERS_CANCEL, P.RESULTS_DELETE, P.RESULTS_CORRECT,
+                             P.code("runs", "cancel"), P.code("planning", "allocate"), P.DEMANDS_RELEASE}
 
 
 # ---- every route declares its permission -------------------------------------------------------

@@ -16,7 +16,15 @@ import {
   CustomerStatusBadge,
 } from "./customer-badges";
 import { PageFrame } from "@/components/layout/page-frame";
+import { Pagination } from "@/components/pagination/Pagination";
 import { PermissionGuard } from "@/components/PermissionGuard";
+import { useListName } from "@/features/masterdata";
+import { useListQuery, type Page } from "@/lib/pagination";
+
+const STATUSES = ["active", "inactive", "on_hold", "archived", "blacklisted"] as const;
+const STAGES = ["lead", "contacted", "qualified", "prospect", "negotiating", "trial_customer", "active_customer", "repeat_customer",
+  "strategic_customer"] as const;
+const FILTERS = ["search", "status", "relationship_stage"] as const;
 
 const styles: Record<string, CSSProperties> = {
   panel: {
@@ -153,7 +161,15 @@ export function CustomersListPage() {
   const t = useTranslations("commercial.customers");
   const common = useTranslations("common");
   const messages = useTranslations("messages");
-  const [customers, setCustomers] = useState<CustomerListItem[]>([]);
+  const tEnums = useTranslations("enums.customer");
+  const sectorName = useListName("sector");  // MD-002: the name, not the key
+  // ARCH-PAGE-001: the server sends one page (50 rows by default); page, size, search and filters live in the address.
+  const list = useListQuery(FILTERS);
+  const apiQuery = list.apiQuery();
+  const [searchText, setSearchText] = useState(list.filters.search);
+  const [data, setData] = useState<Page<CustomerListItem> | null>(null);
+  const customers = data?.items ?? [];
+  const filtered = Boolean(list.filters.search || list.filters.status || list.filters.relationship_stage);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingImpactId, setLoadingImpactId] = useState<string | null>(null);
   const [deletingCustomerId, setDeletingCustomerId] = useState<string | null>(null);
@@ -172,9 +188,11 @@ export function CustomersListPage() {
     setError(null);
 
     try {
-      const response = await listCustomers();
+      const response = await listCustomers(apiQuery);
       if (isMountedRef.current) {
-        setCustomers(response);
+        setData(response);
+        // A page beyond the last (rows deleted, a shared old link) goes to the last page that has rows.
+        if (response.items.length === 0 && response.total > 0 && list.page > response.pages) list.setPage(response.pages);
       }
     } catch (caughtError) {
       if (isMountedRef.current) {
@@ -185,7 +203,14 @@ export function CustomersListPage() {
         setIsLoading(false);
       }
     }
-  }, [messages]);
+  }, [messages, apiQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Typing searches after a short pause, not on every key.
+  useEffect(() => {
+    if (searchText === list.filters.search) return;
+    const timer = setTimeout(() => list.setFilter("search", searchText.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [searchText]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleDelete(customerId: string) {
     setLoadingImpactId(customerId);
@@ -325,7 +350,36 @@ export function CustomersListPage() {
         </div>
       ) : null}
 
-      {isLoading ? (
+      <section style={{ ...styles.panel, padding: "14px 16px", marginBottom: "16px", display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "flex-end" }}
+        aria-label={t("listFilters.label")}>
+        <label style={{ ...sharedStyles.field, flex: "2 1 260px" }}>
+          <span style={sharedStyles.label}>{t("listFilters.search")}</span>
+          <input type="search" style={sharedStyles.input} value={searchText} placeholder={t("listFilters.searchHint")}
+            onChange={(event) => setSearchText(event.target.value)} />
+        </label>
+        <label style={{ ...sharedStyles.field, flex: "1 1 170px" }}>
+          <span style={sharedStyles.label}>{t("fields.status")}</span>
+          <select style={sharedStyles.input} value={list.filters.status} onChange={(event) => list.setFilter("status", event.target.value)}>
+            <option value="">{t("listFilters.all")}</option>
+            {STATUSES.map((v) => <option key={v} value={v}>{tEnums(`status.${v}`)}</option>)}
+          </select>
+        </label>
+        <label style={{ ...sharedStyles.field, flex: "1 1 190px" }}>
+          <span style={sharedStyles.label}>{t("fields.relationshipStage")}</span>
+          <select style={sharedStyles.input} value={list.filters.relationship_stage}
+            onChange={(event) => list.setFilter("relationship_stage", event.target.value)}>
+            <option value="">{t("listFilters.all")}</option>
+            {STAGES.map((v) => <option key={v} value={v}>{tEnums(`relationshipStage.${v}`)}</option>)}
+          </select>
+        </label>
+        {filtered ? (
+          <button type="button" style={sharedStyles.secondaryButton} onClick={() => { setSearchText(""); list.clearFilters(); }}>
+            {t("listFilters.clear")}
+          </button>
+        ) : null}
+      </section>
+
+      {isLoading && !data ? (
         <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>{t("loading")}</div>
       ) : null}
 
@@ -350,7 +404,11 @@ export function CustomersListPage() {
         </div>
       ) : null}
 
-      {!isLoading && !error && customers.length === 0 ? (
+      {!isLoading && !error && customers.length === 0 && filtered ? (
+        <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>{t("listFilters.noMatches")}</section>
+      ) : null}
+
+      {!isLoading && !error && customers.length === 0 && !filtered ? (
         <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("empty")}</h2>
           <p style={{ margin: "0 0 18px" }}>{t("createFirst")}</p>
@@ -362,8 +420,8 @@ export function CustomersListPage() {
         </section>
       ) : null}
 
-      {!isLoading && !error && customers.length > 0 ? (
-        <section style={styles.panel} aria-label={t("listAria")}>
+      {!error && customers.length > 0 ? (
+        <section style={{ ...styles.panel, opacity: isLoading ? 0.6 : 1 }} aria-label={t("listAria")} aria-busy={isLoading}>
           <div style={styles.tableWrap}>
             <table style={styles.table}>
               <thead>
@@ -389,7 +447,7 @@ export function CustomersListPage() {
                         {customer.name}
                       </Link>
                     </td>
-                    <td style={styles.td}>{displayValue(customer.sector)}</td>
+                    <td style={styles.td}>{displayValue(customer.sector ? sectorName(customer.sector) : customer.sector)}</td>
                     <td style={styles.td}>{displayValue(customer.phone)}</td>
                     <td style={styles.td}>{displayValue(customer.email)}</td>
                     <td style={styles.td}>
@@ -428,6 +486,10 @@ export function CustomersListPage() {
               </tbody>
             </table>
           </div>
+          {data ? (
+            <Pagination page={data.page} pageSize={data.page_size} total={data.total} pages={data.pages} disabled={isLoading}
+              onPage={list.setPage} onPageSize={list.setPageSize} />
+          ) : null}
         </section>
       ) : null}
     </PageFrame>

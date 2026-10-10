@@ -53,6 +53,12 @@ def next_receipt_number(db, organization_id) -> str:
     return rules.number(settings(db, organization_id).receipt_prefix, year, _next(db, organization_id, "GRN", year))
 
 
+def next_po_number(db, organization_id) -> str:
+    """PO-YYYY-NNNN (prefix in the settings), never repeated under concurrency."""
+    year = utc_now().year
+    return rules.number(settings(db, organization_id).po_prefix or "PO-", year, _next(db, organization_id, "PO", year))
+
+
 def record(db, organization_id, entity_type, entity_id, action, actor_id, from_status=None, to_status=None, reason=None):
     db.add(ProcurementEvent(organization_id=organization_id, entity_type=entity_type, entity_id=entity_id, action=action,
                             from_status=from_status, to_status=to_status, reason=reason, actor_user_id=actor_id))

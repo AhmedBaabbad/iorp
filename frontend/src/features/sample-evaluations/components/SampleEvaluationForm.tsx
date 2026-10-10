@@ -9,9 +9,10 @@ import { getEnumLabel } from "@/i18n/enum-helpers";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { optionalText, toDatetimeLocalValue } from "@/lib/utils";
 import { sharedStyles } from "@/styles/shared-styles";
-import { createSampleEvaluation } from "../api/sample-evaluations-api";
+import { createSampleEvaluation, updateSampleEvaluation } from "../api/sample-evaluations-api";
 import type {
   CreateSampleEvaluationRequest,
+  SampleEvaluationListItem,
   SampleEvaluationNextAction,
   SampleEvaluationResultStatus,
 } from "../types";
@@ -19,6 +20,8 @@ import type {
 type SampleEvaluationFormProps = {
   sampleId: string;
   onCreated: () => void | Promise<void>;
+  /** Correcting an existing evaluation instead of adding one. */
+  evaluation?: SampleEvaluationListItem;
 };
 
 type SampleEvaluationFormValues = {
@@ -56,12 +59,16 @@ function createDefaultValues(): SampleEvaluationFormValues {
 export function SampleEvaluationForm({
   sampleId,
   onCreated,
+  evaluation,
 }: SampleEvaluationFormProps) {
   const messages = useTranslations("messages");
   const tEnums = useTranslations();
   const t = useTranslations("commercial.samples.evaluations");
   const common = useTranslations("common");
-  const [values, setValues] = useState<SampleEvaluationFormValues>(createDefaultValues);
+  const [values, setValues] = useState<SampleEvaluationFormValues>(() => evaluation ? {
+    evaluation_date: toDatetimeLocalValue(new Date(evaluation.evaluation_date)), result_status: evaluation.result_status,
+    next_action: evaluation.next_action, comments: evaluation.comments ?? "",
+  } : createDefaultValues());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState(false);
@@ -82,6 +89,11 @@ export function SampleEvaluationForm({
     setIsSubmitting(true);
 
     try {
+      if (evaluation) {
+        await updateSampleEvaluation(evaluation.id, toCreateRequest(values));
+        await onCreated();
+        return;
+      }
       await createSampleEvaluation(sampleId, toCreateRequest(values));
       setValues(createDefaultValues());
       setFormSuccess(true);
@@ -188,7 +200,7 @@ export function SampleEvaluationForm({
       ) : null}
 
       <button style={styles.button} type="submit" disabled={isSubmitting}>
-        {isSubmitting ? t("saving") : t("addButton")}
+        {isSubmitting ? t("saving") : evaluation ? t("saveChanges") : t("addButton")}
       </button>
     </form>
     </>

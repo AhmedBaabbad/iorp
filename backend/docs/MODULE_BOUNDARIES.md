@@ -14,6 +14,7 @@ This project follows ADR-002 (Modular Monolith) and ADR-004 (Domain Ownership). 
 | `production/` | Per-organization | `production_` | `get_current_user` |
 | `quality/` | Per-organization | `quality_` | `get_current_user` |
 | `workforce/` | Per-organization | `workforce_` | `get_current_user` |
+| `masterdata/` | Per-organization (products, specification templates, VAT and currency) | `masterdata_` | `get_current_user` |
 | `core/` | Shared infrastructure and contracts | — | — |
 
 ## Dependency Rules
@@ -32,6 +33,11 @@ composition root (main.py/dependencies.py) ─► platform + foundation + operat
 - `platform` and `foundation` never import one another.
 - Operational modules never import `platform`.
 - Cross-module calls target a protocol in `core/interfaces`.
+- Master data (ADR-005) is reached only through `core/interfaces/product_catalog.py`; legacy product types are rewritten by
+  each module's holder registered in `core/interfaces/product_types.py`. Foundation reads only its permission codes.
+- Sales orders reach production only through `core/interfaces/sales_order_source.py` (SALES-001): commercial answers with
+  read-only snapshots of its confirmed orders; production answers how much of each line its demands took, and names the
+  permission to send an order to production. Neither imports the other; both are registered at the composition root.
 - `dependencies.py` is the composition root that binds a protocol to its owning implementation.
 - Platform and tenant permission namespaces and authentication dependencies are distinct.
 
