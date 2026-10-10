@@ -27,7 +27,7 @@ def test_units_from_the_central_list_are_accepted(env, unit):
 def test_free_text_and_translated_labels_are_rejected(env, unit):
     po = env.order()
     r = env.client.post(WASTE, json={"production_order_id": po["id"], "waste_date": "2026-10-01", "quantity_wasted": "1", "unit": unit,
-                                     "waste_category": "process"})
+                                     "categories": [{"category": "process"}]})
     assert r.status_code == 422 and code(r) == "UNIT_UNKNOWN", r.text
     record = env.added(po)
     r = env.client.patch(f"{WASTE}/{record['id']}", json={"unit": unit})

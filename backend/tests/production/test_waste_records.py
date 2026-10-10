@@ -12,7 +12,7 @@ from app.core.tenancy import TenantContext
 from app.dependencies import get_current_user
 from app.main import app
 from app.production.infrastructure.execution_models import ProductionRun
-from app.production.infrastructure.models import ProductionOrder, ProductionResultEntry, WasteRecord, WorkCenter
+from app.production.infrastructure.models import ProductionOrder, ProductionResultEntry, WasteRecord, WasteRecordCategory, WorkCenter
 from tests.test_production_allocation_lifecycle import other_org_demand
 
 ROOT = "/api/v1/production"
@@ -63,7 +63,7 @@ def env(client, db, test_org, test_user):
 
     def add(po, category="process", quantity="12.5", **extra):
         return client.post(WASTE, json={"production_order_id": po["id"], "waste_date": "2026-10-01", "quantity_wasted": quantity, "unit": "kg",
-                                        "waste_category": category, **extra})
+                                        "categories": [{"category": category}], **extra})
 
     def added(po, *args, **kwargs):
         r = add(po, *args, **kwargs)
@@ -89,8 +89,10 @@ def test_waste_recorded_while_the_order_runs_or_as_a_late_entry(env, status):
     po = env.order(to=status)
     record = env.added(po, "startup_setup", "30.125", reason_code="WARM-UP", notes="first metres")
     (row,) = env.rows()
-    assert (row.production_order_id, row.work_center_id, row.quantity_wasted, row.waste_category, row.created_by_user_id) == (
-        UUID(po["id"]), env.center.id, Decimal("30.125"), "startup_setup", env.user.id)
+    assert (row.production_order_id, row.work_center_id, row.quantity_wasted, row.created_by_user_id) == (
+        UUID(po["id"]), env.center.id, Decimal("30.125"), env.user.id)
+    # One category alone takes the whole quantity.
+    assert [(c.category, c.quantity) for c in row.categories] == [("startup_setup", Decimal("30.125"))]
     assert record["labels"]["order_number"] == po["production_order_number"] and record["labels"]["actions"] == ["edit", "delete"]
 
 
@@ -115,7 +117,7 @@ def test_closing_locks_existing_records(env):
 
 def test_order_is_required_and_cannot_be_changed(env):
     po = env.order()
-    r = env.client.post(WASTE, json={"waste_date": "2026-10-01", "quantity_wasted": "1", "unit": "kg", "waste_category": "other"})
+    r = env.client.post(WASTE, json={"waste_date": "2026-10-01", "quantity_wasted": "1", "unit": "kg", "categories": [{"category": "other"}]})
     assert r.status_code == 422
     record = env.added(po)
     other = env.order()
@@ -164,7 +166,7 @@ def test_every_generic_category_is_accepted_and_old_ones_are_not(env):
     po = env.order()
     for category in CATEGORIES:
         env.added(po, category, "1")
-    assert {r.waste_category for r in env.rows()} == set(CATEGORIES)
+    assert {c.category for r in env.rows() for c in r.categories} == set(CATEGORIES)
     # Plastics-specific values are gone, and finished product is scrap in the final result, not waste.
     for old in ("trim_loss", "end_of_roll_loss", "rejected_output"):
         assert env.add(po, old).status_code == 422
@@ -181,10 +183,11 @@ def test_edit_and_delete_while_open(env):
     po = env.order()
     run = env.run(po)
     record = env.added(po)
-    r = env.client.patch(f"{WASTE}/{record['id']}", json={"quantity_wasted": "7.5", "waste_category": "machine_fault", "production_run_id": str(run.id)})
+    r = env.client.patch(f"{WASTE}/{record['id']}", json={"quantity_wasted": "7.5", "categories": [{"category": "machine_fault"}], "production_run_id": str(run.id)})
     assert r.status_code == 200, r.text
     row = env.rows()[0]
-    assert (row.quantity_wasted, row.waste_category, row.work_center_id, row.updated_by_user_id) == (Decimal("7.5"), "machine_fault", env.other_center.id, env.user.id)
+    assert (row.quantity_wasted, row.work_center_id, row.updated_by_user_id) == (Decimal("7.5"), env.other_center.id, env.user.id)
+    assert [(c.category, c.quantity) for c in row.categories] == [("machine_fault", Decimal("7.5"))]
     assert env.client.patch(f"{WASTE}/{record['id']}", json={"quantity_wasted": None}).status_code == 422
     assert env.client.delete(f"{WASTE}/{record['id']}").status_code == 204
     assert env.rows() == []
@@ -197,7 +200,7 @@ def test_summary_per_unit_and_category_is_separate_from_the_result(env):
     env.added(po, "process", "10")
     env.added(po, "process", "5.5")
     env.added(po, "startup_setup", "3")
-    env.client.post(WASTE, json={"production_order_id": po["id"], "waste_date": "2026-10-01", "quantity_wasted": "2", "unit": "m", "waste_category": "other"})
+    env.client.post(WASTE, json={"production_order_id": po["id"], "waste_date": "2026-10-01", "quantity_wasted": "2", "unit": "m", "categories": [{"category": "other"}]})
     summary = env.client.get(f"{WASTE}/summary", params={"production_order_id": po["id"]}).json()
     assert [(t["unit"], Decimal(t["quantity"]), t["count"]) for t in summary["totals"]] == [("kg", Decimal("18.5"), 3), ("m", Decimal("2"), 1)]
     assert [(c["category"], c["unit"], Decimal(c["quantity"])) for c in summary["by_category"]] == [
@@ -215,9 +218,9 @@ def test_list_filters(env):
     po, other = env.order(), env.order()
     run = env.run(po)
     env.added(po, "process", production_run_id=str(run.id))
-    env.client.post(WASTE, json={"production_order_id": po["id"], "waste_date": "2026-09-20", "quantity_wasted": "1", "unit": "kg", "waste_category": "other"})
+    env.client.post(WASTE, json={"production_order_id": po["id"], "waste_date": "2026-09-20", "quantity_wasted": "1", "unit": "kg", "categories": [{"category": "other"}]})
     env.added(other, "changeover")
-    ids = lambda **q: {r["waste_category"] for r in env.client.get(WASTE, params=q).json()}  # noqa: E731
+    ids = lambda **q: {c["category"] for r in env.client.get(WASTE, params=q).json() for c in r["categories"]}  # noqa: E731
     assert ids(production_order_id=po["id"]) == {"process", "other"}
     assert ids(waste_category="changeover") == {"changeover"}
     assert ids(production_run_id=str(run.id)) == {"process"}
@@ -229,12 +232,13 @@ def test_list_filters(env):
 def test_other_organizations_are_invisible_and_body_org_is_refused(env):
     foreign = other_org_demand(env.db)
     foreign.order.status = "in_progress"; env.db.commit()
-    r = env.client.post(WASTE, json={"production_order_id": str(foreign.order.id), "waste_date": "2026-10-01", "quantity_wasted": "1", "unit": "kg", "waste_category": "other"})
+    r = env.client.post(WASTE, json={"production_order_id": str(foreign.order.id), "waste_date": "2026-10-01", "quantity_wasted": "1", "unit": "kg", "categories": [{"category": "other"}]})
     assert r.status_code == 404 and code(r) == "PRODUCTION_ORDER_NOT_FOUND"
     po = env.order()
     assert env.add(po, organization_id=str(foreign.org.id)).status_code == 422
     env.db.add(WasteRecord(organization_id=foreign.org.id, production_order_id=foreign.order.id, work_center_id=foreign.order.work_center_id,
-                           waste_date=date(2026, 10, 1), quantity_wasted=Decimal("9"), unit="kg", waste_category="other", created_by_user_id=env.user.id))
+                           waste_date=date(2026, 10, 1), quantity_wasted=Decimal("9"), unit="kg", created_by_user_id=env.user.id,
+                           categories=[WasteRecordCategory(organization_id=foreign.org.id, category="other", quantity=Decimal("9"))]))
     env.db.commit()
     foreign_id = env.db.scalar(select(WasteRecord.id).where(WasteRecord.organization_id == foreign.org.id))
     assert env.client.get(WASTE).json() == []

@@ -143,7 +143,7 @@ from urllib.parse import unquote
 from sqlalchemy.exc import OperationalError
 from app.core.reporting import providers
 from app.core.reporting.registry import registry
-from app.production.infrastructure.models import DowntimeEvent, WasteRecord
+from app.production.infrastructure.models import DowntimeEvent, WasteRecord, WasteRecordCategory
 from tests.test_production_allocation_lifecycle import other_org_demand
 
 APP = Path(__file__).resolve().parents[2] / 'app'
@@ -198,7 +198,8 @@ def test_downtime_and_waste_sections_show_cause_and_type(env):
                              start_time=datetime(2026, 9, 29, 8, tzinfo=timezone.utc), end_time=datetime(2026, 9, 29, 8, 30, tzinfo=timezone.utc),
                              duration_minutes=Decimal('30'), category='breakdown', planned=False, status='closed', created_by_user_id=env.user.id))
     env.db.add(WasteRecord(organization_id=env.org.id, production_order_id=order_id, work_center_id=env.center.id, waste_date=datetime(2026, 9, 29).date(),
-                           quantity_wasted=Decimal('3'), unit='kg', waste_category='process', created_by_user_id=env.user.id))
+                           quantity_wasted=Decimal('3'), unit='kg', created_by_user_id=env.user.id,
+                           categories=[WasteRecordCategory(organization_id=env.org.id, category='process', quantity=Decimal('3'))]))
     env.db.commit()
     body = preview(env, order_id=po['id'], sections=['downtime', 'waste']).text
     assert 'عطل' in body and 'فقد في التوافر' in body and 'هالك العملية' in body and 'لا يُضاف إلى هالك النتيجة النهائية' in body

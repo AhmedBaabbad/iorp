@@ -91,7 +91,7 @@ export function WasteRecordsList() {
           <td><Link href={`/waste-records/${r.id}`}>{fmt.date(r.waste_date)}</Link></td>
           <td>{r.labels?.order_number ? <Link href={`/production-orders/${r.production_order_id}`}>{r.labels.order_number}</Link> : "—"}</td>
           <td>{r.labels?.line_no ?? "—"}</td>
-          <td><WasteCategoryBadge category={r.waste_category} /></td>
+          <td><span className={s.actions} style={{ flexWrap: "wrap", gap: 4 }}>{r.categories.map(c => <WasteCategoryBadge key={c.category} category={c.category} />)}</span></td>
           <td><bdi>{fmt.quantity(r.quantity_wasted, unit(r.unit))}</bdi>
             {r.unit_needs_review && <> <span className={s.badge} title={t("hints.unitReview", { unit: r.legacy_unit_text ?? r.unit })}>{t("unitReviewBadge")}</span></>}</td>
           <td>{r.labels?.work_center_name ?? "—"}</td>

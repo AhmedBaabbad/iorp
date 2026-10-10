@@ -19,6 +19,9 @@ from app.production.infrastructure.models import ProductionOrder, WorkCenter
 pytestmark = pytest.mark.skipif(os.environ.get("RUN_POSTGRES_TESTS") != "1", reason="Opt-in isolated PostgreSQL tests")
 spec = importlib.util.spec_from_file_location("waste_migration", Path(__file__).parents[1] / "alembic/versions/2026_10_06_0900_f6a1b2h6_operational_waste_records.py")
 h6 = importlib.util.module_from_spec(spec); spec.loader.exec_module(h6)
+# The models now hold categories in their own table (f6a1b2m4); undo that first to reach the shape h6 started from.
+spec = importlib.util.spec_from_file_location("waste_categories_migration", Path(__file__).parents[1] / "alembic/versions/2026_11_07_1200_f6a1b2m4_waste_record_categories.py")
+m4 = importlib.util.module_from_spec(spec); spec.loader.exec_module(m4)
 
 
 @pytest.fixture
@@ -30,6 +33,7 @@ def before_waste():
     try:
         Base.metadata.create_all(isolated)
         with isolated.begin() as c, Operations.context(MigrationContext.configure(c)):
+            m4.downgrade()
             h6.downgrade()  # back to the native enum with the plastics-specific values
         with Session(isolated) as db:
             org = Organization(name="Migration", code="migration", timezone="UTC")

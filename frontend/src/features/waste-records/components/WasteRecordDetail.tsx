@@ -56,7 +56,10 @@ export function WasteRecordDetail({ recordId }: { recordId: string }) {
     {error && <p role="alert" className={s.error}>{error}</p>}
     <section className={s.panel}>
       <div className={s.actions} style={{ justifyContent: "space-between", marginBottom: 16 }}>
-        <WasteCategoryBadge category={record.waste_category} />
+        <ul aria-label={t("fields.wasteCategories")} className={s.actions} style={{ listStyle: "none", padding: 0, margin: 0, flexWrap: "wrap" }}>
+          {record.categories.map(c => <li key={c.category}><WasteCategoryBadge category={c.category} />
+            {record.categories.length > 1 && <> <bdi>{fmt.quantity(c.quantity, unit(record.unit))}</bdi></>}</li>)}
+        </ul>
         {actions.length > 0 && <span className={s.actions}>
           {actions.includes("edit") && <Link href={`/waste-records/${record.id}/edit`} className={s.button}>{t("actions.edit")}</Link>}
           {actions.includes("delete") && <button type="button" className={`${s.button} ${s.danger}`} disabled={busy} onClick={() => setConfirming(true)}>{t("actions.delete")}</button>}

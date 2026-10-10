@@ -13,7 +13,7 @@ from sqlalchemy import select
 from app.core.interfaces.activity_log import get_registered_activity_logger  # noqa: F401  (registers the logger)
 from app.production.domain.order_lifecycle import ALLOCATION_LOCKED, ALLOCATION_OPEN, OPEN
 from app.production.infrastructure.execution_models import ProductionRun
-from app.production.infrastructure.models import ProductionAllocation, ProductionOrder, ProductionOrderItem, WasteRecord
+from app.production.infrastructure.models import ProductionAllocation, ProductionOrder, ProductionOrderItem, WasteRecord, WasteRecordCategory
 from tests.test_production_allocation_lifecycle import other_org_demand
 from tests.test_production_order_lines import ROOT, env, items, spec  # noqa: F401  (env is a fixture)
 
@@ -98,7 +98,8 @@ def test_started_order_keeps_its_lines_and_numbers(env):
     order = env.db.get(ProductionOrder, UUID(po["id"]))
     env.db.add(WasteRecord(organization_id=env.org.id, production_order_id=order.id, production_order_item_id=UUID(line["id"]),
                            work_center_id=order.work_center_id, waste_date=date.today(), quantity_wasted=Decimal("5"), unit="kg",
-                           waste_category="process", created_by_user_id=env.ctx.tenant.user_id))
+                           created_by_user_id=env.ctx.tenant.user_id,
+                           categories=[WasteRecordCategory(organization_id=env.org.id, category="process", quantity=Decimal("5"))]))
     env.db.commit()
     joined = add(env, po["id"], items(same)[0], "200").json()
     assert [(l["id"], l["line_no"], Decimal(l["planned_quantity"])) for l in joined["lines"]] == [(line["id"], 1, Decimal(800))]

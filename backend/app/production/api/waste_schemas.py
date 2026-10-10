@@ -12,6 +12,20 @@ from app.production.domain.enums import WasteCategory
 QUANTITY = dict(max_digits=15, decimal_places=3)
 
 
+class WasteCategoryLine(BaseModel):
+    """One category of a record and its share of the quantity; the share may be left out when it is the only one."""
+    model_config = ConfigDict(extra="forbid")
+    category: WasteCategory
+    quantity: Decimal | None = Field(default=None, **QUANTITY)
+
+
+class WasteCategoryLineRead(BaseModel):
+    category: WasteCategory
+    quantity: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class WasteRecordCreate(BaseModel):
     """organization_id never comes from the body; the work center defaults to the run's, then the order's."""
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -22,7 +36,8 @@ class WasteRecordCreate(BaseModel):
     waste_date: date
     quantity_wasted: Decimal = Field(gt=0, **QUANTITY)
     unit: str = Field(min_length=1, max_length=32)
-    waste_category: WasteCategory
+    # One or more categories; their quantities add up to quantity_wasted (a single one may omit its quantity).
+    categories: list[WasteCategoryLine] = Field(min_length=1, max_length=8)
     reason_code: str | None = Field(default=None, max_length=255)
     notes: str | None = Field(default=None, max_length=2000)
 
@@ -36,13 +51,14 @@ class WasteRecordUpdate(BaseModel):
     waste_date: date | None = None
     quantity_wasted: Decimal | None = Field(default=None, gt=0, **QUANTITY)
     unit: str | None = Field(default=None, min_length=1, max_length=32)
-    waste_category: WasteCategory | None = None
+    # Replaces all the record's categories. Left out, a single category follows a changed quantity.
+    categories: list[WasteCategoryLine] | None = Field(default=None, min_length=1, max_length=8)
     reason_code: str | None = Field(default=None, max_length=255)
     notes: str | None = Field(default=None, max_length=2000)
 
     @model_validator(mode="after")
     def reject_null_required_values(self):
-        for field in ("waste_date", "quantity_wasted", "unit", "waste_category"):
+        for field in ("waste_date", "quantity_wasted", "unit", "categories"):
             if field in self.model_fields_set and getattr(self, field) is None:
                 raise ValueError(f"{field} cannot be null")
         return self
@@ -62,7 +78,8 @@ class WasteRecordListItem(BaseModel):
     # The unit as it was written before units became codes (kept for history); unit_needs_review: it matched no code.
     legacy_unit_text: str | None = None
     unit_needs_review: bool = False
-    waste_category: WasteCategory
+    # Largest share first; the shares add up to quantity_wasted, in the record's unit.
+    categories: list[WasteCategoryLineRead]
     reason_code: str | None
     created_by_user_id: UUID
     updated_by_user_id: UUID | None

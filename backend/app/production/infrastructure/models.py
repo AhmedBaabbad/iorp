@@ -349,8 +349,6 @@ class WasteRecord(Base):
     """
     __tablename__ = "production_waste_records"
     __table_args__ = (
-        CheckConstraint("waste_category IN ('startup_setup','changeover','process','material_defect','machine_fault',"
-                        "'handling_damage','contamination','other')", name="ck_waste_category"),
         CheckConstraint("quantity_wasted > 0", name="ck_waste_quantity"),
         Index("ix_waste_org_order", "organization_id", "production_order_id"),
     )
@@ -398,7 +396,6 @@ class WasteRecord(Base):
     # The unit as written before it became a code; unit_needs_review: it matched no code and awaits a choice.
     legacy_unit_text: Mapped[str | None] = mapped_column(String(32), nullable=True)
     unit_needs_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
-    waste_category: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     reason_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(
@@ -421,6 +418,38 @@ class WasteRecord(Base):
         default=utc_now,
         onupdate=utc_now,
     )
+
+
+    # Why the material was lost: one or more categories, each with its share of quantity_wasted (PROD-QUALITY-FIX-001).
+    categories: Mapped[list["WasteRecordCategory"]] = relationship(
+        back_populates="record", cascade="all, delete-orphan", lazy="selectin",
+        order_by="(WasteRecordCategory.quantity.desc(), WasteRecordCategory.category)")
+
+
+class WasteRecordCategory(Base):
+    """One category of a waste record with its share of the record's quantity, in the record's unit.
+
+    The shares of a record add up to its quantity_wasted (domain/waste_rules.split_categories, enforced by
+    WasteService). Totals per category add these shares; totals of waste add the records' quantities, never the shares.
+    """
+    __tablename__ = "production_waste_record_categories"
+    __table_args__ = (
+        CheckConstraint("category IN ('startup_setup','changeover','process','material_defect','machine_fault',"
+                        "'handling_damage','contamination','other')", name="ck_waste_line_category"),
+        CheckConstraint("quantity > 0", name="ck_waste_line_quantity"),
+        UniqueConstraint("waste_record_id", "category", name="uq_waste_line_record_category"),
+        Index("ix_waste_line_record", "waste_record_id"),
+        Index("ix_waste_line_org_category", "organization_id", "category"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False)
+    waste_record_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("production_waste_records.id", ondelete="CASCADE", name="fk_waste_category_record"), nullable=False)
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now, onupdate=utc_now)
+    record: Mapped["WasteRecord"] = relationship(back_populates="categories")
 
 
 class ProductionDemandCounter(Base):

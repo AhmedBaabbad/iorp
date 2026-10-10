@@ -437,7 +437,10 @@
       "reasonCode": "Reason code (optional)",
       "notes": "Notes",
       "recordedBy": "Recorded by",
-      "createdAt": "Recorded at"
+      "createdAt": "Recorded at",
+      "wasteCategories": "Waste types",
+      "categoryShares": "Quantity per waste type",
+      "share": "Quantity"
     },
     "placeholders": {
       "selectOrder": "Select a production order",
@@ -463,7 +466,10 @@
       "notScrap": "Waste is material lost during operation. Defective finished product is recorded once as scrap in the order's final result.",
       "locked": "The order is closed, so its waste records can no longer change.",
       "runWorkCenter": "The work center comes from the selected run.",
-      "unitReview": "This record's unit was written as “{unit}”, which is not in the unit list. Choose its unit to save it."
+      "unitReview": "This record's unit was written as “{unit}”, which is not in the unit list. Choose its unit to save it.",
+      "categories": "Choose one or more types. With several, give each its share; the shares add up to the quantity wasted.",
+      "sharesTotal": "Shares: {total} of {quantity} — remaining {remaining}",
+      "categoryRequired": "Choose at least one waste type."
     },
     "actions": {
       "record": "Record waste",
@@ -504,7 +510,12 @@
       "WASTE_RECORD_INVALID": "The waste record is not valid.",
       "forbidden": "You do not have permission for this action.",
       "request_failed": "The request failed. Refresh and try again.",
-      "UNIT_UNKNOWN": "Choose a unit from the list."
+      "UNIT_UNKNOWN": "Choose a unit from the list.",
+      "WASTE_CATEGORY_REQUIRED": "Choose at least one waste type.",
+      "WASTE_CATEGORY_DUPLICATE": "A waste type was chosen twice.",
+      "WASTE_CATEGORY_QUANTITY_REQUIRED": "Give a quantity for each waste type.",
+      "WASTE_CATEGORY_QUANTITY_INVALID": "Each waste type's quantity must be more than zero.",
+      "WASTE_CATEGORY_TOTAL_MISMATCH": "The quantities per waste type must add up to the quantity wasted."
     },
     "unitReviewBadge": "Unit to review"
   },

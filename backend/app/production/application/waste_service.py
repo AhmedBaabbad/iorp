@@ -7,7 +7,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.core.db import Base
@@ -16,12 +16,16 @@ from app.production.domain import waste_rules as rules
 from app.production.domain.enums import ProductionOrderStatus as S, WasteCategory
 from app.production.domain.waste_rules import WasteError
 from app.production.infrastructure.execution_models import ProductionRun
-from app.production.infrastructure.models import ProductionOrder, ProductionOrderItem, WasteRecord, WorkCenter
+from app.production.infrastructure.models import ProductionOrder, ProductionOrderItem, WasteRecord, WasteRecordCategory, WorkCenter
 
 PermissionCheck = Callable[[str], bool]
 from app.production.domain.permissions import WASTE_ACTIONS
 EDITABLE = ("production_order_item_id", "production_run_id", "work_center_id", "waste_date", "quantity_wasted", "unit",
-            "waste_category", "reason_code", "notes")
+            "reason_code", "notes")
+
+
+def _described(record):
+    return ",".join(f"{line.category}:{line.quantity}" for line in record.categories)
 
 
 class WasteService:
@@ -74,6 +78,13 @@ class WasteService:
             self.db, self.org_id, action, "production_waste_record", record.id, order.production_order_number,
             actor_id=self.tenant.user_id, details={k: str(v) for k, v in dict(production_order_id=order.id, **details).items()})
 
+    def _set_categories(self, record, lines):
+        """Replace the record's categories with (category, share); the old lines go first so the unique key holds."""
+        record.categories.clear()
+        self.db.flush()
+        for category, quantity in lines:
+            record.categories.append(WasteRecordCategory(organization_id=self.org_id, category=category, quantity=quantity))
+
     def _commit(self):
         try:
             self.db.commit()
@@ -94,15 +105,17 @@ class WasteService:
             rules.assert_writable(order.status)
             run = self._run(order, data.production_run_id)
             rules.assert_unit(data.unit)
+            lines = rules.split_categories(data.quantity_wasted, [(line.category, line.quantity) for line in data.categories])
             record = WasteRecord(
                 organization_id=self.org_id, production_order_id=order.id, production_order_item_id=self._item(order, data.production_order_item_id),
                 production_run_id=run.id if run else None, work_center_id=self._work_center(order, run, data.work_center_id),
                 waste_date=data.waste_date, quantity_wasted=data.quantity_wasted, unit=data.unit,
-                waste_category=WasteCategory(data.waste_category).value, reason_code=data.reason_code, notes=data.notes,
-                created_by_user_id=self.tenant.user_id)
+                reason_code=data.reason_code, notes=data.notes, created_by_user_id=self.tenant.user_id)
             self.db.add(record)
             self.db.flush()
-            self._audit("production_waste.created", order, record, category=record.waste_category, quantity=record.quantity_wasted, unit=record.unit)
+            self._set_categories(record, lines)
+            self.db.flush()
+            self._audit("production_waste.created", order, record, categories=_described(record), quantity=record.quantity_wasted, unit=record.unit)
             self._commit()
             return record.id
         except Exception:
@@ -127,7 +140,15 @@ class WasteService:
             rules.assert_unit(values["unit"])
             record.waste_date, record.quantity_wasted, record.unit = values["waste_date"], values["quantity_wasted"], values["unit"]
             record.unit_needs_review = False
-            record.waste_category = WasteCategory(values["waste_category"]).value
+            if "categories" in changes:
+                lines = rules.split_categories(values["quantity_wasted"], [(line["category"], line.get("quantity")) for line in changes["categories"]])
+            elif len(record.categories) == 1:
+                # A single category always holds the whole quantity.
+                lines = [(record.categories[0].category, values["quantity_wasted"])]
+            else:
+                lines = rules.split_categories(values["quantity_wasted"], [(line.category, line.quantity) for line in record.categories])
+            if lines != [(line.category, line.quantity) for line in record.categories]:
+                self._set_categories(record, lines)
             record.reason_code, record.notes = values["reason_code"], values["notes"]
             record.updated_by_user_id = self.tenant.user_id
             self.db.flush()
@@ -143,7 +164,7 @@ class WasteService:
             order = self._locked_order(self._record(record_id).production_order_id)
             rules.assert_writable(order.status)
             record = self._record(record_id, lock=True)
-            self._audit("production_waste.deleted", order, record, category=record.waste_category, quantity=record.quantity_wasted)
+            self._audit("production_waste.deleted", order, record, categories=_described(record), quantity=record.quantity_wasted)
             self.db.delete(record)
             self._commit()
         except Exception:
@@ -158,10 +179,14 @@ class WasteService:
     def list(self, production_order_id=None, production_run_id=None, work_center_id=None, waste_category=None, date_from=None, date_to=None):
         query = select(WasteRecord).where(WasteRecord.organization_id == self.org_id)
         for column, value in ((WasteRecord.production_order_id, production_order_id), (WasteRecord.production_run_id, production_run_id),
-                              (WasteRecord.work_center_id, work_center_id),
-                              (WasteRecord.waste_category, WasteCategory(waste_category).value if waste_category else None)):
+                              (WasteRecord.work_center_id, work_center_id)):
             if value is not None:
                 query = query.where(column == value)
+        if waste_category:
+            # A record matches when any of its categories does.
+            query = query.where(exists().where(WasteRecordCategory.waste_record_id == WasteRecord.id,
+                                               WasteRecordCategory.organization_id == self.org_id,
+                                               WasteRecordCategory.category == WasteCategory(waste_category).value))
         if date_from is not None:
             query = query.where(WasteRecord.waste_date >= date_from)
         if date_to is not None:
@@ -199,13 +224,16 @@ class WasteService:
     def summary(self, order_id, can: PermissionCheck):
         """An order's waste: totals per unit and per category. Never added to the final result."""
         order = self._order(order_id)
-        rows = self.db.execute(select(WasteRecord.waste_category, WasteRecord.unit, func.sum(WasteRecord.quantity_wasted), func.count()).where(
-            WasteRecord.organization_id == self.org_id, WasteRecord.production_order_id == order.id,
-        ).group_by(WasteRecord.waste_category, WasteRecord.unit)).all()
-        by_unit = defaultdict(lambda: [Decimal(0), 0])
-        for _, unit, quantity, count in rows:
-            by_unit[unit][0] += quantity
-            by_unit[unit][1] += count
+        # Waste totals add the records' quantities; category totals add each record's share of a category. A record
+        # with two categories counts once in the totals and once under each of its categories.
+        totals = self.db.execute(select(WasteRecord.unit, func.sum(WasteRecord.quantity_wasted), func.count()).where(
+            WasteRecord.organization_id == self.org_id, WasteRecord.production_order_id == order.id).group_by(WasteRecord.unit)).all()
+        rows = self.db.execute(select(WasteRecordCategory.category, WasteRecord.unit, func.sum(WasteRecordCategory.quantity),
+                                      func.count(func.distinct(WasteRecord.id)))
+                               .join(WasteRecord, WasteRecord.id == WasteRecordCategory.waste_record_id).where(
+            WasteRecord.organization_id == self.org_id, WasteRecordCategory.organization_id == self.org_id, WasteRecord.production_order_id == order.id,
+        ).group_by(WasteRecordCategory.category, WasteRecord.unit)).all()
+        by_unit = {unit: (quantity, count) for unit, quantity, count in totals}
         status = S(order.status)
         return dict(
             order=dict(id=order.id, number=order.production_order_number, status=status.value, unit=order.unit),

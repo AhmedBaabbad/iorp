@@ -45,7 +45,7 @@ const posted = (path: string) => api.apiClient.mock.calls.find(([p, o]) => p ===
 
 function record(over: Partial<WasteRecordData> = {}): WasteRecordData {
   return { id: "w1", organization_id: "o", production_order_id: "po1", production_order_item_id: null, production_run_id: null, work_center_id: "wc1",
-    waste_date: "2026-10-01", quantity_wasted: "12.5", unit: "kg", waste_category: "startup_setup", reason_code: "WARM-UP", created_by_user_id: "u",
+    waste_date: "2026-10-01", quantity_wasted: "12.5", unit: "kg", categories: [{ category: "startup_setup", quantity: "12.5" }], reason_code: "WARM-UP", created_by_user_id: "u",
     updated_by_user_id: null, created_at: "2026-10-01T08:00:00Z", updated_at: "2026-10-01T08:00:00Z", notes: null,
     labels: { order_number: "PO-1", order_status: "in_progress", line_no: null, work_center_name: "Extruder 1", run_date: null, created_by_name: "Sara", actions: ["edit", "delete"] },
     ...over };
@@ -93,13 +93,32 @@ describe("recording waste", () => {
     const center = screen.getByLabelText("Work center") as HTMLSelectElement;
     expect(center.disabled).toBe(true);
     expect(center.value).toBe("wc2");
-    fireEvent.change(screen.getByLabelText("Waste type"), { target: { value: "changeover" } });
-    expect(screen.getByText("Material lost when changing product, colour, die or mould.")).toBeTruthy();
+    // One type alone takes the whole quantity.
+    fireEvent.click(screen.getByRole("checkbox", { name: "Process waste (trim, edges)" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Changeover waste" }));
+    expect(screen.getByText(/Material lost when changing product, colour, die or mould./)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Quantity wasted"), { target: { value: "8.25" } });
     fireEvent.click(screen.getByRole("button", { name: "Record waste" }));
     await waitFor(() => expect(nav.push).toHaveBeenCalledWith("/waste-records/new1"));
     expect(posted("/production/waste-records")).toMatchObject({ production_order_id: "po1", production_run_id: "r1", work_center_id: null,
-      waste_category: "changeover", quantity_wasted: "8.25", unit: "kg" });
+      categories: [{ category: "changeover" }], quantity_wasted: "8.25", unit: "kg" });
+  });
+
+  it("splits the quantity across several types and only saves when the shares add up", async () => {
+    nav.params = new URLSearchParams("order=po1");
+    ui(<WasteRecordForm />);
+    fireEvent.change(await screen.findByLabelText("Quantity wasted"), { target: { value: "10" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Changeover waste" }));
+    const save = screen.getByRole("button", { name: "Record waste" }) as HTMLButtonElement;
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Quantity Process waste (trim, edges)" }), { target: { value: "6" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Quantity Changeover waste" }), { target: { value: "3" } });
+    expect(screen.getByText("Shares: 9 of 10 — remaining 1")).toBeTruthy();
+    expect(save.disabled).toBe(true);
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Quantity Changeover waste" }), { target: { value: "4" } });
+    expect(save.disabled).toBe(false);
+    fireEvent.click(save);
+    await waitFor(() => expect(nav.push).toHaveBeenCalledWith("/waste-records/new1"));
+    expect(posted("/production/waste-records")).toMatchObject({ categories: [{ category: "process", quantity: "6" }, { category: "changeover", quantity: "4" }] });
   });
 
   it("explains a closed order in Arabic", async () => {
@@ -114,6 +133,22 @@ describe("recording waste", () => {
     fireEvent.change(await screen.findByLabelText("الكمية المهدرة"), { target: { value: "3" } });
     fireEvent.click(screen.getByRole("button", { name: "تسجيل هدر" }));
     expect((await screen.findByRole("alert")).textContent).toBe("الأمر مغلق، فلا يمكن تغيير سجلات الهدر الخاصة به.");
+  });
+});
+
+describe("waste categories in the list and detail", () => {
+  it("shows every category of a record as a chip, and each share on the detail", async () => {
+    const mixed = record({ categories: [{ category: "changeover", quantity: "8" }, { category: "process", quantity: "4.5" }], quantity_wasted: "12.5" });
+    respond(path => (path.startsWith("/production/waste-records/w1") ? mixed : path.startsWith("/production/waste-records") ? [mixed] : []));
+    ui(<WasteRecordsList />);
+    const table = await screen.findByRole("table", { name: "Waste records list" });
+    expect(within(table).getByText("Changeover waste")).toBeTruthy();
+    expect(within(table).getByText("Process waste (trim, edges)")).toBeTruthy();
+    cleanup();
+    ui(<WasteRecordDetail recordId="w1" />);
+    const list = await screen.findByRole("list", { name: "Waste types" });
+    expect(within(list).getByText("8 kg")).toBeTruthy();
+    expect(within(list).getByText("4.5 kg")).toBeTruthy();
   });
 });
 

@@ -341,7 +341,7 @@ def test_quantity_validation(client, auth_headers):
             "waste_date": "2026-07-02",
             "quantity_wasted": "-5",
             "unit": "kg",
-            "waste_category": "startup_setup",
+            "categories": [{"category": "startup_setup"}],
         },
         headers=auth_headers,
     )

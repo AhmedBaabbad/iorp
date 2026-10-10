@@ -148,6 +148,14 @@ def result_available(db, tenant, params=None):
                      ProductionOrder.id == order_id, ProductionOrder.status.in_(['completed', 'closed']))) is not None
 
 
+def waste_categories(record, lang):
+    """A waste record's categories as printed: one category alone; several with their share ("Process 3 · Changeover 2")."""
+    lines = record.categories
+    if len(lines) == 1:
+        return label(lines[0].category, lang)
+    return ' · '.join(f"{label(line.category, lang)} {line.quantity.normalize():f}" for line in lines)
+
+
 def allocation_rows(db, tenant, order_ids):
     """(allocation, demand, customer name) for the orders' active allocations."""
     customers = shared('commercial_customers')
@@ -208,7 +216,7 @@ def order_full(db, tenant, params, selected):
     if 'waste' in selected:
         rows=scoped(db,WasteRecord,tenant,WasteRecord.production_order_id==order.id)
         if rows: sections.append(table('waste','الهدر التشغيلي','Operational waste',['التاريخ / Date','النوع / Type','الكمية / Quantity',label('unit',lang),'رمز السبب / Reason code'],
-            [(r.waste_date,label(r.waste_category,lang),r.quantity_wasted,unit_label(r.unit,lang),r.reason_code) for r in sorted(rows,key=lambda r:r.waste_date)],lang,
+            [(r.waste_date,waste_categories(r,lang),r.quantity_wasted,unit_label(r.unit,lang),r.reason_code) for r in sorted(rows,key=lambda r:r.waste_date)],lang,
             'لا يُضاف إلى هالك النتيجة النهائية / Not added to the final result\'s scrap'))
     if 'result' in selected and text(order.status) in ('completed','closed'):
         result=OrderResultService(db,tenant).result(order.id,lambda _:False)

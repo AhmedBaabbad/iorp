@@ -5,6 +5,11 @@ export type WasteCategory =
 
 export type WasteAction = "edit" | "delete";
 
+// One category of a record with its share of the quantity, in the record's unit; the shares add up to quantity_wasted.
+// On input a single category may leave its quantity out (it takes the whole quantity).
+export type WasteCategoryLine = { category: WasteCategory; quantity: string };
+export type WasteCategoryInput = { category: WasteCategory; quantity?: string };
+
 export type WasteRecordListFilters = {
   production_order_id?: string;
   production_run_id?: string;
@@ -28,7 +33,8 @@ export type WasteRecordListItem = {
   // The unit as written before units became codes; unit_needs_review: it matched no code and must be chosen again.
   legacy_unit_text?: string | null;
   unit_needs_review?: boolean;
-  waste_category: WasteCategory;
+  // Largest share first.
+  categories: WasteCategoryLine[];
   reason_code: string | null;
   created_by_user_id: string;
   updated_by_user_id: string | null;
@@ -52,7 +58,7 @@ export type WasteRecordInput = {
   waste_date: string;
   quantity_wasted: string;
   unit: string;
-  waste_category: WasteCategory;
+  categories: WasteCategoryInput[];
   reason_code?: string | null;
   notes?: string | null;
 };
