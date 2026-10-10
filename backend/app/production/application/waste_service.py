@@ -93,6 +93,7 @@ class WasteService:
             order = self._locked_order(data.production_order_id)
             rules.assert_writable(order.status)
             run = self._run(order, data.production_run_id)
+            rules.assert_unit(data.unit)
             record = WasteRecord(
                 organization_id=self.org_id, production_order_id=order.id, production_order_item_id=self._item(order, data.production_order_item_id),
                 production_run_id=run.id if run else None, work_center_id=self._work_center(order, run, data.work_center_id),
@@ -122,7 +123,10 @@ class WasteService:
             record.production_order_item_id = self._item(order, values["production_order_item_id"])
             record.production_run_id = run.id if run else None
             record.work_center_id = self._work_center(order, run, requested)
+            # A record flagged at migration (unit not in the list) cannot be saved until a unit from the list is chosen.
+            rules.assert_unit(values["unit"])
             record.waste_date, record.quantity_wasted, record.unit = values["waste_date"], values["quantity_wasted"], values["unit"]
+            record.unit_needs_review = False
             record.waste_category = WasteCategory(values["waste_category"]).value
             record.reason_code, record.notes = values["reason_code"], values["notes"]
             record.updated_by_user_id = self.tenant.user_id

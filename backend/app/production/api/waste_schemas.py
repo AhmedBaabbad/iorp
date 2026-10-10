@@ -57,7 +57,11 @@ class WasteRecordListItem(BaseModel):
     work_center_id: UUID
     waste_date: date
     quantity_wasted: Decimal
+    # A code of app/core/units.py; on a record flagged at migration, the text as written until a unit is chosen.
     unit: str
+    # The unit as it was written before units became codes (kept for history); unit_needs_review: it matched no code.
+    legacy_unit_text: str | None = None
+    unit_needs_review: bool = False
     waste_category: WasteCategory
     reason_code: str | None
     created_by_user_id: UUID

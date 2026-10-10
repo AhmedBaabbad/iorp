@@ -23,7 +23,11 @@ export type WasteRecordListItem = {
   work_center_id: string;
   waste_date: string;
   quantity_wasted: string;
+  // A code of the central unit list (src/lib/units.ts); on a record flagged at migration, the text as written.
   unit: string;
+  // The unit as written before units became codes; unit_needs_review: it matched no code and must be chosen again.
+  legacy_unit_text?: string | null;
+  unit_needs_review?: boolean;
   waste_category: WasteCategory;
   reason_code: string | null;
   created_by_user_id: string;

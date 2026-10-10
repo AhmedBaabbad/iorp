@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
+import { UnitSelect } from "@/components/forms/UnitSelect";
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth/permission-hooks";
 import s from "@/features/production-demands/demands.module.css";
@@ -17,6 +18,7 @@ import type { WasteCategory, WasteRecordData } from "../types";
 import { QUANTITY, todayIso, WASTE_CATEGORIES, WASTE_ORDER_STATUSES } from "../waste-rules";
 import { wasteErrorMessage } from "./waste-errors";
 import { P } from "@/lib/production-permissions";
+import { UNITS } from "@/lib/units";
 
 type Values = { order: string; item: string; run: string; center: string; date: string; quantity: string; unit: string; category: WasteCategory; reason: string; notes: string };
 
@@ -52,7 +54,8 @@ export function WasteRecordForm({ recordId }: { recordId?: string }) {
       if (!active) return;
       setExisting(r);
       setValues({ order: r.production_order_id, item: r.production_order_item_id ?? "", run: r.production_run_id ?? "", center: r.production_run_id ? "" : r.work_center_id,
-        date: r.waste_date, quantity: r.quantity_wasted, unit: r.unit, category: r.waste_category, reason: r.reason_code ?? "", notes: r.notes ?? "" });
+        // A unit awaiting review is not offered again: a unit from the list has to be chosen before saving.
+        date: r.waste_date, quantity: r.quantity_wasted, unit: r.unit_needs_review || !UNITS.includes(r.unit) ? "" : r.unit, category: r.waste_category, reason: r.reason_code ?? "", notes: r.notes ?? "" });
     }).catch(e => { if (active) setError(wasteErrorMessage(e, t)); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [recordId, t]);
@@ -67,7 +70,7 @@ export function WasteRecordForm({ recordId }: { recordId?: string }) {
 
   const locked = Boolean(existing && !existing.labels?.actions.includes("edit"));
   const run = useMemo(() => runs.find(r => r.id === values.run) ?? null, [runs, values.run]);
-  const valid = Boolean(values.order && values.date && values.unit.trim() && QUANTITY.test(values.quantity) && Number(values.quantity) > 0);
+  const valid = Boolean(values.order && values.date && UNITS.includes(values.unit) && QUANTITY.test(values.quantity) && Number(values.quantity) > 0);
   const set = <K extends keyof Values>(field: K, value: Values[K]) => setValues(old => ({ ...old, [field]: value, ...(field === "order" ? { item: "", run: "" } : {}) }));
 
   async function submit(event: FormEvent) {
@@ -78,7 +81,7 @@ export function WasteRecordForm({ recordId }: { recordId?: string }) {
       production_order_item_id: values.item || null, production_run_id: values.run || null,
       // A run decides the work center; otherwise the one chosen, else the order's.
       work_center_id: values.run ? null : values.center || null,
-      waste_date: values.date, quantity_wasted: values.quantity, unit: values.unit.trim(), waste_category: values.category,
+      waste_date: values.date, quantity_wasted: values.quantity, unit: values.unit, waste_category: values.category,
       reason_code: values.reason.trim() || null, notes: values.notes.trim() || null,
     };
     try {
@@ -128,7 +131,10 @@ export function WasteRecordForm({ recordId }: { recordId?: string }) {
         <label className={s.field}>{t("fields.quantityWasted")}
           <input type="number" required min="0.001" step="0.001" inputMode="decimal" value={values.quantity} disabled={busy || locked} onChange={e => set("quantity", e.target.value)} />
         </label>
-        <label className={s.field}>{t("fields.unit")}<input required maxLength={32} value={values.unit} disabled={busy || locked} onChange={e => set("unit", e.target.value)} /></label>
+        <label className={s.field}>{t("fields.unit")}
+          <UnitSelect className="unit-select" value={values.unit} disabled={busy || locked} onChange={value => set("unit", value)} ariaLabel={t("fields.unit")} />
+          {existing?.unit_needs_review && <small role="status" className={s.error}>{t("hints.unitReview", { unit: existing.legacy_unit_text ?? existing.unit })}</small>}
+        </label>
         <label className={s.field}>{t("fields.reasonCode")}<input maxLength={255} value={values.reason} disabled={busy || locked} onChange={e => set("reason", e.target.value)} /></label>
       </div>
       <p className={s.muted}>{hints(values.category)}</p>

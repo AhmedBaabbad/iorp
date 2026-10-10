@@ -8,6 +8,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { PageFrame } from "@/components/layout/page-frame";
 import s from "@/features/production-demands/demands.module.css";
 import { useFormatter } from "@/hooks/useFormatter";
+import { useUnitSymbol } from "../unit-symbol";
 import { deleteWasteRecord, getWasteRecordById } from "../api";
 import type { WasteRecordData } from "../types";
 import { WasteCategoryBadge } from "./WasteCategoryBadge";
@@ -22,6 +23,7 @@ export function WasteRecordDetail({ recordId }: { recordId: string }) {
   const orderStatus = useTranslations("enums.productionOrder.status");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
+  const unit = useUnitSymbol();
   const router = useRouter();
   const [record, setRecord] = useState<WasteRecordData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,7 +66,8 @@ export function WasteRecordDetail({ recordId }: { recordId: string }) {
         <Item label={t("fields.productionOrder")}><Link href={`/production-orders/${record.production_order_id}`}>{labels?.order_number ?? "—"}</Link></Item>
         <Item label={t("fields.orderStatus")}>{labels?.order_status ? orderStatus(labels.order_status) : "—"}</Item>
         <Item label={t("fields.line")}>{labels?.line_no ?? t("placeholders.wholeOrder")}</Item>
-        <Item label={t("fields.quantityWasted")}><bdi>{fmt.quantity(record.quantity_wasted, record.unit)}</bdi></Item>
+        <Item label={t("fields.quantityWasted")}><bdi>{fmt.quantity(record.quantity_wasted, unit(record.unit))}</bdi>
+          {record.unit_needs_review && <p role="status" className={s.error}>{t("hints.unitReview", { unit: record.legacy_unit_text ?? record.unit })}</p>}</Item>
         <Item label={t("fields.wasteDate")}>{fmt.date(record.waste_date)}</Item>
         <Item label={t("fields.workCenter")}>{labels?.work_center_name ?? "—"}</Item>
         <Item label={t("fields.run")}>{labels?.run_date ? fmt.date(labels.run_date) : "—"}</Item>

@@ -17,6 +17,7 @@ import type { WasteCategory, WasteRecordListFilters, WasteRecordListItem } from 
 import { WASTE_CATEGORIES } from "../waste-rules";
 import { WasteCategoryBadge } from "./WasteCategoryBadge";
 import { wasteErrorMessage } from "./waste-errors";
+import { useUnitSymbol } from "../unit-symbol";
 import { P } from "@/lib/production-permissions";
 
 type Filters = { production_order_id: string; work_center_id: string; waste_category: "" | WasteCategory; date_from: string; date_to: string };
@@ -29,6 +30,7 @@ export function WasteRecordsList() {
   const common = useTranslations("common");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
+  const unit = useUnitSymbol();
   const params = useSearchParams();
   const canWrite = usePermission(P.WASTE_CREATE);
   const [filters, setFilters] = useState<Filters>(() => ({ ...EMPTY, production_order_id: params.get("order") ?? "" }));
@@ -90,7 +92,8 @@ export function WasteRecordsList() {
           <td>{r.labels?.order_number ? <Link href={`/production-orders/${r.production_order_id}`}>{r.labels.order_number}</Link> : "—"}</td>
           <td>{r.labels?.line_no ?? "—"}</td>
           <td><WasteCategoryBadge category={r.waste_category} /></td>
-          <td><bdi>{fmt.quantity(r.quantity_wasted, r.unit)}</bdi></td>
+          <td><bdi>{fmt.quantity(r.quantity_wasted, unit(r.unit))}</bdi>
+            {r.unit_needs_review && <> <span className={s.badge} title={t("hints.unitReview", { unit: r.legacy_unit_text ?? r.unit })}>{t("unitReviewBadge")}</span></>}</td>
           <td>{r.labels?.work_center_name ?? "—"}</td>
           <td>{r.labels?.run_date ? fmt.date(r.labels.run_date) : "—"}</td>
           <td>{r.reason_code ?? "—"}</td>

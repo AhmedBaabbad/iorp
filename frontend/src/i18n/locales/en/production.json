@@ -462,7 +462,8 @@
     "hints": {
       "notScrap": "Waste is material lost during operation. Defective finished product is recorded once as scrap in the order's final result.",
       "locked": "The order is closed, so its waste records can no longer change.",
-      "runWorkCenter": "The work center comes from the selected run."
+      "runWorkCenter": "The work center comes from the selected run.",
+      "unitReview": "This record's unit was written as “{unit}”, which is not in the unit list. Choose its unit to save it."
     },
     "actions": {
       "record": "Record waste",
@@ -502,8 +503,10 @@
       "WASTE_RECORD_NOT_FOUND": "Waste record not found.",
       "WASTE_RECORD_INVALID": "The waste record is not valid.",
       "forbidden": "You do not have permission for this action.",
-      "request_failed": "The request failed. Refresh and try again."
-    }
+      "request_failed": "The request failed. Refresh and try again.",
+      "UNIT_UNKNOWN": "Choose a unit from the list."
+    },
+    "unitReviewBadge": "Unit to review"
   },
   "demands": {
     "listTitle": "Customer Production Demands",

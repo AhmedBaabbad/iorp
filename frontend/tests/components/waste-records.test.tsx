@@ -117,6 +117,36 @@ describe("recording waste", () => {
   });
 });
 
+describe("waste unit from the central list", () => {
+  it("offers the unit list and makes a record awaiting review choose a unit before saving", async () => {
+    respond((path, o) => {
+      if (path === "/production/waste-records/w1" && o?.method === "PATCH") return record();
+      if (path === "/production/waste-records/w1") return record({ unit: "بالة", legacy_unit_text: "بالة", unit_needs_review: true });
+      if (path === "/production/production-orders/po1") return order;
+      return [];
+    });
+    ui(<WasteRecordForm recordId="w1" />);
+    const unit = await screen.findByRole("combobox", { name: "Unit" }) as HTMLSelectElement;
+    expect(await screen.findByText(/written as “بالة”/)).toBeTruthy();
+    expect(unit.value).toBe("");
+    expect(Array.from(unit.options).some(o => o.value === "roll")).toBe(true);
+    expect((screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(unit, { target: { value: "roll" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(api.apiClient.mock.calls.some(([p, o]) => p === "/production/waste-records/w1" && o?.method === "PATCH")).toBe(true));
+    const body = api.apiClient.mock.calls.find(([p, o]) => p === "/production/waste-records/w1" && o?.method === "PATCH")![1].body;
+    expect(body.unit).toBe("roll");
+  });
+
+  it("marks records awaiting a unit review in the list and prints known units as symbols", async () => {
+    respond(path => (path.startsWith("/production/waste-records") ? [record({ id: "w2", unit: "بالة", legacy_unit_text: "بالة", unit_needs_review: true }), record()] : []));
+    ui(<WasteRecordsList />, "ar");
+    const table = await screen.findByRole("table", { name: "قائمة سجلات الهدر" });
+    expect(within(table).getByText("وحدة تحتاج مراجعة")).toBeTruthy();
+    expect(within(table).getByText("12.5 كجم")).toBeTruthy();
+  });
+});
+
 describe("waste detail", () => {
   it("shows the actions the server allows and deletes after confirmation", async () => {
     respond((path, o) => (o?.method === "DELETE" ? undefined : record()));
@@ -143,7 +173,8 @@ describe("waste on the order page", () => {
   it("shows totals by type apart from the result, with a record link", async () => {
     respond(() => summary);
     ui(<OrderWasteSection order={{ id: "po1", status: "in_progress" }} />, "ar");
-    expect(await screen.findByText("18.5 kg")).toBeTruthy();
+    // Units are codes, printed in the screen's language (UNIT-SYM-001): kg -> كجم.
+    expect(await screen.findByText("18.5 كجم")).toBeTruthy();
     expect(screen.getByText("هالك العملية (قص وحواف)")).toBeTruthy();
     expect(screen.getByRole("link", { name: "تسجيل هدر" }).getAttribute("href")).toBe("/waste-records/new?order=po1");
     expect(screen.getByText(/لا تُضاف إلى هالكها/)).toBeTruthy();

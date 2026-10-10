@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.core.db import Base
+from app.core.units import unit_label
 from app.core.reporting.contracts import ReportData, TableSection
 from app.production.infrastructure.models import (ProductionOrder, ProductionAllocation, ProductionDemand,
     ProductionOrderStatusHistory, ProductionResultEntry, WorkCenter, ShiftDefinition, WasteRecord, DowntimeEvent)
@@ -207,7 +208,7 @@ def order_full(db, tenant, params, selected):
     if 'waste' in selected:
         rows=scoped(db,WasteRecord,tenant,WasteRecord.production_order_id==order.id)
         if rows: sections.append(table('waste','الهدر التشغيلي','Operational waste',['التاريخ / Date','النوع / Type','الكمية / Quantity',label('unit',lang),'رمز السبب / Reason code'],
-            [(r.waste_date,label(r.waste_category,lang),r.quantity_wasted,r.unit,r.reason_code) for r in sorted(rows,key=lambda r:r.waste_date)],lang,
+            [(r.waste_date,label(r.waste_category,lang),r.quantity_wasted,unit_label(r.unit,lang),r.reason_code) for r in sorted(rows,key=lambda r:r.waste_date)],lang,
             'لا يُضاف إلى هالك النتيجة النهائية / Not added to the final result\'s scrap'))
     if 'result' in selected and text(order.status) in ('completed','closed'):
         result=OrderResultService(db,tenant).result(order.id,lambda _:False)

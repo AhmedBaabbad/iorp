@@ -16,6 +16,7 @@ from sqlalchemy import (
     Text,
     Time,
     UniqueConstraint,
+    false,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -392,7 +393,11 @@ class WasteRecord(Base):
     )
     waste_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     quantity_wasted: Mapped[Decimal] = mapped_column(Numeric(15, 3), nullable=False)
+    # A code of app/core/units.py UNITS (PROD-QUALITY-FIX-001); never a translated label.
     unit: Mapped[str] = mapped_column(String(32), nullable=False)
+    # The unit as written before it became a code; unit_needs_review: it matched no code and awaits a choice.
+    legacy_unit_text: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    unit_needs_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     waste_category: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     reason_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

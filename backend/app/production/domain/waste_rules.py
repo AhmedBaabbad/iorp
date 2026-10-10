@@ -10,6 +10,7 @@ Whether a record can change is derived from the order's status; waste has no sta
   closed                          -> locked
   draft, released, cancelled      -> not available
 """
+from app.core.units import UNITS
 from app.production.domain.enums import ProductionOrderStatus as S, ProductionRunStatus as R
 
 WRITABLE = frozenset({S.IN_PROGRESS, S.ON_HOLD, S.COMPLETED})
@@ -28,6 +29,13 @@ def assert_writable(order_status):
         raise WasteError("WASTE_LOCKED", order_status=status.value)
     if status not in WRITABLE:
         raise WasteError("WASTE_NOT_AVAILABLE", order_status=status.value)
+
+
+def assert_unit(unit):
+    """A waste quantity's unit is a code of the central list (app/core/units.py), the same codes quotations, orders and
+    shipments use; never free text or a translated label. The list is global and has no inactive codes."""
+    if unit not in UNITS:
+        raise WasteError("UNIT_UNKNOWN", 422, unit=unit)
 
 
 def assert_run_usable(run_order_id, order_id, run_status):
