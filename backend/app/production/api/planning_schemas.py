@@ -14,10 +14,24 @@ class PlanningOrderRead(ProductionOrderRead):
     active_allocated_quantity: Decimal = Decimal(0)
     # Specification lines ordered width -> color -> thickness -> weight.
     lines: list[dict[str, Any]] = Field(default_factory=list)
-    # Allocations can be added or changed only while the order is a draft.
+    # The order is a draft (its header and lines are still being arranged).
     editable: bool = False
+    # Allocations can be added, changed and released: the order is open (draft, released, in progress, on hold).
+    allocation_open: bool = False
     # Status, actual dates, late flags and the actions this user may take now.
     lifecycle: dict[str, Any] | None = None
+
+
+class EligibleOrder(BaseModel):
+    id: UUID
+    production_order_number: str
+    status: str
+    work_center_name: str | None
+    product_type: str
+    unit: str
+    planned_quantity: Decimal
+    planned_start_date: date
+    planned_end_date: date
 
 
 class AllocationInput(BaseModel):

@@ -105,7 +105,7 @@ describe("order lines on a production order", () => {
     return {
       id: "po1", organization_id: "o", production_order_number: "PO-1", work_center_id: "wc1", product_type: "film", planned_quantity: "500", unit: "kg",
       priority: "normal", status: "draft", planned_start_date: "2026-10-01", planned_end_date: "2026-10-02", created_by_user_id: "u", created_at: "", updated_at: "",
-      target_spec_json: null, notes: null, editable: true,
+      target_spec_json: null, notes: null, editable: true, allocation_open: true,
       allocations: [alloc("a1", "i1", "PD-1", "300", "L1"), alloc("a2", "i2", "PD-2", "200", "L2")],
       lines: [{ id: "L1", line_no: 1, target_spec_json: { width_mm: 10, color: "blue" }, planned_quantity: "300", unit: "kg", allocation_ids: ["a1"] },
               { id: "L2", line_no: 2, target_spec_json: { width_mm: 20, color: "red" }, planned_quantity: "200", unit: "kg", allocation_ids: ["a2"] }],
@@ -150,10 +150,60 @@ describe("order lines on a production order", () => {
     expect(new URLSearchParams(listCall.split("?")[1]).get("product_type")).toBe("film");
   });
 
-  it("is read-only once the order is no longer a draft", () => {
-    ui(<OrderLines order={order({ status: "released", editable: false })} />);
+  it("is read-only once the order is completed (allocations locked by the server)", () => {
+    ui(<OrderLines order={order({ status: "completed", editable: false, allocation_open: false })} />);
     expect(screen.queryByRole("spinbutton")).toBeNull();
     expect(screen.queryByRole("form", { name: "Add a demand" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Remove" })).toBeNull();
     expect(screen.getByRole("table", { name: "Order lines" })).toBeTruthy();
+  });
+
+  it("keeps an in-progress order open for allocations and marks quantities added after start", async () => {
+    api.apiClient.mockImplementation((path: string) => Promise.resolve(path.startsWith("/production/planning/demands") ? queue : {}));
+    const base = order();
+    const started = order({ status: "in_progress", editable: false, allocation_open: true,
+      allocations: base.allocations.map(a => a.id === "a2" ? { ...a, order_status_at_allocation: "in_progress", added_after_start: true } : { ...a, order_status_at_allocation: "draft", added_after_start: false }) });
+    ui(<OrderLines order={started} />);
+    expect(screen.getByText(/Order on the floor/)).toBeTruthy();
+    expect(screen.getAllByText("Added after start")).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(2);
+    expect(screen.getByRole("form", { name: "Add a demand" })).toBeTruthy();
+  });
+
+  it("offers release with the release permission alone", () => {
+    perms.granted = new Set(["production:planning:release_allocation"]);
+    ui(<OrderLines order={order({ status: "on_hold", editable: false, allocation_open: true })} />);
+    expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(2);
+    expect(screen.queryByRole("spinbutton")).toBeNull();
+  });
+});
+
+describe("add to an existing production order from planning", () => {
+  const demands = [demand("d1", "PD-1", [{ id: "item-1", spec: { width_mm: 10 }, remaining: "200" }])];
+
+  it("lists the open orders the server offers, whatever their status, and adds the item", async () => {
+    perms.granted = new Set(["production:planning:allocate"]);
+    api.apiClient.mockImplementation((path: string) => Promise.resolve(path.startsWith("/production/planning/eligible-orders") ? [
+      { id: "po7", production_order_number: "PO-7", status: "in_progress", work_center_name: "Line 1", product_type: "film", unit: "kg", planned_quantity: "600", planned_start_date: "2026-10-01", planned_end_date: "2026-10-03" },
+    ] : {}));
+    ui(<PlanningAllocation demands={demands} busy={false} onRefresh={() => undefined} />);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select demand items to allocate PD-1 1" }));
+    // Creating a new order needs the create permission; adding to an existing one does not.
+    expect(screen.queryByRole("button", { name: "Create production order" })).toBeNull();
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Add to an existing order" })); });
+    expect(api.apiClient).toHaveBeenCalledWith("/production/planning/eligible-orders?demand_item_id=item-1");
+    const dialog = screen.getByRole("dialog", { name: "Add to an existing production order" });
+    expect(within(dialog).getByText("PO-7")).toBeTruthy();
+    expect(within(dialog).getByText("In progress")).toBeTruthy();
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Add to this order" })); });
+    expect(api.apiClient).toHaveBeenCalledWith("/production/orders/po7/allocations", { method: "POST", body: { production_demand_item_id: "item-1", allocated_quantity: "200" } });
+  });
+
+  it("says so when no open order can take the item", async () => {
+    api.apiClient.mockImplementation((path: string) => Promise.resolve(path.startsWith("/production/planning/eligible-orders") ? [] : {}));
+    ui(<PlanningAllocation demands={demands} busy={false} onRefresh={() => undefined} />);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select demand items to allocate PD-1 1" }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Add to an existing order" })); });
+    expect(screen.getByText("No open production order can take this demand item.")).toBeTruthy();
   });
 });

@@ -5,7 +5,9 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from app.dependencies import get_current_tenant, get_db, get_customer_lookup, require_permission
 from app.production.domain import permissions as P
-from app.production.api.planning_schemas import AllocationInput, AllocationQuantityUpdate, PlanningOrderCreate, PlanningOrderRead, PlanningPreviewRequest, ReleaseRequest
+from app.production.api.planning_schemas import (
+    AllocationInput, AllocationQuantityUpdate, EligibleOrder, PlanningOrderCreate, PlanningOrderRead, PlanningPreviewRequest, ReleaseRequest,
+)
 from app.production.application.allocation_service import AllocationLifecycleService, demand_quantity_summary
 from app.production.api.order_views import permission_check, with_lifecycle
 from app.production.application.planning_order_service import PlanningOrderService
@@ -52,6 +54,13 @@ def preview(payload: PlanningPreviewRequest, db=Depends(get_db), tenant=Depends(
             customer = customers.get_customer_summary(db, entry.pop("customer_id"), tenant.organization_id)
             entry["customer_name"] = customer.customer_name if customer else None
     return result
+
+
+@router.get("/planning/eligible-orders", response_model=list[EligibleOrder],
+    dependencies=[Depends(require_permission(P.PLANNING_ALLOCATE))])
+def eligible_orders(demand_item_id: UUID, db=Depends(get_db), tenant=Depends(get_current_tenant), checker=Depends(compatibility_checker)):
+    """Open production orders (draft, released, in progress, on hold) this demand item may be added to."""
+    return PlanningOrderService(db, tenant, checker).eligible_orders(demand_item_id)
 
 
 @router.post("/orders/{order_id}/allocations", response_model=PlanningOrderRead,

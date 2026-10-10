@@ -742,7 +742,9 @@
       "ALLOCATION_ALREADY_IN_ORDER": "This demand item is already in the order; change its quantity instead.",
       "ALLOCATION_QUANTITY_CONFLICT": "The quantity exceeds what remains on the demand. Refresh and try a smaller quantity.",
       "INCOMPATIBLE_DEMAND_ITEMS": "Only demand items with the same product type and unit can join this order.",
-      "DEMAND_NOT_PLANNABLE": "This demand is not ready for planning."
+      "DEMAND_NOT_PLANNABLE": "This demand is not ready for planning.",
+      "ORDER_ALLOCATION_LOCKED": "This order is completed, closed or cancelled; its allocations can no longer change.",
+      "DEMAND_ITEM_NOT_FOUND": "Demand item not found."
     },
     "releaseTitle": "Release allocation from {order}",
     "releaseHint": "The quantity returns to the demand and the planning queue. The allocation stays in history as Released.",
@@ -760,7 +762,19 @@
     "selectDemandItem": "Select a demand item",
     "noCandidates": "No matching demand items with remaining quantity",
     "addToOrder": "Add to order",
-    "reasonOptional": "Note (optional)"
+    "reasonOptional": "Note (optional)",
+    "orderLinesStartedHint": "Order on the floor: you can add a demand, change a quantity or release one. Existing lines keep their numbers; a new specification becomes a new line.",
+    "addedAfterStart": "Added after start",
+    "addedAfterStartHint": "Allocated while the order was in progress or on hold.",
+    "addToExisting": "Add to an existing order",
+    "addToExistingOne": "To add to an existing order, select one demand item.",
+    "existingTitle": "Add to an existing production order",
+    "existingHint": "Open orders (draft, released, in progress, on hold) with the same product, unit and compatible specifications. Quantity to add: {quantity} {unit}.",
+    "noEligible": "No open production order can take this demand item.",
+    "addToThisOrder": "Add to this order",
+    "workCenter": "Work center",
+    "plannedQuantity": "Planned quantity",
+    "plannedDates": "Planned dates"
   },
   "execution": {
     "runsTitle": "Production Runs",

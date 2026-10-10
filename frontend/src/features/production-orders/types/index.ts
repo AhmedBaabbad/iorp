@@ -61,12 +61,16 @@ export type ProductionOrderListItem = {
 };
 
 export type ProductionOrderData = ProductionOrderListItem & {
-  allocations: { id: string; production_demand_id: string; production_demand_item_id: string; demand_number: string; customer_name: string | null; demand_item_line_no: number; allocated_quantity: string; unit: string; status: "active" | "released"; allocated_at: string; released_at: string | null; release_reason: string | null; target_spec_json?: Record<string, unknown> | null; production_order_item_id?: string | null; order_line_no?: number | null }[];
+  allocations: { id: string; production_demand_id: string; production_demand_item_id: string; demand_number: string; customer_name: string | null; demand_item_line_no: number; allocated_quantity: string; unit: string; status: "active" | "released"; allocated_at: string; released_at: string | null; release_reason: string | null; target_spec_json?: Record<string, unknown> | null; production_order_item_id?: string | null; order_line_no?: number | null;
+    // The order's status when the allocation was made; added_after_start: made while the order was in progress or on hold.
+    order_status_at_allocation?: string; added_after_start?: boolean }[];
   active_allocated_quantity?: string;
   // Specification lines, ordered width -> color -> thickness -> weight.
   lines?: { id: string; line_no: number; target_spec_json: Record<string, unknown> | null; planned_quantity: string; unit: string; allocation_ids: string[] }[];
-  // Allocations can be added or changed only while the order is a draft.
+  // The order is a draft (header and lines still being arranged).
   editable?: boolean;
+  // Allocations can be added, changed and released: the order is open (server rule, PROD-QUALITY-FIX-001).
+  allocation_open?: boolean;
   lifecycle?: OrderLifecycle | null;
   target_spec_json: Record<string, unknown> | null;
   notes: string | null;

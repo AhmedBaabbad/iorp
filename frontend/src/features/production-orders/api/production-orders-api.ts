@@ -48,7 +48,14 @@ export function getProductionOrderStatusHistory(productionOrderId: string) {
   return apiClient<OrderStatusHistoryEntry[]>(`${PRODUCTION_ORDERS_PATH}/${productionOrderId}/status-history`);
 }
 
-// Draft orders only: add a demand item, or change how much of it the order takes. Lines rearrange on the server.
+// Open orders (draft, released, in progress, on hold): add a demand item, or change how much of it the order takes.
+// A draft's lines rearrange on the server; an order on the floor keeps its lines and only adjusts them.
+export type EligibleOrder = { id: string; production_order_number: string; status: string; work_center_name: string | null; product_type: string; unit: string; planned_quantity: string; planned_start_date: string; planned_end_date: string };
+
+export function getEligibleOrders(demandItemId: string) {
+  return apiClient<EligibleOrder[]>(`/production/planning/eligible-orders?demand_item_id=${encodeURIComponent(demandItemId)}`);
+}
+
 export function addOrderAllocation(productionOrderId: string, productionDemandItemId: string, allocatedQuantity: string) {
   return apiClient<ProductionOrderData>(`/production/orders/${productionOrderId}/allocations`, {
     method: "POST",

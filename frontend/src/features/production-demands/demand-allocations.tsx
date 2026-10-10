@@ -19,13 +19,14 @@ export function DemandAllocations({ demand, onChanged }: { demand: Demand; onCha
   const d = useTranslations("production.demands");
   const enums = useTranslations();
   const canAllocate = usePermission(P.PLANNING_ALLOCATE);
-  const canCreate = usePermission(P.ORDERS_CREATE);
   const canRelease = usePermission(P.PLANNING_RELEASE_ALLOCATION);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [releasing, setReleasing] = useState<DemandItemAllocation | null>(null);
-  const showAllocateLink = canAllocate && canCreate && PLANNABLE_STATUSES.includes(demand.status) && Number(demand.total_remaining) > 0;
+  // Allocating needs only the allocation permission: the planning screen offers a new order (with the create
+  // permission) or an existing open one.
+  const showAllocateLink = canAllocate && PLANNABLE_STATUSES.includes(demand.status) && Number(demand.total_remaining) > 0;
   const summary: [string, string][] = [
     [t("required"), demand.total_required], [t("activeAllocated"), demand.total_active_allocated ?? demand.total_allocated],
     [t("releasedAllocated"), demand.total_released_allocated ?? "0"], [t("remaining"), demand.total_remaining],

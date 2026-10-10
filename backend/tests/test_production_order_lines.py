@@ -190,16 +190,18 @@ def test_release_removes_the_line_and_item_can_be_added_back(env):
     assert line_specs(r.json()) == [spec(10, "red"), spec(20, "red")]
 
 
-@pytest.mark.parametrize("status", ["released", "in_progress", "completed"])
-def test_only_draft_orders_can_be_edited(env, status):
+# PROD-QUALITY-FIX-001: open orders (draft, released, in progress, on hold) take allocation changes; locked ones refuse.
+@pytest.mark.parametrize("status", ["completed", "closed", "cancelled"])
+def test_locked_orders_refuse_allocation_changes(env, status):
     d = env.demand(spec(10), spec(12))
     po = env.order((items(d)[0], "100"))
     row = env.db.get(ProductionOrder, UUID(po["id"])); row.status = status; env.db.commit()
     add = env.client.post(f"{ROOT}/orders/{po['id']}/allocations", json=env.pairs((items(d)[1], "10"))[0])
     change = env.client.patch(f"{ROOT}/allocations/{po['allocations'][0]['id']}", json={"allocated_quantity": "50"})
     for r in (add, change):
-        assert r.status_code == 409 and r.json()["detail"]["code"] == "ORDER_NOT_DRAFT"
-    assert env.client.get(f"{ROOT}/production-orders/{po['id']}").json()["editable"] is False
+        assert r.status_code == 409 and r.json()["detail"]["code"] == "ORDER_ALLOCATION_LOCKED"
+    detail = env.client.get(f"{ROOT}/orders/{po['id']}").json()
+    assert detail["editable"] is False and detail["allocation_open"] is False
 
 
 def test_cancel_keeps_lines_as_history(env):

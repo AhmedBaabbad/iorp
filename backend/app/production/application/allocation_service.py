@@ -2,8 +2,9 @@ from decimal import Decimal
 from sqlalchemy import func, or_, select
 from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.core.utils import utc_now
-from app.production.application.order_lines import rebuild_lines
+from app.production.application.order_lines import adjust_lines, rebuild_lines
 from app.production.domain.compatibility import AllocationError
+from app.production.domain.order_lifecycle import ALLOCATION_LOCKED
 from app.production.domain.enums import ProductionAllocationStatus, ProductionOrderStatus
 from app.production.infrastructure.demand_repository import ProductionDemandRepository
 from app.production.infrastructure.execution_models import ProductionRun
@@ -76,6 +77,37 @@ class AllocationService:
         return status
 
 
+def execution_evidence(db, org_id, order_id):
+    """Names of execution records an order already has (a started run, downtime, waste)."""
+    started_run = select(ProductionRun.id).where(
+        ProductionRun.organization_id == org_id, ProductionRun.production_order_id == order_id,
+        or_(ProductionRun.started_at.is_not(None), ProductionRun.status.not_in(("planned", "cancelled"))))
+    checks = {"production_runs": started_run}
+    for name, model in (("downtime_events", DowntimeEvent), ("waste_records", WasteRecord)):
+        checks[name] = select(model.id).where(model.organization_id == org_id, model.production_order_id == order_id)
+    return [name for name, query in checks.items() if db.scalar(query.limit(1)) is not None]
+
+
+def assert_allocation_open(order):
+    """Adding, changing and releasing allocations: allowed while the order is open, refused once it is
+    completed, closed or cancelled (domain.order_lifecycle.ALLOCATION_OPEN / ALLOCATION_LOCKED)."""
+    status = ProductionOrderStatus(order.status)
+    if status in ALLOCATION_LOCKED:
+        raise AllocationError("ORDER_ALLOCATION_LOCKED", 409, order_status=status.value)
+
+
+def follow_allocations(db, org_id, order):
+    """Make a locked order's lines and planned quantity follow its ACTIVE allocations.
+
+    A draft order, or a released one nothing was recorded on yet, has its lines rebuilt (arranged afresh); an order already
+    on the floor keeps its lines and only adjusts them, because execution, waste, results and quality may point at them.
+    """
+    status = ProductionOrderStatus(order.status)
+    if status == ProductionOrderStatus.DRAFT or (status == ProductionOrderStatus.RELEASED and not execution_evidence(db, org_id, order.id)):
+        return rebuild_lines(db, order)
+    return adjust_lines(db, order)
+
+
 class AllocationLifecycleService:
     """Release of allocations and pre-execution cancellation of production orders."""
 
@@ -85,25 +117,15 @@ class AllocationLifecycleService:
         self.allocations = AllocationService()
 
     def execution_evidence(self, order_id):
-        """Names of execution records that make an order's allocations historical."""
-        started_run = select(ProductionRun.id).where(
-            ProductionRun.organization_id == self.org_id, ProductionRun.production_order_id == order_id,
-            or_(ProductionRun.started_at.is_not(None), ProductionRun.status.not_in(("planned", "cancelled"))))
-        checks = {"production_runs": started_run}
-        for name, model in (("downtime_events", DowntimeEvent), ("waste_records", WasteRecord)):
-            checks[name] = select(model.id).where(model.organization_id == self.org_id, model.production_order_id == order_id)
-        return [name for name, query in checks.items() if self.db.scalar(query.limit(1)) is not None]
+        return execution_evidence(self.db, self.org_id, order_id)
 
-    def assert_releasable(self, order):
-        status = ProductionOrderStatus(order.status)
-        if status in (ProductionOrderStatus.COMPLETED, ProductionOrderStatus.CLOSED):
-            raise AllocationError("ORDER_COMPLETED", 409, order_status=status.value)
-        if status in (ProductionOrderStatus.IN_PROGRESS, ProductionOrderStatus.ON_HOLD):
-            raise AllocationError("ORDER_EXECUTION_STARTED", 409, order_status=status.value)
+    def assert_cancellable(self, order):
+        """Cancelling returns every allocation; an order with recorded execution is history, not cancellable."""
+        assert_allocation_open(order)
         evidence = self.execution_evidence(order.id)
         if evidence:
             # Status alone is not trusted: recorded execution makes the allocation history.
-            raise AllocationError("ORDER_EXECUTION_STARTED", 409, order_status=status.value, execution_records=evidence)
+            raise AllocationError("ORDER_EXECUTION_STARTED", 409, order_status=ProductionOrderStatus(order.status).value, execution_records=evidence)
 
     def _lock_order(self, order_id):
         order = self.db.scalar(select(ProductionOrder).where(ProductionOrder.organization_id == self.org_id, ProductionOrder.id == order_id).with_for_update().execution_options(populate_existing=True))
@@ -144,23 +166,22 @@ class AllocationLifecycleService:
             if allocation.status != ACTIVE:
                 raise AllocationError("ALLOCATION_ALREADY_RELEASED", 409)
             order = self._lock_order(allocation.production_order_id)
-            self.assert_releasable(order)
-            cancelled = order.status == ProductionOrderStatus.CANCELLED
+            assert_allocation_open(order)
             remaining = [a for a in self._active_allocations(order.id) if a.id != allocation.id]
-            if not cancelled and not remaining:
+            if not remaining:
                 # An open order must keep at least one demand source; cancel the order instead.
                 raise AllocationError("LAST_ACTIVE_ALLOCATION", 409)
             now = utc_now()
             self._release(allocation, reason, now)
             db.flush()
-            if not cancelled:
-                # Lines and planned quantity of an open order always follow its ACTIVE allocations.
-                db.refresh(order, ["allocations"])
-                rebuild_lines(db, order)
+            # Lines and planned quantity of an open order always follow its ACTIVE allocations.
+            db.refresh(order, ["allocations"])
+            follow_allocations(db, self.org_id, order)
             self._sync_demands({allocation.production_demand_id})
             self._audit("production_allocation.released", "production_allocation", allocation.id, order.production_order_number,
                         production_order_id=order.id, production_demand_item_id=allocation.production_demand_item_id,
-                        allocated_quantity=allocation.allocated_quantity, reason=reason)
+                        allocated_quantity=allocation.allocated_quantity, reason=reason, order_status=ProductionOrderStatus(order.status).value,
+                        planned_quantity=order.planned_quantity)
             db.commit()
             db.expire_all()
             return db.get(ProductionAllocation, allocation.id)
@@ -173,7 +194,7 @@ class AllocationLifecycleService:
 
         Order status is owned by OrderStatusService; this only returns the quantities to their demands.
         """
-        self.assert_releasable(order)
+        self.assert_cancellable(order)
         now = utc_now()
         released = self._active_allocations(order.id)
         for allocation in released:

@@ -409,3 +409,81 @@ def test_concurrent_downtime_on_one_machine_cannot_overlap(pg):
     assert sorted(_race(lambda: record(0), lambda: record(10))) == ["DOWNTIME_OVERLAP", "recorded"]
     with Session(isolated) as db:
         assert db.scalar(sa.text("SELECT count(*) FROM production_downtime_events")) == 1
+
+
+def _in_progress_order(isolated, ids, tenant, quantity="400"):
+    from app.production.application.order_status_service import OrderStatusService
+    with Session(isolated) as db:
+        order_id = PlanningOrderService(db, tenant).create_order_from_planning(PlanningOrderCreate(
+            allocations=[{"production_demand_item_id": ids["item"], "allocated_quantity": quantity}], work_center_id=ids["center"],
+            planned_start_date=date.today(), planned_end_date=date.today())).id
+        for action in ("release", "start"):
+            OrderStatusService(db, tenant).transition(order_id, action, can=lambda code: True)
+    return order_id
+
+
+def _while_locked(isolated, fn):
+    """Start fn on another connection; return once it waits on a lock (or has finished)."""
+    import time
+    pool = ThreadPoolExecutor(max_workers=1)
+    future = pool.submit(fn)
+    deadline = time.monotonic() + 10
+    with isolated.connect() as probe:
+        while not future.done() and time.monotonic() < deadline:
+            if probe.execute(sa.text("SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND pid <> pg_backend_pid()")).scalar():
+                break
+            time.sleep(0.05)
+    return pool, future
+
+
+def test_allocation_after_start_and_complete_cannot_interleave(pg):
+    """PROD-QUALITY-FIX-001: allocating to an in-progress order and completing it take the same order lock.
+
+    Allocation first: the completion waits, then completes an order that already includes the new quantity.
+    Completion first: the allocation waits, then finds the order locked (completed) and is refused."""
+    from app.production.api.planning_schemas import AllocationInput
+    from app.production.application.order_status_service import OrderStatusService
+    isolated, ids = pg
+    tenant = TenantContext(ids["user"], ids["org"])
+    order_id = _in_progress_order(isolated, ids, tenant)
+    with Session(isolated) as db:
+        extra = ProductionDemand(organization_id=ids["org"], customer_id=db.scalar(sa.select(Customer.id)), demand_number="PD-EXTRA",
+                                 status="ready_for_planning")
+        extra.items = [ProductionDemandItem(line_no=1, product_type="film", unit="kg", required_quantity=1000)]
+        db.add(extra); db.commit()
+        extra_item = extra.items[0].id
+
+    def complete():
+        with Session(isolated) as db:
+            try:
+                OrderStatusService(db, tenant).transition(order_id, "complete", can=lambda code: True)
+                return "completed"
+            except (AllocationError, TransitionError) as exc:
+                return exc.code
+
+    # 1) The allocation holds the order row while the completion starts: the completion has to wait for it.
+    race = {}
+    with Session(isolated) as db:
+        service = PlanningOrderService(db, tenant)
+        original = service._lock_open_order
+        def lock_then_race(oid):
+            order = original(oid)
+            race["pool"], race["future"] = _while_locked(isolated, complete)
+            return order
+        service._lock_open_order = lock_then_race
+        service.add_allocation(order_id, AllocationInput(production_demand_item_id=extra_item, allocated_quantity=Decimal("100")))
+    outcome = race["future"].result(timeout=20); race["pool"].shutdown()
+    with Session(isolated) as db:
+        order = db.get(ProductionOrder, order_id)
+        rows = db.scalars(sa.select(ProductionAllocation).where(ProductionAllocation.production_order_id == order_id)).all()
+    assert outcome == "completed" and order.status == "completed"
+    assert sorted(a.order_status_at_allocation for a in rows) == ["draft", "in_progress"]
+    assert order.planned_quantity == Decimal(500)
+
+    # 2) Now completed: a further allocation is refused, the totals stay.
+    with Session(isolated) as db:
+        with pytest.raises(AllocationError) as refused:
+            PlanningOrderService(db, tenant).add_allocation(order_id, AllocationInput(production_demand_item_id=extra_item, allocated_quantity=Decimal("1")))
+    assert refused.value.code == "ORDER_ALLOCATION_LOCKED"
+    with Session(isolated) as db:
+        assert db.get(ProductionOrder, order_id).planned_quantity == Decimal(500)

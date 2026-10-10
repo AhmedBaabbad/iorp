@@ -2,8 +2,10 @@
 // Quantities stay strings end to end; arithmetic uses integer thousandths (3 decimals).
 
 export const PLANNABLE_STATUSES = ["ready_for_planning", "partially_planned"];
-// Server rule: only orders without execution can give quantity back; the server also checks execution records.
-export const RELEASABLE_ORDER_STATUSES = ["draft", "released"];
+// Mirror of the server's ALLOCATION_OPEN (domain/order_lifecycle.py): allocations are added, changed and released while
+// the order is open; completed, closed and cancelled orders keep them as they are. The server decides; this only hides
+// a button that would be refused.
+export const ALLOCATION_OPEN_STATUSES = ["draft", "released", "in_progress", "on_hold"];
 // Which statuses the queue shows, and its query: status-visibility.ts (PLANNING).
 
 export function toMilli(value: string | null | undefined): bigint {
@@ -31,7 +33,7 @@ export function progress(item: QuantityLike) {
 }
 
 export function canReleaseFromOrder(orderStatus: string) {
-  return RELEASABLE_ORDER_STATUSES.includes(orderStatus);
+  return ALLOCATION_OPEN_STATUSES.includes(orderStatus);
 }
 
 export function lifecycleErrorCode(error: unknown) {

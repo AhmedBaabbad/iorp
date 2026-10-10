@@ -211,8 +211,10 @@ def test_released_order_without_execution_is_releasable(env):
     assert env.get(d["id"])["status"] == "ready_for_planning"
 
 
-@pytest.mark.parametrize("status,code", [("in_progress", "ORDER_EXECUTION_STARTED"), ("completed", "ORDER_COMPLETED")])
-def test_t18_t19_started_or_completed_orders_block_release(env, status, code):
+# PROD-QUALITY-FIX-001: allocations stay open while the order is open (in progress included, see
+# tests/production/test_allocation_after_start.py); completed and closed orders keep them.
+@pytest.mark.parametrize("status,code", [("completed", "ORDER_ALLOCATION_LOCKED"), ("closed", "ORDER_ALLOCATION_LOCKED")])
+def test_t18_t19_completed_or_closed_orders_block_release(env, status, code):
     d = env.demand()
     env.order((item_id(d), "100"))
     po = env.order((item_id(d), "200"), )

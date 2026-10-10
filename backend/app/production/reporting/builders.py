@@ -175,8 +175,10 @@ def order_full(db, tenant, params, selected):
         sections.append(table('items', 'البنود والمواصفات', 'Items and specifications', ['#', label('product', lang), 'المواصفات / Specifications', label('planned_qty', lang), label('unit', lang)],
             [(i.line_no, order.product_type, ' · '.join(f'{k}: {v}' for k,v in (i.target_spec_json or {}).items()), i.planned_quantity, i.unit) for i in order.items], lang))
     if 'allocations' in selected:
-        sections.append(table('allocations', 'طلبات العملاء والتخصيصات', 'Customer demand and allocations', [label('customer',lang),'الطلب / Demand',label('allocated_qty',lang),label('unit',lang)],
-            [(customer, d.demand_number, a.allocated_quantity, a.unit) for a,d,customer in allocation_rows(db, tenant, [order.id])], lang))
+        # The order's status when each quantity was allocated: "in progress" / "on hold" marks what was added after start.
+        sections.append(table('allocations', 'طلبات العملاء والتخصيصات', 'Customer demand and allocations', [label('customer',lang),'الطلب / Demand',label('allocated_qty',lang),label('unit',lang),
+            'حالة الأمر عند التخصيص / Order status when allocated'],
+            [(customer, d.demand_number, a.allocated_quantity, a.unit, label(a.order_status_at_allocation, lang)) for a,d,customer in allocation_rows(db, tenant, [order.id])], lang))
     if 'history' in selected:
         users = shared('foundation_users')
         rows = db.execute(select(ProductionOrderStatusHistory, users.full_name).outerjoin(users.id.table, (users.id == ProductionOrderStatusHistory.actor_user_id) & (users.organization_id == tenant.organization_id))

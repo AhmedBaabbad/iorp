@@ -51,6 +51,16 @@ TERMINAL = frozenset({S.CLOSED, S.CANCELLED})
 # Statuses whose planned dates still matter for lateness.
 NOT_STARTED = frozenset({S.DRAFT, S.RELEASED})
 OPEN = frozenset({S.DRAFT, S.RELEASED, S.IN_PROGRESS, S.ON_HOLD})
+# Allocations (add, change quantity, release) follow one rule, the same in both directions: open while the order is open,
+# locked once it is completed, closed or cancelled. Locking both ways keeps "customer good <= allocated" true, because
+# results are recorded only on a completed order (PROD-QUALITY-FIX-001).
+ALLOCATION_OPEN = OPEN
+ALLOCATION_LOCKED = frozenset({S.COMPLETED, S.CLOSED, S.CANCELLED})
+assert ALLOCATION_OPEN.isdisjoint(ALLOCATION_LOCKED) and ALLOCATION_OPEN | ALLOCATION_LOCKED == frozenset(S)
+
+
+def allocation_open(status: S | str) -> bool:
+    return S(status) in ALLOCATION_OPEN
 
 
 def resolve(status: S | str, action_name: str, reason: str | None) -> Action:

@@ -8,6 +8,7 @@ import { apiClient, ApiClientError } from "@/lib/api-client";
 import type { Demand, Item } from "./api";
 import { Specs, priorities } from "./shared";
 import { ArrangementTable, type ArrangedLine } from "./arrangement-table";
+import { ExistingOrderDialog } from "./existing-order-dialog";
 import s from "./demands.module.css";
 import { P } from "@/lib/production-permissions";
 
@@ -37,6 +38,7 @@ export function PlanningAllocation({ demands, busy, onRefresh }: { demands: Dema
   const [review, setReview] = useState(false);
   const [lines, setLines] = useState<PreviewLine[]>([]);
   const [previewError, setPreviewError] = useState("");
+  const [toExisting, setToExisting] = useState(false);
   useEffect(() => { setSelected({}); setReview(false); }, [demands]);
   useEffect(() => { if (review) dialog.current?.showModal(); else dialog.current?.close(); }, [review]);
   useEffect(() => {
@@ -86,7 +88,7 @@ export function PlanningAllocation({ demands, busy, onRefresh }: { demands: Dema
       setReview(false);
     } finally { setSending(false); }
   }
-  if (!canAllocate || !canCreate) return null;
+  if (!canAllocate) return null;
   return <section className={s.panel}><h2>{t("title")}</h2><p>{t("select")}</p>
     {error && <div role="alert" className={s.error}>{t(error)} <button className={s.button} onClick={onRefresh}>{t("refresh")}</button></div>}
     <div className={s.tableWrap}><table className={s.table}><thead><tr><th>{t("select")}</th><th>{d("customer")}</th><th>{d("demandNumber")}</th><th>{d("lineNo")}</th><th>{d("productType")}</th><th>{d("specifications")}</th><th>{t("required")}</th><th>{t("allocated")}</th><th>{t("remaining")}</th><th>{t("quantity")}</th></tr></thead>
@@ -98,8 +100,11 @@ export function PlanningAllocation({ demands, busy, onRefresh }: { demands: Dema
     {rows.length > 0 && <div className={s.panel} style={{ position: "sticky", bottom: 0, zIndex: 2 }}>
       <p>{t("selected", { count: rows.length })} · {t("total")}: {total} {compatible ? base?.unit : ""}</p>
       {!compatible && <p role="alert">{t("incompatible")}</p>}{missingProductType && <p role="alert">{t("missingProductType")}</p>}{!missingProductType && !valid && <p role="alert">{t("invalid")}</p>}
-      <div className={s.actions}><button className={s.button} disabled={sending} onClick={() => setSelected({})}>{t("clear")}</button><button className={`${s.button} ${s.primary}`} disabled={!compatible || !valid || busy || sending} onClick={() => setReview(true)}>{t("create")}</button></div>
+      <div className={s.actions}><button className={s.button} disabled={sending} onClick={() => setSelected({})}>{t("clear")}</button>{rows.length === 1 && <button className={s.button} disabled={!valid || busy || sending} onClick={() => setToExisting(true)}>{t("addToExisting")}</button>}
+        {canCreate && <button className={`${s.button} ${s.primary}`} disabled={!compatible || !valid || busy || sending} onClick={() => setReview(true)}>{t("create")}</button>}</div>
+      {rows.length > 1 && <p className={s.muted}>{t("addToExistingOne")}</p>}
     </div>}
+    {toExisting && rows.length === 1 && <ExistingOrderDialog item={rows[0].item} quantity={rows[0].quantity} onClose={() => setToExisting(false)} />}
     <dialog ref={dialog} onCancel={() => setReview(false)} className={s.panel} aria-labelledby="allocation-review-title" style={{ width: "min(850px, 90vw)", maxHeight: "85vh", overflow: "auto" }}>
       <h2 id="allocation-review-title">{t("review")}</h2>
       <p>{d("productType")}: <strong>{base?.product_type}</strong> · {t("total")}: <strong>{total} {base?.unit}</strong> · {t("lineCount", { count: arranged.length })}</p>

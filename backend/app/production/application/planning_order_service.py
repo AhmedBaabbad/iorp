@@ -4,13 +4,14 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.core.utils import utc_now
-from app.production.application.allocation_service import AllocationService
+from app.production.application.allocation_service import AllocationService, assert_allocation_open, follow_allocations
 from app.production.application.order_lines import ACTIVE, rebuild_lines
 from app.production.domain.arrangement import arrange
 from app.production.domain.compatibility import AllocationError, DemandItemCompatibilityChecker
 from app.production.domain.enums import ProductionOrderStatus
+from app.production.domain.order_lifecycle import ALLOCATION_OPEN, allocation_open
 from app.production.infrastructure.demand_repository import ProductionDemandRepository, PLANNABLE
-from app.production.infrastructure.models import ProductionAllocation, ProductionDemand, ProductionOrder, WorkCenter
+from app.production.infrastructure.models import ProductionAllocation, ProductionDemand, ProductionDemandItem, ProductionOrder, WorkCenter
 
 
 class PlanningOrderService:
@@ -80,7 +81,8 @@ class PlanningOrderService:
             for item, _, qty in rows:
                 order.allocations.append(ProductionAllocation(organization_id=org_id, production_order_id=order.id,
                     production_demand_id=item.production_demand_id, production_demand_item_id=item.id,
-                    allocated_quantity=qty, unit=item.unit, created_by_user_id=self.tenant.user_id))
+                    allocated_quantity=qty, unit=item.unit, order_status_at_allocation=ProductionOrderStatus.DRAFT.value,
+                    created_by_user_id=self.tenant.user_id))
             db.flush()
             rebuild_lines(db, order)
             for demand_id in sorted({item.production_demand_id for item, _, _ in rows}, key=str):
@@ -95,24 +97,50 @@ class PlanningOrderService:
             db.rollback()
             raise
 
-    # ---- Editing a Draft order ----------------------------------------------------------
+    # ---- Allocations of an open order (draft, released, in progress, on hold) -------------
 
-    def _lock_draft_order(self, order_id):
+    def _lock_open_order(self, order_id):
+        # Row lock on the order: a status change (complete, cancel) takes the same lock, so the two never interleave.
         order = self.db.scalar(select(ProductionOrder).where(ProductionOrder.organization_id == self.org_id, ProductionOrder.id == order_id)
                                .with_for_update().execution_options(populate_existing=True))
         if order is None:
             raise AllocationError("PRODUCTION_ORDER_NOT_FOUND", 404)
-        if order.status != ProductionOrderStatus.DRAFT:
-            # Released or started orders are committed to the floor; use release/cancel instead.
-            raise AllocationError("ORDER_NOT_DRAFT", 409, order_status=ProductionOrderStatus(order.status).value)
+        assert_allocation_open(order)
         return order
+
+    def eligible_orders(self, demand_item_id):
+        """Open orders a demand item may join: same organization, product type and unit, specifications compatible with
+        the order's current allocations, and the item not already in the order."""
+        item = self.db.scalar(select(ProductionDemandItem).join(ProductionDemand).where(
+            ProductionDemand.organization_id == self.org_id, ProductionDemandItem.id == demand_item_id))
+        if item is None:
+            raise AllocationError("DEMAND_ITEM_NOT_FOUND", 404)
+        already = select(ProductionAllocation.production_order_id).where(
+            ProductionAllocation.organization_id == self.org_id, ProductionAllocation.production_demand_item_id == item.id,
+            ProductionAllocation.status == ACTIVE)
+        orders = self.db.scalars(select(ProductionOrder).where(
+            ProductionOrder.organization_id == self.org_id, ProductionOrder.status.in_([s.value for s in ALLOCATION_OPEN]),
+            ProductionOrder.product_type == item.product_type, ProductionOrder.unit == item.unit, ProductionOrder.id.not_in(already))
+            .order_by(ProductionOrder.planned_start_date, ProductionOrder.production_order_number, ProductionOrder.id)).all()
+        eligible = []
+        for order in orders:
+            try:
+                self.checker.validate_compatibility([*(a.demand_item for a in order.allocations if a.status == ACTIVE), item])
+            except AllocationError:
+                continue
+            eligible.append(order)
+        centers = dict(self.db.execute(select(WorkCenter.id, WorkCenter.name).where(
+            WorkCenter.organization_id == self.org_id, WorkCenter.id.in_({o.work_center_id for o in eligible}))).all()) if eligible else {}
+        return [dict(id=o.id, production_order_number=o.production_order_number, status=ProductionOrderStatus(o.status).value,
+                     work_center_name=centers.get(o.work_center_id), product_type=o.product_type, unit=o.unit, planned_quantity=o.planned_quantity,
+                     planned_start_date=o.planned_start_date, planned_end_date=o.planned_end_date) for o in eligible]
 
     def _audit(self, action, order, **details):
         get_registered_activity_logger().log_activity(self.db, self.org_id, action, "production_order", order.id, order.production_order_number,
                                                       actor_id=self.tenant.user_id, details={k: str(v) for k, v in details.items()})
 
     def _finish(self, order, demand_ids):
-        rebuild_lines(self.db, order)
+        follow_allocations(self.db, self.org_id, order)
         for demand_id in sorted(demand_ids, key=str):
             demand = self.db.scalar(select(ProductionDemand).where(ProductionDemand.organization_id == self.org_id, ProductionDemand.id == demand_id)
                                     .with_for_update().execution_options(populate_existing=True))
@@ -125,17 +153,21 @@ class PlanningOrderService:
         db = self.db
         try:
             ProductionDemandRepository(db).lock_organization(self.org_id)
-            order = self._lock_draft_order(order_id)
+            order = self._lock_open_order(order_id)
             if any(a.status == ACTIVE and a.production_demand_item_id == data.production_demand_item_id for a in order.allocations):
                 raise AllocationError("ALLOCATION_ALREADY_IN_ORDER", 409)
             ((item, _, qty),) = self._validated([data])
             if item.product_type != order.product_type or item.unit != order.unit:
                 raise AllocationError("INCOMPATIBLE_DEMAND_ITEMS", reason="DIFFERENT_PRODUCT_TYPE" if item.product_type != order.product_type else "DIFFERENT_UNIT")
+            self.checker.validate_compatibility([*(a.demand_item for a in order.allocations if a.status == ACTIVE), item])
+            status = ProductionOrderStatus(order.status).value
+            before = order.planned_quantity
             order.allocations.append(ProductionAllocation(organization_id=self.org_id, production_order_id=order.id,
                 production_demand_id=item.production_demand_id, production_demand_item_id=item.id,
-                allocated_quantity=qty, unit=item.unit, created_by_user_id=self.tenant.user_id))
+                allocated_quantity=qty, unit=item.unit, order_status_at_allocation=status, created_by_user_id=self.tenant.user_id))
             db.flush()
-            self._audit("production_order.allocation_added", order, production_demand_item_id=item.id, allocated_quantity=qty)
+            self._audit("production_order.allocation_added", order, production_demand_item_id=item.id, allocated_quantity=qty,
+                        order_status=status, planned_quantity_before=before)
             return self._finish(order, {item.production_demand_id})
         except (IntegrityError, OperationalError) as exc:
             db.rollback()
@@ -154,14 +186,15 @@ class PlanningOrderService:
                 raise AllocationError("ALLOCATION_NOT_FOUND", 404)
             if allocation.status != ACTIVE:
                 raise AllocationError("ALLOCATION_ALREADY_RELEASED", 409)
-            order = self._lock_draft_order(allocation.production_order_id)
+            order = self._lock_open_order(allocation.production_order_id)
             # Checks the new quantity against what other ACTIVE allocations already reserve.
             self.allocations.validate_allocation(db, self.org_id, allocation.production_demand_item_id, quantity, exclude_allocation_id=allocation.id)
             previous = allocation.allocated_quantity
             allocation.allocated_quantity = quantity
             allocation.updated_at = utc_now()
             db.flush()
-            self._audit("production_order.allocation_changed", order, allocation_id=allocation.id, from_quantity=previous, to_quantity=quantity)
+            self._audit("production_order.allocation_changed", order, allocation_id=allocation.id, from_quantity=previous, to_quantity=quantity,
+                        order_status=ProductionOrderStatus(order.status).value)
             return self._finish(order, {allocation.production_demand_id})
         except (IntegrityError, OperationalError) as exc:
             db.rollback()
@@ -190,11 +223,16 @@ def order_response(order, db, tenant, customer_lookup):
             product_type=order.product_type, allocated_quantity=a.allocated_quantity, unit=a.unit,
             target_spec_json=a.demand_item.target_spec_json, production_order_item_id=a.production_order_item_id,
             order_line_no=line.line_no if line else None,
-            status=a.status, allocated_at=a.created_at, released_at=a.released_at, release_reason=a.release_reason))
+            status=a.status, allocated_at=a.created_at, released_at=a.released_at, release_reason=a.release_reason,
+            order_status_at_allocation=a.order_status_at_allocation,
+            # Added once the order was on the floor (in progress or on hold): screens and reports show it apart.
+            added_after_start=a.order_status_at_allocation in (ProductionOrderStatus.IN_PROGRESS.value, ProductionOrderStatus.ON_HOLD.value)))
     result["active_allocated_quantity"] = sum((a["allocated_quantity"] for a in result["allocations"] if a["status"] == "active"), Decimal(0))
     # Specification lines in production order: width -> color -> thickness -> weight.
     result["lines"] = [dict(id=item.id, line_no=item.line_no, target_spec_json=item.target_spec_json, planned_quantity=item.planned_quantity, unit=item.unit,
                             allocation_ids=[a["id"] for a in result["allocations"] if a["production_order_item_id"] == item.id])
                        for item in sorted(order.items, key=lambda i: i.line_no)]
     result["editable"] = order.status == ProductionOrderStatus.DRAFT
+    # Allocations can be added, changed and released while the order is open (domain.order_lifecycle.ALLOCATION_OPEN).
+    result["allocation_open"] = allocation_open(order.status)
     return result

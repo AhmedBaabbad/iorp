@@ -531,6 +531,9 @@ class ProductionAllocation(Base):
     released_at: Mapped[datetime | None] = mapped_column(TZDateTime)
     released_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id", ondelete="SET NULL", name="fk_allocation_released_by"))
     release_reason: Mapped[str | None] = mapped_column(String(500))
+    # The order's status when this allocation was made (PROD-QUALITY-FIX-001): in_progress / on_hold means it was
+    # added after execution started, which screens and reports show apart.
+    order_status_at_allocation: Mapped[str] = mapped_column(String(20), nullable=False, default="draft", server_default="draft")
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now, onupdate=utc_now)

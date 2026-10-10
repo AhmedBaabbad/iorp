@@ -164,8 +164,12 @@ describe("demand planning / allocations", () => {
     expect(screen.queryByRole("button", { name: "Release" })).toBeNull();
   });
 
-  it("does not offer release once execution has started", () => {
+  it("offers release while the order is in progress, not once it is completed", () => {
+    // PROD-QUALITY-FIX-001: allocations follow the order's open/locked state, not whether execution started.
     ui(<DemandAllocations demand={demand({}, { allocations: [allocation({ production_order_status: "in_progress" })] })} />);
+    expect(screen.getByRole("button", { name: "Release" })).toBeTruthy();
+    cleanup();
+    ui(<DemandAllocations demand={demand({}, { allocations: [allocation({ production_order_status: "completed" })] })} />);
     expect(screen.queryByRole("button", { name: "Release" })).toBeNull();
   });
 

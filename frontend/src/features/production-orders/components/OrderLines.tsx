@@ -14,13 +14,16 @@ import { P } from "@/lib/production-permissions";
 type Allocation = ProductionOrderData["allocations"][number];
 const QUANTITY = /^\d+(\.\d{1,3})?$/;
 
-// Order lines grouped by specification; a draft order's allocations can be changed here.
+// Order lines grouped by specification; an open order's allocations (draft, released, in progress, on hold) can be changed here.
 export function OrderLines({ order, onChanged }: { order: ProductionOrderData; onChanged?: () => void }) {
   const t = useTranslations("production.allocation");
   const d = useTranslations("production.demands");
   const canAllocate = usePermission(P.PLANNING_ALLOCATE);
   const canRelease = usePermission(P.PLANNING_RELEASE_ALLOCATION);
-  const editing = Boolean(order.editable && canAllocate);
+  // The server says whether allocations are open; adding/changing and releasing each need their own permission.
+  const open = Boolean(order.allocation_open);
+  const editing = open && canAllocate;
+  const releasing_allowed = open && canRelease;
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -33,7 +36,8 @@ export function OrderLines({ order, onChanged }: { order: ProductionOrderData; o
   const lines: ArrangedLine[] = (order.lines ?? []).map(line => ({
     key: line.id, line_no: line.line_no, target_spec_json: line.target_spec_json, planned_quantity: line.planned_quantity, unit: line.unit,
     allocations: line.allocation_ids.map(id => byId.get(id)).filter((a): a is Allocation => Boolean(a)).map(a => ({
-      key: a.id, customer_name: a.customer_name, demand_number: a.demand_number, demand_item_line_no: a.demand_item_line_no, allocated_quantity: a.allocated_quantity, status: a.status })),
+      key: a.id, customer_name: a.customer_name, demand_number: a.demand_number, demand_item_line_no: a.demand_item_line_no, allocated_quantity: a.allocated_quantity, status: a.status,
+      addedAfterStart: Boolean(a.added_after_start) })),
   }));
 
   // Demand items that could join this order: same product and unit, remaining quantity, not already in it.
@@ -62,11 +66,12 @@ export function OrderLines({ order, onChanged }: { order: ProductionOrderData; o
   }
 
   if (!lines.length && !editing) return null;
+  const hint = !editing ? t("arrangementHint") : order.editable ? t("orderLinesEditHint") : t("orderLinesStartedHint");
   return <section className={s.panel}><h2>{t("orderLines")}</h2>
-    <p className={s.muted}>{editing ? t("orderLinesEditHint") : t("arrangementHint")}</p>
+    <p className={s.muted}>{hint}</p>
     {error && <p role="alert" className={s.error}>{t(`errors.${t.has(`errors.${error}`) ? error : "request_failed"}`)}</p>}
     <ArrangementTable lines={lines} caption={t("orderLines")}
-      quantityCell={editing ? (a, line) => {
+      quantityCell={editing ? (a, line) => a.status === "released" ? `${a.allocated_quantity} ${line.unit}` : (() => {
         const value = drafts[a.key] ?? a.allocated_quantity;
         const changed = value !== a.allocated_quantity;
         return <span className={s.actions}>
@@ -75,8 +80,8 @@ export function OrderLines({ order, onChanged }: { order: ProductionOrderData; o
           {changed && <button type="button" className={`${s.button} ${s.primary}`} disabled={busy || !QUANTITY.test(value) || Number(value) <= 0}
             onClick={() => run(() => changeAllocationQuantity(a.key, value))}>{t("saveQuantity")}</button>}
         </span>;
-      } : undefined}
-      actionsCell={editing && canRelease ? a => <button type="button" className={s.button} disabled={busy} onClick={() => setReleasing(byId.get(a.key) ?? null)}>{t("removeFromOrder")}</button> : undefined} />
+      })() : undefined}
+      actionsCell={releasing_allowed ? a => a.status === "released" ? null : <button type="button" className={s.button} disabled={busy} onClick={() => setReleasing(byId.get(a.key) ?? null)}>{t("removeFromOrder")}</button> : undefined} />
     {editing && <form className={s.toolbar} onSubmit={add} aria-label={t("addDemand")} style={{ marginTop: 16 }}>
       <label className={s.field}>{t("addDemand")}
         <select value={addItem} disabled={busy} onChange={e => { setAddItem(e.target.value); setAddQuantity(options.find(o => o.id === e.target.value)?.remaining ?? ""); }}>
