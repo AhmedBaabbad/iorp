@@ -8,6 +8,7 @@ from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, require_permission
 from app.quality.domain import permissions as Q
 from app.quality.api.schemas import (
+    QualityDefectBatchCreate,
     QualityDefectCreate,
     QualityDefectListItem,
     QualityDefectRead,
@@ -15,6 +16,7 @@ from app.quality.api.schemas import (
 )
 from app.quality.application.services import QualityDefectService
 from app.quality.domain.enums import DefectCategory, DefectSeverity
+from app.quality.domain.rules import QualityError
 
 
 router = APIRouter(tags=["quality-defects"])
@@ -34,6 +36,21 @@ def create_quality_defect(
     service = QualityDefectService(db)
     try:
         return service.create_quality_defect(tenant, check_id, payload)
+    except QualityError as exc:
+        raise HTTPException(status_code=exc.status, detail={"code": exc.code, **exc.detail}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/quality-checks/{check_id}/defects/batch", response_model=list[QualityDefectRead], status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require_permission(Q.DEFECTS_CREATE))])
+def create_quality_defects(check_id: UUID, payload: QualityDefectBatchCreate, tenant: TenantContext = Depends(get_current_tenant),
+                           db: Session = Depends(get_db)) -> list[QualityDefectRead]:
+    """Several defects found on one inspection, recorded together (all or none); each defect type once."""
+    try:
+        return QualityDefectService(db).create_quality_defects(tenant, check_id, payload.defects)
+    except QualityError as exc:
+        raise HTTPException(status_code=exc.status, detail={"code": exc.code, **exc.detail}) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -96,6 +113,8 @@ def update_quality_defect(
     service = QualityDefectService(db)
     try:
         quality_defect = service.update_quality_defect(tenant, defect_id, payload)
+    except QualityError as exc:
+        raise HTTPException(status_code=exc.status, detail={"code": exc.code, **exc.detail}) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if quality_defect is None:

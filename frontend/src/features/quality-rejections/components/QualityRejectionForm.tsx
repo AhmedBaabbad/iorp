@@ -13,6 +13,7 @@ import type { InspectableOrder, QualityCheckData } from "@/features/quality-chec
 import { useFormatter } from "@/hooks/useFormatter";
 import { createQualityRejection, getQualityRejectionById, updateQualityRejection } from "../api/quality-rejections-api";
 import { REJECTION_REASONS, type QualityRejectionData, type RejectionReason } from "../types";
+import { RejectionDefectsPicker, type PickedDefect } from "./RejectionDefectsPicker";
 
 type Values = { order: string; item: string; date: string; reason: RejectionReason; quantity: string; notes: string };
 
@@ -36,6 +37,7 @@ export function QualityRejectionForm({ rejectionId }: { rejectionId?: string }) 
   const [loading, setLoading] = useState(editing || Boolean(checkId));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [picked, setPicked] = useState<PickedDefect[]>([]);
 
   useEffect(() => {
     if (!editing && !checkId) getInspectableOrders().then(setOrders).catch(() => setOrders([]));
@@ -49,6 +51,7 @@ export function QualityRejectionForm({ rejectionId }: { rejectionId?: string }) 
         setExisting(r);
         setValues({ order: r.production_order_id ?? "", item: r.production_order_item_id ?? "", date: r.rejection_date, reason: r.rejection_reason,
           quantity: r.quantity_rejected, notes: r.rejection_notes });
+        setPicked((r.defects ?? []).map(d => ({ quality_defect_id: d.quality_defect_id, affected_quantity: d.affected_quantity ?? "" })));
       })
       : getQualityCheckById(checkId).then(c => { if (active) { setCheck(c); setValues(old => ({ ...old, notes: c.notes ?? "" })); } });
     request.catch(e => { if (active) setError(qualityErrorMessage(e, errors)); }).finally(() => { if (active) setLoading(false); });
@@ -58,14 +61,20 @@ export function QualityRejectionForm({ rejectionId }: { rejectionId?: string }) 
   const order = useMemo(() => orders.find(o => o.id === values.order) ?? null, [orders, values.order]);
   const unit = existing?.unit ?? check?.unit ?? order?.items.find(i => i.id === values.item)?.unit ?? order?.unit ?? "";
   const locked = Boolean(existing && !existing.actions.includes("edit"));
-  const valid = Boolean((editing || checkId || values.order) && values.date && values.notes.trim() && QUANTITY.test(values.quantity) && Number(values.quantity) > 0);
+  // The defects come from the rejection's inspection; a manual rejection on an order has none to name.
+  const inspection = existing?.quality_check_id ?? (checkId || null);
+  const affectedOk = picked.every(p => !p.affected_quantity || (QUANTITY.test(p.affected_quantity) && Number(p.affected_quantity) > 0
+    && Number(p.affected_quantity) <= Number(values.quantity || 0)));
+  const valid = Boolean((editing || checkId || values.order) && values.date && values.notes.trim() && QUANTITY.test(values.quantity) && Number(values.quantity) > 0
+    && affectedOk);
   const set = <K extends keyof Values>(field: K, value: Values[K]) => setValues(old => ({ ...old, [field]: value, ...(field === "order" ? { item: "" } : {}) }));
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!valid || busy || locked) return;
     setBusy(true); setError("");
-    const body = { rejection_date: values.date, rejection_reason: values.reason, quantity_rejected: values.quantity, rejection_notes: values.notes.trim() };
+    const defects = inspection ? { defects: picked.map(p => ({ quality_defect_id: p.quality_defect_id, affected_quantity: p.affected_quantity || null })) } : {};
+    const body = { rejection_date: values.date, rejection_reason: values.reason, quantity_rejected: values.quantity, rejection_notes: values.notes.trim(), ...defects };
     try {
       const saved = rejectionId ? await updateQualityRejection(rejectionId, body)
         : await createQualityRejection({ ...body, ...(checkId ? { quality_check_id: checkId }
@@ -106,6 +115,8 @@ export function QualityRejectionForm({ rejectionId }: { rejectionId?: string }) 
         </label>
       </div>
       {check && <p className={s.muted}>{t("hints.fromCheck", { quantity: fmt.quantity(check.qty_rejected, check.unit ?? "") })}</p>}
+      {inspection && <RejectionDefectsPicker checkId={inspection} value={picked} onChange={setPicked} unit={unit} disabled={busy || locked} />}
+      {!affectedOk && <p role="alert" className={s.error}>{t("defects.affectedTooHigh")}</p>}
       {!check && !editing && <p className={s.muted}>{t("hints.manual")}</p>}
       <label className={s.field}>{t("fields.rejectionNotes")}
         <textarea required maxLength={2000} value={values.notes} placeholder={t("placeholders.rejectionNotes")} disabled={busy || locked} onChange={e => set("notes", e.target.value)} />

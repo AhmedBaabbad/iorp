@@ -57,7 +57,7 @@ function rejection(over: Partial<QualityRejectionData> = {}): QualityRejectionDa
   return { id: "r1", rejection_code: "QR-2026-0001", quality_check_id: "c1", production_order_id: "po1", production_order_item_id: null,
     rejection_date: "2026-10-01", rejection_reason: "out_of_spec", disposition: null, disposition_status: "pending", quantity_rejected: "8.000", unit: "kg",
     order_number: "PO-1", item_line_no: null, inspection_code: "QI-2026-0001", unresolved: true, actions: ["edit", "decide"], created_at: "",
-    quality_defect_id: null, rejection_notes: "Thickness below spec", rejected_by_name: "Sara", decision_notes: null, concession_approved_by: null,
+    rejection_notes: "Thickness below spec", rejected_by_name: "Sara", decision_notes: null, concession_approved_by: null,
     decided_at: null, decided_by_name: null, execution_notes: null, executed_at: null, executed_by_name: null, history: [], updated_at: "", ...over };
 }
 

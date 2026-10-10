@@ -116,6 +116,7 @@ export function QualityDefectsList({
       {canCreate && !isClosed && isFormOpen ? (
         <QualityDefectForm
           qualityCheckId={qualityCheckId}
+          recordedCategories={defects.map((defect) => defect.defect_category)}
           onCreated={handleDefectCreated}
           onCancel={() => setIsFormOpen(false)}
         />

@@ -423,8 +423,9 @@ def defects_analysis(db, tenant, params, selected):
             running += c['units']
             table_rows.append((label(category, lang), c['records'], c['units'], pct(c['units'], total_units), pct(running, total_units)))
         section = table('pareto', 'العيوب الأكثر تكرارًا (باريتو)', 'Most frequent defects (Pareto)',
-                        ['التصنيف / Category', 'السجلات / Records', 'الوحدات المعيبة / Defective units', 'النسبة % / Share %', 'التراكمي % / Cumulative %'], table_rows, lang,
-                        'التصنيفات التي يبلغ تراكمها 80% هي الأولى بالمعالجة / Categories within the first 80% are the first to address')
+                        ['التصنيف / Category', 'السجلات / Records', 'مرات الظهور / Occurrences', 'النسبة % / Share %', 'التراكمي % / Cumulative %'], table_rows, lang,
+                        'التصنيفات التي يبلغ تراكمها 80% هي الأولى بالمعالجة. الوحدة التي تحمل أكثر من عيب تُحسب مرة تحت كل عيب، فلا يُعدّ المجموع وحداتٍ معيبة'
+                        ' / Categories within the first 80% are the first to address. A unit with several defects counts once under each, so the total is not a count of defective units')
         section.bars = [(label(category, lang), float(c['units'])) for category, c in ranked[:15]]
         sections.append(section)
     if 'severity' in selected:

@@ -13,8 +13,14 @@ from app.core.utils import utc_now
 from app.quality.domain import rules
 from app.quality.domain.enums import Disposition, DispositionStatus as DS, QualityCheckStatus as S
 from app.quality.domain.rules import QualityError, ZERO
-from app.quality.infrastructure.models import QualityCheck, QualityDefect, QualityRejection
+from app.quality.infrastructure.models import QualityCheck, QualityDefect, QualityRejection, QualityRejectionDefect
 from .support import log_activity, ProductionReads, ShippingReads, as_decimal, history, next_code, record, user_names
+
+
+class _Pick:
+    """A rejection's current defect link, in the shape of a request item."""
+    def __init__(self, quality_defect_id, affected_quantity):
+        self.quality_defect_id, self.affected_quantity = quality_defect_id, affected_quantity
 
 
 class QualityRejectionService:
@@ -59,7 +65,11 @@ class QualityRejectionService:
         returns = ShippingReads(self.db, self.org).return_numbers([r.return_id for r in rejections])
         out = []
         for r in rejections:
+            defects = [dict(quality_defect_id=link.quality_defect_id, defect_category=link.defect.defect_category.value,
+                            severity=link.defect.severity.value, defect_count=link.defect.defect_count, description=link.defect.description,
+                            affected_quantity=link.affected_quantity) for link in r.defect_links]
             view = dict(order_number=orders.get(r.production_order_id), item_line_no=lines.get(r.production_order_item_id),
+                        defects=defects, severity=rules.highest_severity(d["severity"] for d in defects),
                         return_no=returns.get(r.return_id),
                         inspection_code=codes.get(r.quality_check_id), rejected_by_name=names.get(r.rejected_by_user_id),
                         decided_by_name=names.get(r.decided_by_user_id), executed_by_name=names.get(r.executed_by_user_id),
@@ -94,28 +104,55 @@ class QualityRejectionService:
         item = self.production.item(order.id, item_id) if item_id else None
         quantity = as_decimal(data.quantity_rejected)
         rules.assert_rejection_quantity(quantity, self._available_from_check(check) if check else None)
-        self._defect(data.quality_defect_id, check)
+        defects = self._defects(data.defects, check, quantity)
         if not (data.rejection_notes or "").strip():
             raise QualityError("NOTES_REQUIRED", 400)
         rejection = QualityRejection(
             organization_id=self.org, rejection_code=next_code(self.db, self.org, "QR"), quality_check_id=check.id if check else None,
-            quality_defect_id=data.quality_defect_id, production_order_id=order.id, production_order_item_id=item.id if item else None,
+            production_order_id=order.id, production_order_item_id=item.id if item else None,
             rejection_date=data.rejection_date, rejection_reason=data.rejection_reason, rejection_notes=data.rejection_notes.strip(),
             disposition=None, disposition_status=DS.PENDING, quantity_rejected=quantity,
             unit=(check.unit if check and check.unit else (item.unit if item else order.unit)) or "", rejected_by_user_id=self.tenant.user_id)
         self.db.add(rejection)
         self.db.flush()
-        record(self.db, self.org, "rejection", rejection.id, "create", None, DS.PENDING.value, self.tenant.user_id)
+        self._link(rejection, defects)
+        record(self.db, self.org, "rejection", rejection.id, "create", None, DS.PENDING.value, self.tenant.user_id,
+               detail=dict(defects=",".join(str(d.id) for d, _ in defects)) if defects else None)
         self.db.commit()
         log_activity(self.db, self.org, self.tenant.user_id, "quality_rejection.created", "quality_rejection", rejection.id, rejection.rejection_code)
         return rejection
 
-    def _defect(self, defect_id, check):
-        if not defect_id:
-            return
-        defect = self.db.scalar(select(QualityDefect).where(QualityDefect.id == defect_id, QualityDefect.organization_id == self.org))
-        if defect is None or (check is not None and defect.quality_check_id != check.id):
-            raise QualityError("DEFECT_NOT_FOUND", 404)
+    def _defects(self, items, check, quantity):
+        """The (defect, affected quantity) pairs a rejection is made for: defects of this organization and, for a rejection
+        from an inspection, of that inspection; each named once; an affected quantity at most the rejected quantity.
+        Defects have no catalog or inactive state: they are the findings recorded on the inspection."""
+        ids = [item.quality_defect_id for item in items]
+        if len(ids) != len(set(ids)):
+            raise QualityError("REJECTION_DEFECT_DUPLICATE", 422)
+        if not ids:
+            return []
+        if check is None:
+            raise QualityError("DEFECTS_NEED_A_CHECK", 422)
+        found = {d.id: d for d in self.db.scalars(select(QualityDefect).where(
+            QualityDefect.organization_id == self.org, QualityDefect.quality_check_id == check.id, QualityDefect.id.in_(ids)))}
+        pairs = []
+        for item in items:
+            defect = found.get(item.quality_defect_id)
+            if defect is None:
+                raise QualityError("DEFECT_NOT_FOUND", 404, quality_defect_id=str(item.quality_defect_id))
+            affected = as_decimal(item.affected_quantity) if item.affected_quantity is not None else None
+            if affected is not None and affected > quantity:
+                raise QualityError("AFFECTED_QUANTITY_EXCEEDS_REJECTED", 422, quality_defect_id=str(defect.id))
+            pairs.append((defect, affected))
+        return pairs
+
+    def _link(self, rejection, pairs):
+        rejection.defect_links.clear()
+        self.db.flush()
+        for defect, affected in pairs:
+            rejection.defect_links.append(QualityRejectionDefect(organization_id=self.org, quality_defect_id=defect.id,
+                                                                 affected_quantity=affected))
+        self.db.flush()
 
     def update(self, rejection_id, data) -> QualityRejection:
         rejection = self._get(rejection_id, lock=True)
@@ -128,6 +165,13 @@ class QualityRejectionService:
             rejection.quantity_rejected = quantity
         if "rejection_notes" in values and not (values["rejection_notes"] or "").strip():
             raise QualityError("NOTES_REQUIRED", 400)
+        if data.defects is not None or "quantity_rejected" in values:
+            check = self.db.get(QualityCheck, rejection.quality_check_id) if rejection.quality_check_id else None
+            current = [_Pick(link.quality_defect_id, link.affected_quantity) for link in rejection.defect_links]
+            pairs = self._defects(data.defects if data.defects is not None else current, check, as_decimal(rejection.quantity_rejected))
+            if data.defects is not None:
+                self._link(rejection, pairs)
+        values.pop("defects", None)
         for field in ("rejection_date", "rejection_reason", "rejection_notes"):
             if field in values:
                 setattr(rejection, field, values[field].strip() if field == "rejection_notes" else values[field])

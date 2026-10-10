@@ -22,6 +22,10 @@ class QualityDefectCreate(BaseModel):
     notes: str | None = None
 
 
+class QualityDefectBatchCreate(BaseModel):
+    defects: list[QualityDefectCreate] = Field(min_length=1, max_length=20)
+
+
 class QualityDefectUpdate(BaseModel):
     production_order_id: UUID | None = None
     production_order_item_id: UUID | None = None

@@ -1,4 +1,5 @@
 // Quality checks and rejections (QUAL-001). Quantities are decimal strings in the inspected line's unit.
+import type { DefectCategory, DefectSeverity } from "@/features/quality-defects/types";
 export type QualityCheckType =
   | "in_process_inspection" | "finished_product_inspection" | "sample_inspection" | "reinspection" | "issue_triggered" | "incoming_inspection" | "general";
 export type QualityCheckStatus = "open" | "under_inspection" | "closed" | "cancelled";
@@ -41,6 +42,9 @@ export type QualityCheckListItem = {
   receipt_line_id?: string | null;
   incoming_source?: IncomingSource | null;
   actions: QualityCheckAction[];
+  // The defects found (one per type, most severe first) and the highest severity among them.
+  defects?: { defect_category: DefectCategory; severity: DefectSeverity; defect_count: number }[];
+  severity?: DefectSeverity | null;
   created_at: string;
   updated_at: string;
 };
@@ -135,6 +139,8 @@ export type QualityCheckListFilters = {
   date_from?: string;
   date_to?: string;
   search?: string;
+  // Inspections with a defect of this type (any of their defects).
+  defect_category?: DefectCategory | "";
 };
 
 export type CreateQualityCheckRequest = {

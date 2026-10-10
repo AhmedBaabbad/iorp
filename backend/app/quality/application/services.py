@@ -1,10 +1,12 @@
 from datetime import date
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.tenancy import TenantContext
+from app.quality.domain.rules import QualityError
 from app.quality.api.schemas import (
     QualityDefectCreate,
     QualityDefectUpdate,
@@ -36,6 +38,7 @@ class QualityDefectService:
         data: QualityDefectCreate,
     ) -> QualityDefect:
         self._validate_quality_check(tenant, check_id)
+        self._assert_new_type(tenant, check_id, [data.defect_category])
 
         quality_defect = QualityDefect(
             organization_id=tenant.organization_id,
@@ -53,6 +56,36 @@ class QualityDefectService:
 
         self.db.refresh(quality_defect)
         return quality_defect
+
+    def create_quality_defects(self, tenant: TenantContext, check_id: UUID, items: list[QualityDefectCreate]) -> list[QualityDefect]:
+        """Several defects found on one inspection, recorded together: all or none."""
+        self._validate_quality_check(tenant, check_id)
+        self._assert_new_type(tenant, check_id, [item.defect_category for item in items])
+        defects = [QualityDefect(organization_id=tenant.organization_id, quality_check_id=check_id, detected_by_user_id=tenant.user_id,
+                                 **item.model_dump()) for item in items]
+        try:
+            for defect in defects:
+                self.defects.add(defect)
+            self.db.commit()
+        except IntegrityError as exc:
+            self.db.rollback()
+            raise ValueError("Quality defect could not be saved due to invalid data.") from exc
+        for defect in defects:
+            self.db.refresh(defect)
+        return defects
+
+    def _assert_new_type(self, tenant: TenantContext, check_id: UUID, categories, excluding: UUID | None = None) -> None:
+        """An inspection records each defect type once (more occurrences go in defect_count)."""
+        values = [getattr(c, "value", c) for c in categories]
+        if len(values) != len(set(values)):
+            raise QualityError("DEFECT_ALREADY_RECORDED", 409, defect_category=sorted({v for v in values if values.count(v) > 1})[0])
+        query = select(QualityDefect.defect_category).where(QualityDefect.organization_id == tenant.organization_id,
+                                                            QualityDefect.quality_check_id == check_id, QualityDefect.defect_category.in_(values))
+        if excluding is not None:
+            query = query.where(QualityDefect.id != excluding)
+        taken = self.db.scalar(query.limit(1))
+        if taken is not None:
+            raise QualityError("DEFECT_ALREADY_RECORDED", 409, defect_category=getattr(taken, "value", taken))
 
     def list_defects_by_quality_check(
         self,
@@ -97,6 +130,8 @@ class QualityDefectService:
             return None
 
         payload = data.model_dump(exclude_unset=True)
+        if payload.get("defect_category") is not None:
+            self._assert_new_type(tenant, quality_defect.quality_check_id, [payload["defect_category"]], excluding=quality_defect.id)
 
         for field, value in payload.items():
             setattr(quality_defect, field, value)

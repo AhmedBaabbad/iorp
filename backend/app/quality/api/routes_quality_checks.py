@@ -14,7 +14,7 @@ from app.quality.api.inspection_schemas import (
 from app.quality.application.measurement_service import MeasurementService
 from app.quality.application.check_service import QualityCheckService
 from app.quality.domain import permissions as Q
-from app.quality.domain.enums import QualityCheckResult, QualityCheckStatus, QualityCheckType
+from app.quality.domain.enums import DefectCategory, QualityCheckResult, QualityCheckStatus, QualityCheckType
 from app.quality.domain.rules import QualityError
 
 router = APIRouter(prefix="/quality-checks", tags=["quality-checks"])
@@ -45,11 +45,12 @@ def list_quality_checks(
     production_order_id: UUID | None = Query(default=None), check_type: QualityCheckType | None = Query(default=None),
     status_filter: QualityCheckStatus | None = Query(default=None, alias="status"), result: QualityCheckResult | None = Query(default=None),
     date_from: date | None = Query(default=None), date_to: date | None = Query(default=None), search: str | None = Query(default=None, max_length=60),
+    defect_category: DefectCategory | None = Query(default=None),
     tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check),
 ):
     service = QualityCheckService(db, tenant)
     checks = service.list(production_order_id=production_order_id, check_type=check_type, status=status_filter, result=result,
-                          date_from=date_from, date_to=date_to, search=search)
+                          date_from=date_from, date_to=date_to, search=search, defect_category=defect_category)
     return [QualityCheckListItem.model_validate(c).model_copy(update=v) for c, v in zip(checks, service.views(checks, can))]
 
 

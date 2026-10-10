@@ -13,7 +13,9 @@
       "dateFrom": "From",
       "dateTo": "To",
       "clear": "Clear filters",
-      "forOrder": "Checks of order {number}"
+      "forOrder": "Checks of order {number}",
+      "defectType": "Defect type",
+      "allDefectTypes": "All defect types"
     },
     "empty": "No quality checks",
     "createFirst": "Create a check or change the filters.",
@@ -38,7 +40,8 @@
       "notes": "Notes",
       "startedAt": "Started at",
       "closedAt": "Closed at",
-      "cancelReason": "Cancellation reason"
+      "cancelReason": "Cancellation reason",
+      "defects": "Defects"
     },
     "editTitle": "Edit quality check",
     "createTitle": "New quality check",
@@ -117,7 +120,8 @@
       "unitPlural": "units",
       "validation": {
         "defectCountMin": "Defect count must be at least 1",
-        "descriptionRequired": "Description is required"
+        "descriptionRequired": "Description is required",
+        "categoryRequired": "Choose the defect type"
       },
       "fields": {
         "defectDate": "Defect Date",
@@ -127,6 +131,16 @@
         "description": "Description",
         "productionOrderId": "Production Order ID",
         "notes": "Notes"
+      },
+      "formTitle": "Record defects",
+      "onePerType": "Add every defect type found; each type is recorded once per inspection with how many times it was found.",
+      "defectNumber": "Defect {number}",
+      "chooseCategory": "Choose a defect type",
+      "removeDefect": "Remove",
+      "addAnother": "Add another defect type",
+      "saveDefects": "{count, plural, one {Record the defect} other {Record # defects}}",
+      "errors": {
+        "DEFECT_ALREADY_RECORDED": "This defect type is already recorded on this inspection; change its count instead."
       }
     }
   },
@@ -169,7 +183,8 @@
       "concessionJustification": "Concession justification",
       "decisionNotes": "Decision notes",
       "decisionNotesOptional": "Decision notes (optional)",
-      "executionNotes": "Execution notes"
+      "executionNotes": "Execution notes",
+      "defects": "Defects"
     },
     "blocksClose": "Blocks order close",
     "hints": {
@@ -221,6 +236,24 @@
       "rework": "The quantity is reworked and inspected again.",
       "return_to_process": "The quantity returns to an earlier process step.",
       "use_as_is": "Used as is under an approved concession; needs the approver and justification."
+    },
+    "defects": {
+      "title": "Defects",
+      "none": "No defects were recorded on this inspection.",
+      "search": "Find a defect",
+      "searchPlaceholder": "Type or description",
+      "available": "Defects of the inspection",
+      "add": "Add {defect}",
+      "selected": "Defects of this rejection",
+      "defect": "Defect",
+      "severity": "Severity",
+      "found": "Found",
+      "affected": "Affected ({unit}, optional)",
+      "affectedFor": "Affected quantity for {defect}",
+      "remove": "Remove {defect}",
+      "removeShort": "Remove",
+      "overlapHint": "One unit may carry several defects, so the affected quantities are shown per defect and never added up.",
+      "affectedTooHigh": "An affected quantity cannot be more than the rejected quantity."
     }
   },
   "errors": {
@@ -304,7 +337,10 @@
     "LOT_ALREADY_INSPECTED": "This lot already has an inspection.",
     "LOT_SPLIT_MISMATCH": "The parts ({total}) must add up to the inspected quantity ({inspected}).",
     "NOT_AN_INCOMING_INSPECTION": "This inspection is not about a received lot.",
-    "INCOMING_INSPECTION_NEEDS_DECISION": "An incoming inspection is closed by its decision on the lot."
+    "INCOMING_INSPECTION_NEEDS_DECISION": "An incoming inspection is closed by its decision on the lot.",
+    "REJECTION_DEFECT_DUPLICATE": "A defect was named twice.",
+    "DEFECTS_NEED_A_CHECK": "Only a rejection from an inspection can name defects.",
+    "AFFECTED_QUANTITY_EXCEEDS_REJECTED": "An affected quantity cannot be more than the rejected quantity."
   },
   "history": {
     "title": "Status history",

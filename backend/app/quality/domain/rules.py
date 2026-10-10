@@ -113,6 +113,16 @@ def assert_rejection_quantity(quantity: Decimal, available: Decimal | None) -> N
         raise QualityError("QUANTITY_EXCEEDS_CHECK", 400, available=str(available))
 
 
+# Severity order (PROD-QUALITY-FIX-001): a record with several defects takes the highest severity among them.
+SEVERITY_RANK = {"minor": 1, "major": 2, "critical": 3}
+
+
+def highest_severity(severities) -> str | None:
+    """The most severe of the given severities (critical > major > minor); None when there are none."""
+    values = [str(getattr(s, "value", s)) for s in severities if s is not None]
+    return max(values, key=SEVERITY_RANK.__getitem__) if values else None
+
+
 def check_actions(status, can) -> list[str]:
     s = S(status)
     offered = (["edit", "measure", "start", "close", "cancel"] if s == S.OPEN else ["edit", "measure", "close", "cancel"] if s == S.UNDER_INSPECTION else [])

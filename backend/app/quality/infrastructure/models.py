@@ -5,6 +5,7 @@ import uuid
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     Enum as SqlEnum,
     ForeignKey,
     Index,
@@ -16,7 +17,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
 from app.core.utils import TZDateTime, enum_values, utc_now
@@ -207,6 +208,8 @@ class QualityDefect(Base):
     """
 
     __tablename__ = "quality_defects"
+    # One row per inspection and defect type (PROD-QUALITY-FIX-001): repeated occurrences go in defect_count.
+    __table_args__ = (UniqueConstraint("quality_check_id", "defect_category", name="uq_quality_defects_check_category"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -296,9 +299,9 @@ class QualityRejection(Base):
       A rejection without quantity cannot support meaningful quality KPIs.
 
     Quality context:
-      At least one of quality_check_id or quality_defect_id should be present.
-      This remains a v0.1 soft rule, but the fields allow every rejection to
-      connect back to the QualityCheck -> QualityDefect -> QualityRejection chain.
+      quality_check_id and the defects in defect_links connect a rejection back to the
+      QualityCheck -> QualityDefect -> QualityRejection chain. A rejection may name several
+      defects of its inspection (PROD-QUALITY-FIX-001); its severity is the highest of theirs.
 
     Production references:
       production_order_item_id is a plain optional ID
@@ -325,13 +328,6 @@ class QualityRejection(Base):
         nullable=True,
         index=True,
     )
-    quality_defect_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("quality_defects.id"),
-        nullable=True,
-        index=True,
-    )
-
     # Generated QR-YYYY-NNNN, never caller input.
     rejection_code: Mapped[str] = mapped_column(String(32), nullable=False)
     # Production context references: plain UUIDs, no FK constraints (ADR-004). The order is taken
@@ -403,6 +399,30 @@ class QualityRejection(Base):
         default=utc_now,
         onupdate=utc_now,
     )
+    defect_links: Mapped[list["QualityRejectionDefect"]] = relationship(cascade="all, delete-orphan", lazy="selectin",
+                                                                        order_by="QualityRejectionDefect.created_at")
+
+
+class QualityRejectionDefect(Base):
+    """A defect a rejection is made for (PROD-QUALITY-FIX-001). Defects overlap: one unit may carry several, so
+    affected_quantity is shown per defect and never added up across the defects of a rejection."""
+    __tablename__ = "quality_rejection_defects"
+    __table_args__ = (
+        UniqueConstraint("quality_rejection_id", "quality_defect_id", name="uq_rejection_defect"),
+        CheckConstraint("affected_quantity IS NULL OR affected_quantity > 0", name="ck_rejection_defect_quantity"),
+        Index("ix_rejection_defect_rejection", "quality_rejection_id"),
+        Index("ix_rejection_defect_defect", "organization_id", "quality_defect_id"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False)
+    quality_rejection_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("quality_rejections.id", ondelete="CASCADE", name="fk_rejection_defect_rejection"), nullable=False)
+    quality_defect_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("quality_defects.id", ondelete="RESTRICT", name="fk_rejection_defect_defect"), nullable=False)
+    affected_quantity: Mapped[Decimal | None] = mapped_column(Numeric(15, 3), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now, onupdate=utc_now)
+    defect: Mapped["QualityDefect"] = relationship(lazy="joined")
 
 
 class NonConformanceReport(Base):

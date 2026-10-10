@@ -11,6 +11,7 @@ import s from "@/features/production-demands/demands.module.css";
 import { qualityErrorMessage } from "@/features/quality-checks/components/quality-errors";
 import { useFormatter } from "@/hooks/useFormatter";
 import { Q } from "@/lib/quality-permissions";
+import { DefectChips } from "@/features/quality-defects/components/DefectChips";
 import { getQualityRejections } from "../api/quality-rejections-api";
 import { DISPOSITION_STATUSES, DISPOSITIONS, REJECTION_REASONS, type QualityRejectionListFilters, type QualityRejectionListItem } from "../types";
 import { DispositionBadge } from "./DispositionBadge";
@@ -78,7 +79,7 @@ export function QualityRejectionsList() {
     {!error && rows && rows.length > 0 && <section className={s.panel}>
       <div className={s.tableWrap}><table className={s.table} aria-label={t("listAria")}>
         <thead><tr>
-          {["rejectionCode", "rejectionDate", "productionOrder", "line", "qualityCheck", "quantityRejected", "rejectionReason", "disposition", "dispositionStatus"].map(c => <th key={c}>{t(`fields.${c}`)}</th>)}
+          {["rejectionCode", "rejectionDate", "productionOrder", "line", "qualityCheck", "quantityRejected", "rejectionReason", "defects", "disposition", "dispositionStatus"].map(c => <th key={c}>{t(`fields.${c}`)}</th>)}
         </tr></thead>
         <tbody>{rows.map(r => <tr key={r.id}>
           <td><Link href={`/quality-rejections/${r.id}`}><bdi>{r.rejection_code}</bdi></Link>
@@ -89,6 +90,7 @@ export function QualityRejectionsList() {
           <td>{r.inspection_code ? <Link href={`/quality-checks/${r.quality_check_id}`}><bdi>{r.inspection_code}</bdi></Link> : "—"}</td>
           <td><bdi>{fmt.quantity(r.quantity_rejected, r.unit)}</bdi></td>
           <td>{enums(`rejectionReason.${r.rejection_reason}`)}</td>
+          <td><DefectChips defects={r.defects ?? []} severity={r.severity} /></td>
           <td>{r.disposition ? <DispositionBadge disposition={r.disposition} /> : "—"}</td>
           <td><DispositionStatusBadge status={r.disposition_status} /></td>
         </tr>)}</tbody>

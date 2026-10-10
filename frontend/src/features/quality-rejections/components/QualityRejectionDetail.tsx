@@ -14,6 +14,8 @@ import { decideQualityRejection, executeQualityRejection, getQualityRejectionByI
 import { DISPOSITIONS, type Disposition, type QualityRejectionData, type RejectionDecisionRequest } from "../types";
 import { DispositionBadge } from "./DispositionBadge";
 import { DispositionStatusBadge } from "./DispositionStatusBadge";
+import { DefectCategoryBadge } from "@/features/quality-defects/components/DefectCategoryBadge";
+import { DefectSeverityBadge } from "@/features/quality-defects/components/DefectSeverityBadge";
 
 function Item({ label, children }: { label: string; children: ReactNode }) {
   return <div><dt className={s.muted}>{label}</dt><dd style={{ margin: "4px 0 0", overflowWrap: "anywhere" }}>{children}</dd></div>;
@@ -74,6 +76,19 @@ export function QualityRejectionDetail({ qualityRejectionId }: { qualityRejectio
       </dl>
       <p style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}><span className={s.muted}>{t("fields.rejectionNotes")}: </span>{r.rejection_notes}</p>
     </section>
+    {(r.defects?.length ?? 0) > 0 && <section className={s.panel} aria-label={t("defects.title")}>
+      <h2 style={{ marginTop: 0 }}>{t("defects.title")} {r.severity && <DefectSeverityBadge severity={r.severity} />}</h2>
+      <div className={s.tableWrap}><table className={s.table} aria-label={t("defects.title")}>
+        <thead><tr><th>{t("defects.defect")}</th><th>{t("defects.severity")}</th><th>{t("defects.found")}</th><th>{t("defects.affected", { unit: r.unit })}</th></tr></thead>
+        <tbody>{r.defects!.map(d => <tr key={d.quality_defect_id}>
+          <td><DefectCategoryBadge category={d.defect_category} /> {d.description}</td>
+          <td><DefectSeverityBadge severity={d.severity} /></td>
+          <td>{d.defect_count}</td>
+          <td><bdi>{d.affected_quantity ? fmt.quantity(d.affected_quantity, r.unit) : "—"}</bdi></td>
+        </tr>)}</tbody>
+      </table></div>
+      <p className={s.muted} style={{ marginBottom: 0 }}>{t("defects.overlapHint")}</p>
+    </section>}
     {r.disposition && <section className={s.panel} aria-label={t("decisionSection")}>
       <h2 style={{ marginTop: 0 }}>{t("decisionSection")}</h2>
       <dl className={s.grid} style={{ margin: 0 }}>

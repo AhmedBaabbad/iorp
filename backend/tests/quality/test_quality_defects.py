@@ -169,7 +169,8 @@ def test_flat_list_filter_by_severity(client, auth_headers):
         severity="critical",
         description="Critical winding defect",
     )
-    _create_defect(client, auth_headers, check.json()["id"], severity="minor")
+    # One defect type per inspection (PROD-QUALITY-FIX-001): the second finding is another type.
+    _create_defect(client, auth_headers, check.json()["id"], severity="minor", defect_category="surface")
 
     resp = client.get(f"{DEFECTS_BASE}?severity=critical", headers=auth_headers)
 

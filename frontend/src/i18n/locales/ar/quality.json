@@ -13,7 +13,9 @@
       "dateFrom": "من تاريخ",
       "dateTo": "إلى تاريخ",
       "clear": "مسح الفلاتر",
-      "forOrder": "فحوصات الأمر {number}"
+      "forOrder": "فحوصات الأمر {number}",
+      "defectType": "نوع العيب",
+      "allDefectTypes": "كل أنواع العيوب"
     },
     "empty": "لا توجد فحوصات جودة",
     "createFirst": "أنشئ فحصًا جديدًا أو عدّل الفلاتر.",
@@ -38,7 +40,8 @@
       "notes": "ملاحظات",
       "startedAt": "بدأ في",
       "closedAt": "أُغلق في",
-      "cancelReason": "سبب الإلغاء"
+      "cancelReason": "سبب الإلغاء",
+      "defects": "العيوب"
     },
     "editTitle": "تعديل فحص الجودة",
     "createTitle": "فحص جودة جديد",
@@ -117,7 +120,8 @@
       "unitPlural": "وحدات",
       "validation": {
         "defectCountMin": "يجب أن يكون عدد العيوب 1 على الأقل",
-        "descriptionRequired": "الوصف مطلوب"
+        "descriptionRequired": "الوصف مطلوب",
+        "categoryRequired": "اختر نوع العيب"
       },
       "fields": {
         "defectDate": "تاريخ اكتشاف العيب",
@@ -127,6 +131,16 @@
         "description": "وصف العيب",
         "productionOrderId": "معرف أمر الإنتاج",
         "notes": "ملاحظات"
+      },
+      "formTitle": "تسجيل العيوب",
+      "onePerType": "أضف كل أنواع العيوب الموجودة؛ يُسجَّل كل نوع مرة واحدة في الفحص مع عدد مرات ظهوره.",
+      "defectNumber": "العيب {number}",
+      "chooseCategory": "اختر نوع العيب",
+      "removeDefect": "إزالة",
+      "addAnother": "إضافة نوع عيب آخر",
+      "saveDefects": "{count, plural, one {تسجيل العيب} other {تسجيل # عيوب}}",
+      "errors": {
+        "DEFECT_ALREADY_RECORDED": "نوع العيب هذا مسجَّل في هذا الفحص؛ عدّل عدده بدلًا من تسجيله مرة أخرى."
       }
     }
   },
@@ -169,7 +183,8 @@
       "concessionJustification": "مبرر الاستثناء",
       "decisionNotes": "ملاحظات القرار",
       "decisionNotesOptional": "ملاحظات القرار (اختيارية)",
-      "executionNotes": "ملاحظات التنفيذ"
+      "executionNotes": "ملاحظات التنفيذ",
+      "defects": "العيوب"
     },
     "blocksClose": "يمنع إغلاق الأمر",
     "hints": {
@@ -221,6 +236,24 @@
       "rework": "تُعاد الكمية للتشغيل لتصحيحها ثم تُفحص من جديد.",
       "return_to_process": "تعود الكمية إلى مرحلة سابقة من العملية.",
       "use_as_is": "تُستخدم الكمية كما هي باستثناء موافَق عليه؛ يلزم اسم الموافق والمبرر."
+    },
+    "defects": {
+      "title": "العيوب",
+      "none": "لم تُسجَّل عيوب في هذا الفحص.",
+      "search": "ابحث عن عيب",
+      "searchPlaceholder": "النوع أو الوصف",
+      "available": "عيوب الفحص",
+      "add": "إضافة {defect}",
+      "selected": "عيوب هذا الرفض",
+      "defect": "العيب",
+      "severity": "الخطورة",
+      "found": "العدد",
+      "affected": "المتأثر ({unit}، اختياري)",
+      "affectedFor": "الكمية المتأثرة بـ {defect}",
+      "remove": "إزالة {defect}",
+      "removeShort": "إزالة",
+      "overlapHint": "قد تحمل الوحدة الواحدة أكثر من عيب، لذلك تظهر الكمية المتأثرة لكل عيب على حدة ولا تُجمع.",
+      "affectedTooHigh": "لا يمكن أن تزيد الكمية المتأثرة على الكمية المرفوضة."
     }
   },
   "errors": {
@@ -304,7 +337,10 @@
     "LOT_ALREADY_INSPECTED": "لهذه الدفعة فحص مفتوح من قبل.",
     "LOT_SPLIT_MISMATCH": "مجموع الأجزاء ({total}) يجب أن يساوي الكمية المفحوصة ({inspected}).",
     "NOT_AN_INCOMING_INSPECTION": "هذا الفحص لا يخص دفعة مستلمة.",
-    "INCOMING_INSPECTION_NEEDS_DECISION": "فحص المواد الواردة يُغلق بقرار على الدفعة."
+    "INCOMING_INSPECTION_NEEDS_DECISION": "فحص المواد الواردة يُغلق بقرار على الدفعة.",
+    "REJECTION_DEFECT_DUPLICATE": "ذُكر العيب نفسه مرتين.",
+    "DEFECTS_NEED_A_CHECK": "لا يذكر العيوبَ إلا رفضٌ ناتج عن فحص.",
+    "AFFECTED_QUANTITY_EXCEEDS_REJECTED": "لا يمكن أن تزيد الكمية المتأثرة على الكمية المرفوضة."
   },
   "history": {
     "title": "سجل الحالة",

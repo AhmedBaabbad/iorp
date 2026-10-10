@@ -97,8 +97,17 @@ class QualityCheckListItem(BaseModel):
     receipt_line_id: UUID | None = None
     incoming_source: "IncomingSource | None" = None
     actions: list[str] = []
+    # The defects found on this inspection (one per type, with how many) and the highest severity among them.
+    defects: list["CheckDefect"] = []
+    severity: str | None = None
     created_at: ISODatetime
     updated_at: ISODatetime
+
+
+class CheckDefect(BaseModel):
+    defect_category: str
+    severity: str
+    defect_count: int
 
 
 class IncomingSource(BaseModel):
@@ -200,12 +209,29 @@ class MeasurementInput(_Input):
 
 
 # ── rejections ────────────────────────────────────────────────────────────────────────────────
+class RejectionDefectInput(_Input):
+    # A defect recorded on the rejection's inspection; how many of the rejected units it affects is optional.
+    quality_defect_id: UUID
+    affected_quantity: Quantity | None = Field(default=None, gt=0, decimal_places=3, max_digits=15)
+
+
+class RejectionDefect(BaseModel):
+    quality_defect_id: UUID
+    defect_category: str
+    severity: str
+    defect_count: int
+    description: str
+    # Per defect only: defects overlap (one unit may carry several), so these are never added up.
+    affected_quantity: Decimal | None = None
+
+
 class QualityRejectionCreate(_Input):
     # From a closed check (order, line, unit and quantity limit come from it) or for a named order.
     quality_check_id: UUID | None = None
     production_order_id: UUID | None = None
     production_order_item_id: UUID | None = None
-    quality_defect_id: UUID | None = None
+    # The defects of the inspection this rejection is made for (none, one or several; each once).
+    defects: list[RejectionDefectInput] = Field(default_factory=list, max_length=50)
     rejection_date: date
     rejection_reason: RejectionReason
     rejection_notes: str = Field(min_length=1, max_length=2000)
@@ -217,6 +243,8 @@ class QualityRejectionUpdate(_Input):
     rejection_reason: RejectionReason | None = None
     rejection_notes: str | None = Field(default=None, max_length=2000)
     quantity_rejected: Quantity | None = Field(default=None, gt=0, decimal_places=3, max_digits=14)
+    # Replaces the rejection's defects while it is pending.
+    defects: list[RejectionDefectInput] | None = Field(default=None, max_length=50)
 
 
 class RejectionDecision(_Input):
@@ -250,11 +278,13 @@ class QualityRejectionListItem(BaseModel):
     return_no: str | None = None
     unresolved: bool = False
     actions: list[str] = []
+    # The highest severity among the rejection's defects (critical > major > minor); null without defects.
+    severity: str | None = None
+    defects: list[RejectionDefect] = []
     created_at: ISODatetime
 
 
 class QualityRejectionRead(QualityRejectionListItem):
-    quality_defect_id: UUID | None
     rejection_notes: str
     rejected_by_name: str | None = None
     decision_notes: str | None

@@ -7,14 +7,16 @@ An inspection of returned goods (QUAL-RET-001, return_inspection_service.py) is 
 """
 from __future__ import annotations
 
-from sqlalchemy import select
+from collections import defaultdict
+
+from sqlalchemy import exists, select
 
 from app.core.utils import utc_now
 from app.quality.domain import rules
 from app.quality.domain.permissions import NCR_CREATE, REJECTIONS_DECIDE
 from app.quality.domain.enums import DispositionStatus, QualityCheckStatus as S, QualityCheckType as T, RejectionReason
 from app.quality.domain.rules import QualityError, ZERO
-from app.quality.infrastructure.models import QualityCheck, QualityRejection
+from app.quality.infrastructure.models import QualityCheck, QualityDefect, QualityRejection, QualityRejectionDefect
 from .measurement_service import MeasurementService
 from .support import log_activity, CommercialReads, ProcurementReads, ProductionReads, ShippingReads, as_decimal, history, next_code, record, user_names
 
@@ -35,8 +37,13 @@ class QualityCheckService:
             raise QualityError("QUALITY_CHECK_NOT_FOUND", 404)
         return check
 
-    def list(self, *, production_order_id=None, check_type=None, status=None, result=None, date_from=None, date_to=None, search=None, limit=200):
+    def list(self, *, production_order_id=None, check_type=None, status=None, result=None, date_from=None, date_to=None, search=None, limit=200,
+             defect_category=None):
         query = select(QualityCheck).where(QualityCheck.organization_id == self.org)
+        if defect_category is not None:
+            # An inspection matches when any of its defects has the category.
+            query = query.where(exists().where(QualityDefect.quality_check_id == QualityCheck.id, QualityDefect.organization_id == self.org,
+                                               QualityDefect.defect_category == defect_category))
         for column, value in ((QualityCheck.production_order_id, production_order_id), (QualityCheck.check_type, check_type),
                               (QualityCheck.status, status), (QualityCheck.result, result)):
             if value is not None:
@@ -56,6 +63,13 @@ class QualityCheckService:
         names = user_names(self.db, self.org, [c.checked_by_user_id for c in checks] + [c.closed_by_user_id for c in checks])
         returned = ShippingReads(self.db, self.org).refs([c.return_line_id for c in checks])
         received = ProcurementReads(self.db, self.org).lots([c.receipt_line_id for c in checks])
+        found = defaultdict(list)
+        if checks:
+            for check_id, category, severity, count in self.db.execute(
+                    select(QualityDefect.quality_check_id, QualityDefect.defect_category, QualityDefect.severity, QualityDefect.defect_count)
+                    .where(QualityDefect.organization_id == self.org, QualityDefect.quality_check_id.in_([c.id for c in checks]))
+                    .order_by(QualityDefect.created_at)):
+                found[check_id].append(dict(defect_category=category.value, severity=severity.value, defect_count=count))
         out = []
         for c in checks:
             actions = rules.check_actions(c.status, can)
@@ -65,7 +79,9 @@ class QualityCheckService:
             if c.receipt_line_id:  # a received lot is closed by its lot decision (QUAL-INC-001)
                 actions = ["lot_decision" if a == "close" else a for a in actions if a != "close" or can(NCR_CREATE)]
             lot = received.get(c.receipt_line_id)
+            defects = sorted(found.get(c.id, []), key=lambda d: -rules.SEVERITY_RANK[d["severity"]])
             view = dict(order_number=orders.get(c.production_order_id), item_line_no=lines.get(c.production_order_item_id),
+                        defects=defects, severity=rules.highest_severity(d["severity"] for d in defects),
                         sample_code=samples.get(c.sample_id), checked_by_name=names.get(c.checked_by_user_id),
                         closed_by_name=names.get(c.closed_by_user_id), actions=actions,
                         return_source=dict(return_id=source["return_id"], return_no=source["return_no"], kind=source["kind"],
@@ -196,6 +212,12 @@ class QualityCheckService:
                 disposition_status=DispositionStatus.PENDING, quantity_rejected=rejected, unit=check.unit or "",
                 rejected_by_user_id=self.tenant.user_id)
             self.db.add(rejection)
+            self.db.flush()
+            # It is made for the defects found on this inspection (PROD-QUALITY-FIX-001); they can be changed while pending.
+            for defect_id in self.db.scalars(select(QualityDefect.id).where(QualityDefect.organization_id == self.org,
+                                                                            QualityDefect.quality_check_id == check.id)
+                                             .order_by(QualityDefect.created_at)):
+                rejection.defect_links.append(QualityRejectionDefect(organization_id=self.org, quality_defect_id=defect_id))
             self.db.flush()
             record(self.db, self.org, "rejection", rejection.id, "create", None, DispositionStatus.PENDING.value, self.tenant.user_id,
                    detail=dict(source=check.inspection_code))

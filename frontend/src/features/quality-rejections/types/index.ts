@@ -1,4 +1,5 @@
 // Quality rejections (QUAL-001): pending → decided (disposition) → executed.
+import type { DefectCategory, DefectSeverity } from "@/features/quality-defects/types";
 import type { HistoryEntry } from "@/features/quality-checks/types";
 
 export type RejectionReason =
@@ -29,11 +30,15 @@ export type QualityRejectionListItem = {
   // Pending, or decided as a hold: blocks closing the production order.
   unresolved: boolean;
   actions: RejectionAction[];
+  // The highest severity among the rejection's defects (critical > major > minor); null without defects.
+  severity?: DefectSeverity | null;
+  // affected_quantity is per defect: defects overlap, so these are never added up.
+  defects?: { quality_defect_id: string; defect_category: DefectCategory; severity: DefectSeverity; defect_count: number; description: string;
+    affected_quantity: string | null }[];
   created_at: string;
 };
 
 export type QualityRejectionData = QualityRejectionListItem & {
-  quality_defect_id: string | null;
   rejection_notes: string;
   rejected_by_name: string | null;
   decision_notes: string | null;
@@ -66,8 +71,11 @@ export type CreateQualityRejectionRequest = {
   rejection_reason: RejectionReason;
   rejection_notes: string;
   quantity_rejected: string;
+  defects?: RejectionDefectInput[];
 };
 
-export type UpdateQualityRejectionRequest = Partial<Pick<CreateQualityRejectionRequest, "rejection_date" | "rejection_reason" | "rejection_notes" | "quantity_rejected">>;
+export type RejectionDefectInput = { quality_defect_id: string; affected_quantity?: string | null };
+
+export type UpdateQualityRejectionRequest = Partial<Pick<CreateQualityRejectionRequest, "rejection_date" | "rejection_reason" | "rejection_notes" | "quantity_rejected" | "defects">>;
 
 export type RejectionDecisionRequest = { disposition: Disposition; decision_notes?: string | null; concession_approved_by?: string | null };
