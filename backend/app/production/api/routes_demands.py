@@ -1,9 +1,14 @@
+from datetime import date
+from urllib.parse import quote
 from uuid import UUID
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from app.core.db import Base
+from app.production.reporting import demand_export
 from app.dependencies import get_current_tenant, get_db, get_customer_lookup, get_quote_lookup, require_permission, require_any_permission, permission_check
 from app.production.domain import permissions as P
 from app.production.domain.enums import ProductionDemandStatus
@@ -83,6 +88,13 @@ def list_demands(filters: PlanningFilters = Depends(), statuses: list[Production
     return svc.list(filters, statuses=list(dict.fromkeys(statuses)))
 
 
+# Before /demands/{demand_id}, so "export.xlsx" is never read as an id.
+@router.get("/demands/export.xlsx", dependencies=[allowed("read")])
+def export_demands(filters: PlanningFilters = Depends(), statuses: list[ProductionDemandStatus] = Query(default=[]), svc=Depends(service)):
+    """The demands the screen shows (same filters and order, every page) as a simple Arabic Excel sheet; built on request, never stored."""
+    return _xlsx(demand_export.build(svc, filters, list(dict.fromkeys(statuses)), zone=_zone(svc)), "طلبات-العملاء")
+
+
 @router.get("/demands/{demand_id}", response_model=DemandDetailResponse, dependencies=[allowed("read")])
 def detail(demand_id: UUID, svc=Depends(service)):
     return svc.response(svc.get(demand_id), detail=True)
@@ -126,6 +138,23 @@ def change_status(demand_id: UUID, payload: DemandStatusRequest, svc=Depends(ser
     required=P.DEMANDS_CANCEL if payload.status == 'cancelled' else P.DEMANDS_RELEASE
     if not can(required): raise HTTPException(403, 'Missing demand transition permission.')
     return svc.response(svc.update_status(demand_id, payload.status))
+
+
+@router.get("/planning/demands/export.xlsx", dependencies=[Depends(require_permission(P.PLANNING_READ))])
+def export_planning(filters: PlanningFilters = Depends(), statuses: list[ProductionDemandStatus] = Query(default=[]), svc=Depends(service)):
+    """The planning queue as the screen shows it (same view, filters and order), as a simple Arabic Excel sheet."""
+    return _xlsx(demand_export.build(svc, filters, list(dict.fromkeys(statuses)), planning=True, zone=_zone(svc)), "قائمة-التخطيط")
+
+
+def _zone(svc):
+    orgs = Base.metadata.tables["foundation_organizations"]
+    return svc.db.scalar(select(orgs.c.timezone).where(orgs.c.id == svc.org_id)) or "UTC"
+
+
+def _xlsx(content: bytes, name: str):
+    filename = f"{name}-{date.today().isoformat()}.xlsx"
+    return Response(content=content, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f"attachment; filename=\"demands-{date.today().isoformat()}.xlsx\"; filename*=UTF-8''{quote(filename)}"})
 
 
 @router.get("/planning/demands", response_model=PaginatedPlanningList, dependencies=[Depends(require_permission(P.PLANNING_READ))])

@@ -632,7 +632,9 @@
       "sales_order_required": "اختر أمر البيع.",
       "quantity_exceeds_remaining": "الكمية أكبر من المتبقي في أمر البيع.",
       "sales_order_lines_locked": "بنود أمر البيع ثابتة (المنتج والمواصفات والوحدة)؛ تُعدَّل الكمية فقط.",
-      "duplicate_order_line": "البند مكرر."
+      "duplicate_order_line": "البند مكرر.",
+      "export_too_large": "الطلبات أكثر من أن تُصدَّر في ملف واحد (أكثر من 5000). ضيّق الفلاتر ثم صدّر مرة أخرى.",
+      "export_failed": "تعذّر التصدير. حاول مرة أخرى."
     },
     "products": {
       "pp_strap": "أشرطة البولي بروبيلين",
@@ -668,7 +670,9 @@
       "create": "إنشاء طلب الإنتاج",
       "manualInstead": "إدخال طلب يدوي (بدون أمر بيع)",
       "fromOrderInstead": "من أمر بيع معتمد"
-    }
+    },
+    "exportExcel": "تصدير Excel",
+    "exporting": "جارٍ التصدير…"
   },
   "planning": {
     "title": "تخطيط الإنتاج",

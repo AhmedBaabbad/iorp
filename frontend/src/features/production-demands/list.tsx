@@ -13,6 +13,7 @@ import s from "./demands.module.css";
 import { StatusVisibilityPicker } from "./StatusVisibilityPicker";
 import { ALL_STATUSES, DEMANDS, PLANNING, initialStatuses, isActiveQueue, planningQuery, planningStatusesFromUrl, readStored, statusQuery, store, withStatusesInUrl } from "./status-visibility";
 import { P } from "@/lib/production-permissions";
+import { downloadFile, DownloadError } from "@/lib/download";
 
 export function DemandList({ planning = false }: { planning?: boolean }) {
   const t = useTranslations("production.demands");
@@ -52,11 +53,24 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
   useEffect(() => {
     if (!visibleReady) return;
     let active = true; setBusy(true); setError("");
-    const query = planning ? planningQuery(visible, filters, page) : new URLSearchParams([...Object.entries(filters).filter(([, v]) => v), ...statusQuery(visible), ["page", String(page)], ["page_size", "20"]]).toString();
+    const query = listQuery();
     demandsApi.list(query, planning).then(v => { if (active) setData(v); }).catch(e => { if (active) setError(errorKey(e)); }).finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
-  }, [filters, page, planning, revision, visible, visibleReady]);
+  }, [filters, page, planning, revision, visible, visibleReady]); // eslint-disable-line react-hooks/exhaustive-deps -- listQuery reads only these
   const filter = (key: string, value: string) => { setFilters(old => ({ ...old, [key]: value })); setPage(1); };
+  // The screen's query; the Excel export sends the same filters without the page (every matching demand).
+  function listQuery() {
+    return planning ? planningQuery(visible, filters, page) : new URLSearchParams([...Object.entries(filters).filter(([, v]) => v), ...statusQuery(visible), ["page", String(page)], ["page_size", "20"]]).toString();
+  }
+  const [exporting, setExporting] = useState(false);
+  async function exportExcel() {
+    const query = new URLSearchParams(listQuery());
+    query.delete("page"); query.delete("page_size");
+    setExporting(true); setError("");
+    try { await downloadFile(`/production/${planning ? "planning/demands" : "demands"}/export.xlsx?${query}`, "demands.xlsx"); }
+    catch (e) { setError(e instanceof DownloadError && e.code === "export_too_large" ? "export_too_large" : "export_failed"); }
+    finally { setExporting(false); }
+  }
   const changeVisible = (next: DemandStatus[]) => {
     setVisible(next); setPage(1); store(next, config.storageKey);
     const params = withStatusesInUrl(searchParams.toString(), next, config.defaults);
@@ -88,6 +102,7 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
         <label className={s.field}>{t("priority")}<select value={filters.priority ?? ""} onChange={e => filter("priority", e.target.value)}><option value="">{t("all")}</option>{priorities.map(v => <option key={v} value={v}>{t(`priorities.${v}`)}</option>)}</select></label>
         <StatusVisibilityPicker value={visible} defaults={config.defaults} onChange={changeVisible} />
         {planning && <><label className={s.field}>{t("productType")}<input value={filters.product_type ?? ""} onChange={e => filter("product_type", e.target.value)} /></label><label className={s.field}>{t("deliveryFrom")}<input type="date" value={filters.requested_delivery_from ?? ""} onChange={e => filter("requested_delivery_from", e.target.value)} /></label><label className={s.field}>{t("deliveryTo")}<input type="date" value={filters.requested_delivery_to ?? ""} onChange={e => filter("requested_delivery_to", e.target.value)} /></label></>}
+        <button type="button" className={s.button} disabled={exporting || busy} onClick={() => void exportExcel()}>{exporting ? t("exporting") : t("exportExcel")}</button>
         {!planning && canCreate && <Link className={`${s.button} ${s.primary}`} href="/production/demands/new">{t("createTitle")}</Link>}
       </div>
       <ErrorMessage code={error} />

@@ -632,7 +632,9 @@
       "sales_order_required": "Choose the sales order.",
       "quantity_exceeds_remaining": "The quantity is more than what remains on the sales order.",
       "sales_order_lines_locked": "Sales order lines are fixed (product, specifications, unit); only the quantity changes.",
-      "duplicate_order_line": "Duplicate line."
+      "duplicate_order_line": "Duplicate line.",
+      "export_too_large": "Too many demands for one file (more than 5,000). Narrow the filters and export again.",
+      "export_failed": "The export failed. Try again."
     },
     "products": {
       "pp_strap": "PP Strap",
@@ -668,7 +670,9 @@
       "create": "Create production demand",
       "manualInstead": "Enter a manual demand (no sales order)",
       "fromOrderInstead": "From a confirmed sales order"
-    }
+    },
+    "exportExcel": "Export to Excel",
+    "exporting": "Exporting…"
   },
   "planning": {
     "title": "Production Planning",
