@@ -34,6 +34,21 @@ class EligibleOrder(BaseModel):
     planned_end_date: date
 
 
+class EligibleDemandItem(BaseModel):
+    production_demand_item_id: UUID
+    production_demand_id: UUID
+    demand_number: str
+    customer_name: str | None
+    line_no: int
+    product_type: str | None
+    unit: str
+    target_spec_json: dict[str, Any] | None
+    required_quantity: Decimal
+    remaining_quantity: Decimal
+    priority: str | None
+    requested_delivery_date: date | None
+
+
 class AllocationInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     production_demand_item_id: UUID

@@ -61,6 +61,7 @@ gone. Each order ends with `id`.
 | Downtime events | `GET /production/downtime-events` | as before (the `/summary` figures cover every match) | start ↓, id ↓ |
 | Shift rosters | `GET /production/shift-rosters` | shift, worker, dates | effective from ↓, id ↓ |
 | A run's roster picker | `GET /production/shift-rosters/active?on=` | rosters in effect that day (one per shift at most) | — |
+| An order's "Add a demand" picker | `GET /production/orders/{id}/eligible-demand-items?search=&limit=20` | demand number or customer; same product and unit, quantity left, not in the order (≤ 50) | planning queue order |
 | Inspections | `GET /quality/quality-checks` | as before + defect type | date ↓, id ↓ |
 | Rejections | `GET /quality/quality-rejections` | as before + `unresolved` | date ↓, created ↓, id ↓ |
 | Defects | `GET /quality/quality-defects` | category, severity, order, date | date ↓, created ↓, id ↓ |

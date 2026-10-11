@@ -1,6 +1,6 @@
 from decimal import Decimal
 from types import SimpleNamespace
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.core.utils import utc_now
@@ -138,6 +138,51 @@ class PlanningOrderService:
     def _audit(self, action, order, **details):
         get_registered_activity_logger().log_activity(self.db, self.org_id, action, "production_order", order.id, order.production_order_number,
                                                       actor_id=self.tenant.user_id, details={k: str(v) for k, v in details.items()})
+
+    def eligible_demand_items(self, order_id, customers, search="", limit=20):
+        """Demand items that may join an open order, searched on the server (demand number or customer), at most `limit`.
+
+        Same organization, same product type and unit as the order, a plannable demand, quantity still to allocate, not
+        already in the order, and specifications compatible with the order's current allocations. The planning queue's
+        order (sequence, priority, delivery date) decides which come first, so nothing depends on a first page of demands.
+        """
+        order = self.db.scalar(select(ProductionOrder).where(ProductionOrder.organization_id == self.org_id, ProductionOrder.id == order_id))
+        if order is None:
+            raise AllocationError("PRODUCTION_ORDER_NOT_FOUND", 404)
+        assert_allocation_open(order)
+        item, demand = ProductionDemandItem, ProductionDemand
+        reserved = select(func.coalesce(func.sum(ProductionAllocation.allocated_quantity), 0)).where(
+            ProductionAllocation.organization_id == self.org_id, ProductionAllocation.production_demand_item_id == item.id,
+            ProductionAllocation.status == ACTIVE).correlate(item).scalar_subquery()
+        in_order = select(ProductionAllocation.production_demand_item_id).where(
+            ProductionAllocation.organization_id == self.org_id, ProductionAllocation.production_order_id == order.id,
+            ProductionAllocation.status == ACTIVE)
+        query = (select(item, demand, (item.required_quantity - reserved).label("remaining")).join(demand, demand.id == item.production_demand_id)
+                 .where(demand.organization_id == self.org_id, demand.status.in_(PLANNABLE), item.product_type == order.product_type,
+                        item.unit == order.unit, item.required_quantity > reserved, item.id.not_in(in_order)))
+        if search:
+            matches = [c.id for c in customers.find_customers(self.db, self.org_id, search, active_only=False)]
+            query = query.where(or_(demand.demand_number.icontains(search, autoescape=True), demand.customer_id.in_(matches)))
+        current = [a.demand_item for a in order.allocations if a.status == ACTIVE]
+        found = []
+        # Read a little ahead: a stricter compatibility policy may set some aside, and the answer should still fill up.
+        for row_item, row_demand, remaining in self.db.execute(
+                query.order_by(*ProductionDemandRepository.ordering(), item.line_no, item.id).limit(limit * 5)).all():
+            try:
+                self.checker.validate_compatibility([*current, row_item])
+            except AllocationError:
+                continue
+            found.append((row_item, row_demand, remaining))
+            if len(found) == limit:
+                break
+        names = {}
+        for customer_id in {d.customer_id for _, d, _ in found}:
+            summary = customers.get_customer_summary(self.db, customer_id, self.org_id)
+            names[customer_id] = summary.customer_name if summary else None
+        return [dict(production_demand_item_id=i.id, production_demand_id=d.id, demand_number=d.demand_number, customer_name=names.get(d.customer_id),
+                     line_no=i.line_no, product_type=i.product_type, unit=i.unit, target_spec_json=i.target_spec_json,
+                     required_quantity=i.required_quantity, remaining_quantity=remaining, priority=d.priority,
+                     requested_delivery_date=d.requested_delivery_date) for i, d, remaining in found]
 
     def _finish(self, order, demand_ids):
         follow_allocations(self.db, self.org_id, order)

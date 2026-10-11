@@ -796,7 +796,12 @@
     "addToThisOrder": "Add to this order",
     "workCenter": "Work center",
     "plannedQuantity": "Planned quantity",
-    "plannedDates": "Planned dates"
+    "plannedDates": "Planned dates",
+    "findDemand": "Find a demand",
+    "findDemandHint": "Demand number or customer",
+    "searching": "Searching…",
+    "noMatches": "No matching demand items",
+    "chosenItem": "(chosen demand item)"
   },
   "execution": {
     "runsTitle": "Production Runs",

@@ -44,6 +44,17 @@ export function getProductionOrderStatusHistory(productionOrderId: string) {
 // A draft's lines rearrange on the server; an order on the floor keeps its lines and only adjusts them.
 export type EligibleOrder = { id: string; production_order_number: string; status: string; work_center_name: string | null; product_type: string; unit: string; planned_quantity: string; planned_start_date: string; planned_end_date: string };
 
+// Demand items an open order may take, searched on the server (demand number or customer), at most `limit`:
+// never a first page of demands filtered in the browser.
+export type EligibleDemandItem = { production_demand_item_id: string; production_demand_id: string; demand_number: string; customer_name: string | null;
+  line_no: number; product_type: string | null; unit: string; target_spec_json: Record<string, unknown> | null; required_quantity: string;
+  remaining_quantity: string; priority: string | null; requested_delivery_date: string | null };
+
+export function getEligibleDemandItems(productionOrderId: string, search = "", limit = 20) {
+  const query = new URLSearchParams([["search", search], ["limit", String(limit)]]);
+  return apiClient<EligibleDemandItem[]>(`/production/orders/${productionOrderId}/eligible-demand-items?${query}`);
+}
+
 export function getEligibleOrders(demandItemId: string) {
   return apiClient<EligibleOrder[]>(`/production/planning/eligible-orders?demand_item_id=${encodeURIComponent(demandItemId)}`);
 }

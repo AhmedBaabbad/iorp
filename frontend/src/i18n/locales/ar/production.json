@@ -796,7 +796,12 @@
     "addToThisOrder": "أضف إلى هذا الأمر",
     "workCenter": "مركز العمل",
     "plannedQuantity": "الكمية المخططة",
-    "plannedDates": "التواريخ المخططة"
+    "plannedDates": "التواريخ المخططة",
+    "findDemand": "ابحث عن طلب",
+    "findDemandHint": "رقم الطلب أو اسم العميل",
+    "searching": "جارٍ البحث…",
+    "noMatches": "لا توجد بنود طلب مطابقة",
+    "chosenItem": "(بند الطلب المختار)"
   },
   "execution": {
     "runsTitle": "تشغيل الإنتاج",

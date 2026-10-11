@@ -2,11 +2,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { usePermission } from "@/features/auth/permission-hooks";
-import { demandsApi, type Demand } from "@/features/production-demands/api";
+import { demandsApi } from "@/features/production-demands/api";
 import { ArrangementTable, type ArrangedLine } from "@/features/production-demands/arrangement-table";
 import { lifecycleErrorCode } from "@/features/production-demands/planning-lifecycle";
 import { ReasonDialog } from "@/features/production-demands/reason-dialog";
-import { addOrderAllocation, changeAllocationQuantity } from "../api/production-orders-api";
+import { addOrderAllocation, changeAllocationQuantity, getEligibleDemandItems, type EligibleDemandItem } from "../api/production-orders-api";
 import type { ProductionOrderData } from "../types";
 import s from "@/features/production-demands/demands.module.css";
 import { P } from "@/lib/production-permissions";
@@ -28,7 +28,9 @@ export function OrderLines({ order, onChanged }: { order: ProductionOrderData; o
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [releasing, setReleasing] = useState<Allocation | null>(null);
-  const [candidates, setCandidates] = useState<Demand[]>([]);
+  const [candidates, setCandidates] = useState<EligibleDemandItem[]>([]);
+  const [search, setSearch] = useState("");
+  const [searching, setSearching] = useState(false);
   const [addItem, setAddItem] = useState("");
   const [addQuantity, setAddQuantity] = useState("");
 
@@ -40,18 +42,21 @@ export function OrderLines({ order, onChanged }: { order: ProductionOrderData; o
       addedAfterStart: Boolean(a.added_after_start) })),
   }));
 
-  // Demand items that could join this order: same product and unit, remaining quantity, not already in it.
-  const inOrder = useMemo(() => new Set(order.allocations.filter(a => a.status === "active").map(a => a.production_demand_item_id)), [order.allocations]);
+  // Demand items that could join this order (same product and unit, quantity left, not in it yet): the server searches
+  // every demand and answers the first matches, so a demand far down the queue is found by its number or customer.
   useEffect(() => {
     if (!editing) return;
     let active = true;
-    const query = new URLSearchParams({ view: "active", product_type: order.product_type, page_size: "100" }).toString();
-    demandsApi.list(query, true).then(page => { if (active) setCandidates(page.items); }).catch(() => { if (active) setCandidates([]); });
-    return () => { active = false; };
-  }, [editing, order.product_type, order.allocations]);
-  const options = candidates.flatMap(demand => demand.items
-    .filter(item => item.id && item.unit === order.unit && item.product_type === order.product_type && Number(item.remaining_quantity) > 0 && !inOrder.has(item.id))
-    .map(item => ({ id: item.id!, label: `${demand.customer.name} · ${demand.demand_number} · ${d("lineNo")} ${item.line_no} — ${t("remaining")}: ${item.remaining_quantity} ${item.unit}`, remaining: item.remaining_quantity ?? "" })));
+    setSearching(true);
+    const timer = setTimeout(() => {
+      getEligibleDemandItems(order.id, search.trim()).then(found => { if (active) setCandidates(found); })
+        .catch(() => { if (active) setCandidates([]); }).finally(() => { if (active) setSearching(false); });
+    }, search ? 250 : 0);
+    return () => { active = false; clearTimeout(timer); };
+  }, [editing, order.id, order.allocations, search]);
+  const options = candidates.map(item => ({ id: item.production_demand_item_id, remaining: item.remaining_quantity,
+    label: `${item.customer_name ?? "—"} · ${item.demand_number} · ${d("lineNo")} ${item.line_no} — ${t("remaining")}: ${item.remaining_quantity} ${item.unit}` }));
+  const chosen = useMemo(() => options.find(o => o.id === addItem), [options, addItem]);
 
   async function run(action: () => Promise<unknown>) {
     setBusy(true); setError("");
@@ -83,9 +88,14 @@ export function OrderLines({ order, onChanged }: { order: ProductionOrderData; o
       })() : undefined}
       actionsCell={releasing_allowed ? a => a.status === "released" ? null : <button type="button" className={s.button} disabled={busy} onClick={() => setReleasing(byId.get(a.key) ?? null)}>{t("removeFromOrder")}</button> : undefined} />
     {editing && <form className={s.toolbar} onSubmit={add} aria-label={t("addDemand")} style={{ marginTop: 16 }}>
+      <label className={s.field}>{t("findDemand")}
+        <input type="search" value={search} disabled={busy} placeholder={t("findDemandHint")} onChange={e => setSearch(e.target.value)} />
+      </label>
       <label className={s.field}>{t("addDemand")}
         <select value={addItem} disabled={busy} onChange={e => { setAddItem(e.target.value); setAddQuantity(options.find(o => o.id === e.target.value)?.remaining ?? ""); }}>
-          <option value="">{options.length ? t("selectDemandItem") : t("noCandidates")}</option>
+          <option value="">{searching ? t("searching") : options.length ? t("selectDemandItem") : search.trim() ? t("noMatches") : t("noCandidates")}</option>
+          {/* The chosen item stays listed while another search runs. */}
+          {addItem && !chosen && <option value={addItem}>{t("chosenItem")}</option>}
           {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
       </label>

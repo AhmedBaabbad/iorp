@@ -112,10 +112,15 @@ describe("order lines on a production order", () => {
       ...overrides,
     };
   }
-  const queue = { items: [demand("d9", "PD-9", [{ id: "new-item", spec: { width_mm: 15 }, remaining: "250" }, { id: "wrong-unit", spec: {}, unit: "m" }])], total: 1, page: 1, page_size: 100 };
+  // The server answers only the items this order can take (same product and unit, quantity left, not in it yet).
+  const eligibleItem = (id: string, number: string, remaining: string) => ({ production_demand_item_id: id, production_demand_id: `d-${id}`, demand_number: number,
+    customer_name: "Acme", line_no: 1, product_type: "film", unit: "kg", target_spec_json: { width_mm: 15 }, required_quantity: "1000",
+    remaining_quantity: remaining, priority: "normal", requested_delivery_date: null });
+  const queue = [eligibleItem("new-item", "PD-9", "250")];
+  const isEligible = (path: string) => path.startsWith("/production/orders/po1/eligible-demand-items");
 
   it("shows lines in order with their specifications and quantities", async () => {
-    api.apiClient.mockResolvedValue(queue);
+    api.apiClient.mockImplementation((path: string) => Promise.resolve(isEligible(path) ? queue : {}));
     ui(<OrderLines order={order()} />);
     const table = screen.getByRole("table", { name: "Order lines" });
     const heads = within(table).getAllByRole("rowheader").map(h => h.textContent);
@@ -126,7 +131,7 @@ describe("order lines on a production order", () => {
 
   it("changes a quantity on a draft order", async () => {
     const onChanged = vi.fn();
-    api.apiClient.mockImplementation((path: string) => Promise.resolve(path.startsWith("/production/planning/demands") ? queue : {}));
+    api.apiClient.mockImplementation((path: string) => Promise.resolve(isEligible(path) ? queue : {}));
     ui(<OrderLines order={order()} onChanged={onChanged} />);
     fireEvent.change(screen.getByRole("spinbutton", { name: "Allocate now PD-1 1" }), { target: { value: "250" } });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save" })); });
@@ -134,20 +139,36 @@ describe("order lines on a production order", () => {
     expect(onChanged).toHaveBeenCalled();
   });
 
-  it("adds only compatible demand items that still have quantity", async () => {
+  it("adds a demand item the server offers for this order, with its remaining quantity", async () => {
     const onChanged = vi.fn();
-    api.apiClient.mockImplementation((path: string) => Promise.resolve(path.startsWith("/production/planning/demands") ? queue : {}));
+    api.apiClient.mockImplementation((path: string) => Promise.resolve(isEligible(path) ? queue : {}));
     ui(<OrderLines order={order()} onChanged={onChanged} />);
     const form = screen.getByRole("form", { name: "Add a demand" });
     const picker = within(form).getByRole("combobox");
     await waitFor(() => expect(within(picker).getAllByRole("option").length).toBe(2));
-    expect(within(picker).queryByText(/wrong-unit/)).toBeNull();
     fireEvent.change(picker, { target: { value: "new-item" } });
     expect((within(form).getByRole("spinbutton") as HTMLInputElement).value).toBe("250");
     await act(async () => { fireEvent.click(within(form).getByRole("button", { name: "Add to order" })); });
     expect(api.apiClient).toHaveBeenCalledWith("/production/orders/po1/allocations", { method: "POST", body: { production_demand_item_id: "new-item", allocated_quantity: "250" } });
-    const listCall = api.apiClient.mock.calls.find(([path]) => String(path).startsWith("/production/planning/demands"))![0] as string;
-    expect(new URLSearchParams(listCall.split("?")[1]).get("product_type")).toBe("film");
+    // Never a first page of the planning queue filtered in the browser.
+    expect(api.apiClient.mock.calls.some(([path]) => String(path).startsWith("/production/planning/demands"))).toBe(false);
+  });
+
+  it("finds a demand far down the queue by searching the server", async () => {
+    api.apiClient.mockImplementation((path: string) => {
+      if (!isEligible(path)) return Promise.resolve({});
+      const search = new URLSearchParams(path.split("?")[1]).get("search");
+      return Promise.resolve(search === "PD-0150" ? [eligibleItem("late-item", "PD-0150", "40")] : queue);
+    });
+    ui(<OrderLines order={order()} />);
+    const form = screen.getByRole("form", { name: "Add a demand" });
+    const picker = within(form).getByRole("combobox");
+    await waitFor(() => expect(within(picker).getAllByRole("option").length).toBe(2));
+    await act(async () => { fireEvent.change(within(form).getByRole("searchbox"), { target: { value: "PD-0150" } }); await new Promise(r => setTimeout(r, 300)); });
+    await waitFor(() => expect(within(picker).getByRole("option", { name: /PD-0150/ })).toBeTruthy());
+    expect(within(picker).queryByRole("option", { name: /PD-9/ })).toBeNull();
+    const asked = api.apiClient.mock.calls.map(([path]) => String(path)).filter(isEligible).pop()!;
+    expect(new URLSearchParams(asked.split("?")[1]).get("limit")).toBe("20");
   });
 
   it("is read-only once the order is completed (allocations locked by the server)", () => {
