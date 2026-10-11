@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api-client";
+import type { Page } from "@/lib/pagination";
 import type {
   CreateQualityRejectionRequest, QualityRejectionData, QualityRejectionListFilters, QualityRejectionListItem, RejectionDecisionRequest,
   UpdateQualityRejectionRequest,
@@ -6,9 +7,10 @@ import type {
 
 const PATH = "/quality/quality-rejections";
 
-export function getQualityRejections(filters: QualityRejectionListFilters = {}) {
-  const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => Boolean(value)) as [string, string][]);
-  return apiClient<QualityRejectionListItem[]>(`${PATH}${query.size ? `?${query}` : ""}`);
+// One page of rejections (ARCH-PAGE-001): the filters plus page and page_size; `unresolved` counts what blocks closing.
+export function getQualityRejections(filters: QualityRejectionListFilters & { page?: string | number; page_size?: string | number; unresolved?: boolean } = {}) {
+  const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => Boolean(value)).map(([k, v]) => [k, String(v)]));
+  return apiClient<Page<QualityRejectionListItem>>(`${PATH}${query.size ? `?${query}` : ""}`);
 }
 
 export function getQualityRejectionById(id: string) {

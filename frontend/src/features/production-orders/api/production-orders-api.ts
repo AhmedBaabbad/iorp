@@ -1,32 +1,24 @@
 import { apiClient } from "@/lib/api-client";
+import type { Page } from "@/lib/pagination";
 import type {
   CreateProductionOrderRequest,
   OrderAction,
   OrderStatusHistoryEntry,
   ProductionOrderData,
-  ProductionOrderListFilters,
   ProductionOrderListItem,
 } from "../types";
 
 const PRODUCTION_ORDERS_PATH = "/production/production-orders";
 
-export function getProductionOrders(filters: ProductionOrderListFilters = {}) {
-  const query = new URLSearchParams();
+// One page of orders (ARCH-PAGE-001): `query` carries page, page_size, search and the filters (useListQuery().apiQuery()).
+export function getProductionOrders(query = "") {
+  return apiClient<Page<ProductionOrderListItem>>(`${PRODUCTION_ORDERS_PATH}${query ? `?${query}` : ""}`);
+}
 
-  if (filters.status) {
-    query.set("status", filters.status);
-  }
-
-  if (filters.priority) {
-    query.set("priority", filters.priority);
-  }
-
-  if (filters.work_center_id) {
-    query.set("work_center_id", filters.work_center_id);
-  }
-
-  const suffix = query.size > 0 ? `?${query.toString()}` : "";
-  return apiClient<ProductionOrderListItem[]>(`${PRODUCTION_ORDERS_PATH}${suffix}`);
+// Orders for a picker: searched on the server (number or product), at most `limit`; `ids` names the chosen ones.
+export function lookupProductionOrders({ search = "", statuses = [], ids = [], limit = 20 }: { search?: string; statuses?: string[]; ids?: string[]; limit?: number } = {}) {
+  const query = new URLSearchParams([["search", search], ["limit", String(limit)], ...statuses.map(s => ["statuses", s]), ...ids.map(id => ["ids", id])]);
+  return apiClient<ProductionOrderListItem[]>(`${PRODUCTION_ORDERS_PATH}/lookup?${query}`);
 }
 
 export function getProductionOrderById(productionOrderId: string) {

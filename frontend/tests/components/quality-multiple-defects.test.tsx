@@ -8,10 +8,10 @@ import type { QualityCheckData } from "@/features/quality-checks/types";
 import type { QualityRejectionData } from "@/features/quality-rejections/types";
 
 const api = vi.hoisted(() => ({ apiClient: vi.fn() }));
-const nav = vi.hoisted(() => ({ push: vi.fn(), params: new URLSearchParams() }));
+const nav = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), params: new URLSearchParams() }));
 const perms = vi.hoisted(() => ({ granted: new Set<string>() }));
 vi.mock("@/lib/api-client", async importOriginal => ({ ...(await importOriginal<object>()), apiClient: api.apiClient }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: nav.push, replace: vi.fn() }), usePathname: () => "/", useSearchParams: () => nav.params }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: nav.push, replace: nav.replace }), usePathname: () => "/", useSearchParams: () => nav.params }));
 vi.mock("@/features/auth/permission-hooks", () => ({ usePermission: (code: string) => perms.granted.has(code) }));
 vi.mock("@/hooks/useFormatter", () => ({ useFormatter: () => ({ date: (v: string) => v, dateTime: (v: string) => v, number: (v: string) => v, quantity: (v: string, u?: string) => `${v} ${u ?? ""}`.trim() }) }));
 vi.mock("@/components/layout/page-frame", () => ({ PageFrame: ({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) => <main><h1>{title}</h1>{action}{children}</main> }));
@@ -27,6 +27,7 @@ beforeAll(async () => { en = await loadMessages("en") as Record<string, unknown>
 beforeEach(() => { api.apiClient.mockReset(); nav.push.mockReset(); nav.params = new URLSearchParams(); perms.granted = new Set(Object.values(Q)); });
 afterEach(cleanup);
 const ui = (node: ReactNode) => render(<NextIntlClientProvider locale="en" messages={en} timeZone="UTC">{node}</NextIntlClientProvider>);
+const paged = <T,>(items: T[]) => ({ items, total: items.length, page: 1, page_size: 50, pages: 1 });
 const sent = (path: string, method: string) => api.apiClient.mock.calls.find(([p, o]) => p === path && o?.method === method)?.[1]?.body;
 
 const check = (over: Partial<QualityCheckData> = {}) => ({ id: "c1", inspection_code: "QI-2026-0001", check_type: "finished_product_inspection", status: "closed",
@@ -46,9 +47,9 @@ function rejection(over: Partial<QualityRejectionData> = {}): QualityRejectionDa
 
 describe("inspections list", () => {
   it("shows the highest severity and defect chips with +N, and filters by defect type", async () => {
-    api.apiClient.mockResolvedValue([check({ severity: "critical", defects: [
+    api.apiClient.mockResolvedValue(paged([check({ severity: "critical", defects: [
       { defect_category: "thickness", severity: "critical", defect_count: 1 }, { defect_category: "color", severity: "major", defect_count: 2 },
-      { defect_category: "surface", severity: "minor", defect_count: 5 }] } as Partial<QualityCheckData>)]);
+      { defect_category: "surface", severity: "minor", defect_count: 5 }] } as Partial<QualityCheckData>)]));
     ui(<QualityChecksList />);
     const table = await screen.findByRole("table", { name: /quality/i });
     expect(within(table).getByText("Critical")).toBeTruthy();
@@ -56,7 +57,12 @@ describe("inspections list", () => {
     expect(within(table).getByText("Color Deviation")).toBeTruthy();
     const more = within(table).getByText("+1");
     expect(more.getAttribute("title")).toBe("Surface Defect");
+    // The filter goes into the address with the page (ARCH-PAGE-001); the list follows the address.
     fireEvent.change(screen.getByLabelText("Defect type"), { target: { value: "surface" } });
+    expect(nav.replace).toHaveBeenCalledWith("/?defect_category=surface", { scroll: false });
+    cleanup();
+    nav.params = new URLSearchParams("defect_category=surface");
+    ui(<QualityChecksList />);
     await waitFor(() => expect(api.apiClient.mock.calls.some(([p]) => String(p).includes("defect_category=surface"))).toBe(true));
   });
 });

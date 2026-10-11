@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, page_of, page_params
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, require_permission
 from app.production.domain import permissions as P
@@ -41,13 +42,14 @@ def create_downtime_event(payload: DowntimeEventCreate, tenant: TenantContext = 
         raise _error(exc) from exc
 
 
-@router.get("", response_model=list[DowntimeEventListItem], dependencies=[READ])
-def list_downtime_events(filters: DowntimeFilters = Depends(), tenant: TenantContext = Depends(get_current_tenant),
-                         db: Session = Depends(get_db), can=Depends(permission_check)):
+@router.get("", response_model=Page[DowntimeEventListItem], dependencies=[READ])
+def list_downtime_events(filters: DowntimeFilters = Depends(), params: PageParams = Depends(page_params),
+                         tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
+    """One page of downtime events, latest first (ARCH-PAGE-001)."""
     service = DowntimeService(db, tenant)
-    events = service.list(**filters.model_dump())
+    events, total = service.list(params, **filters.model_dump())
     labels = service.labels(events, can)
-    return [DowntimeEventListItem.model_validate(e).model_copy(update={"labels": labels[e.id]}) for e in events]
+    return page_of([DowntimeEventListItem.model_validate(e).model_copy(update={"labels": labels[e.id]}) for e in events], total, params)
 
 
 # Before /{downtime_event_id}, so "summary" is never read as an id.

@@ -9,8 +9,9 @@ import { UnitSelect } from "@/components/forms/UnitSelect";
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth/permission-hooks";
 import s from "@/features/production-demands/demands.module.css";
-import { getProductionOrderById, getProductionOrders } from "@/features/production-orders/api/production-orders-api";
-import type { ProductionOrderData, ProductionOrderListItem } from "@/features/production-orders/types";
+import { getProductionOrderById } from "@/features/production-orders/api/production-orders-api";
+import { ProductionOrderPicker } from "@/features/production-orders/components/ProductionOrderPicker";
+import type { ProductionOrderData } from "@/features/production-orders/types";
 import { getWorkCenters } from "@/features/work-centers";
 import { useFormatter } from "@/hooks/useFormatter";
 import { createWasteRecord, getOrderRuns, getWasteRecordById, updateWasteRecord, type RunOption } from "../api";
@@ -37,7 +38,6 @@ export function WasteRecordForm({ recordId }: { recordId?: string }) {
   const editing = Boolean(recordId);
   const [values, setValues] = useState<Values>({ order: params.get("order") ?? "", item: "", run: "", center: "", date: todayIso(), quantity: "", unit: "kg", shares: [{ category: "process", quantity: "" }], reason: "", notes: "" });
   const [existing, setExisting] = useState<WasteRecordData | null>(null);
-  const [orders, setOrders] = useState<ProductionOrderListItem[]>([]);
   const [order, setOrder] = useState<ProductionOrderData | null>(null);
   const [runs, setRuns] = useState<RunOption[]>([]);
   const [centers, setCenters] = useState<{ id: string; code: string; name: string }[]>([]);
@@ -47,8 +47,7 @@ export function WasteRecordForm({ recordId }: { recordId?: string }) {
 
   useEffect(() => {
     getWorkCenters().then(setCenters).catch(() => setCenters([]));
-    if (!editing) getProductionOrders().then(list => setOrders(list.filter(o => WASTE_ORDER_STATUSES.includes(o.status)))).catch(() => setOrders([]));
-  }, [editing]);
+  }, []);
   useEffect(() => {
     if (!recordId) return;
     let active = true;
@@ -107,10 +106,9 @@ export function WasteRecordForm({ recordId }: { recordId?: string }) {
       <div className={s.grid}>
         <label className={s.field}>{t("fields.productionOrder")}
           {editing ? <input readOnly value={order?.production_order_number ?? existing?.labels?.order_number ?? ""} />
-            : <select required value={values.order} disabled={busy} onChange={e => set("order", e.target.value)}>
-              <option value="">{orders.length ? t("placeholders.selectOrder") : t("placeholders.noOrders")}</option>
-              {orders.map(o => <option key={o.id} value={o.id}>{o.production_order_number} — {o.product_type}</option>)}
-            </select>}
+            // Searched on the server among the orders waste can be recorded on (running, held, completed).
+            : <ProductionOrderPicker value={values.order} onChange={id => set("order", id)} statuses={WASTE_ORDER_STATUSES} required disabled={busy}
+              emptyLabel={t("placeholders.selectOrder")} ariaLabel={t("fields.productionOrder")} />}
         </label>
 
         {(order?.lines?.length ?? 0) > 0 && <label className={s.field}>{t("fields.lineOptional")}

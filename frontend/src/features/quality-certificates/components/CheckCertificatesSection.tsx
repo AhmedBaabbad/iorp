@@ -21,6 +21,7 @@ export function CheckCertificatesSection({ checkId }: { checkId: string }) {
   const canRead = usePermission(Q.COA_READ);
   const canCreate = usePermission(Q.COA_CREATE);
   const [rows, setRows] = useState<CertificateListItem[]>([]);
+  const [total, setTotal] = useState(0);
   const [sources, setSources] = useState<CertificateSources | null>(null);
   const [customer, setCustomer] = useState("");
   const [po, setPo] = useState("");
@@ -29,7 +30,8 @@ export function CheckCertificatesSection({ checkId }: { checkId: string }) {
 
   useEffect(() => {
     let active = true;
-    if (canRead) getCertificates({ quality_check_id: checkId }).then(v => { if (active) setRows(v); }).catch(() => undefined);
+    // An inspection has few certificates; the largest page is asked for, and a link opens the rest if there are more.
+    if (canRead) getCertificates({ quality_check_id: checkId, page_size: 100 }).then(v => { if (active) { setRows(v.items); setTotal(v.total); } }).catch(() => undefined);
     if (canCreate) getCertificateSources(checkId).then(v => { if (active) { setSources(v); setCustomer(v.customers[0]?.id ?? ""); } }).catch(() => undefined);
     return () => { active = false; };
   }, [checkId, canRead, canCreate]);
@@ -46,6 +48,7 @@ export function CheckCertificatesSection({ checkId }: { checkId: string }) {
     {rows.length > 0 && <ul style={{ margin: "0 0 12px", paddingInlineStart: 18 }}>{rows.map(r => <li key={r.id} style={{ marginBottom: 4 }}>
       <Link href={`/quality-certificates/${r.id}`}><bdi>{r.certificate_no ?? t("draftNumber")}</bdi></Link> — {r.customer_name || "—"} <CertificateStatusBadge status={r.status} />
     </li>)}</ul>}
+    {total > rows.length && <p><Link href={`/quality-certificates?quality_check_id=${checkId}`}>{t("allForCheck", { count: total })}</Link></p>}
     {canCreate && sources && (sources.certifiable ? <div className={s.toolbar} style={{ marginBottom: 0 }}>
       {sources.customers.length > 0 && <label className={s.field}>{t("fields.customer")}
         <select value={customer} disabled={busy} onChange={e => setCustomer(e.target.value)}>

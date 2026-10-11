@@ -175,5 +175,5 @@ def test_flat_list_filter_by_severity(client, auth_headers):
     resp = client.get(f"{DEFECTS_BASE}?severity=critical", headers=auth_headers)
 
     assert resp.status_code == 200
-    assert len(resp.json()) == 1
-    assert resp.json()[0]["id"] == critical.json()["id"]
+    assert len(resp.json()["items"]) == 1
+    assert resp.json()["items"][0]["id"] == critical.json()["id"]

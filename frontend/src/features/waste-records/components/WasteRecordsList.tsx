@@ -1,27 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth/permission-hooks";
 import s from "@/features/production-demands/demands.module.css";
-import { getProductionOrders } from "@/features/production-orders/api/production-orders-api";
-import type { ProductionOrderListItem } from "@/features/production-orders/types";
+import { Pagination } from "@/components/pagination/Pagination";
+import { ProductionOrderPicker } from "@/features/production-orders/components/ProductionOrderPicker";
+import { useListQuery, type Page } from "@/lib/pagination";
 import { getWorkCenters } from "@/features/work-centers";
 import { useFormatter } from "@/hooks/useFormatter";
 import { getWasteRecords } from "../api";
-import type { WasteCategory, WasteRecordListFilters, WasteRecordListItem } from "../types";
+import type { WasteRecordListItem } from "../types";
 import { WASTE_CATEGORIES } from "../waste-rules";
 import { WasteCategoryBadge } from "./WasteCategoryBadge";
 import { wasteErrorMessage } from "./waste-errors";
 import { useUnitSymbol } from "../unit-symbol";
 import { P } from "@/lib/production-permissions";
 
-type Filters = { production_order_id: string; work_center_id: string; waste_category: "" | WasteCategory; date_from: string; date_to: string };
-const EMPTY: Filters = { production_order_id: "", work_center_id: "", waste_category: "", date_from: "", date_to: "" };
+// Filters and page live in the address (ARCH-PAGE-001); "order" is the older link from an order's page.
+const FILTERS = ["production_order_id", "order", "work_center_id", "waste_category", "date_from", "date_to"] as const;
+type Filter = (typeof FILTERS)[number];
 
 // "سجلات الهدر": material lost while orders run, by order, cause and place.
 export function WasteRecordsList() {
@@ -31,36 +32,38 @@ export function WasteRecordsList() {
   const messages = useTranslations("messages");
   const fmt = useFormatter();
   const unit = useUnitSymbol();
-  const params = useSearchParams();
   const canWrite = usePermission(P.WASTE_CREATE);
-  const [filters, setFilters] = useState<Filters>(() => ({ ...EMPTY, production_order_id: params.get("order") ?? "" }));
-  const [records, setRecords] = useState<WasteRecordListItem[] | null>(null);
-  const [orders, setOrders] = useState<ProductionOrderListItem[]>([]);
+  const list = useListQuery(FILTERS);
+  const filters = { ...list.filters, production_order_id: list.filters.production_order_id || list.filters.order };
+  const query = new URLSearchParams([["page", String(list.page)], ["page_size", String(list.pageSize)],
+    ...FILTERS.filter(k => k !== "order" && filters[k]).map(k => [k, filters[k]] as [string, string])]).toString();
+  const [data, setData] = useState<Page<WasteRecordListItem> | null>(null);
+  const records = data?.items ?? null;
+  const [loading, setLoading] = useState(true);
   const [centers, setCenters] = useState<{ id: string; code: string; name: string }[]>([]);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    getProductionOrders().then(setOrders).catch(() => setOrders([]));
-    getWorkCenters().then(setCenters).catch(() => setCenters([]));
-  }, []);
+  useEffect(() => { getWorkCenters().then(setCenters).catch(() => setCenters([])); }, []);
   const load = useCallback(async () => {
-    setError("");
-    try { setRecords(await getWasteRecords(Object.fromEntries(Object.entries(filters).filter(([, v]) => v)) as WasteRecordListFilters)); }
-    catch (e) { setError(wasteErrorMessage(e, t)); }
-  }, [filters, t]);
+    setError(""); setLoading(true);
+    try {
+      const page = await getWasteRecords(query);
+      setData(page);
+      if (!page.items.length && page.total > 0 && list.page > page.pages) list.setPage(page.pages);
+    } catch (e) { setError(wasteErrorMessage(e, t)); }
+    finally { setLoading(false); }
+  }, [query, t]); // eslint-disable-line react-hooks/exhaustive-deps -- list changes every render; query is what matters
   useEffect(() => { void load(); }, [load]);
 
-  const set = (field: keyof Filters, value: string) => setFilters(old => ({ ...old, [field]: value }));
+  const set = (field: Filter, value: string) => field === "production_order_id" ? list.setFilters({ production_order_id: value, order: "" }) : list.setFilter(field, value);
   const newHref = filters.production_order_id ? `/waste-records/new?order=${filters.production_order_id}` : "/waste-records/new";
 
   return <PageFrame title={t("listTitle")} subtitle={t("listSubtitle")}
     action={canWrite ? <Link href={newHref} className={`${s.button} ${s.primary}`}>{t("actions.record")}</Link> : undefined}>
     <section className={s.toolbar} aria-label={t("filtersLabel")}>
       <label className={s.field}>{t("fields.productionOrder")}
-        <select value={filters.production_order_id} onChange={e => set("production_order_id", e.target.value)}>
-          <option value="">{t("filters.allOrders")}</option>
-          {orders.map(o => <option key={o.id} value={o.id}>{o.production_order_number} — {o.product_type}</option>)}
-        </select>
+        <ProductionOrderPicker value={filters.production_order_id} onChange={id => set("production_order_id", id)} emptyLabel={t("filters.allOrders")}
+          ariaLabel={t("fields.productionOrder")} />
       </label>
       <label className={s.field}>{t("fields.wasteCategory")}
         <select value={filters.waste_category} onChange={e => set("waste_category", e.target.value)}>
@@ -76,7 +79,7 @@ export function WasteRecordsList() {
       </label>
       <label className={s.field}>{t("filters.dateFrom")}<input type="date" value={filters.date_from} onChange={e => set("date_from", e.target.value)} /></label>
       <label className={s.field}>{t("filters.dateTo")}<input type="date" value={filters.date_to} min={filters.date_from || undefined} onChange={e => set("date_to", e.target.value)} /></label>
-      <button type="button" className={s.button} onClick={() => setFilters(EMPTY)}>{t("filters.clear")}</button>
+      <button type="button" className={s.button} onClick={() => list.clearFilters()}>{t("filters.clear")}</button>
     </section>
     {error && <div className={s.actions}><p role="alert" className={s.error}>{error}</p>
       <button type="button" className={s.button} onClick={() => void load()}>{common("actions.retry")}</button></div>}
@@ -101,5 +104,7 @@ export function WasteRecordsList() {
         </tr>)}</tbody>
       </table></div>
     </section>}
+    {data && <Pagination page={data.page} pageSize={data.page_size} total={data.total} pages={data.pages} disabled={loading}
+      onPage={list.setPage} onPageSize={list.setPageSize} />}
   </PageFrame>;
 }

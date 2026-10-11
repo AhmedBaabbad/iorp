@@ -181,11 +181,14 @@ describe("corrective action follow-up", () => {
 
 describe("corrective actions list", () => {
   it("lists actions across reports with what is late", async () => {
-    api.apiClient.mockResolvedValue([action({ overdue: true, report_number: "NCR-2026-0001", report_title: "Wet PP granules" })]);
+    const rows = [action({ overdue: true, report_number: "NCR-2026-0001", report_title: "Wet PP granules" })];
+    api.apiClient.mockImplementation((path: string) => Promise.resolve(path === "/quality/ncr-actions/alerts" ? []
+      : { items: rows, total: 1, page: 1, page_size: 50, pages: 1 }));
     ui(<CorrectiveActionsList />, "ar");
     expect(await screen.findByRole("link", { name: "NCR-2026-0001" })).toBeTruthy();
     expect(screen.getAllByText("متأخر").length).toBeGreaterThan(0);
-    expect(api.apiClient.mock.calls.map(([path]) => path)).toContain("/quality/ncr-actions?status=open");
+    // The list opens on the open actions, as one server page (ARCH-PAGE-001).
+    expect(api.apiClient.mock.calls.map(([path]) => path)).toContain("/quality/ncr-actions?status=open&page=1&page_size=50");
     expect(screen.queryByRole("region", { name: "يحتاج متابعتك" })).toBeNull();  // no alerts in that answer
   });
 

@@ -42,6 +42,7 @@ const respond = (handler: (path: string, options?: { method?: string; body?: unk
     try { return Promise.resolve(handler(path, options)); } catch (e) { return Promise.reject(e); }
   });
 const posted = (path: string) => api.apiClient.mock.calls.find(([p, o]) => p === path && o?.method === "POST")?.[1]?.body;
+const page = <T,>(items: T[]) => ({ items, total: items.length, page: 1, page_size: 50, pages: items.length ? 1 : 0 });
 
 function record(over: Partial<WasteRecordData> = {}): WasteRecordData {
   return { id: "w1", organization_id: "o", production_order_id: "po1", production_order_item_id: null, production_run_id: null, work_center_id: "wc1",
@@ -55,7 +56,7 @@ const order = { id: "po1", production_order_number: "PO-1", product_type: "film"
 
 describe("waste list", () => {
   it("shows records with Arabic waste types named «هالك»", async () => {
-    respond(path => (path.startsWith("/production/waste-records") ? [record()] : []));
+    respond(path => (path.startsWith("/production/waste-records") ? page([record()]) : []));
     ui(<WasteRecordsList />, "ar");
     const table = await screen.findByRole("table", { name: "قائمة سجلات الهدر" });
     expect(within(table).getByText("هالك بدء التشغيل والضبط")).toBeTruthy();
@@ -70,7 +71,8 @@ describe("waste list", () => {
 describe("recording waste", () => {
   beforeEach(() => { respond((path, o) => {
     if (path === "/production/waste-records" && o?.method === "POST") return record({ id: "new1" });
-    if (path === "/production/production-orders") return [order, { ...order, id: "po2", production_order_number: "PO-2", status: "draft" }, { ...order, id: "po3", production_order_number: "PO-3", status: "closed" }];
+    // The picker asks the server for orders waste can be recorded on; the server filters by status.
+    if (path.startsWith("/production/production-orders/lookup")) return new URLSearchParams(path.split("?")[1]).getAll("statuses").includes("in_progress") || path.includes("ids=po1") ? [order] : [];
     if (path === "/production/production-orders/po1") return order;
     if (path.startsWith("/production/runs")) return [{ id: "r1", run_date: "2026-10-01", status: "in_progress", work_center_id: "wc2" }, { id: "r2", run_date: "2026-10-02", status: "cancelled", work_center_id: "wc1" }];
     return [];
@@ -78,9 +80,11 @@ describe("recording waste", () => {
 
   it("offers only running orders and requires the order", async () => {
     ui(<WasteRecordForm />);
-    const select = await screen.findByLabelText("Production order");
+    const select = await screen.findByRole("combobox", { name: "Production order" });
     await waitFor(() => expect((select as HTMLSelectElement).options.length).toBe(2));
     expect(Array.from((select as HTMLSelectElement).options).map(o => o.textContent)).toEqual(["Select a production order", "PO-1 — film"]);
+    const asked = api.apiClient.mock.calls.map(([p]) => String(p)).find(p => p.startsWith("/production/production-orders/lookup"))!;
+    expect(new URLSearchParams(asked.split("?")[1]).getAll("statuses")).toEqual(["in_progress", "on_hold", "completed"]);
     expect((screen.getByRole("button", { name: "Record waste" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -124,7 +128,7 @@ describe("recording waste", () => {
   it("explains a closed order in Arabic", async () => {
     respond((path, o) => {
       if (o?.method === "POST") throw new ApiClientError("locked", 409, { detail: { code: "WASTE_LOCKED", order_status: "closed" } });
-      if (path === "/production/production-orders") return [order];
+      if (path.startsWith("/production/production-orders/lookup")) return [order];
       if (path === "/production/production-orders/po1") return order;
       return [];
     });
@@ -139,7 +143,7 @@ describe("recording waste", () => {
 describe("waste categories in the list and detail", () => {
   it("shows every category of a record as a chip, and each share on the detail", async () => {
     const mixed = record({ categories: [{ category: "changeover", quantity: "8" }, { category: "process", quantity: "4.5" }], quantity_wasted: "12.5" });
-    respond(path => (path.startsWith("/production/waste-records/w1") ? mixed : path.startsWith("/production/waste-records") ? [mixed] : []));
+    respond(path => (path.startsWith("/production/waste-records/w1") ? mixed : path.startsWith("/production/waste-records") ? page([mixed]) : []));
     ui(<WasteRecordsList />);
     const table = await screen.findByRole("table", { name: "Waste records list" });
     expect(within(table).getByText("Changeover waste")).toBeTruthy();
@@ -174,7 +178,7 @@ describe("waste unit from the central list", () => {
   });
 
   it("marks records awaiting a unit review in the list and prints known units as symbols", async () => {
-    respond(path => (path.startsWith("/production/waste-records") ? [record({ id: "w2", unit: "بالة", legacy_unit_text: "بالة", unit_needs_review: true }), record()] : []));
+    respond(path => (path.startsWith("/production/waste-records") ? page([record({ id: "w2", unit: "بالة", legacy_unit_text: "بالة", unit_needs_review: true }), record()]) : []));
     ui(<WasteRecordsList />, "ar");
     const table = await screen.findByRole("table", { name: "قائمة سجلات الهدر" });
     expect(within(table).getByText("وحدة تحتاج مراجعة")).toBeTruthy();

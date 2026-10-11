@@ -6,17 +6,14 @@ import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
+import { Pagination } from "@/components/pagination/Pagination";
+import { useListQuery, type Page } from "@/lib/pagination";
 import { getWorkCenters } from "@/features/work-centers";
 import { useFormatter } from "@/hooks/useFormatter";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { sharedStyles } from "@/styles/shared-styles";
 import { getProductionOrders } from "../api/production-orders-api";
-import type {
-  ProductionOrderListFilters,
-  ProductionOrderListItem,
-  ProductionOrderPriority,
-  ProductionOrderStatus,
-} from "../types";
+import type { ProductionOrderListItem } from "../types";
 import { PRODUCTION_ORDER_STATUSES } from "../types";
 import { ProductionOrderPriorityBadge } from "./ProductionOrderPriorityBadge";
 import { ProductionOrderStatusBadge } from "./ProductionOrderStatusBadge";
@@ -30,11 +27,8 @@ type WorkCenterOption = {
   name: string;
 };
 
-type FilterValues = {
-  status: "" | ProductionOrderStatus;
-  priority: "" | ProductionOrderPriority;
-  work_center_id: string;
-};
+// The filters live in the address with the page (ARCH-PAGE-001): a new filter or search goes back to page 1.
+const FILTERS = ["search", "status", "priority", "work_center_id"] as const;
 
 const styles: Record<string, CSSProperties> = {
   panel: {
@@ -75,12 +69,6 @@ const styles: Record<string, CSSProperties> = {
   },
 };
 
-const defaultFilters: FilterValues = {
-  status: "",
-  priority: "",
-  work_center_id: "",
-};
-
 export function ProductionOrdersList() {
   const t = useTranslations("production.productionOrders");
   const canCreateOrder = usePermission(P.ORDERS_CREATE);
@@ -91,9 +79,12 @@ export function ProductionOrdersList() {
   const messages = useTranslations("messages");
   const productName = useProductName();  // MD-001: the product's name, not its key
   const fmt = useFormatter();
-  const [orders, setOrders] = useState<ProductionOrderListItem[]>([]);
+  const list = useListQuery(FILTERS);
+  const filters = list.filters;
+  const apiQuery = list.apiQuery();
+  const [data, setData] = useState<Page<ProductionOrderListItem> | null>(null);
+  const orders = data?.items ?? [];
   const [workCenters, setWorkCenters] = useState<WorkCenterOption[]>([]);
-  const [filters, setFilters] = useState<FilterValues>(defaultFilters);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
@@ -108,13 +99,15 @@ export function ProductionOrdersList() {
 
     try {
       const [ordersResponse, workCentersResponse] = await Promise.all([
-        getProductionOrders(toApiFilters(filters)),
+        getProductionOrders(apiQuery),
         getWorkCenters().catch(() => []),
       ]);
 
       if (isMountedRef.current) {
-        setOrders(ordersResponse);
+        setData(ordersResponse);
         setWorkCenters(workCentersResponse);
+        // A filter left the current page past the end: show the last page instead of an empty one.
+        if (!ordersResponse.items.length && ordersResponse.total > 0 && list.page > ordersResponse.pages) list.setPage(ordersResponse.pages);
       }
     } catch (caughtError) {
       if (isMountedRef.current) {
@@ -125,7 +118,7 @@ export function ProductionOrdersList() {
         setIsLoading(false);
       }
     }
-  }, [filters, t]);
+  }, [apiQuery, messages]); // eslint-disable-line react-hooks/exhaustive-deps -- list changes every render; apiQuery is what matters
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -135,15 +128,7 @@ export function ProductionOrdersList() {
     };
   }, [loadProductionOrders]);
 
-  function updateFilter<TField extends keyof FilterValues>(
-    field: TField,
-    value: FilterValues[TField],
-  ) {
-    setFilters((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  }
+  const updateFilter = (field: (typeof FILTERS)[number], value: string) => list.setFilter(field, value);
 
   return (
     <PageFrame
@@ -157,12 +142,18 @@ export function ProductionOrdersList() {
     >
       <section style={styles.filters} aria-label={t("filtersAria")}>
         <label style={sharedStyles.field}>
+          <span style={sharedStyles.label}>{t("search")}</span>
+          <input key={filters.search} type="search" style={sharedStyles.input} defaultValue={filters.search} placeholder={t("searchHint")}
+            onKeyDown={(event) => { if (event.key === "Enter") updateFilter("search", event.currentTarget.value.trim()); }}
+            onBlur={(event) => { if (event.currentTarget.value.trim() !== filters.search) updateFilter("search", event.currentTarget.value.trim()); }} />
+        </label>
+        <label style={sharedStyles.field}>
           <span style={sharedStyles.label}>{t("fields.status")}</span>
           <select
             style={sharedStyles.input}
             value={filters.status}
             onChange={(event) =>
-              updateFilter("status", event.target.value as FilterValues["status"])
+              updateFilter("status", event.target.value)
             }
           >
             <option value="">{t("allStatuses")}</option>
@@ -178,7 +169,7 @@ export function ProductionOrdersList() {
             style={sharedStyles.input}
             value={filters.priority}
             onChange={(event) =>
-              updateFilter("priority", event.target.value as FilterValues["priority"])
+              updateFilter("priority", event.target.value)
             }
           >
             <option value="">{t("allPriorities")}</option>
@@ -287,16 +278,10 @@ export function ProductionOrdersList() {
           </div>
         </section>
       ) : null}
+      {data ? <Pagination page={data.page} pageSize={data.page_size} total={data.total} pages={data.pages}
+        disabled={isLoading} onPage={list.setPage} onPageSize={list.setPageSize} /> : null}
     </PageFrame>
   );
-}
-
-function toApiFilters(filters: FilterValues): ProductionOrderListFilters {
-  return {
-    status: filters.status || undefined,
-    priority: filters.priority || undefined,
-    work_center_id: filters.work_center_id || undefined,
-  };
 }
 
 function formatWorkCenterLabel(workCenters: WorkCenterOption[], workCenterId: string) {

@@ -71,7 +71,7 @@ describe("certificates on an inspection", () => {
   it("prepares a draft for the lot's customer", async () => {
     api.apiClient.mockImplementation((path: string, o?: { method?: string }) => Promise.resolve(
       path.includes("/sources") ? { certifiable: true, blocker: null, customers: [{ id: "cu1", name: "UCIC Company" }] }
-        : o?.method === "POST" ? certificate() : []));
+        : o?.method === "POST" ? certificate() : { items: [], total: 0, page: 1, page_size: 100, pages: 0 }));
     ui(<CheckCertificatesSection checkId="k1" />);
     fireEvent.change(await screen.findByLabelText("Customer PO"), { target: { value: "PO-1" } });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Prepare certificate" })); });
@@ -81,7 +81,7 @@ describe("certificates on an inspection", () => {
 
   it("explains why an inspection cannot be certified", async () => {
     api.apiClient.mockImplementation((path: string) => Promise.resolve(path.includes("/sources")
-      ? { certifiable: false, blocker: "CERTIFICATE_NEEDS_MEASUREMENTS", customers: [] } : []));
+      ? { certifiable: false, blocker: "CERTIFICATE_NEEDS_MEASUREMENTS", customers: [] } : { items: [], total: 0, page: 1, page_size: 100, pages: 0 }));
     ui(<CheckCertificatesSection checkId="k1" />);
     expect(await screen.findByText(/has no measurement plan/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Prepare certificate" })).toBeNull();

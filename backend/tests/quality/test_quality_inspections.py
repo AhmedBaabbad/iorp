@@ -40,7 +40,7 @@ def q(result_env):
                                                                      qty_rejected=rejected, **extra))
 
     def rejections(po):
-        return e.client.get(REJECTIONS, params=dict(production_order_id=po["id"])).json()
+        return e.client.get(REJECTIONS, params=dict(production_order_id=po["id"])).json()["items"]
 
     e.check, e.opened, e.close_check, e.rejections = check, opened, close, rejections
     return e
@@ -215,7 +215,7 @@ def test_other_tenants_orders_and_checks_are_invisible(q):
     if order is not None:
         assert q.check(dict(id=str(order.id))).status_code == 404
     assert q.client.get(f"{CHECKS}/{uuid4()}").status_code == 404
-    assert q.client.get(CHECKS, params=dict(production_order_id=str(uuid4()))).json() == []
+    assert q.client.get(CHECKS, params=dict(production_order_id=str(uuid4()))).json()["items"] == []
 
 
 def test_lookups_list_only_inspectable_orders_with_lines(q):

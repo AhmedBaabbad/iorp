@@ -1,11 +1,13 @@
 import { apiClient } from "@/lib/api-client";
+import type { Page } from "@/lib/pagination";
 import type { Certificate, CertificateListItem, CertificateSources, CertificateStatus, CertificateUpdate, QualitySettings } from "./types";
 
 const PATH = "/quality/quality-certificates";
 
-export function getCertificates(filters: { status?: CertificateStatus | ""; search?: string; quality_check_id?: string } = {}) {
-  const query = new URLSearchParams(Object.entries(filters).filter(([, v]) => Boolean(v)) as [string, string][]);
-  return apiClient<CertificateListItem[]>(`${PATH}${query.size ? `?${query}` : ""}`);
+// One page of certificates (ARCH-PAGE-001): the filters plus page and page_size.
+export function getCertificates(filters: { status?: CertificateStatus | ""; search?: string; quality_check_id?: string; page?: string | number; page_size?: string | number } = {}) {
+  const query = new URLSearchParams(Object.entries(filters).filter(([, v]) => Boolean(v)).map(([k, v]) => [k, String(v)]));
+  return apiClient<Page<CertificateListItem>>(`${PATH}${query.size ? `?${query}` : ""}`);
 }
 export const getCertificate = (id: string) => apiClient<Certificate>(`${PATH}/${id}`);
 // Whether a closed inspection can be certified, and the customers its lot was made for.

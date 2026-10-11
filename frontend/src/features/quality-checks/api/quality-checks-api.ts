@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api-client";
+import type { Page } from "@/lib/pagination";
 import type {
   AwaitingReceipt, AwaitingReturn, BatchShipment, LotDecisionRequest, ReturnDecisionRequest, CloseQualityCheckRequest, CreateQualityCheckRequest, InspectableOrder, MeasurementInput, PlanCandidate, QualityCheckData, QualityCheckListFilters,
   QualityCheckListItem, SampleOption, UpdateQualityCheckRequest,
@@ -6,9 +7,10 @@ import type {
 
 const PATH = "/quality/quality-checks";
 
-export function getQualityChecks(filters: QualityCheckListFilters = {}) {
-  const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => Boolean(value)) as [string, string][]);
-  return apiClient<QualityCheckListItem[]>(`${PATH}${query.size ? `?${query}` : ""}`);
+// One page of inspections (ARCH-PAGE-001): the filters plus page and page_size.
+export function getQualityChecks(filters: QualityCheckListFilters & { page?: string | number; page_size?: string | number } = {}) {
+  const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => Boolean(value)).map(([k, v]) => [k, String(v)]));
+  return apiClient<Page<QualityCheckListItem>>(`${PATH}${query.size ? `?${query}` : ""}`);
 }
 
 export function getQualityCheckById(id: string) {

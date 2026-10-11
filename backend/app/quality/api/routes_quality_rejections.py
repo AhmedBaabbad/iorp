@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, page_of, page_params
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, permission_check, require_permission
 from app.quality.api.inspection_schemas import (
@@ -38,18 +39,20 @@ def create_quality_rejection(payload: QualityRejectionCreate, tenant: TenantCont
         raise _error(exc) from exc
 
 
-@router.get("", response_model=list[QualityRejectionListItem], dependencies=[Depends(require_permission(Q.REJECTIONS_READ))])
+@router.get("", response_model=Page[QualityRejectionListItem], dependencies=[Depends(require_permission(Q.REJECTIONS_READ))])
 def list_quality_rejections(
     production_order_id: UUID | None = Query(default=None), quality_check_id: UUID | None = Query(default=None),
     rejection_reason: RejectionReason | None = Query(default=None), disposition: Disposition | None = Query(default=None),
     disposition_status: DispositionStatus | None = Query(default=None), date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None), search: str | None = Query(default=None, max_length=60),
+    unresolved: bool | None = Query(default=None), params: PageParams = Depends(page_params),
     tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check),
 ):
     service = QualityRejectionService(db, tenant)
-    rows = service.list(production_order_id=production_order_id, quality_check_id=quality_check_id, rejection_reason=rejection_reason,
-                        disposition=disposition, disposition_status=disposition_status, date_from=date_from, date_to=date_to, search=search)
-    return [QualityRejectionListItem.model_validate(r).model_copy(update=v) for r, v in zip(rows, service.views(rows, can))]
+    rows, total = service.list(params, production_order_id=production_order_id, quality_check_id=quality_check_id, rejection_reason=rejection_reason,
+                               disposition=disposition, disposition_status=disposition_status, date_from=date_from, date_to=date_to, search=search,
+                               unresolved=unresolved)
+    return page_of([QualityRejectionListItem.model_validate(r).model_copy(update=v) for r, v in zip(rows, service.views(rows, can))], total, params)
 
 
 @router.get("/{rejection_id}", response_model=QualityRejectionRead, dependencies=[Depends(require_permission(Q.REJECTIONS_READ))])

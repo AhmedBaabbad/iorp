@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, page_of, page_params
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, permission_check, require_any_permission, require_permission
 from app.quality.api.inspection_schemas import (
@@ -40,18 +41,18 @@ def create_quality_check(payload: QualityCheckCreate, tenant: TenantContext = De
         raise _error(exc) from exc
 
 
-@router.get("", response_model=list[QualityCheckListItem], dependencies=[Depends(require_permission(Q.CHECKS_READ))])
+@router.get("", response_model=Page[QualityCheckListItem], dependencies=[Depends(require_permission(Q.CHECKS_READ))])
 def list_quality_checks(
     production_order_id: UUID | None = Query(default=None), check_type: QualityCheckType | None = Query(default=None),
     status_filter: QualityCheckStatus | None = Query(default=None, alias="status"), result: QualityCheckResult | None = Query(default=None),
     date_from: date | None = Query(default=None), date_to: date | None = Query(default=None), search: str | None = Query(default=None, max_length=60),
-    defect_category: DefectCategory | None = Query(default=None),
+    defect_category: DefectCategory | None = Query(default=None), params: PageParams = Depends(page_params),
     tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check),
 ):
     service = QualityCheckService(db, tenant)
-    checks = service.list(production_order_id=production_order_id, check_type=check_type, status=status_filter, result=result,
-                          date_from=date_from, date_to=date_to, search=search, defect_category=defect_category)
-    return [QualityCheckListItem.model_validate(c).model_copy(update=v) for c, v in zip(checks, service.views(checks, can))]
+    checks, total = service.list(params, production_order_id=production_order_id, check_type=check_type, status=status_filter, result=result,
+                                 date_from=date_from, date_to=date_to, search=search, defect_category=defect_category)
+    return page_of([QualityCheckListItem.model_validate(c).model_copy(update=v) for c, v in zip(checks, service.views(checks, can))], total, params)
 
 
 # Lookups before /{check_id}: the orders and samples a check may be opened on.

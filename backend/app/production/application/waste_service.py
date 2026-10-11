@@ -11,6 +11,7 @@ from sqlalchemy import exists, func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.core.db import Base
+from app.core.pagination import paginate
 from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.production.domain import waste_rules as rules
 from app.production.domain.enums import ProductionOrderStatus as S, WasteCategory
@@ -176,7 +177,11 @@ class WasteService:
     def get(self, record_id):
         return self._record(record_id)
 
-    def list(self, production_order_id=None, production_run_id=None, work_center_id=None, waste_category=None, date_from=None, date_to=None):
+    def list(self, params, **filters):
+        """One page of records and the total matching the filters (ARCH-PAGE-001)."""
+        return paginate(self.db, self.query(**filters), params)
+
+    def query(self, production_order_id=None, production_run_id=None, work_center_id=None, waste_category=None, date_from=None, date_to=None):
         query = select(WasteRecord).where(WasteRecord.organization_id == self.org_id)
         for column, value in ((WasteRecord.production_order_id, production_order_id), (WasteRecord.production_run_id, production_run_id),
                               (WasteRecord.work_center_id, work_center_id)):
@@ -191,7 +196,7 @@ class WasteService:
             query = query.where(WasteRecord.waste_date >= date_from)
         if date_to is not None:
             query = query.where(WasteRecord.waste_date <= date_to)
-        return list(self.db.scalars(query.order_by(WasteRecord.waste_date.desc(), WasteRecord.created_at.desc())))
+        return query.order_by(WasteRecord.waste_date.desc(), WasteRecord.created_at.desc(), WasteRecord.id.desc())
 
     def labels(self, records, can: PermissionCheck):
         """Display labels and allowed actions for a page of records, in a fixed number of queries."""

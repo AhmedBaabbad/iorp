@@ -47,3 +47,34 @@ The whole customers (commercial) module:
   `Pagination`.
 - Already paged before this decision, to align later: production demands, audit and activity logs.
 - Next: the other modules' lists, one at a time.
+
+### Production and quality (PROD-QUALITY-FIX-001, item 2)
+
+Same parameters, envelope, defaults and cap as above. Hidden caps (quality lists returned at most 200 or 500 rows) are
+gone. Each order ends with `id`.
+
+| List | Endpoint | Search / filters | Order |
+|---|---|---|---|
+| Production orders | `GET /production/production-orders` | number or product; status, priority, work center | planned start, number, id |
+| Order picker | `GET /production/production-orders/lookup?search=&statuses=&ids=&limit=20` | (≤ 50) | as above |
+| Waste records | `GET /production/waste-records` | order, run, work center, category (any of a record's), dates | date ↓, created ↓, id ↓ |
+| Downtime events | `GET /production/downtime-events` | as before (the `/summary` figures cover every match) | start ↓, id ↓ |
+| Shift rosters | `GET /production/shift-rosters` | shift, worker, dates | effective from ↓, id ↓ |
+| A run's roster picker | `GET /production/shift-rosters/active?on=` | rosters in effect that day (one per shift at most) | — |
+| Inspections | `GET /quality/quality-checks` | as before + defect type | date ↓, id ↓ |
+| Rejections | `GET /quality/quality-rejections` | as before + `unresolved` | date ↓, created ↓, id ↓ |
+| Defects | `GET /quality/quality-defects` | category, severity, order, date | date ↓, created ↓, id ↓ |
+| Non-conformance reports | `GET /quality/non-conformance-reports` | as before | date ↓, created ↓, id ↓ |
+| Corrective actions | `GET /quality/ncr-actions` | as before | due (empty last), report, id |
+| Certificates | `GET /quality/quality-certificates` | as before | created ↓, id ↓ |
+| Demands, planning queue | (already paged) | now also answer `pages`; default 50, at most 100 | unchanged |
+
+- Screens: the lists above use `useListQuery` / `usePagedFilters` (`frontend/src/lib/pagination.ts`) and `Pagination`; older
+  links (`?order=`, `?status=`, `?work_center=`) still open the filtered list.
+- Pickers that loaded every order (waste and downtime forms and filters) use `ProductionOrderPicker` (server search, 20 at
+  a time, chosen order named by id). The order page's quality tiles read the server's totals (`page_size=1` per count), an
+  inspection's certificates ask for the largest page and link to the rest.
+- Stay plain lists, being bounded: an order's runs, lines, results and waste summary; a check's defects; work centers,
+  shift definitions, test parameters, reference lists, products and workforce members (reference data for pickers).
+- Indexes (migration `f6a1b2m6`): `(organization_id, <sort column>)` on each list above, and `(organization_id, status)` on
+  production orders and quality checks.

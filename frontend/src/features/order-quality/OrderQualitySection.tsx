@@ -7,9 +7,7 @@ import { usePermission } from "@/features/auth/permission-hooks";
 import s from "@/features/production-demands/demands.module.css";
 import { getQualityChecks } from "@/features/quality-checks/api/quality-checks-api";
 import { qualityErrorMessage } from "@/features/quality-checks/components/quality-errors";
-import type { QualityCheckListItem } from "@/features/quality-checks/types";
 import { getQualityRejections } from "@/features/quality-rejections/api/quality-rejections-api";
-import type { QualityRejectionListItem } from "@/features/quality-rejections/types";
 import { Q } from "@/lib/quality-permissions";
 
 // Orders a lot can be inspected against; the same list the backend checks (quality/domain/rules.py ORDER_STATUSES).
@@ -23,23 +21,28 @@ export function OrderQualitySection({ order, revision = 0 }: { order: { id: stri
   const canReadRejections = usePermission(Q.REJECTIONS_READ);
   const canCreate = usePermission(Q.CHECKS_CREATE);
   const relevant = INSPECTABLE.includes(order.status) || order.status === "closed";
-  const [checks, setChecks] = useState<QualityCheckListItem[] | null>(null);
-  const [rejections, setRejections] = useState<QualityRejectionListItem[] | null>(null);
+  // Counts come from the server's totals (one row asked for each), never from a page of rows (ARCH-PAGE-001).
+  const [checks, setChecks] = useState<{ open: number; closed: number } | null>(null);
+  const [rejections, setRejections] = useState<{ unresolved: number; all: number } | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!relevant) return;
     let active = true;
     const fail = (e: unknown) => { if (active) setError(qualityErrorMessage(e, errors)); };
-    if (canReadChecks) getQualityChecks({ production_order_id: order.id }).then(v => { if (active) setChecks(v); }).catch(fail);
-    if (canReadRejections) getQualityRejections({ production_order_id: order.id }).then(v => { if (active) setRejections(v); }).catch(fail);
+    const base = { production_order_id: order.id, page_size: 1 };
+    if (canReadChecks) Promise.all([getQualityChecks({ ...base, status: "open" }), getQualityChecks({ ...base, status: "under_inspection" }),
+      getQualityChecks({ ...base, status: "closed" })])
+      .then(([open, inspecting, closed]) => { if (active) setChecks({ open: open.total + inspecting.total, closed: closed.total }); }).catch(fail);
+    if (canReadRejections) Promise.all([getQualityRejections({ ...base, unresolved: true }), getQualityRejections(base)])
+      .then(([unresolved, all]) => { if (active) setRejections({ unresolved: unresolved.total, all: all.total }); }).catch(fail);
     return () => { active = false; };
   }, [relevant, canReadChecks, canReadRejections, order.id, order.status, revision, errors]);
 
   if (!relevant || !(canReadChecks || canReadRejections)) return null;
-  const openChecks = checks?.filter(c => c.status === "open" || c.status === "under_inspection").length ?? 0;
-  const closedChecks = checks?.filter(c => c.status === "closed").length ?? 0;
-  const unresolved = rejections?.filter(r => r.unresolved).length ?? 0;
+  const openChecks = checks?.open ?? 0;
+  const closedChecks = checks?.closed ?? 0;
+  const unresolved = rejections?.unresolved ?? 0;
   const tile = (label: string, value: number, href: string, warn = false) => <Link href={href} className={s.panel}
     style={{ margin: 0, padding: 14, textDecoration: "none", color: "inherit" }}>
     <span className={s.muted}>{label}</span>
@@ -59,8 +62,8 @@ export function OrderQualitySection({ order, revision = 0 }: { order: { id: stri
         {tile(t("closedChecks"), closedChecks, `/quality-checks?order=${order.id}&status=closed`)}
       </>}
       {canReadRejections && rejections && <>
-        {tile(t("unresolvedRejections"), unresolved, `/quality-rejections?order=${order.id}`, true)}
-        {tile(t("allRejections"), rejections.length, `/quality-rejections?order=${order.id}`)}
+        {tile(t("unresolvedRejections"), unresolved, `/quality-rejections?order=${order.id}&unresolved=true`, true)}
+        {tile(t("allRejections"), rejections.all, `/quality-rejections?order=${order.id}`)}
       </>}
     </div>
     {(openChecks > 0 || unresolved > 0) && order.status !== "closed" && <p role="status" className={s.error} style={{ marginBottom: 0 }}>{t("blocksClose")}</p>}

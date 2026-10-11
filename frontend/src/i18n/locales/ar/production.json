@@ -266,6 +266,14 @@
         "QUALITY_CHECKS_OPEN": "فحوصات جودة مفتوحة أو قيد الفحص: {count}",
         "QUALITY_REJECTIONS_UNRESOLVED": "حالات رفض بلا قرار نهائي (بانتظار القرار أو محجوزة): {count}"
       }
+    },
+    "search": "بحث",
+    "searchHint": "رقم الأمر أو المنتج",
+    "picker": {
+      "search": "ابحث في الأوامر (الرقم أو المنتج)",
+      "loading": "جارٍ التحميل…",
+      "choose": "اختر أمرًا",
+      "none": "لا توجد أوامر مطابقة"
     }
   },
   "downtimeEvents": {

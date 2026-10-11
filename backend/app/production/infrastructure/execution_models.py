@@ -75,3 +75,7 @@ class ProductionRunMember(ExecutionRecord, Base):
     started_at: Mapped[datetime | None] = mapped_column(TZDateTime)
     ended_at: Mapped[datetime | None] = mapped_column(TZDateTime)
     notes: Mapped[str | None] = mapped_column(Text)
+
+
+# Paged roster list (ARCH-PAGE-001, migration f6a1b2m6).
+Index("ix_roster_org_from", ShiftRoster.organization_id, ShiftRoster.effective_from)

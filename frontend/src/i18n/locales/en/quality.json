@@ -643,7 +643,8 @@
       "hint": "To continue from paper certificates, enter the last number issued; numbering never goes back.",
       "save": "Save",
       "saved": "Saved."
-    }
+    },
+    "allForCheck": "All {count} certificates of this inspection"
   },
   "returns": {
     "title": "Returns awaiting quality",

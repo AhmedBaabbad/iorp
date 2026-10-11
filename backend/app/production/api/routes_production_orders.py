@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, page_of, page_params
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, get_customer_lookup, permission_checked_in_handler, require_permission
 from app.production.domain import permissions as P
@@ -43,22 +44,36 @@ def create_production_order(
     return with_lifecycle(order, db, tenant, customers, can)
 
 
-@router.get("", response_model=list[ProductionOrderListItem],
+@router.get("", response_model=Page[ProductionOrderListItem],
     dependencies=[Depends(require_permission(P.ORDERS_READ))])
 def list_production_orders(
     status: ProductionOrderStatus | None = Query(default=None),
     work_center_id: UUID | None = Query(default=None),
     priority: ProductionOrderPriority | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=60),
+    params: PageParams = Depends(page_params),
+    tenant: TenantContext = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+):
+    """One page of the organization's production orders (ARCH-PAGE-001); search by number or product."""
+    rows, total = ProductionOrderService(db).list_production_orders(
+        tenant, params, status=status, work_center_id=work_center_id, priority=priority, search=search)
+    return page_of([ProductionOrderListItem.model_validate(r) for r in rows], total, params)
+
+
+# Before /{production_order_id}, so "lookup" is never read as an id.
+@router.get("/lookup", response_model=list[ProductionOrderListItem],
+    dependencies=[Depends(require_permission(P.ORDERS_READ))])
+def lookup_production_orders(
+    search: str = Query(default="", max_length=60),
+    statuses: list[ProductionOrderStatus] = Query(default=[]),
+    ids: list[UUID] = Query(default=[]),
+    limit: int = Query(default=20, ge=1, le=50),
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ) -> list[ProductionOrderListItem]:
-    service = ProductionOrderService(db)
-    return service.list_production_orders(
-        tenant,
-        status=status,
-        work_center_id=work_center_id,
-        priority=priority,
-    )
+    """Orders for a picker (waste, downtime, filters): searched on the server, at most `limit`; `ids` names the chosen ones."""
+    return ProductionOrderService(db).lookup_production_orders(tenant, search, statuses, ids, limit)
 
 
 @router.get("/{production_order_id}", response_model=PlanningOrderRead,

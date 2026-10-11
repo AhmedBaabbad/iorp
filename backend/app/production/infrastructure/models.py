@@ -634,3 +634,10 @@ class ProductionResultEntry(Base):
 
 # Register execution tables for metadata, migrations, and test databases.
 from app.production.infrastructure.execution_models import ShiftRoster, ShiftRosterMember, ProductionRun, ProductionRunMember  # noqa: F401,E402
+
+
+# Paged lists (ARCH-PAGE-001): each list reads one organization in its sort order (migration f6a1b2m6).
+Index("ix_production_orders_org_start", ProductionOrder.organization_id, ProductionOrder.planned_start_date)
+Index("ix_production_orders_org_status", ProductionOrder.organization_id, ProductionOrder.status)
+Index("ix_waste_org_date", WasteRecord.organization_id, WasteRecord.waste_date)
+Index("ix_downtime_org_start", DowntimeEvent.organization_id, DowntimeEvent.start_time)

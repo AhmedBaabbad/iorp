@@ -94,7 +94,7 @@ def test_a_returned_line_is_inspected_and_decided_in_parts(env):
     back = env.client.get(f"{RETURNS}/{ret['id']}").json()
     assert back["quality_status"] == "decided" and back["quality"]["inspections"][0]["inspection_code"] == done["inspection_code"]
     assert {d["disposition"] for d in back["quality"]["decisions"]} == {"rework", "scrap"}
-    rejections = env.client.get(f"{QUALITY}/quality-rejections", params=dict(quality_check_id=done["id"])).json()
+    rejections = env.client.get(f"{QUALITY}/quality-rejections", params=dict(quality_check_id=done["id"])).json()["items"]
     assert {x["return_no"] for x in rejections} == {ret["return_no"]}
     for x in rejections:
         assert env.client.post(f"{QUALITY}/quality-rejections/{x['id']}/execute", json={}).status_code == 200

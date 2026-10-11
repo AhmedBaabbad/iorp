@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
+import { Pagination } from "@/components/pagination/Pagination";
+import { usePagedFilters, type Page } from "@/lib/pagination";
 import { usePermission } from "@/features/auth/permission-hooks";
 import s from "@/features/production-demands/demands.module.css";
 import { useFormatter } from "@/hooks/useFormatter";
@@ -24,16 +26,27 @@ export function NcrReportsList() {
   const messages = useTranslations("messages");
   const fmt = useFormatter();
   const canCreate = usePermission(Q.NCR_CREATE);
-  const [filters, setFilters] = useState(EMPTY);
-  const [rows, setRows] = useState<NcrListItem[] | null>(null);
+  // Filters and page live in the address (ARCH-PAGE-001).
+  const paged = usePagedFilters(EMPTY);
+  const filters = paged.filters;
+  const [data, setData] = useState<Page<NcrListItem> | null>(null);
+  const rows = data?.items ?? null;
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const key = JSON.stringify(paged.query());
   const load = useCallback(async () => {
-    setError("");
-    try { setRows(await getNcrReports(filters)); } catch (e) { setError(ncrErrorMessage(e, errors)); }
-  }, [filters, errors]);
+    setError(""); setLoading(true);
+    try {
+      const page = await getNcrReports(paged.query());
+      setData(page);
+      // A filter left the page past the end: show the last page rather than an empty one.
+      if (!page.items.length && page.total > 0 && paged.page > page.pages) paged.setPage(page.pages);
+    } catch (e) { setError(ncrErrorMessage(e, errors)); }
+    finally { setLoading(false); }
+  }, [key, errors]); // eslint-disable-line react-hooks/exhaustive-deps -- paged changes every render; key is what matters
   useEffect(() => { const timer = setTimeout(() => void load(), 200); return () => clearTimeout(timer); }, [load]);
-  const set = (field: keyof NcrFilters, value: string | boolean) => setFilters(old => ({ ...old, [field]: value }));
+  const set = (field: keyof NcrFilters, value: string | boolean) => paged.set(field, value);
 
   return <PageFrame title={t("listTitle")} subtitle={t("subtitle")}
     action={<span className={s.actions}>
@@ -58,7 +71,7 @@ export function NcrReportsList() {
       <label className={s.field}>{t("filters.dateFrom")}<input type="date" value={filters.date_from} onChange={e => set("date_from", e.target.value)} /></label>
       <label className={s.field}>{t("filters.dateTo")}<input type="date" value={filters.date_to} onChange={e => set("date_to", e.target.value)} /></label>
       <label><input type="checkbox" checked={filters.open_only} onChange={e => set("open_only", e.target.checked)} /> {t("filters.openOnly")}</label>
-      <button type="button" className={s.button} onClick={() => setFilters(EMPTY)}>{t("filters.clear")}</button>
+      <button type="button" className={s.button} onClick={() => paged.clear()}>{t("filters.clear")}</button>
     </section>
     {error && <div className={s.actions}><p role="alert" className={s.error}>{error}</p>
       <button type="button" className={s.button} onClick={() => void load()}>{common("actions.retry")}</button></div>}
@@ -79,5 +92,7 @@ export function NcrReportsList() {
         </tr>)}</tbody>
       </table></div>
     </section>}
+    {data && <Pagination page={data.page} pageSize={data.page_size} total={data.total} pages={data.pages} disabled={loading}
+      onPage={paged.setPage} onPageSize={paged.setPageSize} />}
   </PageFrame>;
 }

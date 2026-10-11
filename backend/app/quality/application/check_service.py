@@ -11,6 +11,7 @@ from collections import defaultdict
 
 from sqlalchemy import exists, select
 
+from app.core.pagination import paginate
 from app.core.utils import utc_now
 from app.quality.domain import rules
 from app.quality.domain.permissions import NCR_CREATE, REJECTIONS_DECIDE
@@ -37,8 +38,9 @@ class QualityCheckService:
             raise QualityError("QUALITY_CHECK_NOT_FOUND", 404)
         return check
 
-    def list(self, *, production_order_id=None, check_type=None, status=None, result=None, date_from=None, date_to=None, search=None, limit=200,
+    def list(self, params, *, production_order_id=None, check_type=None, status=None, result=None, date_from=None, date_to=None, search=None,
              defect_category=None):
+        """One page of inspections, newest first, and the total matching the filters (ARCH-PAGE-001)."""
         query = select(QualityCheck).where(QualityCheck.organization_id == self.org)
         if defect_category is not None:
             # An inspection matches when any of its defects has the category.
@@ -54,7 +56,7 @@ class QualityCheckService:
             query = query.where(QualityCheck.check_datetime <= date_to)
         if search:
             query = query.where(QualityCheck.inspection_code.icontains(search, autoescape=True))
-        return list(self.db.scalars(query.order_by(QualityCheck.check_datetime.desc(), QualityCheck.id).limit(limit)))
+        return paginate(self.db, query.order_by(QualityCheck.check_datetime.desc(), QualityCheck.id.desc()), params)
 
     def views(self, checks, can, *, detail=False) -> list[dict]:
         orders = self.production.numbers([c.production_order_id for c in checks])

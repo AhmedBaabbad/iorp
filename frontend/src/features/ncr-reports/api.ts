@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api-client";
+import type { Page } from "@/lib/pagination";
 import type { CapaAlerts, CorrectiveAction, NcrAttachment, NcrCreateInput, NcrHeader, NcrItemInput, NcrListItem, NcrReport, NcrSeverity, NcrSourceType, NcrStatus,
   UserOption } from "./types";
 
@@ -11,7 +12,8 @@ const query = (filters: Record<string, string | boolean | undefined>) => {
 
 export type NcrFilters = { status?: NcrStatus | ""; source_type?: NcrSourceType | ""; severity?: NcrSeverity | ""; open_only?: boolean; search?: string;
   date_from?: string; date_to?: string };
-export const getNcrReports = (filters: NcrFilters = {}) => apiClient<NcrListItem[]>(`${PATH}${query(filters)}`);
+// One page of reports (ARCH-PAGE-001): the filters plus page and page_size.
+export const getNcrReports = (filters: NcrFilters & Record<string, string | boolean | undefined> = {}) => apiClient<Page<NcrListItem>>(`${PATH}${query(filters)}`);
 export const getNcrReport = (id: string) => apiClient<NcrReport>(`${PATH}/${id}`);
 export const createNcrReport = (body: NcrCreateInput) => apiClient<NcrReport>(PATH, { method: "POST", body });
 export const updateNcrReport = (id: string, body: Partial<NcrHeader>) => apiClient<NcrReport>(`${PATH}/${id}`, { method: "PATCH", body });
@@ -45,7 +47,8 @@ export const cancelNcrAction = (id: string, actionId: string, reason: string) =>
 
 // Corrective actions across reports (the CAPA list).
 export type ActionFilters = { status?: "open" | "done" | "cancelled" | ""; mine?: boolean; overdue?: boolean; search?: string };
-export const getCorrectiveActions = (filters: ActionFilters = {}) => apiClient<CorrectiveAction[]>(`/quality/ncr-actions${query(filters)}`);
+export const getCorrectiveActions = (filters: ActionFilters & Record<string, string | boolean | undefined> = {}) =>
+  apiClient<Page<CorrectiveAction>>(`/quality/ncr-actions${query(filters)}`);
 export const getCapaAlerts = () => apiClient<CapaAlerts>("/quality/ncr-actions/alerts");
 
 export function uploadNcrAttachment(id: string, file: File) {

@@ -14,6 +14,7 @@ from datetime import timedelta
 
 from sqlalchemy import func, or_, select
 
+from app.core.pagination import paginate
 from app.core.storage import InvalidAttachmentError, LocalFileStorage, save_attachment, compensate_new_file
 from app.core.utils import utc_now
 from app.quality.domain import ncr as N
@@ -48,8 +49,9 @@ class NCRService:
     def get(self, report_id) -> NonConformanceReport:
         return self._get(report_id)
 
-    def list(self, *, status=None, source_type=None, severity=None, owner_user_id=None, open_only=False, date_from=None, date_to=None,
-             search=None, limit=500):
+    def list(self, params, *, status=None, source_type=None, severity=None, owner_user_id=None, open_only=False, date_from=None, date_to=None,
+             search=None):
+        """One page of reports, newest first, and the total matching the filters (ARCH-PAGE-001)."""
         query = select(NonConformanceReport).where(NonConformanceReport.organization_id == self.org)
         for column, value in ((NonConformanceReport.status, status), (NonConformanceReport.source_type, source_type),
                               (NonConformanceReport.severity, severity), (NonConformanceReport.owner_user_id, owner_user_id)):
@@ -66,7 +68,8 @@ class NCRService:
             query = query.where(or_(like(NonConformanceReport.report_number), like(NonConformanceReport.title),
                                     like(NonConformanceReport.reference_code), like(NonConformanceReport.supplier_name),
                                     like(NonConformanceReport.customer_name)))
-        return list(self.db.scalars(query.order_by(NonConformanceReport.report_date.desc(), NonConformanceReport.created_at.desc()).limit(limit)))
+        return paginate(self.db, query.order_by(NonConformanceReport.report_date.desc(), NonConformanceReport.created_at.desc(),
+                                                NonConformanceReport.id.desc()), params)
 
     def _actions_of(self, report_ids) -> dict:
         out = {i: [] for i in report_ids}
@@ -131,10 +134,10 @@ class NCRService:
         return [dict(id=r.id, file_name=r.file_name, content_type=r.content_type, size_bytes=r.size_bytes,
                      uploaded_by_name=names.get(r.uploaded_by_user_id), uploaded_at=r.uploaded_at) for r in rows]
 
-    def all_actions(self, *, status=None, owner_user_id=None, overdue=False, search=None, limit=500) -> list[dict]:
-        """Corrective actions across reports (the CAPA list)."""
-        query = (select(NCRAction, NonConformanceReport).join(NonConformanceReport, NonConformanceReport.id == NCRAction.ncr_id)
-                 .where(NCRAction.organization_id == self.org))
+    def all_actions(self, params, *, status=None, owner_user_id=None, overdue=False, search=None) -> tuple[list[dict], int]:
+        """One page of corrective actions across reports (the CAPA list), earliest due first, and the total."""
+        query = (select(NCRAction).join(NonConformanceReport, NonConformanceReport.id == NCRAction.ncr_id)
+                 .where(NCRAction.organization_id == self.org, NonConformanceReport.organization_id == self.org))
         if status:
             query = query.where(NCRAction.status == status)
         if owner_user_id:
@@ -144,10 +147,13 @@ class NCRService:
         if search:
             query = query.where(or_(NCRAction.description.icontains(search, autoescape=True),
                                     NonConformanceReport.report_number.icontains(search, autoescape=True)))
-        rows = self.db.execute(query.order_by(NCRAction.due_date.is_(None), NCRAction.due_date, NonConformanceReport.report_number).limit(limit)).all()
-        names = user_names(self.db, self.org, [u for a, _r in rows for u in (a.owner_user_id, a.completed_by_user_id)])
+        actions, total = paginate(self.db, query.order_by(NCRAction.due_date.is_(None), NCRAction.due_date, NonConformanceReport.report_number,
+                                                          NCRAction.id), params)
+        reports = {r.id: r for r in self.db.scalars(select(NonConformanceReport).where(
+            NonConformanceReport.organization_id == self.org, NonConformanceReport.id.in_({a.ncr_id for a in actions})))} if actions else {}
+        names = user_names(self.db, self.org, [u for a in actions for u in (a.owner_user_id, a.completed_by_user_id)])
         today = utc_now().date()
-        return [self.action_view(a, names, today, report) for a, report in rows]
+        return [self.action_view(a, names, today, reports[a.ncr_id]) for a in actions], total
 
     def _basis(self, report, category=None) -> dict:
         names = self.db.scalars(select(NonConformanceItem.item_name).where(NonConformanceItem.non_conformance_report_id == report.id)).all()

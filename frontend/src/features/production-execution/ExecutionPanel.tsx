@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
+import { Pagination } from "@/components/pagination/Pagination";
 import { apiClient } from "@/lib/api-client";
+import { useListQuery, type Page } from "@/lib/pagination";
 import { hasPermission, useAuth } from "@/features/auth/auth-context";
 import { sharedStyles as styles } from "@/styles/shared-styles";
 import { P } from "@/lib/production-permissions";
@@ -29,6 +31,9 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
   const resource = orderId ? "runs" : "shift_rosters";
   const can = useCallback((action: string) => hasPermission(permissions, `production:${resource}:${action}`), [permissions, resource]);
   const [rows, setRows] = useState<RecordData[]>([]);
+  // The rosters page is a server page (ARCH-PAGE-001); an order's runs are few and come whole.
+  const list = useListQuery([] as const);
+  const [paging, setPaging] = useState<Omit<Page<RecordData>, "items"> | null>(null);
   const [shifts, setShifts] = useState<Option[]>([]);
   const [centers, setCenters] = useState<Option[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -42,6 +47,13 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
   const [center, setCenter] = useState("");
   const [roster, setRoster] = useState("");
   const [day, setDay] = useState("");
+  // A run's team comes from the rosters in effect on its day (one per shift at most): asked for that day, never a page.
+  useEffect(() => {
+    if (!orderId || !day || !hasPermission(permissions, P.ROSTERS_READ)) { setRosters([]); return; }
+    let active = true;
+    apiClient<RecordData[]>(`${base}shift-rosters/active?on=${day}`).then(found => { if (active) setRosters(found); }).catch(() => { if (active) setRosters([]); });
+    return () => { active = false; };
+  }, [orderId, day, permissions]);
   const [until, setUntil] = useState("");
   const [name, setName] = useState("");
   const [team, setTeam] = useState<Member[]>([]);
@@ -55,10 +67,18 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
     const query = new URLSearchParams();
     if (orderId) query.set("production_order_id", orderId);
     if (orderId && workerFilter) query.set("workforce_member_id", workerFilter);
-    const data = await apiClient<RecordData[]>(`${base}${orderId ? "runs" : "shift-rosters"}?${query}`);
+    let data: RecordData[];
+    if (orderId) {
+      data = await apiClient<RecordData[]>(`${base}runs?${query}`);
+    } else {
+      query.set("page", String(list.page)); query.set("page_size", String(list.pageSize));
+      const page = await apiClient<Page<RecordData>>(`${base}shift-rosters?${query}`);
+      data = page.items;
+      setPaging({ total: page.total, page: page.page, page_size: page.page_size, pages: page.pages });
+    }
     setRows(data);
     setSelected(current => current ? data.find(row => row.id === current.id) ?? null : null);
-  }, [can, orderId, workerFilter]);
+  }, [can, orderId, workerFilter, list.page, list.pageSize]);
 
   useEffect(() => {
     let active = true;
@@ -73,7 +93,6 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
     if (hasPermission(permissions, P.SHIFTS_READ)) requests.push(apiClient<Option[]>(base + "shift-definitions").then(setShifts));
     if (hasPermission(permissions, "workforce:members:read")) requests.push(apiClient<Worker[]>("/workforce-members").then(setWorkers));
     if (orderId && hasPermission(permissions, P.WORK_CENTERS_READ)) requests.push(apiClient<Option[]>(base + "work-centers").then(setCenters));
-    if (orderId && hasPermission(permissions, P.ROSTERS_READ)) requests.push(apiClient<RecordData[]>(base + "shift-rosters").then(setRosters));
     Promise.all(requests).catch(e => setError(String(e.message)));
   }, [can, orderId, permissions]);
 
@@ -129,6 +148,8 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
       <thead><tr>{[t("columns.record"), t("columns.shift"), orderId ? t("columns.workCenter") : t("columns.lead"), t("columns.dateStart"), t("columns.end"), t("columns.status"), t("columns.team")].map(h => <th key={h}>{h}</th>)}</tr></thead>
       <tbody>{rows.map(row => <tr key={row.id}><td><button style={styles.secondaryButton} onClick={() => { setSelected(row); setCloseDate(""); setMemberDraft(emptyDraft); }}>{row.name || row.id.slice(0, 8)}</button></td><td>{row.shift_name || "—"}</td><td>{orderId ? row.work_center_name : row.members.filter(m => m.is_shift_lead).map(m => m.workforce_name).join(", ") || "—"}</td><td>{row.run_date || row.effective_from}{row.started_at && <div>{formatInstant(row.started_at)}</div>}</td><td>{row.effective_to || (row.ended_at ? formatInstant(row.ended_at) : "—")}</td><td>{statusLabel(row)}</td><td>{orderId ? row.team_count : <TeamList members={row.members} empty={t("noMembers")} lead={t("leadMarker")} />}</td></tr>)}</tbody>
     </table></div>}
+    {!orderId && paging && <Pagination page={paging.page} pageSize={paging.page_size} total={paging.total} pages={paging.pages} disabled={loading}
+      onPage={list.setPage} onPageSize={list.setPageSize} />}
 
     {editing && <form onSubmit={async e => {
       e.preventDefault();

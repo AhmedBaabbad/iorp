@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 _log = logging.getLogger(__name__)
 
+from app.core.pagination import paginate
 from app.core.tenancy import TenantContext
 from app.core.utils import utc_now
 from app.production.api.schemas import (
@@ -391,16 +392,24 @@ class ProductionOrderService:
     def list_production_orders(
         self,
         tenant: TenantContext,
+        params,
         status: ProductionOrderStatus | None = None,
         work_center_id: UUID | None = None,
         priority: ProductionOrderPriority | None = None,
-    ) -> list[ProductionOrder]:
-        return self.production_orders.list_by_organization(
-            tenant.organization_id,
-            status=status,
-            work_center_id=work_center_id,
-            priority=priority,
-        )
+        search: str | None = None,
+    ) -> tuple[list[ProductionOrder], int]:
+        """One page of the organization's orders and the total matching the filters (ARCH-PAGE-001)."""
+        return paginate(self.db, self.production_orders.list_statement(
+            tenant.organization_id, status=status, work_center_id=work_center_id, priority=priority, search=search), params)
+
+    def lookup_production_orders(self, tenant: TenantContext, search: str = "", statuses=(), ids=(), limit: int = 20) -> list[ProductionOrder]:
+        """Orders for a picker: searched on the server (number or product), at most `limit`; or the given ids."""
+        statement = self.production_orders.list_statement(tenant.organization_id, search=search or None)
+        if statuses:
+            statement = statement.where(ProductionOrder.status.in_(list(statuses)))
+        if ids:
+            statement = statement.where(ProductionOrder.id.in_(list(ids)))
+        return list(self.db.scalars(statement.limit(limit)))
 
     def get_production_order(
         self,

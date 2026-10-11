@@ -3,6 +3,7 @@ from datetime import date
 from decimal import Decimal
 from pydantic import ValidationError
 from sqlalchemy import select
+from app.core.pagination import page_of
 from app.core.db import Base
 from app.core.utils import utc_now
 from app.core.interfaces import sales_order_source
@@ -338,5 +339,5 @@ class ProductionDemandService:
             raise DemandError("invalid_date_range")
         customers = self.customers.find_customers(self.db, self.org_id, filters.search, active_only=False) if filters.search else []
         rows, total, hidden = self.repo.list(self.org_id, filters, [c.id for c in customers], planning, statuses)
-        return {"items": [self.response(row, planning=planning) for row in rows], "total": total, "page": filters.page, "page_size": filters.page_size,
-                "hidden_by_status": hidden}
+        # The same envelope as every paged list (core/pagination.py page_of), plus what the status filter hides.
+        return {**page_of([self.response(row, planning=planning) for row in rows], total, filters), "hidden_by_status": hidden}

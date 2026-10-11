@@ -3,6 +3,7 @@ from decimal import Decimal
 from typing import Any, Literal
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from app.core.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.core.types import ISODatetime
 from app.production.domain.enums import ProductionAllocationStatus, ProductionDemandPriority, ProductionDemandStatus
 
@@ -183,6 +184,7 @@ class PaginatedDemandList(BaseModel):
     total: int
     page: int
     page_size: int
+    pages: int = 0
     # Demands matching the other filters but outside the requested statuses; null when no statuses were given.
     hidden_by_status: int | None = None
 
@@ -211,7 +213,8 @@ class PlanningFilters(BaseModel):
     requested_delivery_to: date | None = None
     product_type: str | None = None
     search: str = Field(default="", max_length=255)
+    # The paging every list shares (core/pagination.py): 50 a page by default, at most 100.
     page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=20, ge=1, le=100)
+    page_size: int = Field(default=DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE)
     sort_by: Literal["planning_sequence", "priority", "requested_delivery_date", "created_at", "demand_number"] = "planning_sequence"
     sort_order: Literal["asc", "desc"] = "asc"

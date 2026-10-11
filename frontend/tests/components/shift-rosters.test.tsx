@@ -8,6 +8,7 @@ import { loadMessages } from "@/i18n/messages";
 const api = vi.hoisted(() => ({ apiClient: vi.fn() }));
 const auth = vi.hoisted(() => ({ permissions: [] as string[] }));
 vi.mock("@/lib/api-client", async importOriginal => ({ ...(await importOriginal<object>()), apiClient: api.apiClient }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/", useSearchParams: () => new URLSearchParams() }));
 vi.mock("@/features/auth/auth-context", () => ({
   useAuth: () => ({ permissions: auth.permissions }),
   hasPermission: (granted: string[], code: string) => granted.includes(code),
@@ -31,7 +32,7 @@ beforeEach(() => {
   auth.permissions = ["production:shift_rosters:read", "production:shift_rosters:create", "production:shift_rosters:manage_members", "production:shifts:read", "workforce:members:read"];
   api.apiClient.mockReset();
   api.apiClient.mockImplementation((path: string) => Promise.resolve(
-    path.startsWith("/production/shift-rosters") ? [roster] : path.startsWith("/workforce-members") ? workers : []));
+    path.startsWith("/production/shift-rosters") ? { items: [roster], total: 1, page: 1, page_size: 50, pages: 1 } : path.startsWith("/workforce-members") ? workers : []));
 });
 afterEach(cleanup);
 
@@ -57,7 +58,8 @@ describe("shift rosters page", () => {
   });
 
   it("says when a roster has no members yet", async () => {
-    api.apiClient.mockImplementation((path: string) => Promise.resolve(path.startsWith("/production/shift-rosters") ? [{ ...roster, members: [], team_count: 0 }] : []));
+    api.apiClient.mockImplementation((path: string) => Promise.resolve(path.startsWith("/production/shift-rosters")
+      ? { items: [{ ...roster, members: [], team_count: 0 }], total: 1, page: 1, page_size: 50, pages: 1 } : []));
     ui(<ExecutionPanel />);
     expect(await screen.findByText("No members yet")).toBeTruthy();
   });

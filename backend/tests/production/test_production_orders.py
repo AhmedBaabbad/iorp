@@ -255,7 +255,7 @@ def test_list_no_filter(client, auth_headers, work_center):
     resp = client.get("/api/v1/production/production-orders", headers=auth_headers)
 
     assert resp.status_code == 200
-    assert len(resp.json()) == 2
+    assert len(resp.json()["items"]) == 2 and resp.json()["total"] == 2
 
 
 def test_list_filter_by_status(client, auth_headers, work_center):
@@ -271,10 +271,10 @@ def test_list_filter_by_status(client, auth_headers, work_center):
     )
 
     assert draft_resp.status_code == 200
-    assert len(draft_resp.json()) >= 1
-    assert all(item["status"] == "draft" for item in draft_resp.json())
+    assert len(draft_resp.json()["items"]) >= 1
+    assert all(item["status"] == "draft" for item in draft_resp.json()["items"])
     assert released_resp.status_code == 200
-    assert released_resp.json() == []
+    assert released_resp.json()["items"] == []
 
 
 def test_list_filter_by_work_center_id(client, auth_headers, work_center):
@@ -294,7 +294,7 @@ def test_list_filter_by_work_center_id(client, auth_headers, work_center):
     )
 
     assert resp.status_code == 200
-    data = resp.json()
+    data = resp.json()["items"]
     assert len(data) == 1
     assert data[0]["work_center_id"] == str(UUID(work_center["id"]))
 
@@ -313,9 +313,9 @@ def test_list_filter_by_priority(client, auth_headers, work_center):
     )
 
     assert urgent_resp.status_code == 200
-    assert len(urgent_resp.json()) == 1
+    assert len(urgent_resp.json()["items"]) == 1
     assert low_resp.status_code == 200
-    assert len(low_resp.json()) == 1
+    assert len(low_resp.json()["items"]) == 1
 
 
 def test_get_production_order(client, auth_headers, work_center):
@@ -389,7 +389,7 @@ def test_tenant_isolation(client, db, auth_headers, work_center):
     list_resp = client.get("/api/v1/production/production-orders", headers=auth_headers)
 
     assert list_resp.status_code == 200
-    data = list_resp.json()
+    data = list_resp.json()["items"]
     assert len(data) == 1
     assert data[0]["id"] == first_order.json()["id"]
     assert data[0]["id"] != second_order.json()["id"]

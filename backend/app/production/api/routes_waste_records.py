@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, page_of, page_params
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, require_permission
 from app.production.domain import permissions as P
@@ -40,7 +41,7 @@ def create_waste_record(payload: WasteRecordCreate, tenant: TenantContext = Depe
         raise _error(exc) from exc
 
 
-@router.get("", response_model=list[WasteRecordListItem], dependencies=[READ])
+@router.get("", response_model=Page[WasteRecordListItem], dependencies=[READ])
 def list_waste_records(
     production_order_id: UUID | None = Query(default=None),
     production_run_id: UUID | None = Query(default=None),
@@ -48,15 +49,17 @@ def list_waste_records(
     waste_category: WasteCategory | None = Query(default=None),
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
+    params: PageParams = Depends(page_params),
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
     can=Depends(permission_check),
 ):
+    """One page of waste records, newest first (ARCH-PAGE-001)."""
     service = WasteService(db, tenant)
-    records = service.list(production_order_id=production_order_id, production_run_id=production_run_id, work_center_id=work_center_id,
-                           waste_category=waste_category, date_from=date_from, date_to=date_to)
+    records, total = service.list(params, production_order_id=production_order_id, production_run_id=production_run_id, work_center_id=work_center_id,
+                                  waste_category=waste_category, date_from=date_from, date_to=date_to)
     labels = service.labels(records, can)
-    return [WasteRecordListItem.model_validate(r).model_copy(update={"labels": labels[r.id]}) for r in records]
+    return page_of([WasteRecordListItem.model_validate(r).model_copy(update={"labels": labels[r.id]}) for r in records], total, params)
 
 
 # Before /{waste_record_id}, so "summary" is never read as an id.

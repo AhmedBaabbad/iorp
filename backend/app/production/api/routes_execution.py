@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from app.core.pagination import PageParams, page_of, page_params, paginate
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, require_permission
 from app.production.domain import permissions as P
@@ -28,8 +29,19 @@ def execute(db, tenant, operation):
 
 
 @router.get("/shift-rosters", dependencies=[Depends(require_permission(P.ROSTERS_READ))])
-def list_rosters(shift_definition_id: UUID | None = None, workforce_member_id: UUID | None = None, date_from: date | None = None, date_to: date | None = None, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
-    return execute(db, tenant, lambda s: s.rosters(shift_definition_id, workforce_member_id, date_from, date_to))
+def list_rosters(shift_definition_id: UUID | None = None, workforce_member_id: UUID | None = None, date_from: date | None = None, date_to: date | None = None,
+                 params: PageParams = Depends(page_params), tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
+    """One page of shift rosters, newest first (ARCH-PAGE-001)."""
+    service = ExecutionService(db, tenant)
+    rows, total = paginate(db, service.roster_statement(shift_definition_id, workforce_member_id, date_from, date_to, newest_first=True), params)
+    return page_of([service.present(row) for row in rows], total, params)
+
+
+# Before /shift-rosters/{roster_id}: the rosters in effect on a day (one per shift at most), for choosing a run's team.
+@router.get("/shift-rosters/active", dependencies=[Depends(require_permission(P.ROSTERS_READ))])
+def active_rosters(on: date | None = None, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
+    day = on or date.today()
+    return execute(db, tenant, lambda s: s.rosters(date_from=day, date_to=day))
 
 
 @router.post("/shift-rosters", dependencies=[Depends(require_permission(P.ROSTERS_CREATE)), Depends(require_permission(P.ROSTERS_MANAGE_MEMBERS))], status_code=201)

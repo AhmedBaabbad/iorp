@@ -84,6 +84,10 @@ class ExecutionService:
         return result
 
     def rosters(self, shift_definition_id=None, workforce_member_id=None, date_from=None, date_to=None):
+        return list(self.db.scalars(self.roster_statement(shift_definition_id, workforce_member_id, date_from, date_to)))
+
+    def roster_statement(self, shift_definition_id=None, workforce_member_id=None, date_from=None, date_to=None, newest_first=False):
+        """Rosters matching the filters; oldest first for the rules, newest first for the paged list; id last either way."""
         q = self.repo.query(ShiftRoster)
         if shift_definition_id:
             q = q.where(ShiftRoster.shift_definition_id == shift_definition_id)
@@ -94,7 +98,9 @@ class ExecutionService:
         if workforce_member_id:
             ids = self.repo.query(ShiftRosterMember).with_only_columns(ShiftRosterMember.shift_roster_id).where(ShiftRosterMember.workforce_member_id == workforce_member_id)
             q = q.where(ShiftRoster.id.in_(ids))
-        return list(self.db.scalars(q.order_by(ShiftRoster.effective_from, ShiftRoster.id)))
+        if newest_first:
+            return q.order_by(ShiftRoster.effective_from.desc(), ShiftRoster.id.desc())
+        return q.order_by(ShiftRoster.effective_from, ShiftRoster.id)
 
     def check_worker_rosters(self, worker_id, effective_from, effective_to, exclude_roster_id=None):
         # A worker belongs to one planned team at a time; moving shifts means closing or replacing the old roster.

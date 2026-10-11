@@ -156,8 +156,7 @@ class QualityDefectRepository:
             statement = statement.where(QualityDefect.production_order_id == production_order_id)
         if defect_date is not None:
             statement = statement.where(QualityDefect.defect_date == defect_date)
-        statement = statement.order_by(QualityDefect.defect_date.desc(), QualityDefect.created_at.desc())
-        return list(self.db.scalars(statement))
+        return statement.order_by(QualityDefect.defect_date.desc(), QualityDefect.created_at.desc(), QualityDefect.id.desc())
 
 
 class QualityRejectionRepository:

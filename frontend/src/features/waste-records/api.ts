@@ -1,11 +1,12 @@
 import { apiClient } from "@/lib/api-client";
-import type { WasteRecordData, WasteRecordInput, WasteRecordListFilters, WasteRecordListItem, WasteRecordUpdate, WasteSummary } from "./types";
+import type { Page } from "@/lib/pagination";
+import type { WasteRecordData, WasteRecordInput, WasteRecordListItem, WasteRecordUpdate, WasteSummary } from "./types";
 
 const PATH = "/production/waste-records";
 
-export function getWasteRecords(filters: WasteRecordListFilters = {}) {
-  const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => Boolean(value)) as [string, string][]);
-  return apiClient<WasteRecordListItem[]>(`${PATH}${query.size ? `?${query}` : ""}`);
+// One page of records (ARCH-PAGE-001): `query` carries page, page_size and the filters.
+export function getWasteRecords(query = "") {
+  return apiClient<Page<WasteRecordListItem>>(`${PATH}${query ? `?${query}` : ""}`);
 }
 
 export function getWasteRecordById(id: string) {

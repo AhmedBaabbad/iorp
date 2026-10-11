@@ -43,7 +43,7 @@ def test_received_lots_wait_for_quality_and_show_their_status_on_the_receipt(pro
     after = proc.client.get(f"{ROOT}/receipts/{r['id']}").json()
     assert after["line_quality"][first["id"]]["status"] == "released" and after["lots_pending"] == 0
     assert proc.client.get(f"{QUALITY}/incoming/awaiting").json() == []
-    assert proc.client.get("/api/v1/quality/non-conformance-reports").json() == []  # nothing to report
+    assert proc.client.get("/api/v1/quality/non-conformance-reports").json()["items"] == []  # nothing to report
 
 
 def test_a_lot_not_released_opens_a_non_conformance_report_about_the_supplier(proc):
@@ -56,7 +56,7 @@ def test_a_lot_not_released_opens_a_non_conformance_report_about_the_supplier(pr
     assert code(decide(released="15000", use_as_is="5000")) == "CONCESSION_DETAILS_REQUIRED"
     done = decide(released="15000", return_to_supplier="4000", scrap="1000", notes="Moisture 0.12 % on 5 t").json()
     assert done["result"] == "rejected" and done["qty_accepted"] == "15000.000" and done["qty_rejected"] == "5000.000"
-    [ncr] = proc.client.get("/api/v1/quality/non-conformance-reports").json()
+    [ncr] = proc.client.get("/api/v1/quality/non-conformance-reports").json()["items"]
     full = proc.client.get(f"/api/v1/quality/non-conformance-reports/{ncr['id']}").json()
     assert full["source_type"] == "incoming_material" and full["supplier_id"] == s["id"] and full["supplier_name"] == "Gulf Polymers"
     assert full["quality_check_id"] == check["id"] and full["reference_code"] == f"{r['receipt_no']} / SUP-7781"

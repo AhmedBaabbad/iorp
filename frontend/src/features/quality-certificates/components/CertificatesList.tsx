@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
+import { Pagination } from "@/components/pagination/Pagination";
+import { usePagedFilters, type Page } from "@/lib/pagination";
 import { usePermission } from "@/features/auth/permission-hooks";
 import s from "@/features/production-demands/demands.module.css";
 import { qualityErrorMessage } from "@/features/quality-checks/components/quality-errors";
@@ -20,15 +22,32 @@ export function CertificatesList() {
   const errors = useTranslations("quality.errors");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
-  const [status, setStatus] = useState<CertificateStatus | "">("");
-  const [search, setSearch] = useState("");
-  const [rows, setRows] = useState<CertificateListItem[] | null>(null);
+  // Filters and page live in the address (ARCH-PAGE-001); the search waits for a short pause in typing.
+  const paged = usePagedFilters({ status: "", search: "", quality_check_id: "" });
+  const status = paged.filters.status as CertificateStatus | "";
+  const [search, setSearch] = useState(paged.filters.search);
+  useEffect(() => {
+    if (search.trim() === paged.filters.search) return;
+    const timer = setTimeout(() => paged.set("search", search.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
+  const setStatus = (value: CertificateStatus | "") => paged.set("status", value);
+  const [data, setData] = useState<Page<CertificateListItem> | null>(null);
+  const rows = data?.items ?? null;
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const key = JSON.stringify(paged.query());
   const load = useCallback(async () => {
-    setError("");
-    try { setRows(await getCertificates({ status, search })); } catch (e) { setError(qualityErrorMessage(e, errors)); }
-  }, [status, search, errors]);
+    setError(""); setLoading(true);
+    try {
+      const page = await getCertificates(paged.query());
+      setData(page);
+      // A filter left the page past the end: show the last page rather than an empty one.
+      if (!page.items.length && page.total > 0 && paged.page > page.pages) paged.setPage(page.pages);
+    } catch (e) { setError(qualityErrorMessage(e, errors)); }
+    finally { setLoading(false); }
+  }, [key, errors]); // eslint-disable-line react-hooks/exhaustive-deps -- paged changes every render; key is what matters
   useEffect(() => { void load(); }, [load]);
 
   return <PageFrame title={t("listTitle")} subtitle={t("subtitle")}>
@@ -58,6 +77,8 @@ export function CertificatesList() {
         </tr>)}</tbody>
       </table></div>
     </section>}
+    {data && <Pagination page={data.page} pageSize={data.page_size} total={data.total} pages={data.pages} disabled={loading}
+      onPage={paged.setPage} onPageSize={paged.setPageSize} />}
     <NumberingSettings />
   </PageFrame>;
 }

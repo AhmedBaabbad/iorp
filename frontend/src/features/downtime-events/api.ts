@@ -1,14 +1,16 @@
 import { apiClient } from "@/lib/api-client";
+import type { Page } from "@/lib/pagination";
 import type { DowntimeEvent, DowntimeFilters, DowntimeInput, DowntimeSummary } from "./types";
 
 const PATH = "/production/downtime-events";
 const query = (filters: DowntimeFilters) => {
-  const q = new URLSearchParams(Object.entries(filters).filter(([, v]) => Boolean(v)) as [string, string][]);
+  const q = new URLSearchParams(Object.entries(filters).filter(([, v]) => Boolean(v)).map(([k, v]) => [k, String(v)]) as [string, string][]);
   return q.size ? `?${q}` : "";
 };
 
-export function getDowntimeEvents(filters: DowntimeFilters = {}) {
-  return apiClient<DowntimeEvent[]>(`${PATH}${query(filters)}`);
+// One page of events (ARCH-PAGE-001): the filters plus page and page_size.
+export function getDowntimeEvents(filters: DowntimeFilters & { page?: number; page_size?: number } = {}) {
+  return apiClient<Page<DowntimeEvent>>(`${PATH}${query(filters as DowntimeFilters)}`);
 }
 
 // Totals for reports, over the same filters as the list.

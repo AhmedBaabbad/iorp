@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, page_of, page_params
 from app.core.reporting.routes import generate_response
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_current_user, get_db, permission_check, permission_checked_in_handler, require_permission
@@ -56,15 +57,15 @@ def certificate_sources(check_id: UUID, tenant: TenantContext = Depends(get_curr
         raise _error(exc) from exc
 
 
-@router.get(PATH, response_model=list[CertificateListItem], dependencies=[Depends(require_permission(Q.COA_READ))])
+@router.get(PATH, response_model=Page[CertificateListItem], dependencies=[Depends(require_permission(Q.COA_READ))])
 def list_certificates(status_filter: str | None = Query(default=None, alias="status", pattern="^(draft|issued|revoked)$"),
                       quality_check_id: UUID | None = None, production_order_id: UUID | None = None,
-                      search: str | None = Query(default=None, max_length=60),
+                      search: str | None = Query(default=None, max_length=60), params: PageParams = Depends(page_params),
                       tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
     service = CertificateService(db, tenant)
-    rows = service.list(status_filter, quality_check_id, production_order_id, search)
-    return [CertificateListItem.model_validate({**CertificateListItem.model_validate(c).model_dump(), **v})
-            for c, v in zip(rows, service.views(rows, _can(can)))]
+    rows, total = service.list(params, status_filter, quality_check_id, production_order_id, search)
+    return page_of([CertificateListItem.model_validate({**CertificateListItem.model_validate(c).model_dump(), **v})
+                    for c, v in zip(rows, service.views(rows, _can(can)))], total, params)
 
 
 @router.post(PATH, response_model=CertificateRead, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission(Q.COA_CREATE))])

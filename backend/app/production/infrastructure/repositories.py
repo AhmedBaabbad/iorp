@@ -177,13 +177,15 @@ class ProductionOrderRepository:
         )
         return self.db.scalar(statement)
 
-    def list_by_organization(
+    def list_statement(
         self,
         organization_id: UUID,
         status: ProductionOrderStatus | None = None,
         work_center_id: UUID | None = None,
         priority: ProductionOrderPriority | None = None,
-    ) -> list[ProductionOrder]:
+        search: str | None = None,
+    ):
+        """The organization's orders matching the filters, earliest planned start first; id last, so pages never overlap."""
         statement = select(ProductionOrder).where(ProductionOrder.organization_id == organization_id)
 
         if status is not None:
@@ -192,12 +194,18 @@ class ProductionOrderRepository:
             statement = statement.where(ProductionOrder.work_center_id == work_center_id)
         if priority is not None:
             statement = statement.where(ProductionOrder.priority == priority)
+        if search:
+            statement = statement.where(ProductionOrder.production_order_number.icontains(search, autoescape=True)
+                                        | ProductionOrder.product_type.icontains(search, autoescape=True))
 
-        statement = statement.order_by(
+        return statement.order_by(
             ProductionOrder.planned_start_date.asc(),
             ProductionOrder.production_order_number.asc(),
+            ProductionOrder.id.asc(),
         )
-        return list(self.db.scalars(statement))
+
+    def list_by_organization(self, organization_id: UUID, **filters) -> list[ProductionOrder]:
+        return list(self.db.scalars(self.list_statement(organization_id, **filters)))
 
     def count_by_organization(self, organization_id: UUID) -> int:
         statement = select(func.count(ProductionOrder.id)).where(

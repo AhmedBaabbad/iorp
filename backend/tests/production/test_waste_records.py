@@ -220,7 +220,7 @@ def test_list_filters(env):
     env.added(po, "process", production_run_id=str(run.id))
     env.client.post(WASTE, json={"production_order_id": po["id"], "waste_date": "2026-09-20", "quantity_wasted": "1", "unit": "kg", "categories": [{"category": "other"}]})
     env.added(other, "changeover")
-    ids = lambda **q: {c["category"] for r in env.client.get(WASTE, params=q).json() for c in r["categories"]}  # noqa: E731
+    ids = lambda **q: {c["category"] for r in env.client.get(WASTE, params=q).json()["items"] for c in r["categories"]}  # noqa: E731
     assert ids(production_order_id=po["id"]) == {"process", "other"}
     assert ids(waste_category="changeover") == {"changeover"}
     assert ids(production_run_id=str(run.id)) == {"process"}
@@ -241,7 +241,7 @@ def test_other_organizations_are_invisible_and_body_org_is_refused(env):
                            categories=[WasteRecordCategory(organization_id=foreign.org.id, category="other", quantity=Decimal("9"))]))
     env.db.commit()
     foreign_id = env.db.scalar(select(WasteRecord.id).where(WasteRecord.organization_id == foreign.org.id))
-    assert env.client.get(WASTE).json() == []
+    assert env.client.get(WASTE).json()["items"] == []
     assert env.client.get(f"{WASTE}/{foreign_id}").status_code == 404
     assert env.client.delete(f"{WASTE}/{foreign_id}").status_code == 404
     assert env.client.get(f"{WASTE}/summary", params={"production_order_id": str(foreign.order.id)}).status_code == 404

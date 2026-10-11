@@ -6,8 +6,9 @@ takes its order, line, unit and the quantity the check rejected; a manual one na
 """
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 
+from app.core.pagination import paginate
 from app.core.interfaces.order_close_guards import Blocker
 from app.core.utils import utc_now
 from app.quality.domain import rules
@@ -39,9 +40,14 @@ class QualityRejectionService:
     def get(self, rejection_id):
         return self._get(rejection_id)
 
-    def list(self, *, production_order_id=None, quality_check_id=None, rejection_reason=None, disposition=None, disposition_status=None,
-             date_from=None, date_to=None, search=None, limit=200):
+    def list(self, params, *, production_order_id=None, quality_check_id=None, rejection_reason=None, disposition=None, disposition_status=None,
+             date_from=None, date_to=None, search=None, unresolved=None):
+        """One page of rejections, newest first, and the total matching the filters (ARCH-PAGE-001)."""
         query = select(QualityRejection).where(QualityRejection.organization_id == self.org)
+        if unresolved:
+            # The same rule as rules.is_unresolved: no decision yet, or only a hold (they keep the order from closing).
+            query = query.where(or_(QualityRejection.disposition_status == DS.PENDING,
+                                    and_(QualityRejection.disposition_status == DS.DECIDED, QualityRejection.disposition == Disposition.HOLD)))
         for column, value in ((QualityRejection.production_order_id, production_order_id), (QualityRejection.quality_check_id, quality_check_id),
                               (QualityRejection.rejection_reason, rejection_reason), (QualityRejection.disposition, disposition),
                               (QualityRejection.disposition_status, disposition_status)):
@@ -53,7 +59,7 @@ class QualityRejectionService:
             query = query.where(QualityRejection.rejection_date <= date_to)
         if search:
             query = query.where(QualityRejection.rejection_code.icontains(search, autoescape=True))
-        return list(self.db.scalars(query.order_by(QualityRejection.rejection_date.desc(), QualityRejection.created_at.desc()).limit(limit)))
+        return paginate(self.db, query.order_by(QualityRejection.rejection_date.desc(), QualityRejection.created_at.desc(), QualityRejection.id.desc()), params)
 
     def views(self, rejections, can, *, detail=False) -> list[dict]:
         orders = self.production.numbers([r.production_order_id for r in rejections])

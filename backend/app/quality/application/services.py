@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.pagination import paginate
 from app.core.tenancy import TenantContext
 from app.quality.domain.rules import QualityError
 from app.quality.api.schemas import (
@@ -98,19 +99,21 @@ class QualityDefectService:
     def list_quality_defects(
         self,
         tenant: TenantContext,
+        params,
         *,
         defect_category: DefectCategory | None = None,
         severity: DefectSeverity | None = None,
         production_order_id: UUID | None = None,
         defect_date: date | None = None,
-    ) -> list[QualityDefect]:
-        return self.defects.list_by_organization(
+    ) -> tuple[list[QualityDefect], int]:
+        """One page of the organization's defects, newest first, and the total (ARCH-PAGE-001)."""
+        return paginate(self.db, self.defects.list_by_organization(
             tenant.organization_id,
             defect_category=defect_category,
             severity=severity,
             production_order_id=production_order_id,
             defect_date=defect_date,
-        )
+        ), params)
 
     def get_quality_defect(
         self,

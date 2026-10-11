@@ -63,11 +63,11 @@ function rejection(over: Partial<QualityRejectionData> = {}): QualityRejectionDa
 
 describe("quality checks", () => {
   it("lists checks with Arabic statuses, including cancelled", async () => {
-    api.apiClient.mockResolvedValue([check({ status: "cancelled", actions: [] })]);
+    api.apiClient.mockResolvedValue({ items: [check({ status: "cancelled", actions: [] })], total: 1, page: 1, page_size: 50, pages: 1 });
     ui(<QualityChecksList />, "ar");
     const table = await screen.findByRole("table", { name: "قائمة فحوصات الجودة" });
     expect(within(table).getAllByText("ملغى").length).toBeGreaterThan(0);
-    expect(api.apiClient.mock.calls[0][0]).toBe("/quality/quality-checks");
+    expect(api.apiClient.mock.calls[0][0]).toBe("/quality/quality-checks?page=1&page_size=50");
   });
 
   it("closes with balanced quantities; a rejected quantity sends its reason", async () => {

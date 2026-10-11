@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from app.core.pagination import paginate
 from app.core.db import Base
 from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.core.utils import utc_now
@@ -226,8 +227,9 @@ class DowntimeService:
             query = query.where(DowntimeEvent.start_time < local_midnight(date_to + timedelta(days=1)))
         return query
 
-    def list(self, **filters):
-        return list(self.db.scalars(self._filtered(**filters).order_by(DowntimeEvent.start_time.desc())))
+    def list(self, params, **filters):
+        """One page of stops, latest first, and the total matching the filters (ARCH-PAGE-001)."""
+        return paginate(self.db, self._filtered(**filters).order_by(DowntimeEvent.start_time.desc(), DowntimeEvent.id.desc()), params)
 
     def labels(self, events, can: PermissionCheck):
         """Display labels and allowed actions for a page of events, in a fixed number of queries."""

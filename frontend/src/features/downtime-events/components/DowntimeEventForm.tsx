@@ -8,8 +8,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth/permission-hooks";
 import s from "@/features/production-demands/demands.module.css";
-import { getProductionOrders } from "@/features/production-orders/api/production-orders-api";
-import type { ProductionOrderListItem } from "@/features/production-orders/types";
+import { ProductionOrderPicker } from "@/features/production-orders/components/ProductionOrderPicker";
 import { getWorkCenters } from "@/features/work-centers";
 import { useFormatter } from "@/hooks/useFormatter";
 import { createDowntimeEvent, getDowntimeEventById, getOrderRuns, updateDowntimeEvent, type RunOption } from "../api";
@@ -34,7 +33,6 @@ export function DowntimeEventForm({ eventId }: { eventId?: string }) {
   const [values, setValues] = useState<Values>({ center: params.get("work_center") ?? "", order: params.get("order") ?? "", run: "", start: nowLocalInput(), end: "",
     category: "breakdown", reason: "", notes: "" });
   const [existing, setExisting] = useState<DowntimeEvent | null>(null);
-  const [orders, setOrders] = useState<ProductionOrderListItem[]>([]);
   const [runs, setRuns] = useState<RunOption[]>([]);
   const [centers, setCenters] = useState<{ id: string; code: string; name: string }[]>([]);
   const [loading, setLoading] = useState(editing);
@@ -43,7 +41,6 @@ export function DowntimeEventForm({ eventId }: { eventId?: string }) {
 
   useEffect(() => {
     getWorkCenters().then(setCenters).catch(() => setCenters([]));
-    getProductionOrders().then(list => setOrders(list.filter(o => LINKABLE_ORDER_STATUSES.includes(o.status)))).catch(() => setOrders([]));
   }, []);
   useEffect(() => {
     if (!eventId) return;
@@ -69,9 +66,6 @@ export function DowntimeEventForm({ eventId }: { eventId?: string }) {
   const endBeforeStart = Boolean(values.end && values.start && values.end <= values.start);
   const valid = Boolean(center && values.start && !endBeforeStart);
   const set = <K extends keyof Values>(field: K, value: Values[K]) => setValues(old => ({ ...old, [field]: value, ...(field === "order" ? { run: "" } : {}) }));
-  // Keep an order that is no longer offered (e.g. completed) visible while editing.
-  const orderOptions = existing?.production_order_id && !orders.some(o => o.id === existing.production_order_id)
-    ? [{ id: existing.production_order_id, production_order_number: existing.labels?.order_number ?? "—", product_type: "" } as ProductionOrderListItem, ...orders] : orders;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -102,10 +96,9 @@ export function DowntimeEventForm({ eventId }: { eventId?: string }) {
           </select>
         </label>
         <label className={s.field}>{t("fields.orderOptional")}
-          <select value={values.order} disabled={busy || locked} onChange={e => set("order", e.target.value)}>
-            <option value="">{t("placeholders.noOrder")}</option>
-            {orderOptions.map(o => <option key={o.id} value={o.id}>{o.production_order_number}{o.product_type ? ` — ${o.product_type}` : ""}</option>)}
-          </select>
+          {/* Searched on the server among the orders a stop can be linked to; an order chosen earlier stays shown. */}
+          <ProductionOrderPicker value={values.order} onChange={id => set("order", id)} statuses={LINKABLE_ORDER_STATUSES} disabled={busy || locked}
+            emptyLabel={t("placeholders.noOrder")} ariaLabel={t("fields.orderOptional")} />
         </label>
         {canReadRuns && <label className={s.field}>{t("fields.runOptional")}
           <select value={values.run} disabled={busy || locked || !values.order} onChange={e => set("run", e.target.value)}>

@@ -10,6 +10,7 @@ from datetime import timezone
 
 from sqlalchemy import select
 
+from app.core.pagination import paginate
 from app.core.utils import utc_now
 from app.quality.domain import certificates as rules
 from app.quality.domain.rules import QualityError
@@ -62,7 +63,8 @@ class CertificateService:
     def get(self, certificate_id) -> QualityCertificate:
         return self._get(certificate_id)
 
-    def list(self, status=None, quality_check_id=None, production_order_id=None, search=None, limit=500):
+    def list(self, params, status=None, quality_check_id=None, production_order_id=None, search=None):
+        """One page of certificates, newest first, and the total matching the filters (ARCH-PAGE-001)."""
         query = select(QualityCertificate).where(QualityCertificate.organization_id == self.org)
         for column, value in ((QualityCertificate.status, status), (QualityCertificate.quality_check_id, quality_check_id),
                               (QualityCertificate.production_order_id, production_order_id)):
@@ -72,7 +74,7 @@ class CertificateService:
             query = query.where(QualityCertificate.certificate_no.icontains(search, autoescape=True)
                                 | QualityCertificate.customer_name.icontains(search, autoescape=True)
                                 | QualityCertificate.batch_no.icontains(search, autoescape=True))
-        return list(self.db.scalars(query.order_by(QualityCertificate.created_at.desc()).limit(limit)))
+        return paginate(self.db, query.order_by(QualityCertificate.created_at.desc(), QualityCertificate.id.desc()), params)
 
     def views(self, certificates, can, detail=False) -> list[dict]:
         names = user_names(self.db, self.org, [u for c in certificates for u in (c.prepared_by_user_id, c.issued_by_user_id, c.revoked_by_user_id)])

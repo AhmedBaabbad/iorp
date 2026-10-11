@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
+import { Pagination } from "@/components/pagination/Pagination";
+import { usePagedFilters, type Page } from "@/lib/pagination";
 import { useHasAnyPermission } from "@/features/auth/permission-hooks";
 import { useFormatter } from "@/hooks/useFormatter";
 import s from "@/features/production-demands/demands.module.css";
@@ -25,18 +27,29 @@ export function CorrectiveActionsList() {
   const messages = useTranslations("messages");
   const canComplete = useHasAnyPermission([Q.NCR_ACTIONS_COMPLETE]);
   const alerts = useCapaAlerts(true);
-  const [filters, setFilters] = useState(EMPTY);
-  const [rows, setRows] = useState<CorrectiveAction[] | null>(null);
+  // Filters and page live in the address (ARCH-PAGE-001); the list opens on the open actions.
+  const paged = usePagedFilters(EMPTY);
+  const filters = paged.filters;
+  const [data, setData] = useState<Page<CorrectiveAction> | null>(null);
+  const rows = data?.items ?? null;
+  const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState<CorrectiveAction | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  const key = JSON.stringify(paged.query());
   const load = useCallback(async () => {
-    setError("");
-    try { setRows(await getCorrectiveActions(filters)); } catch (e) { setError(ncrErrorMessage(e, errors)); }
-  }, [filters, errors]);
+    setError(""); setLoading(true);
+    try {
+      const page = await getCorrectiveActions(paged.query());
+      setData(page);
+      // A filter left the page past the end: show the last page rather than an empty one.
+      if (!page.items.length && page.total > 0 && paged.page > page.pages) paged.setPage(page.pages);
+    } catch (e) { setError(ncrErrorMessage(e, errors)); }
+    finally { setLoading(false); }
+  }, [key, errors]); // eslint-disable-line react-hooks/exhaustive-deps -- paged changes every render; key is what matters
   useEffect(() => { const timer = setTimeout(() => void load(), 200); return () => clearTimeout(timer); }, [load]);
-  const set = (field: keyof ActionFilters, value: string | boolean) => setFilters(old => ({ ...old, [field]: value }));
+  const set = (field: keyof ActionFilters, value: string | boolean) => paged.set(field, value);
 
   async function complete(evidence: string) {
     if (!completing) return;
@@ -65,6 +78,8 @@ export function CorrectiveActionsList() {
     </section>}
     {completing && <TextDialog title={t("completeDialog.title")} text={completing.description} label={t("fields.evidence")} confirm={t("actions.complete")}
       busy={busy} onClose={() => setCompleting(null)} onConfirm={v => void complete(v)} />}
+    {data && <Pagination page={data.page} pageSize={data.page_size} total={data.total} pages={data.pages} disabled={loading}
+      onPage={paged.setPage} onPageSize={paged.setPageSize} />}
   </PageFrame>;
 }
 

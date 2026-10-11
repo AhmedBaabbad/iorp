@@ -64,11 +64,11 @@ def test_inspection_list_shows_its_defects_highest_severity_and_filters_by_type(
     mixed, plain = q.opened(po), q.opened(po)
     found(q, mixed, defect("surface", "minor", 4), defect("thickness", "critical"), defect("color", "major"))
     found(q, plain, defect("color", "minor"))
-    rows = {c["id"]: c for c in q.client.get(CHECKS, params={"production_order_id": po["id"]}).json()}
+    rows = {c["id"]: c for c in q.client.get(CHECKS, params={"production_order_id": po["id"]}).json()["items"]}
     assert rows[mixed["id"]]["severity"] == "critical"
     assert [d["defect_category"] for d in rows[mixed["id"]]["defects"]] == ["thickness", "color", "surface"]
     assert rows[plain["id"]]["severity"] == "minor"
-    by_type = lambda category: {c["id"] for c in q.client.get(CHECKS, params={"defect_category": category}).json()}  # noqa: E731
+    by_type = lambda category: {c["id"] for c in q.client.get(CHECKS, params={"defect_category": category}).json()["items"]}  # noqa: E731
     assert by_type("color") == {mixed["id"], plain["id"]}
     assert by_type("surface") == {mixed["id"]}
     assert by_type("winding") == set()

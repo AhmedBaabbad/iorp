@@ -41,10 +41,47 @@ export function useListQuery<K extends string>(filterKeys: readonly K[]) {
     setPage: (value: number) => update({ page: value }),
     setPageSize: (value: number) => update({ page_size: value, page: 1 }),
     setFilter: (key: K, value: string) => update({ [key]: value, page: 1 }),
+    /** Several filters at once (e.g. a filter and an older alias of it); back to page 1. */
+    setFilters: (patch: Partial<Record<K, string>>) => update({ ...patch, page: 1 }),
     clearFilters: () => update({ ...Object.fromEntries(filterKeys.map((k) => [k, null])), page: 1 }),
     /** The query string for the API: page, page_size and the filters that are set. */
     apiQuery: () => new URLSearchParams([["page", String(page)], ["page_size", String(pageSize)],
       ...filterKeys.filter((k) => filters[k]).map((k) => [k, filters[k]] as [string, string])]).toString(),
+  };
+}
+
+type FilterValue = string | boolean;
+const ALL = "all";
+
+/**
+ * useListQuery for a list whose filters have defaults (CAPA opens on "open") or yes/no switches, and older link names
+ * (`aliases`: ?order= for production_order_id). The filters and page stay in the address; a change goes back to page 1.
+ * A filter chosen as "all" while its default is something else is kept as "all" in the address so a refresh keeps it.
+ */
+export function usePagedFilters<T extends Record<string, FilterValue>>(defaults: T, aliases: Record<string, keyof T & string> = {}) {
+  const names = Object.keys(defaults) as (keyof T & string)[];
+  const list = useListQuery([...names, ...Object.keys(aliases)]);
+  const aliasOf = (name: string) => Object.entries(aliases).find(([, target]) => target === name)?.[0];
+  const filters = Object.fromEntries(names.map((name) => {
+    const raw = list.filters[name] || (aliasOf(name) ? list.filters[aliasOf(name)!] : "");
+    const fallback = defaults[name];
+    if (!raw) return [name, fallback];
+    if (raw === ALL) return [name, typeof fallback === "boolean" ? false : ""];
+    return [name, typeof fallback === "boolean" ? raw === "true" : raw];
+  })) as T;
+  const encode = (name: keyof T, value: FilterValue) => {
+    if (value === defaults[name]) return null;
+    if (value === "" || value === false) return defaults[name] ? ALL : null;
+    return String(value);
+  };
+  const alias = (name: string) => (aliasOf(name) ? { [aliasOf(name)!]: "" } : {});
+  return {
+    filters, page: list.page, pageSize: list.pageSize, setPage: list.setPage, setPageSize: list.setPageSize,
+    set: (name: keyof T & string, value: FilterValue) => list.setFilters({ [name]: encode(name, value) ?? "", ...alias(name) }),
+    clear: () => list.clearFilters(),
+    /** The filters that are set, as query values, with the page: for the API. */
+    query: () => Object.fromEntries([...Object.entries(filters).filter(([, v]) => v !== "" && v !== false).map(([k, v]) => [k, String(v)]),
+      ["page", String(list.page)], ["page_size", String(list.pageSize)]]) as Record<string, string>,
   };
 }
 

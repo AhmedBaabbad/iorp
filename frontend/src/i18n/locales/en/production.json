@@ -266,6 +266,14 @@
         "QUALITY_CHECKS_OPEN": "Quality checks open or in inspection: {count}",
         "QUALITY_REJECTIONS_UNRESOLVED": "Rejections without a final decision (pending or on hold): {count}"
       }
+    },
+    "search": "Search",
+    "searchHint": "Order number or product",
+    "picker": {
+      "search": "Search orders (number or product)",
+      "loading": "Loading…",
+      "choose": "Choose an order",
+      "none": "No matching orders"
     }
   },
   "downtimeEvents": {

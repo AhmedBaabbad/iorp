@@ -8,10 +8,10 @@ import { ApiClientError } from "@/lib/api-client";
 import type { DowntimeEvent, DowntimeSummary } from "@/features/downtime-events/types";
 
 const api = vi.hoisted(() => ({ apiClient: vi.fn() }));
-const nav = vi.hoisted(() => ({ push: vi.fn(), params: new URLSearchParams() }));
+const nav = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), params: new URLSearchParams() }));
 const perms = vi.hoisted(() => ({ granted: new Set<string>() }));
 vi.mock("@/lib/api-client", async importOriginal => ({ ...(await importOriginal<object>()), apiClient: api.apiClient }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: nav.push, replace: vi.fn() }), usePathname: () => "/", useSearchParams: () => nav.params }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: nav.push, replace: nav.replace }), usePathname: () => "/", useSearchParams: () => nav.params }));
 vi.mock("@/features/auth/permission-hooks", () => ({ usePermission: (code: string) => perms.granted.has(code) }));
 vi.mock("@/hooks/useFormatter", () => ({ useFormatter: () => ({ date: (v: string) => v, dateTime: (v: string) => v, number: (v: string) => v,
   quantity: (v: string, u?: string) => `${v} ${u ?? ""}`.trim(), duration: (m: number) => `${m} min` }) }));
@@ -44,6 +44,7 @@ const respond = (handler: (path: string, options?: { method?: string; body?: unk
   });
 };
 const sent = (path: string, method = "POST") => api.apiClient.mock.calls.find(([p, o]) => p === path && o?.method === method)?.[1]?.body;
+const page = <T,>(items: T[]) => ({ items, total: items.length, page: 1, page_size: 50, pages: items.length ? 1 : 0 });
 
 function event(over: Partial<DowntimeEvent> = {}): DowntimeEvent {
   return { id: "d1", organization_id: "o", work_center_id: "wc1", production_order_id: null, production_run_id: null, start_time: "2026-09-29T08:00:00Z",
@@ -59,7 +60,7 @@ const summary: DowntimeSummary = { count: 3, total_minutes: "145", planned_minut
 
 describe("downtime list and report figures", () => {
   it("shows stops with Arabic causes and the report figures for the same filters", async () => {
-    respond(path => (path.includes("/summary") ? summary : path.startsWith("/production/downtime-events") ? [event()] : []));
+    respond(path => (path.includes("/summary") ? summary : path.startsWith("/production/downtime-events") ? page([event()]) : []));
     ui(<DowntimeEventsList />, "ar");
     const table = await screen.findByRole("table", { name: "قائمة أحداث التوقف" });
     expect(within(table).getByText("عطل")).toBeTruthy();
@@ -69,8 +70,18 @@ describe("downtime list and report figures", () => {
     expect(within(cards).getByText("متوسط زمن الإصلاح").nextElementSibling?.textContent).toBe("45 min");
     expect(within(cards).getByText("فقد التوافر").nextElementSibling?.textContent).toBe("115 min");
     expect(screen.getByRole("table", { name: "التوقف حسب الماكينة" })).toBeTruthy();
+    // The filter goes into the address (page 1); the list and its figures follow the address.
     fireEvent.change(screen.getByLabelText("النوع"), { target: { value: "true" } });
+    expect(nav.replace).toHaveBeenCalledWith("/?planned=true", { scroll: false });
+  });
+
+  it("reads its filters and page from the address and asks one page with figures for every match", async () => {
+    nav.params = new URLSearchParams("planned=true&page=2");
+    respond(path => (path.includes("/summary") ? summary : path.startsWith("/production/downtime-events") ? { ...page([event()]), total: 60, page: 2, pages: 2 } : []));
+    ui(<DowntimeEventsList />);
     await waitFor(() => expect(api.apiClient).toHaveBeenCalledWith("/production/downtime-events/summary?planned=true"));
+    expect(api.apiClient).toHaveBeenCalledWith("/production/downtime-events?planned=true&page=2&page_size=50");
+    expect(await screen.findByText(/51/)).toBeTruthy();
   });
 });
 
@@ -79,7 +90,8 @@ describe("recording a stop", () => {
   beforeEach(() => {
     respond((path, o) => {
       if (o?.method === "POST") return event({ id: "new1" });
-      if (path === "/production/production-orders") return orders;
+      // The picker asks the server for the orders a stop can be linked to; the server filters by status.
+      if (path.startsWith("/production/production-orders/lookup")) return orders.filter(o => new URLSearchParams(path.split("?")[1]).getAll("statuses").includes(o.status));
       if (path.startsWith("/production/runs")) return [{ id: "r1", run_date: "2026-09-29", status: "in_progress", work_center_id: "wc2", production_order_id: "po1" }];
       return [];
     });
@@ -92,7 +104,7 @@ describe("recording a stop", () => {
     expect(groups).toEqual([["فقد في التوافر", ["عطل", "تغيير المنتج والضبط", "نقص المواد", "انتظار المشغّل", "مشكلة جودة", "المرافق (كهرباء، هواء، ماء)", "أخرى"]],
       ["توقف مخطط", ["صيانة مخططة", "استراحة أو اجتماع", "لا يوجد عمل مجدول"]]]);
     expect((screen.getByRole("button", { name: "تسجيل توقف" }) as HTMLButtonElement).disabled).toBe(true);
-    await waitFor(() => expect(screen.getByLabelText("أمر الإنتاج (اختياري)").querySelectorAll("option").length).toBe(2));  // the draft order is not offered
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "أمر الإنتاج (اختياري)" }).querySelectorAll("option").length).toBe(2));  // the draft order is not offered
   });
 
   it("records an open stop on a machine, with times in UTC", async () => {

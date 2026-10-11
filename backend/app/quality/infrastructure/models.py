@@ -745,3 +745,13 @@ class QualityCertificate(Base):
     revoke_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now, onupdate=utc_now)
+
+
+# Paged lists (ARCH-PAGE-001): each list reads one organization in its sort order (migration f6a1b2m6).
+Index("ix_quality_checks_org_datetime", QualityCheck.organization_id, QualityCheck.check_datetime)
+Index("ix_quality_checks_org_status", QualityCheck.organization_id, QualityCheck.status)
+Index("ix_quality_rejections_org_date", QualityRejection.organization_id, QualityRejection.rejection_date)
+Index("ix_quality_defects_org_date", QualityDefect.organization_id, QualityDefect.defect_date)
+Index("ix_ncr_org_date", NonConformanceReport.organization_id, NonConformanceReport.report_date)
+Index("ix_ncr_actions_org_due", NCRAction.organization_id, NCRAction.due_date)
+Index("ix_quality_certificates_org_created", QualityCertificate.organization_id, QualityCertificate.created_at)

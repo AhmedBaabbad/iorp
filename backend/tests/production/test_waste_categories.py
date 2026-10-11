@@ -90,7 +90,7 @@ def test_filter_matches_a_record_on_any_of_its_categories(env):
     mixed = post(env, po, "5", ("process", "3"), ("changeover", "2")).json()
     only = post(env, po, "1", ("changeover", None)).json()
     post(env, po, "1", ("other", None))
-    found = lambda category: {r["id"] for r in env.client.get(WASTE, params={"waste_category": category}).json()}  # noqa: E731
+    found = lambda category: {r["id"] for r in env.client.get(WASTE, params={"waste_category": category}).json()["items"]}  # noqa: E731
     assert found("process") == {mixed["id"]}
     assert found("changeover") == {mixed["id"], only["id"]}
     assert found("machine_fault") == set()

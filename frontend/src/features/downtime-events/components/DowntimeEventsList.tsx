@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth/permission-hooks";
 import s from "@/features/production-demands/demands.module.css";
-import { getProductionOrders } from "@/features/production-orders/api/production-orders-api";
-import type { ProductionOrderListItem } from "@/features/production-orders/types";
+import { Pagination } from "@/components/pagination/Pagination";
+import { ProductionOrderPicker } from "@/features/production-orders/components/ProductionOrderPicker";
+import { useListQuery, type Page } from "@/lib/pagination";
 import { getWorkCenters } from "@/features/work-centers";
 import { useFormatter } from "@/hooks/useFormatter";
 import { getDowntimeEvents, getDowntimeSummary } from "../api";
@@ -20,8 +20,9 @@ import { DowntimeSummaryCards } from "./DowntimeSummaryCards";
 import { downtimeErrorMessage } from "./downtime-errors";
 import { P } from "@/lib/production-permissions";
 
-type Filters = Required<{ [K in keyof DowntimeFilters]: string }>;
-const EMPTY: Filters = { work_center_id: "", production_order_id: "", production_run_id: "", category: "", planned: "", status: "", date_from: "", date_to: "" };
+// Filters and page live in the address (ARCH-PAGE-001); "order" and "work_center" are the older links from other pages.
+const FILTERS = ["work_center_id", "production_order_id", "production_run_id", "category", "planned", "status", "date_from", "date_to", "order", "work_center"] as const;
+type Filter = (typeof FILTERS)[number];
 
 // "أحداث التوقف": when, where and why machines stopped, with the report figures for the same filters.
 export function DowntimeEventsList() {
@@ -31,30 +32,36 @@ export function DowntimeEventsList() {
   const common = useTranslations("common");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
-  const params = useSearchParams();
   const canWrite = usePermission(P.DOWNTIME_CREATE);
-  const [filters, setFilters] = useState<Filters>(() => ({ ...EMPTY, production_order_id: params.get("order") ?? "", work_center_id: params.get("work_center") ?? "" }));
-  const [events, setEvents] = useState<DowntimeEvent[] | null>(null);
+  const list = useListQuery(FILTERS);
+  const filters = { ...list.filters, production_order_id: list.filters.production_order_id || list.filters.order,
+    work_center_id: list.filters.work_center_id || list.filters.work_center };
+  const shared = Object.fromEntries(FILTERS.filter(k => k !== "order" && k !== "work_center" && filters[k]).map(k => [k, filters[k]])) as DowntimeFilters;
+  const key = JSON.stringify([shared, list.page, list.pageSize]);
+  const [page, setPage] = useState<Page<DowntimeEvent> | null>(null);
+  const events = page?.items ?? null;
+  const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<DowntimeSummary | null>(null);
-  const [orders, setOrders] = useState<ProductionOrderListItem[]>([]);
   const [centers, setCenters] = useState<{ id: string; code: string; name: string }[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    getProductionOrders().then(setOrders).catch(() => setOrders([]));
     getWorkCenters().then(setCenters).catch(() => setCenters([]));
   }, []);
   const load = useCallback(async () => {
-    setError("");
-    const query = Object.fromEntries(Object.entries(filters).filter(([, v]) => v)) as DowntimeFilters;
+    setError(""); setLoading(true);
     try {
-      const [list, totals] = await Promise.all([getDowntimeEvents(query), getDowntimeSummary(query)]);
-      setEvents(list); setSummary(totals);
+      // The list is one page; the report figures cover every event matching the same filters.
+      const [rows, totals] = await Promise.all([getDowntimeEvents({ ...shared, page: list.page, page_size: list.pageSize }), getDowntimeSummary(shared)]);
+      setPage(rows); setSummary(totals);
+      if (!rows.items.length && rows.total > 0 && list.page > rows.pages) list.setPage(rows.pages);
     } catch (e) { setError(downtimeErrorMessage(e, t)); }
-  }, [filters, t]);
+    finally { setLoading(false); }
+  }, [key, t]); // eslint-disable-line react-hooks/exhaustive-deps -- shared and list change every render; key is what matters
   useEffect(() => { void load(); }, [load]);
 
-  const set = (field: keyof Filters, value: string) => setFilters(old => ({ ...old, [field]: value }));
+  const set = (field: Filter, value: string) => field === "production_order_id" ? list.setFilters({ production_order_id: value, order: "" })
+    : field === "work_center_id" ? list.setFilters({ work_center_id: value, work_center: "" }) : list.setFilter(field, value);
   const newQuery = new URLSearchParams(Object.entries({ order: filters.production_order_id, work_center: filters.work_center_id }).filter(([, v]) => v)).toString();
   const minutes = (value: string | null) => (value === null ? "—" : fmt.duration(Math.round(Number(value))));
 
@@ -68,10 +75,8 @@ export function DowntimeEventsList() {
         </select>
       </label>
       <label className={s.field}>{t("fields.productionOrder")}
-        <select value={filters.production_order_id} onChange={e => set("production_order_id", e.target.value)}>
-          <option value="">{t("filters.allOrders")}</option>
-          {orders.map(o => <option key={o.id} value={o.id}>{o.production_order_number} — {o.product_type}</option>)}
-        </select>
+        <ProductionOrderPicker value={filters.production_order_id} onChange={id => set("production_order_id", id)} emptyLabel={t("filters.allOrders")}
+          ariaLabel={t("fields.productionOrder")} />
       </label>
       <label className={s.field}>{t("fields.category")}
         <select value={filters.category} onChange={e => set("category", e.target.value)}>
@@ -95,7 +100,7 @@ export function DowntimeEventsList() {
       </label>
       <label className={s.field}>{t("filters.dateFrom")}<input type="date" value={filters.date_from} onChange={e => set("date_from", e.target.value)} /></label>
       <label className={s.field}>{t("filters.dateTo")}<input type="date" value={filters.date_to} min={filters.date_from || undefined} onChange={e => set("date_to", e.target.value)} /></label>
-      <button type="button" className={s.button} onClick={() => setFilters(EMPTY)}>{t("filters.clear")}</button>
+      <button type="button" className={s.button} onClick={() => list.clearFilters()}>{t("filters.clear")}</button>
     </section>
     {error && <div className={s.actions}><p role="alert" className={s.error}>{error}</p>
       <button type="button" className={s.button} onClick={() => void load()}>{common("actions.retry")}</button></div>}
@@ -118,5 +123,7 @@ export function DowntimeEventsList() {
         </tr>)}</tbody>
       </table></div>
     </section>}
+    {page && <Pagination page={page.page} pageSize={page.page_size} total={page.total} pages={page.pages} disabled={loading}
+      onPage={list.setPage} onPageSize={list.setPageSize} />}
   </PageFrame>;
 }

@@ -122,10 +122,10 @@ def test_the_corrective_action_list_shows_whose_and_what_is_late(ncr):
                                                                  owner_user_id=str(ncr.user.id), due_date=str(utc_now().date() - timedelta(days=1)))).json()
     both = ncr.client.post(f"{ROOT}/{r['id']}/actions", json=dict(kind="preventive", description="Monthly calibration", owner_name="Lab")).json()
     assert late["corrective_actions"][0]["overdue"] is True and both["overdue_actions"] == 1 and both["open_actions"] == 2
-    rows = ncr.client.get("/api/v1/quality/ncr-actions", params=dict(overdue=True)).json()
+    rows = ncr.client.get("/api/v1/quality/ncr-actions", params=dict(overdue=True)).json()["items"]
     assert [a["description"] for a in rows] == ["Recalibrate the moisture meter"] and rows[0]["report_number"] == r["report_number"]
-    assert [a["description"] for a in ncr.client.get("/api/v1/quality/ncr-actions", params=dict(mine=True)).json()] == ["Recalibrate the moisture meter"]
-    assert len(ncr.client.get("/api/v1/quality/ncr-actions").json()) == 2
+    assert [a["description"] for a in ncr.client.get("/api/v1/quality/ncr-actions", params=dict(mine=True)).json()["items"]] == ["Recalibrate the moisture meter"]
+    assert len(ncr.client.get("/api/v1/quality/ncr-actions").json()["items"]) == 2
     assert [u["name"] for u in ncr.client.get(f"{ROOT}/lookups/users").json()] == ["Test User"]
 
 
@@ -142,8 +142,8 @@ def test_items_costs_and_the_claim(ncr):
     r = ncr.client.patch(f"{ROOT}/{r['id']}", json=dict(supplier_response="Replacement lot sent", supplier_responded_at="2026-10-07",
                                                        claim_status="accepted")).json()
     assert r["supplier_response"] == "Replacement lot sent" and r["claim_status"] == "accepted"
-    assert ncr.client.get(ROOT, params=dict(search="Gulf")).json()[0]["id"] == r["id"]
-    assert ncr.client.get(ROOT, params=dict(status="closed")).json() == []
+    assert ncr.client.get(ROOT, params=dict(search="Gulf")).json()["items"][0]["id"] == r["id"]
+    assert ncr.client.get(ROOT, params=dict(status="closed")).json()["items"] == []
 
 
 def test_each_step_needs_its_permission(ncr):

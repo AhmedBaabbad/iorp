@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, page_of, page_params
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, require_permission
 from app.quality.domain import permissions as Q
@@ -71,23 +72,25 @@ def list_quality_defects_by_check(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
-@router.get("/quality-defects", response_model=list[QualityDefectListItem], dependencies=[Depends(require_permission(Q.DEFECTS_READ))])
+@router.get("/quality-defects", response_model=Page[QualityDefectListItem], dependencies=[Depends(require_permission(Q.DEFECTS_READ))])
 def list_quality_defects(
     defect_category: DefectCategory | None = Query(default=None),
     severity: DefectSeverity | None = Query(default=None),
     production_order_id: UUID | None = Query(default=None),
     defect_date: date | None = Query(default=None),
+    params: PageParams = Depends(page_params),
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
-) -> list[QualityDefectListItem]:
-    service = QualityDefectService(db)
-    return service.list_quality_defects(
+):
+    rows, total = QualityDefectService(db).list_quality_defects(
         tenant,
+        params,
         defect_category=defect_category,
         severity=severity,
         production_order_id=production_order_id,
         defect_date=defect_date,
     )
+    return page_of([QualityDefectListItem.model_validate(r) for r in rows], total, params)
 
 
 @router.get("/quality-defects/{defect_id}", response_model=QualityDefectRead, dependencies=[Depends(require_permission(Q.DEFECTS_READ))])

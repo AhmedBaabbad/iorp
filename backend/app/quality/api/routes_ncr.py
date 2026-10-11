@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, page_of, page_params
 from app.core.reporting.routes import generate_response
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_current_user, get_db, permission_check, require_any_permission, require_permission
@@ -44,16 +45,17 @@ def _run(db, tenant, can, action):
     return _attempt(db, lambda: _read(service, action(service), can))
 
 
-@router.get(PATH, response_model=list[NCRListItem], dependencies=[Depends(require_permission(Q.NCR_READ))])
+@router.get(PATH, response_model=Page[NCRListItem], dependencies=[Depends(require_permission(Q.NCR_READ))])
 def list_reports(status_filter: str | None = Query(default=None, alias="status", pattern=STATUSES), source_type: NCRSourceType | None = None,
                  severity: str | None = Query(default=None, pattern="^(minor|major|critical)$"), owner_user_id: UUID | None = None,
                  open_only: bool = False, date_from: date | None = None, date_to: date | None = None,
-                 search: str | None = Query(default=None, max_length=60), tenant: TenantContext = Depends(get_current_tenant),
-                 db: Session = Depends(get_db), can=Depends(permission_check)):
+                 search: str | None = Query(default=None, max_length=60), params: PageParams = Depends(page_params),
+                 tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
     service = NCRService(db, tenant)
-    rows = service.list(status=status_filter, source_type=source_type, severity=severity, owner_user_id=owner_user_id, open_only=open_only,
-                        date_from=date_from, date_to=date_to, search=search)
-    return [NCRListItem.model_validate({**NCRListItem.model_validate(r).model_dump(), **v}) for r, v in zip(rows, service.views(rows, can))]
+    rows, total = service.list(params, status=status_filter, source_type=source_type, severity=severity, owner_user_id=owner_user_id,
+                               open_only=open_only, date_from=date_from, date_to=date_to, search=search)
+    return page_of([NCRListItem.model_validate({**NCRListItem.model_validate(r).model_dump(), **v}) for r, v in zip(rows, service.views(rows, can))],
+                   total, params)
 
 
 @router.post(PATH, response_model=NCRRead, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission(Q.NCR_CREATE))])
@@ -191,12 +193,14 @@ def alerts(tenant: TenantContext = Depends(get_current_tenant), db: Session = De
     return NCRService(db, tenant).alerts(can)
 
 
-@router.get("/ncr-actions", response_model=list[ActionRead], dependencies=[Depends(require_any_permission([Q.NCR_ACTIONS_READ, Q.NCR_READ]))])
+@router.get("/ncr-actions", response_model=Page[ActionRead], dependencies=[Depends(require_any_permission([Q.NCR_ACTIONS_READ, Q.NCR_READ]))])
 def all_actions(status_filter: str | None = Query(default=None, alias="status", pattern="^(open|done|cancelled)$"), mine: bool = False,
-                overdue: bool = False, search: str | None = Query(default=None, max_length=60), tenant: TenantContext = Depends(get_current_tenant),
-                db: Session = Depends(get_db)):
-    """Corrective actions across reports: what is open, whose, and what is late."""
-    return NCRService(db, tenant).all_actions(status=status_filter, owner_user_id=tenant.user_id if mine else None, overdue=overdue, search=search)
+                overdue: bool = False, search: str | None = Query(default=None, max_length=60), params: PageParams = Depends(page_params),
+                tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
+    """Corrective actions across reports: what is open, whose, and what is late (one page, ARCH-PAGE-001)."""
+    rows, total = NCRService(db, tenant).all_actions(params, status=status_filter, owner_user_id=tenant.user_id if mine else None,
+                                                     overdue=overdue, search=search)
+    return page_of(rows, total, params)
 
 
 # ── files ────────────────────────────────────────────────────────────────────────────────────────

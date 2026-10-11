@@ -244,8 +244,8 @@ def test_date_filters_use_the_factory_local_day(env):
     env.org.timezone = "Asia/Riyadh"; env.db.commit()  # UTC+3
     late = datetime(2026, 9, 28, 22, 30, tzinfo=timezone.utc)  # 01:30 on the 29th in Riyadh
     env.client.post(DT, json={"work_center_id": str(env.center.id), "start_time": late.isoformat(), "end_time": (late + timedelta(minutes=10)).isoformat(), "category": "other"})
-    assert len(env.client.get(DT, params={"date_from": "2026-09-29", "date_to": "2026-09-29"}).json()) == 1
-    assert env.client.get(DT, params={"date_to": "2026-09-28"}).json() == []
+    assert len(env.client.get(DT, params={"date_from": "2026-09-29", "date_to": "2026-09-29"}).json()["items"]) == 1
+    assert env.client.get(DT, params={"date_to": "2026-09-28"}).json()["items"] == []
 
 
 def test_list_filters(env):
@@ -253,7 +253,7 @@ def test_list_filters(env):
     env.added("breakdown", start=0, end=10, production_order_id=po["id"])
     env.added("planned_maintenance", start=20, end=30)
     env.added("other", start=40, end=None)
-    names = lambda **q: {e["category"] for e in env.client.get(DT, params=q).json()}  # noqa: E731
+    names = lambda **q: {e["category"] for e in env.client.get(DT, params=q).json()["items"]}  # noqa: E731
     assert names(planned="true") == {"planned_maintenance"}
     assert names(planned="false") == {"breakdown", "other"}
     assert names(status="open") == {"other"}
@@ -272,7 +272,7 @@ def test_other_organizations_are_invisible(env):
                              status="open", created_by_user_id=env.user.id))
     env.db.commit()
     foreign_id = env.db.scalar(select(DowntimeEvent.id).where(DowntimeEvent.organization_id == foreign.org.id))
-    assert env.client.get(DT).json() == [] and env.client.get(f"{DT}/{foreign_id}").status_code == 404
+    assert env.client.get(DT).json()["items"] == [] and env.client.get(f"{DT}/{foreign_id}").status_code == 404
     assert env.client.post(f"{DT}/{foreign_id}/close", json={}).status_code == 404
     assert env.client.get(f"{DT}/summary").json()["open_count"] == 0
 

@@ -228,7 +228,7 @@ def test_quality_module_isolation(client, isolated_tenants):
     h = data["headers"]
     listed = client.get("/api/v1/quality/quality-checks", headers=h)
     assert listed.status_code == 200
-    ids = {item["id"] for item in listed.json()}
+    ids = {item["id"] for item in listed.json()["items"]}
     assert str(data["quality_check_a"].id) in ids and str(data["quality_check_b"].id) not in ids
     assert client.get(f"/api/v1/quality/quality-checks/{data['quality_check_b'].id}", headers=h).status_code == 404
     assert client.patch(f"/api/v1/quality/quality-checks/{data['quality_check_b'].id}", headers=h, json={"notes": "x"}).status_code == 404

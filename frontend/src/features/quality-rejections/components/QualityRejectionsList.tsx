@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
+import { Pagination } from "@/components/pagination/Pagination";
+import { usePagedFilters, type Page } from "@/lib/pagination";
 import { usePermission } from "@/features/auth/permission-hooks";
 import s from "@/features/production-demands/demands.module.css";
 import { qualityErrorMessage } from "@/features/quality-checks/components/quality-errors";
@@ -28,20 +29,29 @@ export function QualityRejectionsList() {
   const common = useTranslations("common");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
-  const params = useSearchParams();
   const canCreate = usePermission(Q.REJECTIONS_CREATE);
-  const [filters, setFilters] = useState<Filters>(() => ({ ...EMPTY, production_order_id: params.get("order") ?? "", disposition_status: params.get("status") ?? "" }));
-  const [rows, setRows] = useState<QualityRejectionListItem[] | null>(null);
+  // Filters and page live in the address (ARCH-PAGE-001); ?order= and ?status= are the older links from other pages.
+  const paged = usePagedFilters({ ...EMPTY, unresolved: "" }, { order: "production_order_id", status: "disposition_status" });
+  const filters = paged.filters;
+  const [data, setData] = useState<Page<QualityRejectionListItem> | null>(null);
+  const rows = data?.items ?? null;
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const key = JSON.stringify(paged.query());
   const load = useCallback(async () => {
-    setError("");
-    try { setRows(await getQualityRejections(filters as QualityRejectionListFilters)); }
-    catch (e) { setError(qualityErrorMessage(e, errors)); }
-  }, [filters, errors]);
+    setError(""); setLoading(true);
+    try {
+      const page = await getQualityRejections(paged.query());
+      setData(page);
+      // A filter left the page past the end: show the last page rather than an empty one.
+      if (!page.items.length && page.total > 0 && paged.page > page.pages) paged.setPage(page.pages);
+    } catch (e) { setError(qualityErrorMessage(e, errors)); }
+    finally { setLoading(false); }
+  }, [key, errors]); // eslint-disable-line react-hooks/exhaustive-deps -- paged changes every render; key is what matters
   useEffect(() => { void load(); }, [load]);
 
-  const set = (field: keyof Filters, value: string) => setFilters(old => ({ ...old, [field]: value }));
+  const set = (field: keyof Filters, value: string) => paged.set(field, value);
   const newHref = filters.production_order_id ? `/quality-rejections/new?order=${filters.production_order_id}` : "/quality-rejections/new";
 
   return <PageFrame title={t("listTitle")} subtitle={t("subtitle")}
@@ -70,7 +80,7 @@ export function QualityRejectionsList() {
       </label>
       <label className={s.field}>{t("filters.dateFrom")}<input type="date" value={filters.date_from} onChange={e => set("date_from", e.target.value)} /></label>
       <label className={s.field}>{t("filters.dateTo")}<input type="date" value={filters.date_to} min={filters.date_from || undefined} onChange={e => set("date_to", e.target.value)} /></label>
-      <button type="button" className={s.button} onClick={() => setFilters(EMPTY)}>{t("filters.clear")}</button>
+      <button type="button" className={s.button} onClick={() => paged.clear()}>{t("filters.clear")}</button>
     </section>
     {error && <div className={s.actions}><p role="alert" className={s.error}>{error}</p>
       <button type="button" className={s.button} onClick={() => void load()}>{common("actions.retry")}</button></div>}
@@ -96,5 +106,7 @@ export function QualityRejectionsList() {
         </tr>)}</tbody>
       </table></div>
     </section>}
+    {data && <Pagination page={data.page} pageSize={data.page_size} total={data.total} pages={data.pages} disabled={loading}
+      onPage={paged.setPage} onPageSize={paged.setPageSize} />}
   </PageFrame>;
 }
