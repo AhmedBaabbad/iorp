@@ -49,10 +49,10 @@ test("remaining quantity updates and is decimal-exact", () => {
   assert.equal(progress({ required_quantity: "1000", allocated_quantity: "250" }).allocated, "250");
 });
 
-test("release is offered only before execution", () => {
-  assert.equal(canReleaseFromOrder("draft"), true);
-  assert.equal(canReleaseFromOrder("released"), true);
-  for (const status of ["in_progress", "completed", "cancelled"]) assert.equal(canReleaseFromOrder(status), false);
+// PROD-QUALITY-FIX-001: allocations follow the order's open/locked state (domain/order_lifecycle.py ALLOCATION_OPEN).
+test("release is offered while the order is open, not once it is completed, closed or cancelled", () => {
+  for (const status of ["draft", "released", "in_progress", "on_hold"]) assert.equal(canReleaseFromOrder(status), true, status);
+  for (const status of ["completed", "closed", "cancelled"]) assert.equal(canReleaseFromOrder(status), false, status);
 });
 
 test("server lifecycle error codes are surfaced", () => {
