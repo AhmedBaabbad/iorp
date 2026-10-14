@@ -122,14 +122,26 @@ def get_organization_storage(
 def set_organization_storage(
     organization_id: UUID,
     payload: StorageQuotaUpdate,
+    request: Request,
     account: PlatformAccount = Depends(require_platform_permission(PlatformPermission.ORGANIZATIONS_UPDATE)),
     organizations: OrganizationProvisioningInterface = Depends(get_organization_queries),
+    db: Session = Depends(get_db),
 ):
-    """The organization's file quota, set by the platform only (empty = the default)."""
-    found = organizations.set_storage_quota(organization_id, payload.quota_bytes)
-    if found is None:
+    """The organization's file quota, set by the platform only (empty = the default). AUDIT-001: audited in the same
+    transaction — before/after quota, actor and request."""
+    before = organizations.storage(organization_id)
+    if before is None:
         raise HTTPException(status_code=404, detail="Organization not found.")
-    return found
+    organizations.set_storage_quota(organization_id, payload.quota_bytes)
+    summary = organizations.get_organization(organization_id)
+    PlatformAuditService(db).record(
+        event_type="organization_storage_quota_changed", category="organization", severity="warning",
+        actor=AuditActor("platform", account.id, account.email, account.full_name), target_type="organization",
+        target_id=organization_id, target_display=summary.name if summary else None, organization_id=organization_id,
+        changes={"quota_bytes": {"before": before["quota_bytes"] if before["custom"] else None, "after": payload.quota_bytes}},
+        request=audit_request_context(request))
+    db.commit()
+    return organizations.storage(organization_id)
 
 
 @router.get("/{organization_id}/logo")
@@ -167,9 +179,15 @@ def create_organization(
         return JSONResponse(status_code=409, content={"code": "EMAIL_ALREADY_EXISTS", "message": "This email is already registered in the system"})
     except InvalidLogoError:
         return JSONResponse(status_code=400, content={"code": "INVALID_LOGO", "message": "Invalid organization logo."})
-    summary = _service(db, organizations).get_organization(organization.id)
-    PlatformAuditService(db).record(event_type="organization_created", category="organization", actor=AuditActor("platform", account.id, account.email, account.full_name), target_type="organization", target_id=organization.id, target_display=organization.name, organization_id=organization.id, changes={"status": {"before": None, "after": summary.status}, "code": {"before": None, "after": organization.code}}, request=audit_request_context(request))
-    db.commit()
+    try:  # AUDIT-001: the organization and its audit record are committed together, or neither
+        summary = _service(db, organizations).get_organization(organization.id)
+        PlatformAuditService(db).record(event_type="organization_created", category="organization", actor=AuditActor("platform", account.id, account.email, account.full_name), target_type="organization", target_id=organization.id, target_display=organization.name, organization_id=organization.id, changes={"status": {"before": None, "after": summary.status}, "code": {"before": None, "after": organization.code}}, request=audit_request_context(request))
+        db.commit()
+    except Exception:
+        db.rollback()
+        if organization.logo_path:
+            organizations.cleanup_logo(organization.logo_path)
+        raise
     sent = _service(db, organizations, credentials).send_root_activation_link(admin.id)  # SEC-003
     return CreatePlatformOrganizationResponse(
         message="Organization created successfully.",
@@ -195,17 +213,30 @@ def _change_status(db, organizations, organization_id, target, account, reason, 
         summary = _service(db, organizations).change_status(organization_id, target, account, reason)
         event = {"active": "organization_activated", "suspended": "organization_suspended", "inactive": "organization_deactivated", "archived": "organization_archived"}[target]
         PlatformAuditService(db).record(event_type=event, category="organization", severity="warning" if target in {"suspended", "archived"} else "info", actor=AuditActor("platform", account.id, account.email, account.full_name), target_type="organization", target_id=organization_id, target_display=summary.name, organization_id=organization_id, reason=reason, changes={"status": {"before": previous.status, "after": target}}, request=audit_request_context(request))
-        db.commit()
+        db.commit()  # AUDIT-001: the status change and its audit record together
         return _summary_response(summary, db)
     except OrganizationNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Organization not found.") from exc
     except InvalidStateTransitionError as exc:
+        _refused(db, account, organization_id, target, reason, request, exc.code)
         return JSONResponse(status_code=409, content={
             "code": exc.code, "message": str(exc), "current_status": exc.current,
             "target_status": exc.target, "allowed_transitions": exc.allowed,
         })
     except ArchiveReasonRequiredError as exc:
+        _refused(db, account, organization_id, target, reason, request, exc.code)
         return JSONResponse(status_code=400, content={"code": exc.code, "message": str(exc)})
+
+
+def _refused(db, account, organization_id, target, reason, request, code):
+    """AUDIT-001: a refused lifecycle change is recorded too (outcome failure), apart from any partial work."""
+    db.rollback()
+    PlatformAuditService(db).record(event_type="organization_status_change_refused", category="organization", outcome="failure",
+                                    severity="warning", actor=AuditActor("platform", account.id, account.email, account.full_name),
+                                    target_type="organization", target_id=organization_id, organization_id=organization_id,
+                                    reason=reason, changes={"status": {"requested": target}}, error_code=code,
+                                    request=audit_request_context(request))
+    db.commit()
 
 
 def _status_route(target: str, permission: PlatformPermission):

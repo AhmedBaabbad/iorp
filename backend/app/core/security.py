@@ -231,12 +231,21 @@ def rotate_refresh_token(db: Session, raw_token: str, expected_account_type: Acc
     started = session.started_at or session.created_at
     if started is not None and started.tzinfo is None:
         started = started.replace(tzinfo=timezone.utc)
-    if expected_account_type == "tenant" and started and now - started >= timedelta(hours=settings.tenant_session_max_hours):
-        # SEC-001: the sign-in reached its absolute lifetime; the user signs in again (even if active all along).
+    max_hours = settings.tenant_session_max_hours if expected_account_type == "tenant" else settings.platform_session_max_hours
+    if started and now - started >= timedelta(hours=max_hours):
+        # SEC-001/004: the sign-in reached its absolute lifetime; the user signs in again (even if active all along).
         db.execute(update(AuthSession).where(AuthSession.family_id == session.family_id, AuthSession.revoked_at.is_(None))
                    .values(revoked_at=now, revocation_reason="max_age"))
         db.commit()
         raise TokenValidationError("SESSION_MAX_AGE")
+    if expected_account_type == "platform":
+        # SEC-004: renewed only on use (an expired access token); a renewal after the idle limit ends the sign-in.
+        renewed = session.created_at if session.created_at.tzinfo else session.created_at.replace(tzinfo=timezone.utc)
+        if now - renewed >= timedelta(minutes=settings.platform_idle_timeout_minutes):
+            db.execute(update(AuthSession).where(AuthSession.family_id == session.family_id, AuthSession.revoked_at.is_(None))
+                       .values(revoked_at=now, revocation_reason="idle_timeout"))
+            db.commit()
+            raise TokenValidationError("SESSION_IDLE_TIMEOUT")
     pair = issue_token_pair(
         db, account_id=session.account_id, account_type=expected_account_type,
         token_version=session.token_version, organization_id=session.organization_id,
@@ -257,8 +266,9 @@ def revoke_refresh_token(db: Session, raw_token: str, expected_account_type: Acc
         raise TokenValidationError("TOKEN_TYPE_INVALID")
     session = db.scalar(select(AuthSession).where(AuthSession.jti_hash == _jti_hash(str(payload["jti"]))).with_for_update())
     if session and session.revoked_at is None:
-        session.revoked_at = datetime.now(timezone.utc)
-        session.revocation_reason = reason
+        # SEC-004: signing out ends the whole sign-in (its family), so its access token stops at once too.
+        db.execute(update(AuthSession).where(AuthSession.family_id == session.family_id, AuthSession.revoked_at.is_(None))
+                   .values(revoked_at=datetime.now(timezone.utc), revocation_reason=reason))
         _audit(db, "session_revoked", payload, reason=reason, ip=ip, user_agent=user_agent)
         db.commit()
 

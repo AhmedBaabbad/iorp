@@ -50,7 +50,7 @@ class FoundationOrganizationQueries:
 
     def __init__(self, db: Session, storage: LogoStorageInterface) -> None:
         self.db = db
-        self.storage = storage
+        self.logo_storage = storage  # not "storage": that is the interface method (usage and quota)
 
     def create_organization(
         self,
@@ -78,7 +78,7 @@ class FoundationOrganizationQueries:
         try:
             if logo is not None:
                 stored_logo = files.new_key(model.id, "organization", logo.extension)
-                self.storage.put(stored_logo, logo.content)
+                self.logo_storage.put(stored_logo, logo.content)
                 model.logo_path = stored_logo
             permissions = self._get_or_create_permissions(model.id)
             roles = self._seed_roles(model, permissions)
@@ -97,7 +97,7 @@ class FoundationOrganizationQueries:
             seed_organization_lists(self.db, model.id)  # MD-003: the usual reference values, editable afterwards
         except Exception:
             if stored_logo:
-                self.storage.delete(stored_logo)
+                self.logo_storage.delete(stored_logo)
             raise
         return (
             ProvisionedOrganization(
@@ -111,7 +111,7 @@ class FoundationOrganizationQueries:
         )
 
     def cleanup_logo(self, relative_path: str) -> None:
-        self.storage.delete(relative_path)
+        self.logo_storage.delete(relative_path)
 
     def list_organizations(self) -> list[OrganizationSummary]:
         organizations = self.db.scalars(select(Organization).order_by(Organization.created_at)).all()
@@ -167,7 +167,7 @@ class FoundationOrganizationQueries:
         if organization is None:
             return None
         organization.storage_quota_bytes = quota_bytes
-        self.db.commit()
+        self.db.flush()  # AUDIT-001: the platform commits the change together with its audit record
         return self.storage(organization_id)
 
     def set_organization_status(

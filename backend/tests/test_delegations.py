@@ -3,7 +3,7 @@
 A holder lends one approval they hold through a role, for at most 90 days, to another user of the same organization;
 it is in force only once the other side agrees (a manager for a holder's request, the holder for a manager's); the
 signer is always the session's user, and the record keeps whose authority it was."""
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -20,7 +20,7 @@ from app.foundation.infrastructure.models import Organization, Permission, Role,
 API = "/api/v1/delegations"
 APPROVE, VERIFY = "procurement:purchase_orders:approve", "quality:ncr_reports:verify"
 MANAGE = "foundation:delegations:manage"
-TODAY = date.today()
+TODAY = datetime.now(timezone.utc).date()  # the test organizations live in UTC (the service uses the organization's day)
 
 
 @pytest.fixture

@@ -210,7 +210,7 @@ class PlatformOrganizationService:
                 _administrator_data(admin_input),
             )
             provisioned_logo = result[0].logo_path
-            self.db.commit()
+            self.db.flush()  # AUDIT-001: the route records the audit and commits both together
             return result
         except Exception:
             self.db.rollback()
@@ -234,7 +234,7 @@ class PlatformOrganizationService:
             raise OrganizationNotFoundError
         if status != "active":
             revoke_organization_sessions(self.db, organization_id, reason=f"organization_{status}")
-        self.db.commit()
+        self.db.flush()  # AUDIT-001: committed by the route together with its audit record
         return organization
 
     def reset_root_password(self, organization_id: UUID) -> str:
@@ -344,11 +344,10 @@ class PlatformAccountService:
         )
         self.db.add(account)
         try:
-            self.db.commit()
+            self.db.flush()  # AUDIT-001: committed by the route together with its audit record
         except IntegrityError as exc:
             self.db.rollback()
             raise PlatformEmailTakenError from exc
-        self.db.refresh(account)
         return account
 
     def update_account(self, account_id: UUID, *, full_name: str | None = None, email: str | None = None, role: PlatformAccountRole | None = None, status: PlatformAccountStatus | None = None) -> PlatformAccount:
@@ -358,24 +357,29 @@ class PlatformAccountService:
             self._protect_last_root(account)
         if status is PlatformAccountStatus.INACTIVE:
             self._protect_last_root(account)
+        sensitive = False  # SEC-004: a change of sign-in identity or privileges ends the account's sessions
         if full_name is not None:
             account.full_name = full_name.strip()
         if email is not None:
-            account.email = self._email_available(email, account.id)
+            normalized = self._email_available(email, account.id)
+            sensitive = sensitive or normalized != account.email
+            account.email = normalized
         if role is not None:
+            sensitive = sensitive or role is not current_role
             account.role = role
             account.is_root = role is PlatformAccountRole.ROOT
         if status is not None and status is not account.status:
             account.status = status
-            if status is PlatformAccountStatus.INACTIVE:
-                account.token_version += 1
-                revoke_account_sessions(self.db, "platform", account.id, reason="account_inactive")
+            sensitive = sensitive or status is PlatformAccountStatus.INACTIVE
+        if sensitive:
+            account.token_version += 1
+            revoke_account_sessions(self.db, "platform", account.id,
+                                    reason="account_inactive" if account.status is PlatformAccountStatus.INACTIVE else "account_changed")
         try:
-            self.db.commit()
+            self.db.flush()  # AUDIT-001: committed by the route together with its audit record
         except IntegrityError as exc:
             self.db.rollback()
             raise PlatformEmailTakenError from exc
-        self.db.refresh(account)
         return account
 
     def deactivate_account(self, account_id: UUID) -> PlatformAccount:
@@ -387,8 +391,7 @@ class PlatformAccountService:
             account.status = PlatformAccountStatus.INACTIVE
             account.token_version += 1
             revoke_account_sessions(self.db, "platform", account.id, reason="account_inactive")
-            self.db.commit()
-            self.db.refresh(account)
+            self.db.flush()  # AUDIT-001: committed by the route together with its audit record
         return account
 
     def reset_password(self, account_id: UUID) -> PlatformAccount:

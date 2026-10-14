@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     platform_refresh_token_hours: int = Field(default=24, ge=1, le=168, alias="PLATFORM_REFRESH_TOKEN_HOURS")
     # SEC-001: however active, a tenant sign-in lasts at most this long (NIST 800-63B reauthentication; a working day).
     tenant_session_max_hours: int = Field(default=12, ge=1, le=72, alias="TENANT_SESSION_MAX_HOURS")
+    # SEC-004: a platform sign-in lasts at most this long even while used, and ends after this long without use
+    # (checked when the access token is renewed, so it must exceed PLATFORM_ACCESS_TOKEN_MINUTES)
+    platform_session_max_hours: int = Field(default=8, ge=1, le=24, alias="PLATFORM_SESSION_MAX_HOURS")
+    platform_idle_timeout_minutes: int = Field(default=15, ge=5, le=240, alias="PLATFORM_IDLE_TIMEOUT_MINUTES")
     jwt_clock_skew_seconds: int = Field(default=30, ge=0, le=120, alias="JWT_CLOCK_SKEW_SECONDS")
     refresh_cookie_name: str = Field(default="iorp_refresh", min_length=3, alias="REFRESH_COOKIE_NAME")
     refresh_cookie_secure: bool = Field(default=False, alias="REFRESH_COOKIE_SECURE")
@@ -89,6 +93,8 @@ class Settings(BaseSettings):
                 raise ValueError("Frontend URLs must be absolute HTTP(S) URLs without credentials, query or fragment")
             if self.app_env == 'production' and (parsed.scheme != 'https' or parsed.hostname in ('localhost', '127.0.0.1', '::1')):
                 raise ValueError("Production password reset URLs must use a public HTTPS frontend")
+        if self.platform_idle_timeout_minutes <= self.platform_access_token_minutes:
+            raise ValueError("PLATFORM_IDLE_TIMEOUT_MINUTES must exceed PLATFORM_ACCESS_TOKEN_MINUTES")
         if self.refresh_cookie_samesite == "none" and not self.refresh_cookie_secure:
             raise ValueError("SameSite=None refresh cookies must be Secure")
         if self.app_env == "production":

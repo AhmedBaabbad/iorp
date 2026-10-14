@@ -95,7 +95,8 @@ class PlatformAuditService:
         }
         event_type = action_map.get(event_type, event_type)
         details = {"outcome": outcome, "severity": severity, "reason": reason,
-                   "changes": changes, "metadata": metadata, "error_code": error_code}
+                   "changes": changes, "metadata": metadata, "error_code": error_code,
+                   "request_id": context.request_id}  # AUDIT-001: ties the record to the request's logs
         is_security = category in {"authentication", "security"}
         if actor.actor_type == "tenant" and organization_id is not None:
             if is_security:
@@ -110,11 +111,12 @@ class PlatformAuditService:
         elif is_security:
             from app.platform.application.security_log import log_platform_security
             log_platform_security(self.db, event_type, actor.actor_id if actor.actor_type == "platform" else None,
-                                  actor.email, context.ip_address, context.user_agent, details)
+                                  actor.email, context.ip_address, context.user_agent, details, strict=True)
         else:
             from app.platform.application.activity_log import log_platform_activity
             entity_uuid = target_id if isinstance(target_id, UUID) else None
+            # AUDIT-001: a platform audit record is never silently dropped — its failure fails the operation
             log_platform_activity(self.db, event_type, target_type or "event", entity_uuid,
                                   target_display, actor.actor_id if actor.actor_type == "platform" else None,
-                                  actor.name, details)
+                                  actor.name, details, strict=True)
         return None

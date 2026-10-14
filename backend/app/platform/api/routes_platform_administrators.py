@@ -54,7 +54,9 @@ def _error(exc: Exception) -> HTTPException:
         return HTTPException(status_code=409, detail={"code": "BOOTSTRAP_ROOT_PROTECTED", "message": "The original Platform Root account cannot be deleted"})
     if isinstance(exc, PasswordResetLinkNotSentError):
         return HTTPException(status_code=409, detail={"code": "RESET_EMAIL_NOT_SENT", "message": "The reset e-mail could not be sent."})
-    return HTTPException(status_code=400, detail=str(exc))
+    if isinstance(exc, ValueError):  # a refused input (e.g. a weak password) — its message is meant for the user
+        return HTTPException(status_code=400, detail=str(exc))
+    raise exc  # AUDIT-001: an unexpected failure (e.g. the audit store) stays a server error, without its details
 
 
 @router.get("", response_model=list[PlatformAccountListItem])
@@ -90,7 +92,8 @@ def create_administrator(
     try:
         account = service.create_account(payload.full_name, str(payload.email), payload.role)
         PlatformAuditService(db).record(event_type="platform_account_created", category="identity", actor=AuditActor("platform", viewer.id, viewer.email, viewer.full_name), target_type="platform_account", target_id=account.id, target_display=account.email, changes={"role": {"before": None, "after": account.role.value}, "status": {"before": None, "after": account.status.value}}, request=audit_request_context(request))
-        db.commit()
+        db.commit()  # AUDIT-001: the account and its audit record together
+        db.refresh(account)
         sent = service.send_activation_link(account)  # SEC-003: they choose their own password
         return _response(service, account).model_copy(update={"invitation_sent": sent})
     except PlatformEmailTakenError:
@@ -114,7 +117,8 @@ def update_administrator(
         changes = {key: {"before": snapshot[key], "after": after[key]} for key in snapshot if snapshot[key] != after[key]}
         event = "platform_account_role_changed" if "role" in changes else "platform_account_updated"
         PlatformAuditService(db).record(event_type=event, category="identity", actor=AuditActor("platform", viewer.id, viewer.email, viewer.full_name), target_type="platform_account", target_id=account.id, target_display=account.email, changes=changes, request=audit_request_context(request))
-        db.commit()
+        db.commit()  # AUDIT-001: the change and its audit record together
+        db.refresh(account)
         return _response(service, account)
     except PlatformEmailTakenError:
         return JSONResponse(status_code=409, content={"code": "EMAIL_ALREADY_EXISTS", "message": "This email is already registered in the system"})
@@ -133,7 +137,8 @@ def deactivate_administrator(
     try:
         account = service.deactivate_account(account_id)
         PlatformAuditService(db).record(event_type="platform_account_deactivated", category="identity", actor=AuditActor("platform", viewer.id, viewer.email, viewer.full_name), target_type="platform_account", target_id=account.id, target_display=account.email, changes={"status": {"before": "active", "after": "inactive"}}, request=audit_request_context(request))
-        db.commit()
+        db.commit()  # AUDIT-001: the change and its audit record together
+        db.refresh(account)
         return _response(service, account)
     except Exception as exc:
         raise _error(exc) from exc

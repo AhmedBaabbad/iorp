@@ -13,7 +13,9 @@ logger = logging.getLogger(__name__)
 def log_platform_activity(db: Session, action: str, entity_type: str,
                           entity_id: UUID | None = None, entity_name: str | None = None,
                           actor_id: UUID | None = None, actor_name: str | None = None,
-                          details: Any = None) -> None:
+                          details: Any = None, strict: bool = False) -> None:
+    """strict (AUDIT-001): the record is part of a sensitive change — a failure fails the change instead of being
+    logged and ignored."""
     try:
         with db.begin_nested():
             db.add(PlatformActivityLog(action=action[:80], entity_type=entity_type[:50],
@@ -22,4 +24,6 @@ def log_platform_activity(db: Session, action: str, entity_type: str,
                 details=sanitize_json(details) if details is not None else None))
             db.flush()
     except Exception:
+        if strict:
+            raise
         logger.exception("Platform activity log write failed")

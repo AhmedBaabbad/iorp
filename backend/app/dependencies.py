@@ -156,6 +156,9 @@ def get_current_platform_account(
         account is None
         or account.status != PlatformAccountStatus.ACTIVE
         or account.token_version != payload.get("token_version")
+        # SEC-004: the sign-in must still be live — signing out, an administrator or a sensitive change ends it at once
+        or not payload.get("sid")
+        or not session_active(db, payload["sid"])
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

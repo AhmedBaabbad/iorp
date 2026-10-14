@@ -19,7 +19,7 @@ PLATFORM_AUTO_LOCKED = "platform.auto_locked"
 
 def log_platform_security(db: Session, event_type: str, actor_id: UUID | None = None,
                           actor_email: str | None = None, ip_address: str | None = None,
-                          user_agent: str | None = None, details: Any = None) -> None:
+                          user_agent: str | None = None, details: Any = None, strict: bool = False) -> None:
     try:
         with db.begin_nested():
             db.add(PlatformSecurityEvent(event_type=event_type[:80], actor_id=actor_id,
@@ -28,4 +28,6 @@ def log_platform_security(db: Session, event_type: str, actor_id: UUID | None = 
                 details=sanitize_json(details) if details is not None else None))
             db.flush()
     except Exception:
+        if strict:  # AUDIT-001: part of a sensitive change
+            raise
         logger.exception("Platform security log write failed")

@@ -108,7 +108,9 @@ class OrganizationProvisioningInterface(Protocol):
 
     def storage(self, organization_id: UUID) -> dict | None: ...
 
-    def set_storage_quota(self, organization_id: UUID, quota_bytes: int | None) -> dict | None: ...
+    def set_storage_quota(self, organization_id: UUID, quota_bytes: int | None) -> dict | None:
+        """Flushes only: the caller commits it together with its audit record (AUDIT-001)."""
+        ...
 
     def set_organization_status(
         self, organization_id: UUID, status: str, changed_by: UUID, reason: str | None
