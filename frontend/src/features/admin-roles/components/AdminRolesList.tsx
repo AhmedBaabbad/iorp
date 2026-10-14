@@ -11,6 +11,8 @@ import { sharedStyles } from "@/styles/shared-styles";
 import { deleteAdminRole, listAdminRoles } from "../api/admin-roles-api";
 import type { AdminRoleListItem } from "../types";
 
+import styles from "./roles.module.css";
+
 export function AdminRolesList() {
   const t = useTranslations("administration.roles");
   const common = useTranslations("common");
@@ -60,42 +62,15 @@ export function AdminRolesList() {
       {error ? <div style={sharedStyles.error}>{error}</div> : null}
       {roles.length === 0 && !error ? <div style={sharedStyles.state}>{t("empty")}</div> : null}
       {roles.length > 0 ? (
-        <section style={{ background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "8px", overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ padding: "14px", textAlign: "start" }}>{t("fields.name")}</th>
-                <th style={{ padding: "14px", textAlign: "start" }}>{t("fields.code")}</th>
-                <th style={{ padding: "14px", textAlign: "start" }}>{t("fields.permissionCount")}</th>
-                <th style={{ padding: "14px", textAlign: "start" }}>{t("fields.userCount")}</th>
-                <th style={{ padding: "14px", textAlign: "start" }}>{t("fields.actions")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {roles.map((role) => (
-                <tr key={role.id}>
-                  <td style={{ padding: "14px" }}><Link href={`/admin/roles/${role.id}`}>{role.is_system && t.has(`systemRoleNames.${role.code}`) ? t(`systemRoleNames.${role.code}`) : role.name}</Link>{role.is_system ? <span style={{ marginInlineStart: 8, padding: "3px 7px", borderRadius: 10, background: "var(--accent-soft)", fontSize: 12 }}>{t("systemBadge")}</span> : <span style={{ marginInlineStart: 8, padding: "3px 7px", borderRadius: 10, background: "var(--surface-muted)", fontSize: 12 }}>{t("customBadge")}</span>}{role.is_protected ? <span title={t("protectedHint")} style={{ marginInlineStart: 6 }}>🔒</span> : null}</td>
-                  <td style={{ padding: "14px" }}>{role.code}</td>
-                  <td style={{ padding: "14px" }}>{role.permissions_count}</td>
-                  <td style={{ padding: "14px" }}>{role.users_count}</td>
-                  <td style={{ padding: "14px" }}>
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      <Link href={`/admin/roles/${role.id}`} style={sharedStyles.secondaryButton}>{common("actions.view")}</Link>
-                      {canWrite && !role.is_system && !role.is_protected ? (
-                        <button
-                          type="button"
-                          style={sharedStyles.dangerButton}
-                          onClick={() => { setDeleteError(null); setPendingDelete(role); }}
-                        >
-                          {common("actions.delete")}
-                        </button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <section className={styles.cards}>
+          {roles.map(role => <article key={role.id} className={styles.roleCard}>
+            <div className={styles.stats}><span className={styles.badge}>{role.is_system ? t("systemBadge") : t("customBadge")}</span>{role.is_protected ? <span className={styles.badge} title={t("protectedHint")}>{t("protectedBadge")}</span> : null}</div>
+            <h2><Link href={`/admin/roles/${role.id}`}>{role.is_system && t.has(`systemRoleNames.${role.code}`) ? t(`systemRoleNames.${role.code}`) : role.name}</Link></h2>
+            <p>{role.is_system && t.has(`systemRoleDescriptions.${role.code}`) ? t(`systemRoleDescriptions.${role.code}`) : role.description}</p>
+            <code dir="ltr">{role.code}</code>
+            <div className={styles.stats}><div className={styles.stat}><strong>{role.permissions_count}</strong><span>{t("fields.permissionCount")}</span></div><div className={styles.stat}><strong>{role.users_count}</strong><span>{t("fields.userCount")}</span></div></div>
+            <div className={styles.actions}><Link href={`/admin/roles/${role.id}`} style={sharedStyles.secondaryButton}>{common("actions.view")}</Link>{canWrite && !role.is_system && !role.is_protected ? <button type="button" style={sharedStyles.dangerButton} onClick={() => {setDeleteError(null);setPendingDelete(role);}}>{common("actions.delete")}</button> : null}</div>
+          </article>)}
         </section>
       ) : null}
 

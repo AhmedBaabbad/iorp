@@ -166,7 +166,7 @@ def test_tenant_scope_validator_rejects_cross_organization(isolated_tenants):
         ("patch", "/api/v1/admin/roles/{id}", "role_b", {"name": "x"}),
         ("delete", "/api/v1/admin/roles/{id}", "role_b", None),
         ("patch", "/api/v1/admin/users/{id}", "user_b", {"full_name": "x"}),
-        ("post", "/api/v1/admin/users/{id}/lock", "user_b", None),
+        ("post", "/api/v1/admin/users/{id}/lock", "user_b", {"reason": "Isolation test"}),
         ("get", "/api/v1/admin/users/{id}/deactivation-impact", "user_b", None),
         ("patch", "/api/v1/workforce-members/{id}", "member_b", {"full_name": "x"}),
         ("delete", "/api/v1/workforce-members/{id}", "member_b", None),
@@ -263,15 +263,27 @@ def test_404_identical_for_nonexistent_vs_wrong_org(client, isolated_tenants):
     assert "organization" not in wrong_org.json()["detail"].lower()
 
 
-def test_organization_id_in_body_ignored_on_user_update(client, isolated_tenants):
+def test_organization_id_in_body_rejected_on_user_update(client, isolated_tenants, db):
     data = isolated_tenants
+    original_name = data["user_a"].full_name
     response = client.patch(
         f"/api/v1/admin/users/{data['user_a'].id}",
         headers=data["headers"],
         json={"full_name": "Still Org A", "organization_id": str(data["org_b"].id)},
     )
-    assert response.status_code == 200
-    assert response.json()["organization_id"] == str(data["org_a"].id)
+    assert response.status_code == 422
+    db.refresh(data["user_a"])
+    assert data["user_a"].organization_id == data["org_a"].id
+    assert data["user_a"].full_name == original_name
+
+
+def test_lock_requires_reason_without_changing_user(client, isolated_tenants, db):
+    user = isolated_tenants["user_b"]
+    before = user.status
+    response = client.post(f"/api/v1/admin/users/{user.id}/lock", headers=isolated_tenants["headers"])
+    assert response.status_code == 422
+    db.refresh(user)
+    assert user.status == before
 
 
 def test_organization_id_in_body_rejected_on_workforce_member_create(client, isolated_tenants):

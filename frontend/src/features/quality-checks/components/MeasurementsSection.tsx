@@ -1,5 +1,6 @@
 "use client";
 
+import {UnitLabel} from "@/components/UnitLabel";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -185,7 +186,7 @@ function MeasurementRow({ m, draft, ar, editable, busy, onDraft }: { m: Measurem
 
   return <tr>
     <td><strong>{name}</strong>{m.method && <div className={s.muted}>{m.method}</div>}</td>
-    <td>{m.unit ?? "—"}</td>
+    <td>{m.unit ? <UnitLabel value={m.unit}/> : "—"}</td>
     <td>{numeric ? number(m.target) : (m.requirement ?? "—")}</td>
     <td><bdi>{numeric ? limitsText(m) : (m.acceptance ?? "—")}</bdi></td>
     <td>{editable ? (numeric

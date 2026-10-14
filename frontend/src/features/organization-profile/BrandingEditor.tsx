@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useAuth } from '@/features/auth';
 import { apiClient } from '@/lib/api-client';
 import s from '@/features/reports/reports.module.css';
+import { FilePicker } from '@/components/forms/FilePicker';
 
 const FIELDS = ['legal_name_ar', 'legal_name_en', 'trade_name_ar', 'trade_name_en', 'descriptor_ar', 'descriptor_en',
   'commercial_registration_no', 'unified_number', 'vat_number', 'address_ar', 'address_en',
@@ -12,8 +13,6 @@ const FIELDS = ['legal_name_ar', 'legal_name_en', 'trade_name_ar', 'trade_name_e
 const PATTERNS: Partial<Record<(typeof FIELDS)[number], string>> = {
   commercial_registration_no: '\\d{10}', unified_number: '7\\d{9}', vat_number: '3\\d{13}3',
 };
-const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
-const MAX_LOGO = 2 * 1024 * 1024;
 const DEFAULT_ACCENT = '#24556b'; // theme-exempt: the printed report's default accent (data), not a screen color
 
 // Company bank accounts printed in the quotation footer; several are allowed, inactive ones are kept but not printed.
@@ -45,7 +44,6 @@ export function BrandingEditor({ revision }: { revision?: string }) {
   }
   async function logo(file?: File, remove = false) {
     if (!remove && !file) return;
-    if (file && (file.size > MAX_LOGO || !LOGO_TYPES.includes(file.type))) { setError(t('logoInvalid')); return; }
     setBusy(true); setError('');
     try {
       const body = new FormData(); if (file) body.append('file', file);
@@ -80,7 +78,7 @@ export function BrandingEditor({ revision }: { revision?: string }) {
       {canWrite && <p><button type="button" className={s.button} disabled={busy || banks.length >= 10} onClick={() => setBanks(old => [...old, emptyBank()])}>{t('banks.add')}</button></p>}
       {canWrite && <div className={s.actions}>
         <button className={`${s.button} ${s.primary}`} disabled={busy}>{t('save')}</button>
-        <label className={s.button}>{t('uploadSecondary')}<input hidden type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={e => void logo(e.target.files?.[0])} /></label>
+        <FilePicker kind="logo" label={t('uploadSecondary')} disabled={busy} className={s.button} onFile={file => logo(file)} onError={setError} />
         {data.secondary_logo_data_uri && <button className={s.button} type="button" disabled={busy} onClick={() => void logo(undefined, true)}>{t('removeSecondary')}</button>}
       </div>}
     </form>

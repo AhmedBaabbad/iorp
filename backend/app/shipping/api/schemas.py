@@ -46,6 +46,12 @@ class LineInput(_Input):
 
 
 class _Header(_Input):
+    driver_id: UUID | None = None
+    vehicle_id: UUID | None = None
+    carrier_id: UUID | None = None
+    driver_affiliation: Literal['internal','external'] | None = None
+    customer_contact_id: UUID | None = None
+    delivery_site_id: UUID | None = None
     customer_id: UUID | None = None
     customer_name: str | None = Field(default=None, max_length=255)
     customer_reference: str | None = Field(default=None, max_length=80)
@@ -111,6 +117,11 @@ class FailInput(_Input):
 
 
 class RescheduleInput(_Input):
+    driver_id: UUID | None = None
+    vehicle_id: UUID | None = None
+    carrier_id: UUID | None = None
+    driver_affiliation: Literal['internal','external'] | None = None
+
     delivery_method: Method | None = None
     shipment_date: date | None = None
     driver_name: str | None = Field(default=None, max_length=200)
@@ -202,6 +213,7 @@ class AttachmentRead(BaseModel):
     size_bytes: int
     uploaded_by_name: str | None
     uploaded_at: ISODatetime
+    archived_at: ISODatetime | None = None  # a file of a finished record: kept, not deleted
 
 
 class ReturnSummary(BaseModel):
@@ -229,6 +241,7 @@ class WeightCheck(BaseModel):
 
 
 class ShipmentListItem(BaseModel):
+    driver_affiliation: str | None = None
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     shipment_no: str
@@ -254,6 +267,12 @@ class ShipmentListItem(BaseModel):
 
 
 class ShipmentRead(ShipmentListItem):
+    driver_id: UUID | None = None
+    vehicle_id: UUID | None = None
+    carrier_id: UUID | None = None
+    driver_affiliation: Literal['internal','external'] | None = None
+    customer_contact_id: UUID | None = None
+    delivery_site_id: UUID | None = None
     consignee_phone: str | None
     consignee_email: str | None
     notify_consignee: bool

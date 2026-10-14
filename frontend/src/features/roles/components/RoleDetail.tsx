@@ -147,7 +147,7 @@ export function RoleDetailPage({ id }: { id: string }) {
                       <span key={perm.id} style={styles.permBadge}>
                         {perm.name}
                         <PermissionGuard code="foundation:roles:write">
-                          <button type="button" style={styles.removeBtn} onClick={() => void handleRemovePermission(perm.id)} title="Remove">×</button>
+                          <button type="button" style={styles.removeBtn} onClick={() => void handleRemovePermission(perm.id)} title={t("removePermission")} aria-label={t("removePermission")}>×</button>
                         </PermissionGuard>
                       </span>
                     ))}

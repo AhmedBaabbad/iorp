@@ -1,5 +1,6 @@
 {
   "customers": {
+    "complaints": "Customer complaints",
     "listTitle": "Customers",
     "createTitle": "Create Customer",
     "editTitle": "Edit Customer",
@@ -423,9 +424,7 @@
       "sectionTitle": "Quote Summary",
       "totalLabel": "Grand Total"
     },
-    "placeholders": {
-      "discountAmount": "e.g. 5.50"
-    },
+    "placeholders": {},
     "validation": {
       "invalidValue": "Invalid JSON value"
     },
@@ -503,7 +502,19 @@
       "reviseTitle": "Take the quotation back to a draft",
       "reviseText": "The quotation becomes a draft as a new revision; the earlier steps stay in the history."
     },
-    "searchHint": "Quotation number, customer name or code"
+    "searchHint": "Quotation number, customer name or code",
+    "discount": {
+      "allLines": "Discount on every line (%)",
+      "apply": "Apply to all lines",
+      "allLinesHint": "Puts this percentage on every line; then change or clear any line's own discount.",
+      "line": "Line discount (%)",
+      "lineAmount": "Takes {amount} off this line",
+      "column": "Discount",
+      "net": "Net",
+      "subtotalBefore": "Subtotal before discount",
+      "total": "Discount",
+      "subtotalAfter": "Subtotal after discount"
+    }
   },
   "commercialOrders": {
     "listTitle": "Commercial Orders",
@@ -666,6 +677,278 @@
     "ORDER_DUPLICATE_LINE": "Duplicate line number.",
     "ORDER_UNIT_INVALID": "Choose the unit from the list.",
     "ORDER_SPEC_INVALID": "A specification value is not valid: {value}",
-    "INTERACTION_HAS_FOLLOW_UPS": "A follow-up was opened from this interaction, so it stays."
+    "INTERACTION_HAS_FOLLOW_UPS": "A follow-up was opened from this interaction, so it stays.",
+    "QUOTE_HAS_ISSUED_HISTORY": "A quotation with issued history cannot be deleted."
+  },
+  "complaints": {
+    "title": "Customer complaints",
+    "subtitle": "One record of each concern: investigation, resolution and contact with the customer.",
+    "register": "Register complaint",
+    "registerTitle": "Register a customer complaint",
+    "registerHint": "Record the statement as the customer gave it. What is verified is recorded later, in the investigation.",
+    "back": "Complaints",
+    "loading": "Loading…",
+    "loadFailed": "Could not load the complaints.",
+    "detailFailed": "The complaint is unavailable, or you cannot see it.",
+    "empty": "No complaint matches the search.",
+    "search": "Search",
+    "searchPlaceholder": "Number or subject",
+    "allStatuses": "All statuses",
+    "allDepartments": "All departments",
+    "overdueOnly": "Overdue only",
+    "overdue": "Overdue",
+    "unassigned": "Not assigned",
+    "pdf": "Complaint report (PDF)",
+    "columns": {
+      "number": "Number",
+      "customerSubject": "Customer and subject",
+      "status": "Status",
+      "priority": "Priority",
+      "owner": "Owner",
+      "due": "Resolution due"
+    },
+    "summary": {
+      "active": "Active complaints",
+      "overdue": "Overdue resolution",
+      "response_overdue": "Overdue reply",
+      "pending_closure": "Awaiting closure approval",
+      "closed": "Closed"
+    },
+    "fields": {
+      "customer": "Customer",
+      "subject": "Subject",
+      "contact": "Contact person",
+      "receivedDate": "Received on",
+      "category": "Category",
+      "priority": "Priority",
+      "channel": "Received through",
+      "status": "Status",
+      "department": "Handling department",
+      "responseDue": "Reply due",
+      "resolutionDue": "Resolution due",
+      "externalReference": "Customer reference or purchase order",
+      "statement": "Customer statement as received",
+      "statementTitle": "Customer statement",
+      "owner": "Owner"
+    },
+    "statuses": {
+      "new": "New",
+      "assessment": "Under assessment",
+      "processing": "In processing",
+      "pending_closure": "Awaiting closure approval",
+      "closed": "Closed",
+      "cancelled": "Cancelled"
+    },
+    "categories": {
+      "quality": "Quality",
+      "delivery": "Delivery",
+      "quantity": "Quantity",
+      "packaging": "Packaging",
+      "commercial": "Commercial terms",
+      "service": "Service",
+      "other": "Other"
+    },
+    "departments": {
+      "commercial": "Sales and customer service",
+      "quality": "Quality",
+      "shipping": "Shipping and delivery",
+      "production": "Production"
+    },
+    "priorities": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "channels": {
+      "email": "E-mail",
+      "phone": "Phone",
+      "visit": "Visit",
+      "message": "Message",
+      "other": "Other"
+    },
+    "findings": {
+      "pending": "Not yet verified",
+      "verified": "Verified",
+      "not_verified": "Not verified",
+      "inconclusive": "Inconclusive"
+    },
+    "kinds": {
+      "order": "Sales order",
+      "sample": "Sample",
+      "shipment": "Shipment",
+      "return": "Return",
+      "ncr": "Non-conformance report"
+    },
+    "operations": {
+      "assign": "Assign responsibility",
+      "investigate": "Update the investigation",
+      "resolve": "Record the resolution",
+      "items": "Edit product lines",
+      "link": "Link a record",
+      "attach": "Attach evidence",
+      "refer_quality": "Refer to quality",
+      "request_close": "Request closure",
+      "approve_close": "Approve closure",
+      "return": "Return for processing",
+      "reopen": "Reopen",
+      "cancel": "Cancel the complaint",
+      "communicate": "Record contact"
+    },
+    "events": {
+      "created": "Complaint registered",
+      "assign": "Responsibility assigned",
+      "investigate": "Investigation updated",
+      "resolve": "Resolution recorded",
+      "items_updated": "Product lines edited",
+      "note": "Internal follow-up",
+      "response": "Contact with the customer",
+      "linked": "Record linked",
+      "attachment": "Evidence attached",
+      "refer_quality": "Referred to quality",
+      "assess": "Assessment started",
+      "start": "Processing started",
+      "request_close": "Closure requested",
+      "approve_close": "Closure approved",
+      "return": "Returned for processing",
+      "reopen": "Reopened",
+      "cancel": "Complaint cancelled"
+    },
+    "history": {
+      "title": "Follow-up and decisions",
+      "by": "by {name}",
+      "fromTo": "From «{from}» to «{to}»",
+      "owner": "Owner: {name}",
+      "previousOwner": "Previous owner: {name}",
+      "department": "Handling department: {name}",
+      "due": "Resolution due: {date}",
+      "created": "Category: {category} · priority: {priority} · received through: {channel}",
+      "finding": "Finding: {value}",
+      "field": "{field}: {value}",
+      "previous": "Previous {field}: {value}",
+      "measured": "{product}: measured {values}",
+      "confirmed": "{product}: confirmed affected quantity {quantity}",
+      "reference": "{kind}: {label}",
+      "ncr": "Non-conformance report {number} opened",
+      "file": "File: {name}",
+      "lines": "Product lines: {count}",
+      "reasons": {
+        "assign": "Assignment reason",
+        "note": "Follow-up",
+        "response": "Sent to the customer",
+        "refer_quality": "Referral note",
+        "other": "Reason"
+      }
+    },
+    "items": {
+      "title": "Products and specifications",
+      "hint": "Optional at registration. Take the agreed values from a sales order line or a sample of this customer; otherwise type them.",
+      "add": "Add a product",
+      "remove": "Remove the line",
+      "product": "Product",
+      "chooseProduct": "Choose the product",
+      "unit": "Unit",
+      "delivered": "Delivered quantity",
+      "reported": "Quantity the customer reports as affected",
+      "confirmed": "Quantity confirmed as affected",
+      "batch": "Batch reference",
+      "source": "Agreed specification from",
+      "manual": "Typed by hand",
+      "chooseSource": "Choose a sales order line or sample",
+      "fromSource": "Agreed values taken from {source}",
+      "property": "Property",
+      "expected": "Agreed",
+      "reportedValue": "Customer report",
+      "measured": "Measured",
+      "quantities": "Delivered {delivered} · reported {reported} · confirmed {confirmed}",
+      "save": "Save the product lines"
+    },
+    "form": {
+      "assignee": "Responsible user",
+      "assignReason": "Assignment reason",
+      "investigation": "Findings and evidence",
+      "containment": "Immediate containment",
+      "measurements": "Measurements per line",
+      "resolution": "Approved resolution and its rationale",
+      "evidence": "Evidence the resolution was carried out",
+      "customerResponse": "Customer response and date of contact",
+      "notes": "What was said or done",
+      "referenceKind": "Record type",
+      "reference": "Record of this customer",
+      "file": "Image or PDF, up to 10 MB",
+      "reason": "Reason for the decision",
+      "confirm": "Confirm and save",
+      "cancel": "Back",
+      "saving": "Saving…",
+      "toCustomer": "This was sent to the customer (it counts as the reply)",
+      "referral": "What quality should establish",
+      "chooseFile": "Choose a file"
+    },
+    "investigation": {
+      "title": "Investigation and resolution",
+      "finding": "Finding",
+      "investigation": "Investigation",
+      "containment": "Containment",
+      "waiting_reason": "Waiting",
+      "resolution": "Resolution",
+      "implementation_evidence": "Implementation evidence",
+      "customer_response": "Customer response"
+    },
+    "references": {
+      "title": "Records and evidence",
+      "none": "No records or attachments you can open."
+    },
+    "picker": {
+      "search": "Search: {title}",
+      "placeholder": "Type to search",
+      "choose": "Choose",
+      "unavailable": "The options could not be loaded, or you cannot see them."
+    },
+    "errors": {
+      "save": "Could not save. Check the fields, the quantities and your permissions.",
+      "action": "Could not complete the action. Check the fields and your permissions.",
+      "download": "Could not download the attachment.",
+      "products": "Could not load the products.",
+      "COMPLAINT_CHANGED": "Someone changed this complaint meanwhile. Refresh the page and try again.",
+      "COMPLAINT_LOCKED": "The complaint cannot be edited at this stage.",
+      "ASSIGNEE_NOT_ELIGIBLE": "This user lacks the permissions or the access to this customer.",
+      "CLOSURE_EVIDENCE_REQUIRED": "Before closing, complete the finding, the investigation, the resolution, its evidence and the customer response.",
+      "QUALITY_NCR_REQUIRED": "A verified quality complaint needs a linked non-conformance report before it is closed.",
+      "QUALITY_REVIEW_PENDING": "Quality has not yet closed the linked report or reviewed its effectiveness.",
+      "INDEPENDENT_APPROVAL_REQUIRED": "A critical complaint must be approved by someone other than the person who requested closure.",
+      "REFERENCE_NOT_FOUND": "The record does not exist or does not belong to this customer.",
+      "REFERENCE_PERMISSION_REQUIRED": "You cannot read this record.",
+      "REFERENCE_ALREADY_LINKED": "This record is already linked.",
+      "SOURCE_NOT_FOUND": "The sales order line or sample does not exist or does not belong to this customer.",
+      "SOURCE_PRODUCT_MISMATCH": "The chosen sales order line or sample is for another product.",
+      "CONFIRMED_EXCEEDS_DELIVERED": "The confirmed quantity cannot exceed the delivered quantity.",
+      "ITEM_NOT_FOUND": "This product line no longer exists. Refresh the page.",
+      "PROPERTY_INVALID": "A property does not belong to the product.",
+      "PRODUCT_NOT_AVAILABLE": "The product is not in the catalogue or is no longer active.",
+      "UNIT_INVALID": "Choose a unit from the list.",
+      "DUE_BEFORE_RECEIPT": "A due date cannot be before the date the complaint was received.",
+      "ACTION_FORBIDDEN": "You do not have permission for this decision.",
+      "TRANSITION_NOT_ALLOWED": "This decision is not available at the complaint's current stage.",
+      "FILE_TOO_LARGE": "The file is larger than allowed.",
+      "FILE_UNSUPPORTED_TYPE": "Only images (PNG, JPEG, WebP) and PDF files.",
+      "FILE_QUOTA_EXCEEDED": "The organization's storage is full: the file was not uploaded.",
+      "FILE_INVALID_IMAGE": "The image could not be read.",
+      "FILE_INVALID_PDF": "The PDF file is incomplete or damaged.",
+      "FILE_EMPTY": "The file is empty."
+    },
+    "next": {
+      "title": "Next step",
+      "assign": "Assign an owner, a department and a date: this starts the processing.",
+      "investigate": "Establish what is true: the finding, the evidence, the measurements and any containment. Refer technical defects to quality.",
+      "resolve": "Record the resolution, the evidence it was carried out and the customer's response.",
+      "request_close": "Everything is recorded: request closure so a manager approves it.",
+      "approve_close": "Review the evidence and the customer's response, then approve or return for processing."
+    },
+    "sections": {
+      "statement": "What the customer reported",
+      "investigation": "What was established",
+      "resolution": "Resolution and closure"
+    },
+    "moreDetails": "More details (contact, reply due, customer reference)"
   }
 }

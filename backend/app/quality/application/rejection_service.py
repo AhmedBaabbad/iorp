@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from sqlalchemy import and_, func, or_, select
 
+from app.core.interfaces.reference_lists import unknown_list_values
+from app.core.interfaces import approvals
 from app.core.pagination import paginate
 from app.core.interfaces.order_close_guards import Blocker
 from app.core.utils import utc_now
@@ -16,6 +18,7 @@ from app.quality.domain.enums import Disposition, DispositionStatus as DS, Quali
 from app.quality.domain.rules import QualityError, ZERO
 from app.quality.infrastructure.models import QualityCheck, QualityDefect, QualityRejection, QualityRejectionDefect
 from .support import log_activity, ProductionReads, ShippingReads, as_decimal, history, next_code, record, user_names
+from . import notices
 
 
 class _Pick:
@@ -71,7 +74,7 @@ class QualityRejectionService:
         returns = ShippingReads(self.db, self.org).return_numbers([r.return_id for r in rejections])
         out = []
         for r in rejections:
-            defects = [dict(quality_defect_id=link.quality_defect_id, defect_category=link.defect.defect_category.value,
+            defects = [dict(quality_defect_id=link.quality_defect_id, defect_category=str(link.defect.defect_category),
                             severity=link.defect.severity.value, defect_count=link.defect.defect_count, description=link.defect.description,
                             affected_quantity=link.affected_quantity) for link in r.defect_links]
             view = dict(order_number=orders.get(r.production_order_id), item_line_no=lines.get(r.production_order_item_id),
@@ -113,6 +116,8 @@ class QualityRejectionService:
         defects = self._defects(data.defects, check, quantity)
         if not (data.rejection_notes or "").strip():
             raise QualityError("NOTES_REQUIRED", 400)
+        if unknown_list_values(self.db, self.org, "rejection_reason", [data.rejection_reason]):
+            raise QualityError("LIST_VALUE_UNKNOWN", 400, field="rejection_reason", value=data.rejection_reason)  # MD-003
         rejection = QualityRejection(
             organization_id=self.org, rejection_code=next_code(self.db, self.org, "QR"), quality_check_id=check.id if check else None,
             production_order_id=order.id, production_order_item_id=item.id if item else None,
@@ -124,6 +129,7 @@ class QualityRejectionService:
         self._link(rejection, defects)
         record(self.db, self.org, "rejection", rejection.id, "create", None, DS.PENDING.value, self.tenant.user_id,
                detail=dict(defects=",".join(str(d.id) for d, _ in defects)) if defects else None)
+        notices.rejection_awaits_decision(self.db, self.tenant, rejection)
         self.db.commit()
         log_activity(self.db, self.org, self.tenant.user_id, "quality_rejection.created", "quality_rejection", rejection.id, rejection.rejection_code)
         return rejection
@@ -178,6 +184,8 @@ class QualityRejectionService:
             if data.defects is not None:
                 self._link(rejection, pairs)
         values.pop("defects", None)
+        if values.get("rejection_reason") and unknown_list_values(self.db, self.org, "rejection_reason", [values["rejection_reason"]], [rejection.rejection_reason]):
+            raise QualityError("LIST_VALUE_UNKNOWN", 400, field="rejection_reason", value=values["rejection_reason"])  # MD-003
         for field in ("rejection_date", "rejection_reason", "rejection_notes"):
             if field in values:
                 setattr(rejection, field, values[field].strip() if field == "rejection_notes" else values[field])
@@ -196,8 +204,10 @@ class QualityRejectionService:
         rejection.decision_notes = (data.decision_notes or "").strip() or None
         rejection.concession_approved_by = (data.concession_approved_by or "").strip() or None if data.disposition == Disposition.USE_AS_IS else None
         rejection.decided_at, rejection.decided_by_user_id = utc_now(), self.tenant.user_id
+        approvals.sign(self.db, self.tenant, "quality_rejection", rejection.id, "decide", "quality:rejections:decide", rejection.decision_notes)
         record(self.db, self.org, "rejection", rejection.id, "decide", before, DS.DECIDED.value, self.tenant.user_id,
                reason=rejection.decision_notes, detail=dict(disposition=data.disposition.value, concession_approved_by=rejection.concession_approved_by))
+        notices.rejection_decided(self.db, self.tenant, rejection)
         self.db.commit()
         log_activity(self.db, self.org, self.tenant.user_id, "quality_rejection.decided", "quality_rejection", rejection.id, rejection.rejection_code)
         return rejection
@@ -209,6 +219,7 @@ class QualityRejectionService:
         rejection.execution_notes = (notes or "").strip() or None
         record(self.db, self.org, "rejection", rejection.id, "execute", DS.DECIDED.value, DS.EXECUTED.value, self.tenant.user_id,
                reason=rejection.execution_notes, detail=dict(disposition=rejection.disposition.value))
+        notices.rejection_executed(self.db, self.tenant, rejection)
         self.db.commit()
         log_activity(self.db, self.org, self.tenant.user_id, "quality_rejection.executed", "quality_rejection", rejection.id, rejection.rejection_code)
         return rejection

@@ -1,5 +1,6 @@
 "use client";
 
+import {useUnitLabel} from "@/components/UnitLabel";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
@@ -22,6 +23,8 @@ import { QualityHistory } from "./QualityHistory";
 import { IncomingSourceSection, LotDecisionDialog } from "./IncomingInspection";
 import { ReturnDecisionDialog, ReturnSourceSection } from "./ReturnInspection";
 import { QUANTITY, qualityErrorMessage } from "./quality-errors";
+import { Signatures } from "@/components/Signatures";
+import { useClassificationChoices, useClassificationName } from "@/features/masterdata";
 
 // The rejection reasons a closing check may give; kept here so the check feature does not import the rejection feature.
 const REASONS = ["failed_quality_check", "critical_defect", "out_of_spec", "dimension_failure", "surface_failure", "packaging_failure", "labeling_issue", "other"];
@@ -32,6 +35,7 @@ function Item({ label, children }: { label: string; children: ReactNode }) {
 }
 
 export function QualityCheckDetail({ qualityCheckId }: { qualityCheckId: string }) {
+  const unitText = useUnitLabel();
   const t = useTranslations("quality.qualityChecks");
   const errors = useTranslations("quality.errors");
   const enums = useTranslations("enums.qualityCheck");
@@ -137,14 +141,16 @@ export function QualityCheckDetail({ qualityCheckId }: { qualityCheckId: string 
       onConfirm={body => void act(() => decideLot(check.id, body))} />}
     {dialog === "cancel" && <ReasonDialog title={t("cancelDialog.title")} description={t("cancelDialog.text")} confirmLabel={t("actions.cancelInspection")}
       busy={busy} danger onClose={() => setDialog(null)} onConfirm={reason => void act(() => cancelQualityCheck(check.id, reason))} />}
-  </PageFrame>;
+      <Signatures resourceType="quality_check" id={check.id} version={check.status} />
+</PageFrame>;
 }
 
 // Records the result: accepted + rejected must equal inspected, and the result must agree with the rejected quantity.
 function CloseDialog({ check, busy, onClose, onConfirm }: { check: QualityCheckData; busy: boolean; onClose: () => void; onConfirm: (body: CloseQualityCheckRequest) => void }) {
+  const unitText = useUnitLabel();
   const t = useTranslations("quality.qualityChecks");
   const enums = useTranslations("enums.qualityCheck.result");
-  const reasons = useTranslations("enums.qualityRejection.rejectionReason");
+  const reasonChoices = useClassificationChoices("rejection_reason", REASONS, "qualityRejection", "rejectionReason");
   const common = useTranslations("common");
   const inspectedStart = thousandths(check.qty_inspected) > 0 ? check.qty_inspected : "";
   const [result, setResult] = useState<QualityCheckResult | "">("");
@@ -153,7 +159,7 @@ function CloseDialog({ check, busy, onClose, onConfirm }: { check: QualityCheckD
   const [rejected, setRejected] = useState("0");
   const [reason, setReason] = useState("failed_quality_check");
   const [notes, setNotes] = useState(check.notes ?? "");
-  const unit = check.unit ? ` (${check.unit})` : "";
+  const unit = check.unit ? ` (${unitText(check.unit)})` : "";
 
   const numbers = [inspected, accepted, rejected].every(v => QUANTITY.test(v));
   const balanced = numbers && thousandths(accepted) + thousandths(rejected) === thousandths(inspected) && thousandths(inspected) > 0;
@@ -206,7 +212,7 @@ function CloseDialog({ check, busy, onClose, onConfirm }: { check: QualityCheckD
       {hasRejected && <>
         <label className={s.field}>{t("closeDialog.rejectionReason")}
           <select value={reason} disabled={busy} onChange={e => setReason(e.target.value)}>
-            {REASONS.map(v => <option key={v} value={v}>{reasons(v)}</option>)}
+            {reasonChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
           </select>
         </label>
         <p className={s.muted} style={{ margin: 0 }}>{t("closeDialog.rejectionHint")}</p>

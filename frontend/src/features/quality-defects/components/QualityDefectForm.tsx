@@ -9,9 +9,10 @@ import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { optionalText } from "@/lib/utils";
 import { sharedStyles } from "@/styles/shared-styles";
 import { createDefects } from "../api/quality-defects-api";
-import type { CreateQualityDefectRequest, DefectCategory, DefectSeverity } from "../types";
+import { useClassificationChoices } from "@/features/masterdata";
+import { DEFECT_CATEGORIES, type CreateQualityDefectRequest, type DefectCategory, type DefectSeverity } from "../types";
 
-const CATEGORIES: DefectCategory[] = ["dimension", "thickness", "surface", "color", "strength", "winding", "weight", "packaging", "labeling", "finish", "other"];
+
 const SEVERITIES: DefectSeverity[] = ["minor", "major", "critical"];
 
 type QualityDefectFormProps = {
@@ -43,13 +44,15 @@ export function QualityDefectForm({ qualityCheckId, recordedCategories = [], onC
   const common = useTranslations("common");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
-  const [rows, setRows] = useState<Row[]>(() => [newRow(CATEGORIES.find(c => !recordedCategories.includes(c)) ?? "")]);
+  const [rows, setRows] = useState<Row[]>(() => [newRow(DEFECT_CATEGORIES.find(c => !recordedCategories.includes(c)) ?? "")]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
 
+  // MD-003: the organization's defect categories (their usual values while its list is empty)
+  const categories = useClassificationChoices("defect_category", DEFECT_CATEGORIES, "qualityDefect", "defectCategory");
   const taken = (row: Row) => new Set([...recordedCategories, ...rows.filter(r => r.key !== row.key).map(r => r.defect_category)]);
-  const free = CATEGORIES.filter(c => !recordedCategories.includes(c) && !rows.some(r => r.defect_category === c));
+  const free = categories.map(c => c.key).filter(c => !recordedCategories.includes(c) && !rows.some(r => r.defect_category === c));
   const update = (key: number, patch: Partial<Row>) => {
     setRows(current => current.map(r => (r.key === key ? { ...r, ...patch } : r)));
     setRowErrors(current => { const next = { ...current }; delete next[key]; return next; });
@@ -96,7 +99,7 @@ export function QualityDefectForm({ qualityCheckId, recordedCategories = [], onC
             <select style={sharedStyles.input} value={row.defect_category} required
               onChange={e => update(row.key, { defect_category: e.target.value as DefectCategory })}>
               <option value="">{t("chooseCategory")}</option>
-              {CATEGORIES.map(c => <option key={c} value={c} disabled={taken(row).has(c)}>{enumT(`qualityDefect.defectCategory.${c}`)}</option>)}
+              {categories.map(c => <option key={c.key} value={c.key} disabled={taken(row).has(c.key)}>{c.label}</option>)}
             </select>
           </label>
           <label style={sharedStyles.field}>

@@ -131,8 +131,8 @@ class PasswordChangeRequest(BaseModel):
 
 
 class AdminPasswordResetRequest(BaseModel):
-    new_password: str = Field(min_length=1, max_length=128)
-    new_password_confirmation: str = Field(min_length=1, max_length=128)
+    """SEC-002: an administrator never chooses nor learns a user's password: the only way is a reset link e-mailed to the
+    user, who chooses their own. (Nothing to send: any field given is ignored.)"""
 
 
 class CurrentUserOrganization(BaseModel):
@@ -145,6 +145,7 @@ class CurrentUserOrganization(BaseModel):
 
 
 class CurrentUserResponse(BaseModel):
+    timezone: str | None = None
     id: UUID
     organization_id: UUID
     organization_code: str
@@ -166,6 +167,7 @@ class CurrentUserResponse(BaseModel):
 
 
 class UserProfileResponse(BaseModel):
+    timezone: str | None = Field(default=None, max_length=64)
     id: UUID
     full_name: str
     email: EmailStr
@@ -183,6 +185,7 @@ class UserProfileResponse(BaseModel):
 
 
 class UserProfileUpdate(BaseModel):
+    timezone: str | None = Field(default=None, max_length=64)
     full_name: str | None = Field(default=None, min_length=1, max_length=255)
     phone: str | None = Field(default=None, max_length=50)
     preferred_locale: str | None = Field(default=None, max_length=10)
@@ -202,6 +205,7 @@ class OrganizationProfileResponse(BaseModel):
     logo_url: str | None
     created_at: ISODatetime
     updated_at: ISODatetime
+    max_sessions_per_user: int = 2  # SEC-001
 
 
 class OrganizationProfileUpdate(BaseModel):
@@ -209,6 +213,8 @@ class OrganizationProfileUpdate(BaseModel):
     industry_type: str | None = Field(default=None, max_length=120)
     timezone: str | None = Field(default=None, min_length=1, max_length=64)
     default_locale: Literal["ar", "en"] | None = None
+    # SEC-001: devices one user may be signed in on at once (a further sign-in ends the oldest)
+    max_sessions_per_user: int | None = Field(default=None, ge=1, le=5)
 
 
 class OrganizationLogoResponse(BaseModel):
@@ -220,15 +226,16 @@ class OrganizationLogoResponse(BaseModel):
 # ── User management schemas ───────────────────────────────────────────────────
 
 class AdminUserCreate(BaseModel):
+    """SEC-003: no password — the new user receives an activation link and chooses their own."""
     full_name: str = Field(min_length=1, max_length=255)
     email: NormalizedEmail
     phone: str | None = Field(default=None, max_length=50)
-    password: str = Field(min_length=8, max_length=128)
     role_codes: list[str] = Field(default_factory=list)
     preferred_locale: Literal["ar", "en"] | None = None
 
 
 class AdminUserUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     full_name: str | None = Field(default=None, min_length=1, max_length=255)
     email: NormalizedEmail | None = None
     phone: str | None = Field(default=None, max_length=50)
@@ -243,6 +250,7 @@ class RoleRef(BaseModel):
 
 
 class UserListItem(BaseModel):
+    archived_at: ISODatetime | None = None
     id: UUID
     full_name: str
     email: EmailStr
@@ -252,11 +260,15 @@ class UserListItem(BaseModel):
     is_organization_root: bool
     roles: list[RoleRef] = Field(default_factory=list)
     created_at: ISODatetime
+    activation_pending: bool = False  # SEC-003: the activation link not used yet
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class AdminUserResponse(BaseModel):
+    archived_at: ISODatetime | None = None
+    account_change_reason: str | None = None
+    timezone: str | None = Field(default=None, max_length=64)
     id: UUID
     organization_id: UUID
     full_name: str
@@ -273,6 +285,8 @@ class AdminUserResponse(BaseModel):
     permissions: list[str] = Field(default_factory=list)
     created_at: ISODatetime
     updated_at: ISODatetime
+    activation_pending: bool = False  # SEC-003: the activation link not used yet
+    invitation_sent: bool | None = None  # on creation only: whether the activation e-mail went out
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -1,14 +1,19 @@
 """Quality check and rejection API (QUAL-001). Errors answer {"code": ...} like production."""
+from typing import Annotated
 from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.core.types import ISODatetime
 from app.quality.domain.enums import (
     Disposition, DispositionStatus, QualityCheckResult, QualityCheckStatus, QualityCheckType, RejectionReason,
 )
+
+# MD-003: a key of one of the organization's reference lists (validated against the list by the service).
+ListKey = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{1,59}$")]
+
 
 Quantity = Decimal  # three decimals, in the inspected line's unit
 
@@ -45,7 +50,7 @@ class QualityCheckClose(_Input):
     qty_rejected: Quantity = Field(ge=0, decimal_places=3, max_digits=14)
     notes: str | None = Field(default=None, max_length=2000)
     # Reason of the rejection opened for the rejected quantity (default: failed quality check).
-    rejection_reason: RejectionReason | None = None
+    rejection_reason: ListKey | None = None
 
 
 class ReasonInput(_Input):
@@ -233,14 +238,14 @@ class QualityRejectionCreate(_Input):
     # The defects of the inspection this rejection is made for (none, one or several; each once).
     defects: list[RejectionDefectInput] = Field(default_factory=list, max_length=50)
     rejection_date: date
-    rejection_reason: RejectionReason
+    rejection_reason: ListKey
     rejection_notes: str = Field(min_length=1, max_length=2000)
     quantity_rejected: Quantity = Field(gt=0, decimal_places=3, max_digits=14)
 
 
 class QualityRejectionUpdate(_Input):
     rejection_date: date | None = None
-    rejection_reason: RejectionReason | None = None
+    rejection_reason: ListKey | None = None
     rejection_notes: str | None = Field(default=None, max_length=2000)
     quantity_rejected: Quantity | None = Field(default=None, gt=0, decimal_places=3, max_digits=14)
     # Replaces the rejection's defects while it is pending.
@@ -266,7 +271,7 @@ class QualityRejectionListItem(BaseModel):
     production_order_id: UUID | None
     production_order_item_id: UUID | None
     rejection_date: date
-    rejection_reason: RejectionReason
+    rejection_reason: ListKey
     disposition: Disposition | None
     disposition_status: DispositionStatus
     quantity_rejected: Decimal

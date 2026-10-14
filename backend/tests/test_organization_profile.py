@@ -82,7 +82,7 @@ def test_logo_replace(env, case):
     _upload(env,PNG); env["db"].refresh(env["org"]); old=env["org"].logo_path; assert (env["tmp"]/old).exists()
     assert _upload(env,JPEG,"new.jpg").status_code==200; env["db"].refresh(env["org"])
     if case=="T22": assert not (env["tmp"]/old).exists()
-    if case=="T23": assert env["org"].logo_path!=old and env["org"].logo_path.endswith(".jpg")
+    if case=="T23": assert env["org"].logo_path!=old and env["org"].logo_path.endswith(".png")  # every logo is stored small, as PNG
 
 
 @pytest.mark.parametrize("case", ["T24","T25","T26"])
@@ -100,7 +100,7 @@ def test_logo_remove(env, case):
 def test_logo_serve(env, case):
     if case=="T28": assert env["client"].get("/api/v1/organization/logo",headers=env["tenant"]).status_code==404; return
     _upload(env,PNG); response=env["client"].get("/api/v1/organization/logo",headers=env["tenant"]); assert response.status_code==200 and response.headers["content-type"]=="image/png"
-    if case=="T29": assert response.content==PNG and str(env["org"].id) in env["org"].logo_path
+    if case=="T29": assert response.content.startswith(PNG[:8]) and str(env["org"].id) in env["org"].logo_path
 
 
 @pytest.mark.parametrize("case", ["T30","T31"])
@@ -116,4 +116,4 @@ def test_isolation_and_platform(env, case):
     if case=="T34": _upload(env); env["db"].refresh(env["org"]); assert str(env["org"].id) in env["org"].logo_path; return
     detail=env["client"].get(f"/api/v1/platform/organizations/{env['org'].id}",headers=env["platform"]); assert detail.status_code==200
     if case=="T35": assert {"name","industry_type","timezone","default_locale","has_logo","logo_url"}<=detail.json().keys()
-    if case=="T36": _upload(env); response=env["client"].get(f"/api/v1/platform/organizations/{env['org'].id}/logo",headers=env["platform"]); assert response.status_code==200 and response.content==PNG
+    if case=="T36": _upload(env); response=env["client"].get(f"/api/v1/platform/organizations/{env['org'].id}/logo",headers=env["platform"]); assert response.status_code==200 and response.content.startswith(PNG[:8])

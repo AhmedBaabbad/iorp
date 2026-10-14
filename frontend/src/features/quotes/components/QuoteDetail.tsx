@@ -23,6 +23,7 @@ import { QuoteLifecycle } from "./QuoteLifecycle";
 import { QuoteStatusBadge } from "./QuoteStatusBadge";
 import { QuoteTotals } from "./QuoteTotals";
 import { formatCommercialCurrency } from "./quote-utils";
+import { Signatures } from "@/components/Signatures";
 
 const styles: Record<string, CSSProperties> = {
   detailGrid: {
@@ -217,7 +218,8 @@ export function QuoteDetail() {
           />
         </div>
       ) : null}
-    </PageFrame>
+          {quote && <Signatures resourceType="quote" id={quote.id} version={quote.status} />}
+</PageFrame>
   );
 }
 

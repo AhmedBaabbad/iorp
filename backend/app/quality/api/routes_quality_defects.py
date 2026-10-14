@@ -74,7 +74,7 @@ def list_quality_defects_by_check(
 
 @router.get("/quality-defects", response_model=Page[QualityDefectListItem], dependencies=[Depends(require_permission(Q.DEFECTS_READ))])
 def list_quality_defects(
-    defect_category: DefectCategory | None = Query(default=None),
+    defect_category: str | None = Query(default=None),
     severity: DefectSeverity | None = Query(default=None),
     production_order_id: UUID | None = Query(default=None),
     defect_date: date | None = Query(default=None),

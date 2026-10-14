@@ -17,6 +17,7 @@ import { getQualityRejections } from "../api/quality-rejections-api";
 import { DISPOSITION_STATUSES, DISPOSITIONS, REJECTION_REASONS, type QualityRejectionListFilters, type QualityRejectionListItem } from "../types";
 import { DispositionBadge } from "./DispositionBadge";
 import { DispositionStatusBadge } from "./DispositionStatusBadge";
+import { useClassificationChoices, useClassificationName } from "@/features/masterdata";
 
 type Filters = Required<{ [K in keyof QualityRejectionListFilters]: string }>;
 const EMPTY: Filters = { production_order_id: "", quality_check_id: "", rejection_reason: "", disposition: "", disposition_status: "", date_from: "", date_to: "", search: "" };
@@ -26,6 +27,8 @@ export function QualityRejectionsList() {
   const t = useTranslations("quality.qualityRejections");
   const errors = useTranslations("quality.errors");
   const enums = useTranslations("enums.qualityRejection");
+  const reasonName = useClassificationName("rejection_reason", "qualityRejection", "rejectionReason");
+  const reasonChoices = useClassificationChoices("rejection_reason", REJECTION_REASONS, "qualityRejection", "rejectionReason");
   const common = useTranslations("common");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
@@ -75,7 +78,7 @@ export function QualityRejectionsList() {
       <label className={s.field}>{t("fields.rejectionReason")}
         <select value={filters.rejection_reason} onChange={e => set("rejection_reason", e.target.value)}>
           <option value="">{t("filters.allReasons")}</option>
-          {REJECTION_REASONS.map(v => <option key={v} value={v}>{enums(`rejectionReason.${v}`)}</option>)}
+          {reasonChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
         </select>
       </label>
       <label className={s.field}>{t("filters.dateFrom")}<input type="date" value={filters.date_from} onChange={e => set("date_from", e.target.value)} /></label>
@@ -99,7 +102,7 @@ export function QualityRejectionsList() {
           <td>{r.item_line_no ?? "—"}</td>
           <td>{r.inspection_code ? <Link href={`/quality-checks/${r.quality_check_id}`}><bdi>{r.inspection_code}</bdi></Link> : "—"}</td>
           <td><bdi>{fmt.quantity(r.quantity_rejected, r.unit)}</bdi></td>
-          <td>{enums(`rejectionReason.${r.rejection_reason}`)}</td>
+          <td>{reasonName(r.rejection_reason)}</td>
           <td><DefectChips defects={r.defects ?? []} severity={r.severity} /></td>
           <td>{r.disposition ? <DispositionBadge disposition={r.disposition} /> : "—"}</td>
           <td><DispositionStatusBadge status={r.disposition_status} /></td>

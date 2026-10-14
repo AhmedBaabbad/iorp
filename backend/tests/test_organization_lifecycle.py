@@ -122,13 +122,14 @@ def test_lifecycle_metadata(lifecycle, case):
 
 
 @pytest.mark.parametrize("case", ["T28", "T29", "T30", "T31"])
-def test_lifecycle_permissions(lifecycle, case):
+def test_lifecycle_permissions(lifecycle, case, activate):
     if case == "T28": assert _post(lifecycle, "suspend").status_code == 200; return
     root_headers = lifecycle["platform_headers"]
     created = lifecycle["client"].post("/api/v1/platform/administrators", headers=root_headers, json={
         "full_name": "Read Admin", "email": "read-admin@example.com", "role": "admin",
         "password": "ReadAdmin123!", "password_confirmation": "ReadAdmin123!",
     }); assert created.status_code == 201
+    activate("read-admin@example.com", "ReadAdmin123!", platform=True)  # SEC-003: the owner chooses the password
     login = lifecycle["client"].post("/api/v1/platform/login", json={"email": "read-admin@example.com", "password": "ReadAdmin123!"})
     admin_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
     if case == "T29": assert _post(lifecycle, "suspend", headers=admin_headers).status_code == 403

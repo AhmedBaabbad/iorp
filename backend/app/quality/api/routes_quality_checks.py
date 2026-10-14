@@ -46,7 +46,7 @@ def list_quality_checks(
     production_order_id: UUID | None = Query(default=None), check_type: QualityCheckType | None = Query(default=None),
     status_filter: QualityCheckStatus | None = Query(default=None, alias="status"), result: QualityCheckResult | None = Query(default=None),
     date_from: date | None = Query(default=None), date_to: date | None = Query(default=None), search: str | None = Query(default=None, max_length=60),
-    defect_category: DefectCategory | None = Query(default=None), params: PageParams = Depends(page_params),
+    defect_category: str | None = Query(default=None), params: PageParams = Depends(page_params),
     tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check),
 ):
     service = QualityCheckService(db, tenant)

@@ -8,7 +8,6 @@ import type { FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { PasswordInput } from "@/components/PasswordInput";
 import { API_BASE_URL, ApiClientError } from "@/lib/api-client";
 import { TIMEZONES, timezoneLabel } from "@/lib/timezones";
 import type {
@@ -26,6 +25,8 @@ import { usePlatformAuth } from "./platform-auth-context";
 import { PlatformProtectedRoute } from "./platform-protected-route";
 import { platformStyles as styles } from "./platform-styles";
 import css from "./platform-organizations-page.module.css";
+import { useFileProblemText } from "@/components/forms/FilePicker";
+import { fileProblem, useFilePolicy } from "@/lib/files";
 
 const ORG_CODE_PATTERN = /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/;
 const PAGE_SIZES = [10, 25, 50] as const;
@@ -45,8 +46,6 @@ const emptyForm = {
     full_name: "",
     email: "",
     phone: "",
-    password: "",
-    password_confirmation: "",
   },
 };
 
@@ -142,8 +141,6 @@ function PlatformOrganizationsContent() {
   const [actionBusy, setActionBusy] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [resetOrganization, setResetOrganization] = useState<PlatformOrganizationSummary | null>(null);
-  const [resetPassword, setResetPassword] = useState("");
-  const [resetConfirmation, setResetConfirmation] = useState("");
   const [resetError, setResetError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -199,9 +196,6 @@ function PlatformOrganizationsContent() {
 
   function validateCreate() {
     if (!ORG_CODE_PATTERN.test(form.organization.code)) return t("create.errorInvalidCode");
-    if (form.organization_admin.password.length < 12) return t("create.errorPasswordTooShort");
-    if (form.organization_admin.password.toLocaleLowerCase().includes(form.organization_admin.email.toLocaleLowerCase())) return t("create.errorPasswordEmail");
-    if (form.organization_admin.password !== form.organization_admin.password_confirmation) return t("create.errorPasswordMismatch");
     return "";
   }
 
@@ -212,7 +206,7 @@ function PlatformOrganizationsContent() {
     setCreateError(""); setSubmitting(true);
     try {
       const created = await createPlatformOrganization(form, token);
-      router.push(`/platform/organizations/${created.organization.id}?created=1`);
+      router.push(`/platform/organizations/${created.organization.id}?created=1&invited=${created.invitation_sent ? 1 : 0}`);
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 409) {
         const code = error.details && typeof error.details === "object" && "code" in error.details ? String(error.details.code) : "";
@@ -221,9 +215,13 @@ function PlatformOrganizationsContent() {
     } finally { setSubmitting(false); }
   }
 
+  const logoPolicy = useFilePolicy("logo");
+  const problemText = useFileProblemText();
+
   function handleLogo(file?: File) {
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024 || !["image/png", "image/jpeg", "image/webp"].includes(file.type)) { setCreateError(t("create.errorInvalidLogo")); return; }
+    const problem = fileProblem(file, logoPolicy);
+    if (problem) { setCreateError(problemText(problem, logoPolicy)); return; }
     const reader = new FileReader();
     reader.onload = () => { const value = String(reader.result ?? ""); setLogoPreview(value); setOrgField("logo_base64", value); };
     reader.readAsDataURL(file);
@@ -252,13 +250,11 @@ function PlatformOrganizationsContent() {
   async function submitReset(event: FormEvent) {
     event.preventDefault();
     if (!resetOrganization) return;
-    if (resetPassword.length < 12) { setResetError(t("resetRoot.errorTooShort")); return; }
-    if (resetPassword !== resetConfirmation) { setResetError(t("resetRoot.errorMismatch")); return; }
     setActionBusy(true); setResetError("");
     try {
-      await resetOrganizationRootPassword(resetOrganization.id, { new_password: resetPassword, new_password_confirmation: resetConfirmation }, token);
+      await resetOrganizationRootPassword(resetOrganization.id, token);
       setNotice(t("resetRoot.success", { organization: resetOrganization.name, email: resetOrganization.root_user_email ?? t("resetRoot.unknownEmail") }));
-      setResetOrganization(null); setResetPassword(""); setResetConfirmation("");
+      setResetOrganization(null);
     } catch { setResetError(t("resetRoot.errorGeneric")); }
     finally { setActionBusy(false); }
   }
@@ -318,13 +314,13 @@ function PlatformOrganizationsContent() {
 
     {showCreate && <div className={css.overlay}><div className={css.createDialog} role="dialog" aria-modal="true" aria-labelledby="create-title"><div className={css.dialogHeader}><div><p style={styles.eyebrow}>{t("console.createEyebrow")}</p><h2 id="create-title">{t("create.title")}</h2></div><button type="button" onClick={() => setShowCreate(false)} aria-label={t("create.cancel")}>×</button></div><form onSubmit={handleCreate}>
       <fieldset><legend>{t("console.organizationSection")}</legend><div className={css.formGrid}>{field(t("create.orgName"), form.organization.name, (value) => setOrgField("name", value))}<label style={styles.field}><span style={styles.label}>{t("create.orgCode")}</span><input style={styles.input} value={form.organization.code} onChange={(event) => setOrgField("code", event.target.value.toUpperCase())} pattern="[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*" required /><small>{t("create.orgCodeHint")}</small></label>{field(t("create.industryType"), form.organization.industry_type, (value) => setOrgField("industry_type", value), "text", true)}<label style={styles.field}><span style={styles.label}>{t("create.timezone")}</span><input style={styles.input} list="organization-timezones" value={form.organization.timezone} onChange={(event) => setOrgField("timezone", event.target.value)} required /><datalist id="organization-timezones">{TIMEZONES.map((zone) => <option key={zone} value={zone}>{timezoneLabel(zone)}</option>)}</datalist></label><label style={styles.field}><span style={styles.label}>{t("create.defaultLocale")}</span><select style={styles.input} value={form.organization.default_locale} onChange={(event) => setOrgField("default_locale", event.target.value)}><option value="ar">{t("create.localeArabic")}</option><option value="en">{t("create.localeEnglish")}</option></select></label><label className={css.logoUpload}><span>{t("create.logo")}</span><input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => handleLogo(event.target.files?.[0])} /><small>{t("create.logoHint")}</small>{logoPreview && <img src={logoPreview} alt={t("create.logoPreviewAlt")} />}</label></div></fieldset>
-      <fieldset><legend>{t("console.rootSection")}</legend><p className={css.rootNote}>{icons.check}<span>{t("console.rootAccountNote")}</span></p><div className={css.formGrid}>{field(t("create.adminFullName"), form.organization_admin.full_name, (value) => setAdminField("full_name", value))}{field(t("create.adminEmail"), form.organization_admin.email, (value) => setAdminField("email", value), "email")}{field(t("create.adminPhone"), form.organization_admin.phone, (value) => setAdminField("phone", value), "tel", true)}<label style={styles.field}><span style={styles.label}>{t("create.adminPassword")}</span><PasswordInput inputStyle={styles.input} value={form.organization_admin.password} onChange={(event) => setAdminField("password", event.target.value)} minLength={12} required /></label><label style={styles.field}><span style={styles.label}>{t("create.adminPasswordConfirm")}</span><PasswordInput inputStyle={styles.input} value={form.organization_admin.password_confirmation} onChange={(event) => setAdminField("password_confirmation", event.target.value)} minLength={12} required /></label></div></fieldset>
+      <fieldset><legend>{t("console.rootSection")}</legend><p className={css.rootNote}>{icons.check}<span>{t("console.rootAccountNote")}</span></p><div className={css.formGrid}>{field(t("create.adminFullName"), form.organization_admin.full_name, (value) => setAdminField("full_name", value))}{field(t("create.adminEmail"), form.organization_admin.email, (value) => setAdminField("email", value), "email")}{field(t("create.adminPhone"), form.organization_admin.phone, (value) => setAdminField("phone", value), "tel", true)}</div></fieldset>
       {createError && <div style={styles.error}>{createError}</div>}<div className={css.dialogFooter}><button type="button" className={css.cancelButton} onClick={() => setShowCreate(false)}>{t("create.cancel")}</button><button type="submit" className={css.primaryButton} disabled={submitting}>{submitting ? t("create.submitting") : t("create.submit")}</button></div>
     </form></div></div>}
 
     {actionOrg && action && <div className={css.overlay}><div className={css.confirmDialog} role="dialog" aria-modal="true"><span className={`${css.confirmIcon} ${css[`confirm_${action}`]}`}>{action === "activate" ? icons.check : action === "archive" ? icons.archive : icons.alert}</span><h2>{t(`console.confirm.${action}.title`)}</h2><p>{t(`console.confirm.${action}.message`, { name: actionOrg.name })}</p>{["suspend", "archive"].includes(action) && <p className={css.warning}>{t(`console.confirm.${action}.warning`)}</p>}<form onSubmit={submitLifecycle}><label style={styles.field}><span style={styles.label}>{t("console.confirm.reasonLabel")}</span><textarea style={styles.input} value={actionReason} onChange={(event) => setActionReason(event.target.value)} required={action === "archive"} rows={3} /></label>{actionError && <div style={styles.error}>{actionError}</div>}<div className={css.dialogFooter}><button type="button" className={css.cancelButton} onClick={() => { setActionOrg(null); setAction(null); }}>{t("console.cancel")}</button><button type="submit" className={action === "archive" ? css.dangerButton : css.primaryButton} disabled={actionBusy}>{actionBusy ? t("console.processing") : t(`console.confirm.${action}.button`)}</button></div></form></div></div>}
 
-    {resetOrganization && <div className={css.overlay}><div className={css.confirmDialog} role="dialog" aria-modal="true"><h2>{t("resetRoot.title")}</h2><p>{t("resetRoot.message", { organization: resetOrganization.name, email: resetOrganization.root_user_email ?? t("resetRoot.unknownEmail") })}</p><form onSubmit={submitReset}><label style={styles.field}><span style={styles.label}>{t("resetRoot.newPassword")}</span><PasswordInput inputStyle={styles.input} value={resetPassword} onChange={(event) => setResetPassword(event.target.value)} minLength={12} required /></label><label style={styles.field}><span style={styles.label}>{t("resetRoot.confirmPassword")}</span><PasswordInput inputStyle={styles.input} value={resetConfirmation} onChange={(event) => setResetConfirmation(event.target.value)} minLength={12} required /></label>{resetError && <div style={styles.error}>{resetError}</div>}<div className={css.dialogFooter}><button type="button" className={css.cancelButton} onClick={() => setResetOrganization(null)}>{t("resetRoot.cancelButton")}</button><button type="submit" className={css.dangerButton} disabled={actionBusy}>{actionBusy ? t("resetRoot.resetting") : t("resetRoot.resetButton")}</button></div></form></div></div>}
+    {resetOrganization && <div className={css.overlay}><div className={css.confirmDialog} role="dialog" aria-modal="true"><h2>{t("resetRoot.title")}</h2><p>{t("resetRoot.message", { organization: resetOrganization.name, email: resetOrganization.root_user_email ?? t("resetRoot.unknownEmail") })}</p><form onSubmit={submitReset}>{resetError && <div style={styles.error}>{resetError}</div>}<div className={css.dialogFooter}><button type="button" className={css.cancelButton} onClick={() => setResetOrganization(null)}>{t("resetRoot.cancelButton")}</button><button type="submit" className={css.dangerButton} disabled={actionBusy}>{actionBusy ? t("resetRoot.resetting") : t("resetRoot.resetButton")}</button></div></form></div></div>}
   </main>;
 }
 

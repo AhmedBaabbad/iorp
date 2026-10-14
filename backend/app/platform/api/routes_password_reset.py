@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Request
+from typing import Literal
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field, model_validator
 from sqlalchemy.orm import Session
@@ -10,7 +11,9 @@ from app.platform.application.password_reset import InvalidResetTokenError, Pass
 router = APIRouter(prefix="/platform/auth", tags=["platform-password-reset"])
 
 
-class ForgotPasswordRequest(BaseModel): email: EmailStr
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+    locale: Literal['ar', 'en'] | None = None
 class ResetPasswordRequest(BaseModel):
     token: str = Field(min_length=20, max_length=200)
     new_password: str
@@ -30,7 +33,7 @@ def _limited(request: Request, scope: str, limit: int):
 def forgot_password(payload: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
     limited = _limited(request, "platform_forgot_password", 3)
     if limited: return limited
-    PlatformPasswordResetService().request_reset(db, str(payload.email))
+    PlatformPasswordResetService().request_reset(db, str(payload.email), payload.locale)
     return {"message": "If this email is registered, a reset link has been sent."}
 
 

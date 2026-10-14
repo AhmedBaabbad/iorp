@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.interfaces.user_credentials import UserCredentialInterface
 from app.core.audit import AuditActor, PlatformAuditService, audit_request_context
+from app.core.security import has_usable_password
 from app.dependencies import get_db, get_user_credentials, require_platform_permission
 from app.platform.api.schemas import (
     PlatformAccountCreate,
@@ -15,6 +16,7 @@ from app.platform.api.schemas import (
     PlatformPasswordResetRequest,
 )
 from app.platform.application.services import (
+    PasswordResetLinkNotSentError,
     BootstrapRootProtectedError,
     LastPlatformRootError,
     PlatformAccountNotFoundError,
@@ -37,7 +39,7 @@ def _response(service: PlatformAccountService, account: PlatformAccount) -> Plat
         role=account.role, status=account.status, is_root=account.is_root,
         is_bootstrap_root=service.is_bootstrap_root(account.id), last_login_at=account.last_login_at,
         password_changed_at=account.password_changed_at, created_at=account.created_at,
-        updated_at=account.updated_at,
+        updated_at=account.updated_at, activation_pending=not has_usable_password(account.password_hash),
     )
 
 
@@ -50,6 +52,8 @@ def _error(exc: Exception) -> HTTPException:
         return HTTPException(status_code=409, detail={"code": "LAST_PLATFORM_ROOT", "message": "Cannot modify the last active Platform Root"})
     if isinstance(exc, BootstrapRootProtectedError):
         return HTTPException(status_code=409, detail={"code": "BOOTSTRAP_ROOT_PROTECTED", "message": "The original Platform Root account cannot be deleted"})
+    if isinstance(exc, PasswordResetLinkNotSentError):
+        return HTTPException(status_code=409, detail={"code": "RESET_EMAIL_NOT_SENT", "message": "The reset e-mail could not be sent."})
     return HTTPException(status_code=400, detail=str(exc))
 
 
@@ -84,10 +88,11 @@ def create_administrator(
 ):
     service = _service(db, credentials)
     try:
-        account = service.create_account(payload.full_name, str(payload.email), payload.password, payload.password_confirmation, payload.role)
+        account = service.create_account(payload.full_name, str(payload.email), payload.role)
         PlatformAuditService(db).record(event_type="platform_account_created", category="identity", actor=AuditActor("platform", viewer.id, viewer.email, viewer.full_name), target_type="platform_account", target_id=account.id, target_display=account.email, changes={"role": {"before": None, "after": account.role.value}, "status": {"before": None, "after": account.status.value}}, request=audit_request_context(request))
         db.commit()
-        return _response(service, account)
+        sent = service.send_activation_link(account)  # SEC-003: they choose their own password
+        return _response(service, account).model_copy(update={"invitation_sent": sent})
     except PlatformEmailTakenError:
         return JSONResponse(status_code=409, content={"code": "EMAIL_ALREADY_EXISTS", "message": "This email is already registered in the system"})
     except Exception as exc:
@@ -143,9 +148,9 @@ def reset_administrator_password(
 ):
     service = _service(db, credentials)
     try:
-        target = service.reset_password(account_id, payload.new_password, payload.new_password_confirmation)
-        PlatformAuditService(db).record(event_type="platform_account_password_reset", category="identity", severity="warning", actor=AuditActor("platform", viewer.id, viewer.email, viewer.full_name), target_type="platform_account", target_id=target.id, target_display=target.email, changes={"password_changed": True, "sessions_invalidated": True}, request=audit_request_context(request))
+        target = service.reset_password(account_id)
+        PlatformAuditService(db).record(event_type="platform_account_password_reset", category="identity", severity="warning", actor=AuditActor("platform", viewer.id, viewer.email, viewer.full_name), target_type="platform_account", target_id=target.id, target_display=target.email, changes={"reset_link_sent": True}, request=audit_request_context(request))
         db.commit()
-        return {"message": "Platform account password reset successfully", "sessions_invalidated": True}
+        return {"message": "A reset link was sent", "email": target.email}
     except Exception as exc:
         raise _error(exc) from exc

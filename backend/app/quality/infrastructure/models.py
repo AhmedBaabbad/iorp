@@ -241,15 +241,8 @@ class QualityDefect(Base):
     )
 
     defect_date: Mapped[date] = mapped_column(nullable=False, index=True)
-    defect_category: Mapped[DefectCategory] = mapped_column(
-        SqlEnum(
-            DefectCategory,
-            name="quality_defect_category",
-            values_callable=enum_values,
-        ),
-        nullable=False,
-        index=True,
-    )
+    # MD-003: a key of the organization's defect_category list (master data); the original categories are its usual values.
+    defect_category: Mapped[str] = mapped_column(String(60), nullable=False, index=True)
     severity: Mapped[DefectSeverity] = mapped_column(
         SqlEnum(
             DefectSeverity,
@@ -342,12 +335,9 @@ class QualityRejection(Base):
     return_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     return_line_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     rejection_date: Mapped[date] = mapped_column(nullable=False, index=True)
-    rejection_reason: Mapped[RejectionReason] = mapped_column(
-        SqlEnum(
-            RejectionReason,
-            name="quality_rejection_reason",
-            values_callable=enum_values,
-        ),
+    # MD-003: a key of the organization's rejection_reason list (master data).
+    rejection_reason: Mapped[str] = mapped_column(
+        String(60),
         nullable=False,
         index=True,
     )
@@ -566,9 +556,13 @@ class NCRAttachment(Base):
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     content_type: Mapped[str] = mapped_column(String(80), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
-    storage_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    storage_path: Mapped[str] = mapped_column(String(500), nullable=False)  # the storage key (core/storage.py)
+    checksum: Mapped[str | None] = mapped_column(String(64), nullable=True)
     uploaded_by_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=False)
     uploaded_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
+    # A file of a closed report is archived, never deleted: it stays (and still counts) as part of the record.
+    archived_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    archived_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
 
 
 class QualityCodeCounter(Base):
@@ -755,3 +749,8 @@ Index("ix_quality_defects_org_date", QualityDefect.organization_id, QualityDefec
 Index("ix_ncr_org_date", NonConformanceReport.organization_id, NonConformanceReport.report_date)
 Index("ix_ncr_actions_org_due", NCRAction.organization_id, NCRAction.due_date)
 Index("ix_quality_certificates_org_created", QualityCertificate.organization_id, QualityCertificate.created_at)
+
+
+from app.core.files import register_file_table  # noqa: E402  (PROJECT-FILES-003: counted in the organization's quota)
+
+register_file_table("quality_ncr_attachments")

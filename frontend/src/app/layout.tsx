@@ -5,6 +5,7 @@ import { IBM_Plex_Sans_Arabic } from "next/font/google";
 
 import { AuthProvider } from "@/features/auth";
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import { Notifications } from "@/components/notify/Notifications";
 import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, isLocale, isRTL } from "@/i18n/config";
 import { loadMessages } from "@/i18n/messages";
 
@@ -32,7 +33,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       {/* Browser extensions (reading tools, translators) add attributes to <body> before React loads; they are not ours. */}
       <body style={{ margin: 0 }} suppressHydrationWarning>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <ThemeProvider><AuthProvider>{children}</AuthProvider></ThemeProvider>
+          <ThemeProvider><AuthProvider>{children}<Notifications /></AuthProvider></ThemeProvider>
         </NextIntlClientProvider>
       </body>
     </html>

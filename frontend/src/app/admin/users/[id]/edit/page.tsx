@@ -1,14 +1,4 @@
 "use client";
-
-import { useParams } from "next/navigation";
-
-import { usePermission } from "@/features/auth";
-import { AdminUserForm } from "@/features/admin-users";
-import { AccessDeniedMessage } from "@/components/AccessDeniedMessage";
-
-export default function Page() {
-  const params = useParams<{ id: string }>();
-  return usePermission("foundation:users:write")
-    ? <AdminUserForm userId={params.id} />
-    : <AccessDeniedMessage />;
-}
+import {useEffect} from "react";
+import {useParams,useRouter} from "next/navigation";
+export default function Page(){const {id}=useParams<{id:string}>();const router=useRouter();useEffect(()=>{router.replace(`/admin/users/${id}`);},[id,router]);return null;}

@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 from sqlalchemy import func, select
 
+from app.core.interfaces.reference_lists import list_items
 from app.core.db import Base
 from app.core.reporting.contracts import ReportData, ReportLimitError, TableSection
 from app.quality.application.support import CommercialReads, history, user_names
@@ -89,6 +90,13 @@ def text(value, zone=None):
         return format(value.normalize(), 'f')
     return str(value)
 
+
+
+def listed(db, organization_id, list_name, key, lang):
+    """MD-003: an item of the organization's reference list by its name in the report's language (else the usual label)."""
+    key = text(key)
+    found = list_items(db, organization_id, list_name, [key])
+    return found[key].name(lang) if key in found else label(key, lang)
 
 def pct(part, whole):
     """A percentage with two decimals ("94.67"); quantities, unlike percentages, drop trailing zeros."""
@@ -186,6 +194,9 @@ def check_full(db, tenant, params, selected):
     number, product = orders.get(check.production_order_id, (None, None))
     line_no, spec = lines.get(check.production_order_item_id, (None, None))
     names = user_names(db, tenant.organization_id, [check.checked_by_user_id, check.closed_by_user_id])
+    from app.core.interfaces import approvals
+    closer = approvals.signed_name(approvals.latest(approvals.signatures(db, tenant.organization_id, "quality_check", [check.id])[check.id], "close"),
+                                   names.get(check.closed_by_user_id), lang)
     unit, closed = check.unit or '', text(check.status) == 'closed'
     if 'information' in selected:
         sample = CommercialReads(db, tenant.organization_id).sample_codes([check.sample_id]).get(check.sample_id) if check.sample_id else None
@@ -202,7 +213,7 @@ def check_full(db, tenant, params, selected):
         if check.lot_values:
             rows.append(('قيم الدفعة التي أدخلها الفاحص / Lot values entered by the inspector', spec_text(check.lot_values, lang)))
         rows += [('بدأ في / Started at', text(check.started_at, zone)),
-                 ('أُغلق في / Closed at', f'{text(check.closed_at, zone)} — {names.get(check.closed_by_user_id) or ""}'.strip(' —') if check.closed_at else None)]
+                 ('أُغلق في / Closed at', f'{text(check.closed_at, zone)} — {closer}'.strip(' —') if check.closed_at else None)]
         if check.cancel_reason:
             rows.append(('سبب الإلغاء / Cancellation reason', check.cancel_reason))
         sections.append(table('information', 'معلومات الفحص', 'Inspection information', ['الحقل / Field', 'القيمة / Value'],
@@ -222,16 +233,18 @@ def check_full(db, tenant, params, selected):
                                                          QualityDefect.quality_check_id == check.id).order_by(QualityDefect.defect_date, QualityDefect.created_at)).all()
         sections.append(table('defects', 'العيوب المكتشفة', 'Defects found',
                               ['التاريخ / Date', 'التصنيف / Category', 'الخطورة / Severity', 'العدد / Count', 'الوصف / Description'],
-                              [(d.defect_date, label(d.defect_category, lang), label(d.severity, lang), d.defect_count, d.description) for d in defects], lang))
+                              [(d.defect_date, listed(db, tenant.organization_id, 'defect_category', d.defect_category, lang), label(d.severity, lang), d.defect_count, d.description) for d in defects], lang))
     if 'rejections' in selected:
         rejections = db.scalars(select(QualityRejection).where(QualityRejection.organization_id == tenant.organization_id,
                                                                QualityRejection.quality_check_id == check.id).order_by(QualityRejection.created_at)).all()
         people = user_names(db, tenant.organization_id, [r.decided_by_user_id for r in rejections])
+        decided = approvals.signatures(db, tenant.organization_id, "quality_rejection", [r.id for r in rejections])
         sections.append(table('rejections', 'حالات الرفض والقرارات', 'Rejections and dispositions',
                               ['الرمز / Code', 'الكمية / Quantity', 'الوحدة / Unit', 'السبب / Reason', 'القرار / Disposition', 'الحالة / Status',
                                'صاحب القرار / Decided by', 'الموافق على الاستثناء / Concession approved by'],
-                              [(r.rejection_code, r.quantity_rejected, r.unit, label(r.rejection_reason, lang), label(r.disposition, lang) if r.disposition else '—',
-                                label(r.disposition_status, lang), people.get(r.decided_by_user_id), r.concession_approved_by) for r in rejections], lang))
+                              [(r.rejection_code, r.quantity_rejected, r.unit, listed(db, tenant.organization_id, 'rejection_reason', r.rejection_reason, lang), label(r.disposition, lang) if r.disposition else '—',
+                                label(r.disposition_status, lang), approvals.signed_name(approvals.latest(decided.get(r.id, []), "decide"), people.get(r.decided_by_user_id), lang),
+                                r.concession_approved_by) for r in rejections], lang))
     if 'history' in selected:
         sections.append(table('history', 'سجل الحالة', 'Status history', ['التاريخ / Date', 'الإجراء / Action', 'من / From', 'إلى / To', 'بواسطة / By', 'السبب / Reason'],
                               [(text(h['at'], zone), label(h['action'], lang), label(h['from_status'], lang) if h['from_status'] else '—',
@@ -371,7 +384,7 @@ def rejections_analysis(db, tenant, params, selected):
     if 'reasons' in selected:
         rows = sorted(reasons.items(), key=lambda item: (item[0][0], -item[1][1]))
         sections.append(table('reasons', 'أسباب الرفض', 'Rejection reasons', ['الوحدة / Unit', 'السبب / Reason', 'الحالات / Cases', 'الكمية / Quantity', 'النسبة % / Share %'],
-                              [(u, label(reason, lang), c, q, pct(q, per_unit[u]['all'][1])) for (u, reason), (c, q) in rows], lang))
+                              [(u, listed(db, tenant.organization_id, 'rejection_reason', reason, lang), c, q, pct(q, per_unit[u]['all'][1])) for (u, reason), (c, q) in rows], lang))
     if 'dispositions' in selected:
         rows = [(u, label(o, lang), f[o][0], f[o][1], pct(f[o][1], f['all'][1])) for u, f in sorted(per_unit.items()) for o in outcomes if f[o][0]]
         sections.append(table('dispositions', 'القرارات', 'Dispositions', ['الوحدة / Unit', 'القرار / Disposition', 'الحالات / Cases', 'الكمية / Quantity', 'النسبة % / Share %'], rows, lang))
@@ -379,7 +392,7 @@ def rejections_analysis(db, tenant, params, selected):
         unresolved = [r for r in rejections if rules.is_unresolved(r.disposition_status, r.disposition)]
         sections.append(table('open', 'حالات بلا قرار نهائي', 'Cases without a final decision',
                               ['الرمز / Code', 'التاريخ / Date', 'الأمر / Order', 'الكمية / Quantity', 'الوحدة / Unit', 'السبب / Reason', 'الوضع / Standing', 'العمر بالأيام / Age (days)'],
-                              [(r.rejection_code, r.rejection_date, orders.get(r.production_order_id, ('—',))[0], r.quantity_rejected, r.unit, label(r.rejection_reason, lang),
+                              [(r.rejection_code, r.rejection_date, orders.get(r.production_order_id, ('—',))[0], r.quantity_rejected, r.unit, listed(db, tenant.organization_id, 'rejection_reason', r.rejection_reason, lang),
                                 label(r.disposition, lang) if r.disposition else label('pending', lang), (today - r.rejection_date).days)
                                for r in sorted(unresolved, key=lambda r: r.rejection_date)], lang))
     if 'trend' in selected:
@@ -421,24 +434,24 @@ def defects_analysis(db, tenant, params, selected):
         running, table_rows = 0, []
         for category, c in ranked:
             running += c['units']
-            table_rows.append((label(category, lang), c['records'], c['units'], pct(c['units'], total_units), pct(running, total_units)))
+            table_rows.append((listed(db, tenant.organization_id, 'defect_category', category, lang), c['records'], c['units'], pct(c['units'], total_units), pct(running, total_units)))
         section = table('pareto', 'العيوب الأكثر تكرارًا (باريتو)', 'Most frequent defects (Pareto)',
                         ['التصنيف / Category', 'السجلات / Records', 'مرات الظهور / Occurrences', 'النسبة % / Share %', 'التراكمي % / Cumulative %'], table_rows, lang,
                         'التصنيفات التي يبلغ تراكمها 80% هي الأولى بالمعالجة. الوحدة التي تحمل أكثر من عيب تُحسب مرة تحت كل عيب، فلا يُعدّ المجموع وحداتٍ معيبة'
                         ' / Categories within the first 80% are the first to address. A unit with several defects counts once under each, so the total is not a count of defective units')
-        section.bars = [(label(category, lang), float(c['units'])) for category, c in ranked[:15]]
+        section.bars = [(listed(db, tenant.organization_id, 'defect_category', category, lang), float(c['units'])) for category, c in ranked[:15]]
         sections.append(section)
     if 'severity' in selected:
         section = table('severity', 'العيوب حسب الخطورة', 'Defects by severity',
                         ['التصنيف / Category', *[label(s, lang) for s in severities], 'الإجمالي / Total'],
-                        [(label(category, lang), *[c[s] for s in severities], c['units']) for category, c in ranked], lang)
+                        [(listed(db, tenant.organization_id, 'defect_category', category, lang), *[c[s] for s in severities], c['units']) for category, c in ranked], lang)
         section.cards = [(label(s, lang), text(sum(c[s] for c in by_category.values()))) for s in severities]
         sections.append(section)
     if 'serious' in selected:
         serious = [(d, code, order_id) for d, code, order_id in rows if text(d.severity) in ('major', 'critical')]
         sections.append(table('serious', 'العيوب الرئيسية والحرجة', 'Major and critical defects',
                               ['التاريخ / Date', 'الفحص / Check', 'الأمر / Order', 'التصنيف / Category', 'الخطورة / Severity', 'العدد / Count', 'الوصف / Description'],
-                              [(d.defect_date, code, orders.get(order_id, ('—',))[0], label(d.defect_category, lang), label(d.severity, lang), d.defect_count, d.description)
+                              [(d.defect_date, code, orders.get(order_id, ('—',))[0], listed(db, tenant.organization_id, 'defect_category', d.defect_category, lang), label(d.severity, lang), d.defect_count, d.description)
                                for d, code, order_id in sorted(serious, key=lambda row: (text(row[0].severity) != 'critical', row[0].defect_date))], lang))
     filters = applied_filters(params)
     return ReportData(sections=sections, applied_filters=with_order(db, tenant, params, filters))

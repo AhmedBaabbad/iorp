@@ -91,6 +91,8 @@ class DowntimeService:
                                 conflicting_status=DowntimeStatus(clash.status).value)
 
     def _apply(self, event, values, center_id, run, order):
+        from app.core.interfaces.reference_lists import assert_reference_text
+        assert_reference_text(self.db,self.org_id,'downtime_reason',values.get('reason_code'),event.reason_code)
         start, end = values["start_time"], values.get("end_time")
         rules.assert_period(start, end, utc_now())
         self._assert_no_overlap(center_id, start, end, exclude_id=event.id)

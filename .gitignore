@@ -26,3 +26,8 @@ backend/uploads/
 
 # Report review samples are written outside the project (tests/report_samples.py); never commit generated reports.
 backend/artifacts/
+
+# OPS-BACKUP-001: backups never live in the repository
+backups/
+*.dump
+*.dump.enc

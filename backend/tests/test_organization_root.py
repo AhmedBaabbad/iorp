@@ -66,7 +66,7 @@ def _normal_user(client, headers, email="normal@example.com") -> dict:
 
 def test_t01_root_cannot_be_soft_deleted(client, db, monkeypatch):
     headers, _ = _initialize(client, monkeypatch)
-    response = client.delete(f"/api/v1/admin/users/{_root(db).id}", headers=headers)
+    response = client.request('DELETE', f"/api/v1/admin/users/{_root(db).id}", headers=headers, json={'reason': 'Test lifecycle protection'})
     assert response.status_code == 403
     assert response.json()["code"] == "CANNOT_DEACTIVATE_ORGANIZATION_ROOT"
 
@@ -74,21 +74,24 @@ def test_t01_root_cannot_be_soft_deleted(client, db, monkeypatch):
 def test_t02_root_cannot_be_hard_deleted(client, db, monkeypatch):
     headers, _ = _initialize(client, monkeypatch)
     response = client.delete(f"/api/v1/admin/users/{_root(db).id}/hard", headers=headers)
-    assert response.status_code == 403
-    assert response.json()["code"] == "CANNOT_DEACTIVATE_ORGANIZATION_ROOT"
+    assert response.status_code == 404
+    assert _root(db).status == UserStatus.ACTIVE
 
 
 def test_t03_root_name_is_immutable(client, db, monkeypatch):
     headers, _ = _initialize(client, monkeypatch)
     response = client.patch(f"/api/v1/admin/users/{_root(db).id}", headers=headers, json={"full_name": "Changed"})
-    assert response.status_code == 403
-    assert response.json()["code"] == "CANNOT_MODIFY_ROOT_IDENTITY"
+    assert response.status_code == 400
+    db.expire_all()
+    assert _root(db).full_name == 'Organization Root'
 
 
 def test_t04_root_email_is_immutable(client, db, monkeypatch):
     headers, _ = _initialize(client, monkeypatch)
     response = client.patch(f"/api/v1/admin/users/{_root(db).id}", headers=headers, json={"email": "changed@example.com"})
-    assert response.status_code == 403
+    assert response.status_code == 400
+    db.expire_all()
+    assert _root(db).email == 'org-root@example.com'
 
 
 def test_t05_root_can_change_own_password(client, monkeypatch):
@@ -106,11 +109,12 @@ def test_t05_root_can_change_own_password(client, monkeypatch):
     assert client.post("/api/v1/auth/login", json={"email": "org-root@example.com", "password": "NewOrganizationRoot123!"}).status_code == 200
 
 
-def test_t06_root_phone_can_change(client, db, monkeypatch):
+def test_t06_root_phone_requires_self_service(client, db, monkeypatch):
     headers, _ = _initialize(client, monkeypatch)
     response = client.patch(f"/api/v1/admin/users/{_root(db).id}", headers=headers, json={"phone": "+966511111111"})
-    assert response.status_code == 200
-    assert response.json()["phone"] == "+966511111111"
+    assert response.status_code == 400
+    db.expire_all()
+    assert _root(db).phone == '+966500000000'
 
 
 def test_t07_last_root_flag_cannot_be_removed(client, db, monkeypatch):
@@ -133,18 +137,19 @@ def test_t08_root_flag_can_move_when_another_root_exists(client, db, monkeypatch
     assert updated.is_organization_root is False
 
 
-def test_t09_legacy_hard_route_deactivates_without_deleting(client, db, monkeypatch):
+def test_t09_removed_hard_route_cannot_change_user(client, db, monkeypatch):
     headers, _ = _initialize(client, monkeypatch)
     user = _normal_user(client, headers)
     response = client.delete(f"/api/v1/admin/users/{user['id']}/hard", headers=headers)
-    assert response.status_code == 200 and response.json()["status"] == "inactive"
-    assert db.get(User, UUID(user["id"])) is not None
+    assert response.status_code == 404
+    db.expire_all()
+    assert db.get(User, UUID(user['id'])).status.value == user['status']
 
 
 def test_t10_normal_user_can_be_deactivated(client, monkeypatch):
     headers, _ = _initialize(client, monkeypatch)
     user = _normal_user(client, headers)
-    response = client.delete(f"/api/v1/admin/users/{user['id']}", headers=headers)
+    response = client.request('DELETE', f"/api/v1/admin/users/{user['id']}", headers=headers, json={'reason': 'Test deactivation'})
     assert response.status_code == 200 and response.json()["status"] == "inactive"
 
 
@@ -180,11 +185,15 @@ def test_t14_create_body_cannot_set_root_flag(client, monkeypatch):
     assert response.status_code == 201 and response.json()["is_organization_root"] is False
 
 
-def test_t15_update_body_cannot_set_root_flag(client, monkeypatch):
+def test_t15_update_body_cannot_set_root_flag(client, monkeypatch, db):
     headers, _ = _initialize(client, monkeypatch)
     user = _normal_user(client, headers)
     response = client.patch(f"/api/v1/admin/users/{user['id']}", headers=headers, json={"phone": "123", "is_organization_root": True})
-    assert response.status_code == 200 and response.json()["is_organization_root"] is False
+    assert response.status_code == 422
+    db.expire_all()
+    saved = db.get(User, UUID(user['id']))
+    assert saved.is_organization_root is False
+    assert saved.phone == user['phone']
 
 
 def test_t16_root_has_all_tenant_permissions_without_roles(client, db, monkeypatch):

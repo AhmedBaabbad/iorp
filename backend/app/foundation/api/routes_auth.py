@@ -1,4 +1,5 @@
 from uuid import UUID
+from pydantic import BaseModel, Field
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
@@ -23,8 +24,9 @@ from app.foundation.api.schemas import (
 from app.foundation.application.effective_access import compute_effective_access
 from app.foundation.api.routes_users import _effective_access_locale, _effective_access_response
 from app.foundation.application.services import FoundationService, OrganizationRootProtectionError
-from app.foundation.application.security_log import TENANT_TOKEN_REFRESHED, log_tenant_security
 
+
+from app.foundation.application.sessions import SessionService
 
 router = APIRouter(tags=["auth"])
 
@@ -98,8 +100,6 @@ def refresh_session(request: Request, response: Response, db: Session = Depends(
             raise TokenValidationError("ORGANIZATION_UNAVAILABLE")
         ip, user_agent = request_metadata(request)
         _, pair = rotate_refresh_token(db, raw, "tenant", ip=ip, user_agent=user_agent)
-        log_tenant_security(db, user.organization_id, TENANT_TOKEN_REFRESHED,
-                            user.id, user.email, ip, user_agent)
         db.commit()
     except (TokenValidationError, ValueError, TypeError) as exc:
         clear_refresh_cookie(response, account_type="tenant")
@@ -173,3 +173,63 @@ def change_password(
         "message": "Password changed successfully",
         "session_invalidated": True,
     }
+
+
+
+# ── SEC-001: my sign-ins ─────────────────────────────────────────────────────────────────────────────────────────────────
+class EndSessions(BaseModel):
+    session_ids: list[UUID] = Field(default_factory=list, max_length=50)
+    all_others: bool = False
+
+
+@router.get("/sessions")
+def my_sessions(current: CurrentUserContext = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Where I am signed in: device, address, since when, last activity; this device marked."""
+    return SessionService(db, current.tenant.organization_id).mine(current.user, current.session_id)
+
+
+@router.post("/sessions/end")
+def end_my_sessions(payload: EndSessions, current: CurrentUserContext = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Ends some of my other sign-ins, or all of them but this one."""
+    service = SessionService(db, current.tenant.organization_id)
+    ids = [s["id"] for s in service.mine(current.user, current.session_id)] if payload.all_others else payload.session_ids
+    return {"ended": service.end_mine(current.user, ids, current.session_id)}
+
+
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from app.dependencies import get_platform_email_queries
+from app.core.interfaces.platform_email_queries import PlatformEmailQueryInterface
+from app.foundation.application.email_change import request_change, confirm_change, EmailChangeError
+from app.foundation.api.routes_password_reset import _limited
+
+class EmailChangeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email: EmailStr
+    current_password: str = Field(min_length=1, max_length=1024)
+
+class EmailChangeConfirmation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    old_code: str = Field(min_length=32, max_length=32)
+    new_code: str = Field(min_length=32, max_length=32)
+
+@router.post("/me/email-change")
+def request_email_change(payload: EmailChangeRequest, request: Request, current: CurrentUserContext = Depends(get_current_user), db: Session = Depends(get_db), platform_emails: PlatformEmailQueryInterface = Depends(get_platform_email_queries)):
+    limited = _limited(request, "email_change_request", 3)
+    if limited: return limited
+    try:
+        request_change(db, current.user, str(payload.email), payload.current_password, platform_emails, _effective_access_locale(request, current))
+    except EmailChangeError as exc:
+        db.rollback()
+        return JSONResponse(status_code=400, content={"code": exc.code, "detail": str(exc)})
+    return {"message": "Verification sent to both mailboxes."}
+
+@router.post("/me/email-change/confirm")
+def confirm_email_change(payload: EmailChangeConfirmation, request: Request, current: CurrentUserContext = Depends(get_current_user), db: Session = Depends(get_db), platform_emails: PlatformEmailQueryInterface = Depends(get_platform_email_queries)):
+    limited = _limited(request, "email_change_confirm", 5)
+    if limited: return limited
+    try:
+        confirm_change(db, current.user, payload.old_code, payload.new_code, platform_emails)
+    except EmailChangeError as exc:
+        db.rollback()
+        return JSONResponse(status_code=400, content={"code": exc.code, "detail": str(exc)})
+    return {"message": "Email changed. Sign in again."}

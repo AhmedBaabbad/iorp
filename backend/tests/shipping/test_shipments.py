@@ -1,3 +1,4 @@
+from tests.route_inventory import discover_routes
 """SHIP-001: shipments and delivery notes — customers (registered or named), methods, lines, lifecycle, permissions, document."""
 import ast
 from pathlib import Path
@@ -107,7 +108,7 @@ def test_factory_delivery_ready_dispatch_deliver(ship):
     s = ship.create()
     r = go(ship, s, "ready")
     assert r.status_code == 400 and code(r) == "METHOD_DETAILS_REQUIRED" and r.json()["detail"]["fields"] == "driver_name,vehicle_plate"
-    ship.client.patch(f"{ROOT}/{s['id']}", json=dict(driver_name="Saleh", driver_phone="0559876543", vehicle_plate="أ ب ج 1234", vehicle_type="Truck"))
+    ship.client.patch(f"{ROOT}/{s['id']}", json=dict(driver_affiliation="external", driver_name="Saleh", driver_phone="0559876543", vehicle_plate="أ ب ج 1234", vehicle_type="Truck"))
     ready = go(ship, s, "ready").json()
     assert ready["status"] == "ready" and set(ready["actions"]) == {"reopen", "dispatch", "cancel"}
     r = ship.client.patch(f"{ROOT}/{s['id']}", json=dict(notes="late change"))
@@ -123,20 +124,20 @@ def test_factory_delivery_ready_dispatch_deliver(ship):
 
 
 def test_pickup_is_delivered_at_the_factory_and_carrier_needs_its_name(ship):
-    pickup = ship.create(delivery_method="pickup", driver_name="Customer driver", driver_id_no="2345678901", vehicle_plate="ر س ص 9876")
+    pickup = ship.create(delivery_method="pickup", driver_affiliation="external", driver_name="Customer driver", driver_id_no="2345678901", vehicle_plate="ر س ص 9876")
     go(ship, pickup, "ready")
     r = go(ship, pickup, "dispatch")
     assert r.status_code == 409 and code(r) == "PICKUP_IS_DELIVERED_AT_FACTORY"
     done = go(ship, pickup, "deliver", received_by_name="Customer driver").json()
     assert done["status"] == "delivered" and done["dispatched_at"] == done["delivered_at"]
-    carrier = ship.create(delivery_method="carrier", driver_name="ignored")
+    carrier = ship.create(delivery_method="carrier", driver_affiliation="external", driver_name="ignored")
     assert carrier["driver_name"] is None and code(go(ship, carrier, "ready")) == "METHOD_DETAILS_REQUIRED"
     ship.client.patch(f"{ROOT}/{carrier['id']}", json=dict(carrier_name="SMSA", tracking_no="290012345"))
     assert go(ship, carrier, "ready").json()["status"] == "ready"
 
 
 def test_reopen_and_cancel_with_reason(ship):
-    s = ship.create(driver_name="Saleh", vehicle_plate="1234")
+    s = ship.create(driver_affiliation="external", driver_name="Saleh", vehicle_plate="1234")
     go(ship, s, "ready")
     assert go(ship, s, "reopen").json()["status"] == "draft"
     assert go(ship, s, "cancel", reason="Customer postponed").json()["status"] == "cancelled"
@@ -146,7 +147,7 @@ def test_reopen_and_cancel_with_reason(ship):
 
 
 def test_events_form_the_outbox_for_notifications(ship):
-    s = ship.create(notify_consignee=True, driver_name="Saleh", vehicle_plate="1234")
+    s = ship.create(notify_consignee=True, driver_affiliation="external", driver_name="Saleh", vehicle_plate="1234")
     go(ship, s, "ready"); go(ship, s, "dispatch")
     events = ship.db.scalars(select(ShipmentEvent).where(ShipmentEvent.shipment_id == UUID(s["id"])).order_by(ShipmentEvent.occurred_at)).all()
     assert [e.event_type for e in events] == ["shipment.created", "shipment.ready", "shipment.dispatched"]
@@ -157,7 +158,7 @@ def test_events_form_the_outbox_for_notifications(ship):
 # ── permissions, tenancy, list and document ────────────────────────────────────────────────────
 
 def test_permissions_per_action(ship):
-    s = ship.create(driver_name="Saleh", vehicle_plate="1234")
+    s = ship.create(driver_affiliation="external", driver_name="Saleh", vehicle_plate="1234")
     go(ship, s, "ready")
     ship.ctx.auth_user.permissions.discard(S.SHIPMENTS_DISPATCH)
     assert go(ship, s, "dispatch").status_code == 403
@@ -186,12 +187,12 @@ def test_numbering_prefix_and_settings(ship):
 
 
 def test_delivery_note_document_in_arabic_and_english(ship):
-    s = ship.create(customer_reference="UCIC-PO-77", driver_name="Saleh", driver_phone="0559876543", vehicle_plate="أ ب ج 1234", notes="Handle with care")
+    s = ship.create(customer_reference="UCIC-PO-77", driver_affiliation="external", driver_name="Saleh", driver_phone="0559876543", vehicle_plate="أ ب ج 1234", notes="Handle with care")
     preview = lambda lang: ship.client.post("/api/v1/reports/shipping.delivery_note/preview", json=dict(shipment_id=s["id"], lang=lang))  # noqa: E731
     r = preview("ar")
     assert r.status_code == 200, r.text
     for text in ("إشعار تسليم", s["shipment_no"], "UCIC Company", "UCIC-PO-77", "توصيل بسيارة المصنع", "أ ب ج 1234", "العرض (مم)",
-                 "السماكة (مم)", "0.35", "1200 كجم", "رول", "مسودة", "استلمتُ البضاعة"):
+                 "السماكة (مم)", "0.35", "1200 كجم", "لفة", "مسودة", "استلمتُ البضاعة"):
         assert text in r.text, text
     english = preview("en").text
     assert "DELIVERY NOTE" in english and "Factory delivery" in english and "Received the goods" in english
@@ -207,7 +208,7 @@ def test_every_shipping_route_declares_a_known_permission():
             if policy:
                 yield policy
             yield from policies(dep)
-    routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path.startswith("/api/v1/shipping")]
+    routes = [r for r in discover_routes(app) if isinstance(r, APIRoute) and r.path.startswith("/api/v1/shipping")]
     assert len(routes) >= 12
     assert [r.path for r in routes if not list(policies(r.dependant))] == []
     for route in routes:
@@ -241,7 +242,7 @@ def test_write_delivery_note_samples(ship):
     BrandingService(ship.db).update(ship.org.id, BrandingUpdate(legal_name_ar="مصنع ريحانة الأفق للصناعة", legal_name_en="REHANAH AL-OFUQ FACTORY FOR INDUSTRY",
                                                                commercial_registration_no="1010000000", vat_number="300000000000003"), ship.user.id)
     s = ship.create(customer_reference="UCIC-PO-4471", consignee_name="UCIC Warehouse — Sulay", delivery_address="Sulay industrial area, street 12",
-                    driver_name="صالح العتيبي", driver_phone="0559876543", vehicle_plate="أ ب ج 1234", vehicle_type="Truck 7 t",
+                    driver_affiliation="external", driver_name="صالح العتيبي", driver_phone="0559876543", vehicle_plate="أ ب ج 1234", vehicle_type="Truck 7 t",
                     notes="Deliver before 2 pm. Pallets are shrink-wrapped.",
                     lines=[dict(description="PP Strap — black, full automatic", width_mm="5", thickness_mm="0.35", quantity="120", unit="roll", weight="1260"),
                            dict(description="PP Strap — white", width_mm="15", thickness_mm="0.85", quantity="60", unit="roll", weight="0.366", weight_unit="ton")])

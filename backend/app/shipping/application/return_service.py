@@ -11,6 +11,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.core.interfaces import approvals
 from app.core.units import to_kilograms
 from app.core.utils import utc_now
 from app.shipping.domain import permissions as P
@@ -19,6 +20,7 @@ from app.shipping.domain import rules
 from app.shipping.domain.rules import ShippingError
 from app.shipping.infrastructure.models import Shipment, ShipmentReturn, ShipmentReturnLine
 from .support import QualityReads, attachments, history, log_activity, next_return_number, record, settings, user_names
+from . import notices
 
 ZERO = Decimal("0")
 
@@ -157,6 +159,7 @@ class ReturnService:
         ret = self._new(shipment, R.CUSTOMER, R.REQUESTED, data.reason, data.details,
                         [(lines[i], q) for i, q in sorted(wanted.items(), key=lambda kv: lines[kv[0]].line_no)], weights,
                         customer_reference=data.customer_reference, carrier_claim_ref=data.carrier_claim_ref)
+        notices.return_awaits_approval(self.db, self.tenant, ret)
         self.db.commit()
         log_activity(self.db, self.org, self.tenant.user_id, "return.requested", ret.id, ret.return_no, "shipment_return")
         return self._get(ret.id)
@@ -164,6 +167,8 @@ class ReturnService:
     def _move(self, ret, to_status, event, reason=None):
         before = ret.status
         ret.status = to_status
+        {R.APPROVED: notices.return_approved, R.REJECTED: notices.return_rejected, R.RECEIVED: notices.return_closed,
+         R.CANCELLED: notices.return_closed}.get(to_status, lambda *a: None)(self.db, self.tenant, ret)
         record(self.db, self._shipment(ret.shipment_id), event, before, to_status, self.tenant.user_id, reason, ret)
         self.db.commit()
         log_activity(self.db, self.org, self.tenant.user_id, event, ret.id, ret.return_no, "shipment_return")
@@ -173,6 +178,7 @@ class ReturnService:
         ret = self._get(return_id, lock=True)
         R.assert_can_approve(ret.status, ret.is_late, note)
         ret.decided_at, ret.decided_by_user_id, ret.decision_note = utc_now(), self.tenant.user_id, (note or "").strip() or None
+        approvals.sign(self.db, self.tenant, "shipment_return", ret.id, "approve", "shipping:returns:approve", ret.decision_note)
         return self._move(ret, R.APPROVED, "return.approved", ret.decision_note)
 
     def reject(self, return_id, reason) -> ShipmentReturn:

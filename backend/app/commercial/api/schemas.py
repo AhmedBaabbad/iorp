@@ -1,8 +1,9 @@
+from typing import Annotated
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from pydantic import AliasChoices, AwareDatetime, BaseModel, ConfigDict, Field, computed_field, model_validator
+from pydantic import AliasChoices, AwareDatetime, BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator, StringConstraints
 
 from app.core.types import ISOAwareDatetime, ISODatetime
 
@@ -20,6 +21,10 @@ from app.commercial.domain.enums import (
     SampleEvaluationResultStatus,
     SampleStatus,
 )
+
+# MD-003: a key of one of the organization's reference lists (validated against the list by the service).
+ListKey = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{1,59}$")]
+
 
 
 class CustomerCreate(BaseModel):
@@ -175,7 +180,7 @@ class OrderDeletionImpact(BaseModel):
 
 
 class CustomerInteractionCreate(BaseModel):
-    interaction_type: InteractionType
+    interaction_type: ListKey
     interaction_date: AwareDatetime
     subject: str = Field(min_length=1, max_length=255)
     summary: str | None = None
@@ -184,7 +189,7 @@ class CustomerInteractionCreate(BaseModel):
 
 
 class CustomerInteractionUpdate(BaseModel):
-    interaction_type: InteractionType | None = None
+    interaction_type: ListKey | None = None
     interaction_date: AwareDatetime | None = None
     subject: str | None = Field(default=None, min_length=1, max_length=255)
     summary: str | None = None
@@ -195,7 +200,7 @@ class CustomerInteractionUpdate(BaseModel):
 class CustomerInteractionRead(BaseModel):
     id: UUID
     customer_id: UUID
-    interaction_type: InteractionType
+    interaction_type: ListKey
     interaction_date: ISOAwareDatetime
     subject: str
     summary: str | None
@@ -426,6 +431,8 @@ class QuoteItemCreate(BaseModel):
     quantity: Decimal = Field(gt=0)
     unit: str = Field(min_length=1, max_length=32)  # a code from commercial/domain/units.py (older free text is kept)
     unit_price: Decimal = Field(ge=0)
+    # Percentage of this line taken before VAT (0 = no discount on the line).
+    discount_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100, max_digits=5, decimal_places=2)
     description_ar: str | None = Field(default=None, max_length=1000)
     description_en: str | None = Field(default=None, max_length=1000)
 
@@ -440,6 +447,9 @@ class QuoteItemRead(BaseModel):
     unit: str
     unit_price: Decimal
     line_total: Decimal
+    discount_percent: Decimal = Decimal("0")
+    discount_amount: Decimal = Decimal("0")
+    net_total: Decimal | None = None
     description_ar: str | None = None
     description_en: str | None = None
 
@@ -451,7 +461,7 @@ class QuoteCreate(BaseModel):
     issue_date: AwareDatetime
     valid_until: AwareDatetime
     currency: str = Field(default="SAR", pattern="^(SAR|USD)$")
-    discount_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    # The discount is a percentage on each line (QuoteItemCreate.discount_percent); the quotation's amount is their sum.
     # With tax_rate (VAT %), the server computes tax_amount and ignores the one sent.
     tax_rate: Decimal | None = Field(default=None, ge=0, le=100)
     tax_amount: Decimal = Field(default=Decimal("0"), ge=0)
@@ -467,7 +477,6 @@ class QuoteUpdate(BaseModel):
     valid_until: AwareDatetime | None = None
     # The status changes through issue, accept, reject, expire and revise (SALES-001), never here.
     currency: str | None = Field(default=None, pattern="^(SAR|USD)$")
-    discount_amount: Decimal | None = Field(default=None, ge=0)
     tax_rate: Decimal | None = Field(default=None, ge=0, le=100)
     tax_amount: Decimal | None = Field(default=None, ge=0)
     attention: str | None = Field(default=None, max_length=255)
@@ -565,6 +574,15 @@ class CommercialOrderItemRead(BaseModel):
     line_total: Decimal | None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("agreed_unit_price")
+    @classmethod
+    def _price_places(cls, value):
+        # Stored with four places for a discounted price (11.4855); a whole-halala price reads as before (2.50).
+        if value is None:
+            return value
+        short = value.quantize(Decimal("0.01"))
+        return short if short == value else value.normalize()
 
 
 class CommercialOrderCreate(BaseModel):

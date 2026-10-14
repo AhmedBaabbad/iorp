@@ -11,6 +11,8 @@ from collections import defaultdict
 
 from sqlalchemy import exists, select
 
+from app.core.interfaces.reference_lists import unknown_list_values
+from app.core.interfaces import approvals
 from app.core.pagination import paginate
 from app.core.utils import utc_now
 from app.quality.domain import rules
@@ -71,7 +73,7 @@ class QualityCheckService:
                     select(QualityDefect.quality_check_id, QualityDefect.defect_category, QualityDefect.severity, QualityDefect.defect_count)
                     .where(QualityDefect.organization_id == self.org, QualityDefect.quality_check_id.in_([c.id for c in checks]))
                     .order_by(QualityDefect.created_at)):
-                found[check_id].append(dict(defect_category=category.value, severity=severity.value, defect_count=count))
+                found[check_id].append(dict(defect_category=str(category), severity=severity.value, defect_count=count))
         out = []
         for c in checks:
             actions = rules.check_actions(c.status, can)
@@ -204,12 +206,15 @@ class QualityCheckService:
             check.notes = data.notes
         record(self.db, self.org, "check", check.id, "close", before, S.CLOSED.value, self.tenant.user_id,
                detail=dict(result=data.result.value, inspected=str(inspected), accepted=str(accepted), rejected=str(rejected)))
+        approvals.sign(self.db, self.tenant, "quality_check", check.id, "close", "quality:quality_checks:close")
         if rejected > ZERO:
+            if data.rejection_reason and unknown_list_values(self.db, self.org, "rejection_reason", [data.rejection_reason]):
+                raise QualityError("LIST_VALUE_UNKNOWN", 400, field="rejection_reason", value=data.rejection_reason)  # MD-003
             # The rejected quantity awaits a disposition decision; nothing to type again.
             rejection = QualityRejection(
                 organization_id=self.org, rejection_code=next_code(self.db, self.org, "QR"), quality_check_id=check.id,
                 production_order_id=check.production_order_id, production_order_item_id=check.production_order_item_id,
-                rejection_date=utc_now().date(), rejection_reason=data.rejection_reason or RejectionReason.FAILED_QUALITY_CHECK,
+                rejection_date=utc_now().date(), rejection_reason=data.rejection_reason or RejectionReason.FAILED_QUALITY_CHECK.value,
                 rejection_notes=(data.notes or "").strip() or check.inspection_code, disposition=None,
                 disposition_status=DispositionStatus.PENDING, quantity_rejected=rejected, unit=check.unit or "",
                 rejected_by_user_id=self.tenant.user_id)

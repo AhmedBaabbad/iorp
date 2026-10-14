@@ -10,6 +10,7 @@ from datetime import timezone
 
 from sqlalchemy import select
 
+from app.core.interfaces import approvals
 from app.core.pagination import paginate
 from app.core.utils import utc_now
 from app.quality.domain import certificates as rules
@@ -175,6 +176,7 @@ class CertificateService:
         settings.coa_last_number += 1
         certificate.certificate_no = rules.number(settings.coa_prefix, settings.coa_last_number)
         certificate.status, certificate.issued_at, certificate.issued_by_user_id = rules.ISSUED, utc_now(), self.tenant.user_id
+        approvals.sign(self.db, self.tenant, "quality_certificate", certificate.id, "issue", "quality:certificates:issue")
         record(self.db, self.org, "certificate", certificate.id, "issue", rules.DRAFT, rules.ISSUED, self.tenant.user_id,
                detail=dict(number=certificate.certificate_no))
         if certificate.supersedes_id:

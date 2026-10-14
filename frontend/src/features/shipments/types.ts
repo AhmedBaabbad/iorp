@@ -15,6 +15,7 @@ export type ShipmentLineInput = {
 export type ShipmentLine = ShipmentLineInput & { id: string; line_no: number; production_order_no: string | null; delivered_quantity: string | null };
 
 export type ShipmentHeader = {
+  driver_id?: string|null; vehicle_id?: string|null; carrier_id?: string|null; driver_affiliation?: string|null; customer_contact_id?: string|null; delivery_site_id?: string|null;
   customer_id: string | null; customer_name: string | null; customer_reference: string | null;
   consignee_name: string | null; consignee_phone: string | null; consignee_email: string | null; notify_consignee: boolean;
   delivery_address: string | null; delivery_city: string | null; location_url: string | null;
@@ -32,6 +33,7 @@ export type Attachment = { id: string; kind: string; file_name: string; content_
 export type WeightCheck = { reference_kg: string; received_kg: string; difference_kg: string; difference_pct: string; tolerance_pct: string; within_tolerance: boolean };
 
 export type ShipmentListItem = {
+  driver_affiliation?:string|null;
   id: string; shipment_no: string; status: ShipmentStatus; delivery_method: DeliveryMethod; shipment_date: string;
   customer_id: string | null; customer_name: string; customer_reference: string | null; consignee_name: string | null; delivery_city: string | null;
   driver_name: string | null; vehicle_plate: string | null; carrier_name: string | null; dispatched_at: string | null; delivered_at: string | null;

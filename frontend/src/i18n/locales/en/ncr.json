@@ -143,6 +143,7 @@
     "customer_name": "Customer",
     "production_order": "Production order",
     "return": "Return",
+    "complaint": "Customer complaint",
     "inspection": "Inspection",
     "rejection": "Rejection",
     "supplier_action": "Action with the supplier",
@@ -337,14 +338,18 @@
     "CLAIM_STATUS_UNKNOWN": "Choose the claim status from the list.",
     "TOO_MANY_FILES": "At most {limit} files.",
     "FILE_EMPTY": "The file is empty.",
-    "FILE_TOO_LARGE": "The file is larger than 10 MB.",
+    "FILE_TOO_LARGE": "The file is larger than allowed.",
     "FILE_UNSUPPORTED_TYPE": "Only images (PNG, JPEG, WebP) and PDF files.",
     "FILE_INVALID_PATH": "The file could not be saved.",
     "ATTACHMENT_NOT_FOUND": "The file was not found.",
     "SUPPLIER_NOT_FOUND": "The supplier was not found.",
     "RECURRING_NEEDS_ACTION": "This problem repeats earlier reports: it needs a corrective action.",
     "EFFECTIVENESS_REVIEW_NOT_PENDING": "No effectiveness review is pending on this report.",
-    "REVIEW_NOTES_REQUIRED": "Say how the problem came back."
+    "REVIEW_NOTES_REQUIRED": "Say how the problem came back.",
+    "FILE_QUOTA_EXCEEDED": "The organization's storage is full: the file was not uploaded.",
+    "FILE_INVALID_IMAGE": "The image could not be read.",
+    "FILE_INVALID_PDF": "The PDF file is incomplete or damaged.",
+    "APPROVAL_AUTHORITY_REQUIRED": "You hold no authority to verify, directly or by a delegation in force."
   },
   "recurrence": {
     "title": "Recurrence",

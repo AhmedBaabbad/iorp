@@ -81,7 +81,7 @@ describe("suppliers", () => {
   });
 
   it("blocks a supplier only with a reason", async () => {
-    api.apiClient.mockImplementation((path: string, o?: { method?: string }) => Promise.resolve(o?.method === "POST" ? supplier({ status: "blocked" }) : supplier()));
+    api.apiClient.mockImplementation((path: string, o?: { method?: string }) => Promise.resolve(path.includes("/contacts") ? {items:[],pages:0} : o?.method === "POST" ? supplier({ status: "blocked" }) : supplier()));
     ui(<SupplierDetail supplierId="s1" />);
     expect((await screen.findByRole("link", { name: "New receipt" })).getAttribute("href")).toBe("/goods-receipts/new?supplier=s1");
     expect(screen.getByRole("link", { name: "Raise a non-conformance" }).getAttribute("href")).toBe("/non-conformance-reports/new?supplier=s1");

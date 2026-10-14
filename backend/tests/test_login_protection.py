@@ -207,7 +207,7 @@ def test_t28_t29_t38_t39_admin_detail_and_unlock_endpoint(client, db, protected_
     assert detail.status_code == 200
     assert detail.json()["failed_login_attempts"] == 5
     assert detail.json()["auto_locked_until"] is not None
-    unlocked = client.post(f"/api/v1/admin/users/{user.id}/unlock", headers=headers)
+    unlocked = client.post(f"/api/v1/admin/users/{user.id}/unlock", headers=headers, json={"reason": "Security review completed"})
     assert unlocked.status_code == 200
     db.refresh(user)
     assert user.failed_login_attempts == 0

@@ -18,8 +18,18 @@ export type LegacyValue = { value: string; uses: Record<string, number>; total: 
 export type BusinessSettings = { vat_rate: string; default_currency: "SAR" | "USD"; currencies: string[] };
 
 // Reference lists (MD-002): sectors, opportunity sources, countries and cities; a city belongs to a country.
-export type ListName = "sector" | "opportunity_source" | "country" | "city";
-export const LIST_NAMES: ListName[] = ["sector", "opportunity_source", "country", "city"];
+export type ListName = "sector" | "opportunity_source" | "country" | "city" | "downtime_reason" | "waste_reason" | "workforce_skill" | "test_method" | "supplier_category" | "material_category" | "defect_category" | "rejection_reason" | "complaint_category" | "interaction_type" | "vehicle_type";
+export const LIST_NAMES: ListName[] = ["sector", "opportunity_source", "country", "city", "downtime_reason", "waste_reason", "workforce_skill", "test_method", "supplier_category", "material_category", "defect_category", "rejection_reason", "complaint_category", "interaction_type", "vehicle_type"];
+/** MD-003: the lists grouped by the department that uses them (the reference lists page). */
+export const LIST_GROUPS: { group: string; lists: ListName[] }[] = [
+  { group: "commercial", lists: ["sector", "opportunity_source", "country", "city", "complaint_category", "interaction_type"] },
+  { group: "procurement", lists: ["supplier_category", "material_category"] },
+  { group: "production", lists: ["downtime_reason", "waste_reason", "workforce_skill"] },
+  { group: "quality", lists: ["defect_category", "rejection_reason", "test_method"] },
+  { group: "shipping", lists: ["vehicle_type"] },
+];
 export type ListItem = { id: string; list: ListName; key: string; name_ar: string; name_en: string; parent_key: string | null; active: boolean;
-  sort_order: number };
+  sort_order: number 
+  uses?: number; protected?: boolean;  // MD-003: records storing it (deletable at 0); written by the system itself
+};
 export type ListItemInput = { key?: string | null; name_ar: string; name_en: string; parent_key?: string | null };

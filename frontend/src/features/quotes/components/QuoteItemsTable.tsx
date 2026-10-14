@@ -60,6 +60,7 @@ export function QuoteItemsTable({ items, currency }: QuoteItemsTableProps) {
   const locale = useLocale();
   const unitLabel = (code: string) => (units.has(code) ? units(code) : code);
   void currency;
+  const discounted = items.some((item) => Number(item.discount_amount || 0) > 0);
 
   return (
     <section style={styles.panel} aria-label={t("items.sectionTitle")}>
@@ -85,6 +86,10 @@ export function QuoteItemsTable({ items, currency }: QuoteItemsTableProps) {
               <th style={{ ...styles.th, textAlign: "end", width: "17%" }}>
                 {t("items.fields.lineTotal")}
               </th>
+              {discounted ? <>
+                <th style={{ ...styles.th, textAlign: "end" }}>{t("discount.column")}</th>
+                <th style={{ ...styles.th, textAlign: "end" }}>{t("discount.net")}</th>
+              </> : null}
             </tr>
           </thead>
           <tbody>
@@ -106,6 +111,12 @@ export function QuoteItemsTable({ items, currency }: QuoteItemsTableProps) {
                 <td style={{ ...styles.td, textAlign: "start" }}>{displayValue(unitLabel(item.unit))}</td>
                 <td style={{ ...styles.td, textAlign: "end" }}>{fmt.decimal(item.unit_price)}</td>
                 <td style={{ ...styles.td, textAlign: "end" }}>{fmt.decimal(item.line_total)}</td>
+                {discounted ? <>
+                  <td style={{ ...styles.td, textAlign: "end" }}>
+                    {Number(item.discount_amount || 0) > 0 ? `${fmt.decimal(item.discount_percent)}% = ${fmt.decimal(item.discount_amount)}` : "—"}
+                  </td>
+                  <td style={{ ...styles.td, textAlign: "end" }}>{fmt.decimal(item.net_total ?? item.line_total)}</td>
+                </> : null}
               </tr>
             ))}
           </tbody>

@@ -3,16 +3,17 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
-import { PasswordInput } from "@/components/PasswordInput";
 import { usePermission } from "@/features/auth";
 import { useFormatter } from "@/hooks/useFormatter";
+import { useNotify } from "@/components/notify/Notifications";
 import { useEnumLabel } from "@/i18n/enum-helpers";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { sharedStyles } from "@/styles/shared-styles";
 import {
+  archiveAdminUser,
   deactivateAdminUser,
   activateAdminUser,
   lockAdminUser,
@@ -20,6 +21,10 @@ import {
   getAdminUser,
   getUserDeactivationImpact,
   resetAdminUserPassword,
+  getAdminUserSessions,
+  endAdminUserSessions,
+  type PasswordResetResult,
+  type UserSession,
 } from "../api/admin-users-api";
 import {
   getEligibleAssignees,
@@ -36,17 +41,6 @@ import { AdminUserRolesManager } from "./AdminUserRolesManager";
 import { EffectiveAccessPanel } from "./EffectiveAccessPanel";
 import css from "./admin-user-detail.module.css";
 
-function groupPermissionsByModule(permissions: string[]) {
-  const groups = new Map<string, string[]>();
-  for (const permission of permissions) {
-    const moduleKey = permission.split(":")[0] ?? permission;
-    const list = groups.get(moduleKey) ?? [];
-    list.push(permission);
-    groups.set(moduleKey, list);
-  }
-  return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
-}
-
 function initials(name: string): string {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?";
 }
@@ -54,11 +48,10 @@ function initials(name: string): string {
 export function AdminUserDetail() {
   const params = useParams<{ id: string }>();
   const t = useTranslations("administration.users");
-  const tModules = useTranslations("administration.permissions.modules");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
+  const notify = useNotify();
   const enumLabel = useEnumLabel();
-  const canWrite = usePermission("foundation:users:write");
   const canActivate = usePermission("foundation:users:activate");
   const canDeactivate = usePermission("foundation:users:deactivate");
   const canLock = usePermission("foundation:users:lock");
@@ -75,27 +68,15 @@ export function AdminUserDetail() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deactivationMessage, setDeactivationMessage] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
-  const [resetPassword, setResetPassword] = useState("");
-  const [resetConfirmation, setResetConfirmation] = useState("");
+  const [resetResult, setResetResult] = useState<PasswordResetResult | null>(null);
+  const [resetEmailFailed, setResetEmailFailed] = useState(false);
+  const [sessions, setSessions] = useState<UserSession[] | null>(null);
 
   const load = useCallback(() => {
     getAdminUser(params.id).then(setUser).catch((caught) => setError(getApiErrorMessage(caught, messages)));
   }, [messages, params.id]);
 
   useEffect(() => { load(); }, [load]);
-
-  const groupedPermissions = useMemo(
-    () => groupPermissionsByModule(user?.permissions ?? []),
-    [user],
-  );
-
-  function moduleLabel(moduleKey: string): string {
-    try {
-      return tModules(moduleKey as never);
-    } catch {
-      return moduleKey;
-    }
-  }
 
   async function handleDeactivateClick() {
     if (!user) return;
@@ -133,24 +114,50 @@ export function AdminUserDetail() {
   }
 
   async function handlePasswordReset() {
-    if (!user || resetPassword !== resetConfirmation) return setError(t("passwordReset.passwordsDoNotMatch"));
-    setIsSubmitting(true); setError(null);
+    if (!user) return;
+    setIsSubmitting(true); setError(null); setResetEmailFailed(false);
     try {
-      await resetAdminUserPassword(user.id, { new_password: resetPassword, new_password_confirmation: resetConfirmation });
-      setResetOpen(false); setResetPassword(""); setResetConfirmation("");
-      setDeactivationMessage(t("passwordReset.success"));
+      const result = await resetAdminUserPassword(user.id);
+      setResetResult(result);
+      notify.success(t("passwordReset.linkSent", { email: result.email }));
+    } catch (caught) {
+      const code = (caught as { details?: { detail?: { code?: string } } })?.details?.detail?.code;
+      if (code === "RESET_EMAIL_NOT_SENT") setResetEmailFailed(true);
+      else setError(getApiErrorMessage(caught, messages));
+    } finally { setIsSubmitting(false); }
+  }
+
+  function closeReset() { setResetOpen(false); setResetResult(null); setResetEmailFailed(false); }
+
+  async function endSessions() {
+    if (!user || !window.confirm(t("sessions.confirmEnd", { name: user.full_name }))) return;
+    try {
+      const done = await endAdminUserSessions(user.id);
+      notify.success(t("sessions.ended", { count: done.ended }));
+      setSessions(await getAdminUserSessions(user.id));
     } catch (caught) { setError(getApiErrorMessage(caught, messages)); }
+  }
+
+  async function archiveAccount() {
+    if (!user) return;
+    const reason = window.prompt(t("accountPolicy.reason"));
+    if (!reason || reason.trim().length < 3) return;
+    setIsSubmitting(true);
+    try { await archiveAdminUser(user.id, reason, Boolean(user.archived_at)); await load(); }
+    catch (caught) { setError(getApiErrorMessage(caught, messages)); }
     finally { setIsSubmitting(false); }
   }
 
   async function handleStatusAction(kind: "lock" | "unlock" | "activate") {
+    const reason = window.prompt(t("accountPolicy.reason"));
+    if (!reason || reason.trim().length < 3) return;
     const translationGroup = kind === "activate" ? "reactivation" : kind;
     if (!user || !window.confirm(t(`${translationGroup}.confirmMessage`, { name: user.full_name }))) return;
     setIsSubmitting(true);
     try {
-      if (kind === "lock") await lockAdminUser(user.id);
-      else if (kind === "unlock") await unlockAdminUser(user.id);
-      else await activateAdminUser(user.id);
+      if (kind === "lock") await lockAdminUser(user.id, reason);
+      else if (kind === "unlock") await unlockAdminUser(user.id, reason);
+      else await activateAdminUser(user.id, reason);
       await load();
     } catch (caught) { setError(getApiErrorMessage(caught, messages)); }
     finally { setIsSubmitting(false); }
@@ -180,10 +187,12 @@ export function AdminUserDetail() {
 
   async function handleConfirmDeactivate() {
     if (!user) return;
+    const reason = window.prompt(t("accountPolicy.reason"));
+    if (!reason || reason.trim().length < 3) return;
     setIsSubmitting(true);
     setError(null);
     try {
-      await deactivateAdminUser(user.id);
+      await deactivateAdminUser(user.id, reason);
       setDialogMode(null);
       await load();
     } catch (caught) {
@@ -200,10 +209,16 @@ export function AdminUserDetail() {
     >
       {resetOpen && user ? <div style={sharedStyles.modalOverlay}><section style={sharedStyles.modal} role="dialog" aria-modal="true" aria-labelledby="reset-password-title">
         <h2 id="reset-password-title" style={sharedStyles.modalTitle}>{t("passwordReset.title")}</h2>
-        <p>{t("passwordReset.description", { name: user.full_name })}</p>
-        <label style={sharedStyles.field}><span style={sharedStyles.label}>{t("passwordReset.newPassword")}</span><PasswordInput inputStyle={sharedStyles.input} value={resetPassword} onChange={event => setResetPassword(event.target.value)} minLength={8} required /></label>
-        <label style={{ ...sharedStyles.field, marginTop: 12 }}><span style={sharedStyles.label}>{t("passwordReset.confirmPassword")}</span><PasswordInput inputStyle={sharedStyles.input} value={resetConfirmation} onChange={event => setResetConfirmation(event.target.value)} minLength={8} required /></label>
-        <div style={sharedStyles.modalActions}><button type="button" style={sharedStyles.secondaryButton} onClick={() => setResetOpen(false)}>{t("passwordReset.cancel")}</button><button type="button" style={sharedStyles.button} disabled={isSubmitting || !resetPassword || !resetConfirmation} onClick={() => void handlePasswordReset()}>{isSubmitting ? t("passwordReset.submitting") : t("passwordReset.submit")}</button></div>
+        {resetResult ? <>
+          <p>{t("passwordReset.linkSent", { email: resetResult.email })}</p>
+          <div style={sharedStyles.modalActions}><button type="button" style={sharedStyles.button} onClick={closeReset}>{t("passwordReset.done")}</button></div>
+        </> : <>
+          <p>{user.activation_pending ? t("invitation.resendDescription", { name: user.full_name }) : t("passwordReset.description", { name: user.full_name })}</p>
+          {resetEmailFailed && <p role="alert" style={{ color: "var(--danger)" }}>{t("passwordReset.emailFailed")}</p>}
+          <div style={sharedStyles.modalActions}>
+            <button type="button" style={sharedStyles.secondaryButton} onClick={closeReset}>{t("passwordReset.cancel")}</button>
+            <button type="button" style={sharedStyles.button} disabled={isSubmitting} onClick={() => void handlePasswordReset()}>{isSubmitting ? t("passwordReset.submitting") : t("passwordReset.sendLink")}</button></div>
+        </>}
       </section></div> : null}
       {dialogMode && user && impact ? (
         <div style={sharedStyles.modalOverlay}>
@@ -321,15 +336,16 @@ export function AdminUserDetail() {
                   <div className={css.badges}>
                     <span className={`${css.badge} ${user.status === "active" ? css.badgeActive : user.status === "locked" ? css.badgeLocked : css.badgeInactive}`}>{enumLabel("user", "status", user.status)}</span>
                     {user.is_organization_root ? <span className={css.badge}>{t("rootBadge")}</span> : null}
+                    {user.activation_pending ? <span className={`${css.badge} ${css.badgeLocked}`}>{t("invitation.pending")}</span> : null}
                   </div>
                 </div>
               </div>
               <div className={css.heroActions}>
-                {canWrite && (user.status === "active" || user.is_organization_root) ? <Link href={`/admin/users/${user.id}/edit`} className={css.heroButton}>{t("updateButton")}</Link> : null}
-                {canResetPassword && !user.is_organization_root ? <button type="button" className={css.heroButton} onClick={() => setResetOpen(true)}>{t("passwordReset.open")}</button> : null}
+                {canResetPassword && !user.is_organization_root ? <button type="button" className={css.heroButton} onClick={() => setResetOpen(true)}>{user.activation_pending ? t("invitation.resend") : t("passwordReset.open")}</button> : null}
                 {user.status === "active" && !user.is_organization_root && canLock ? <button className={css.heroButton} onClick={() => void handleStatusAction("lock")}>{t("actions.lock")}</button> : null}
                 {user.status === "locked" && !user.is_organization_root && canLock ? <button className={css.heroButton} onClick={() => void handleStatusAction("unlock")}>{t("actions.unlock")}</button> : null}
-                {user.status === "inactive" && !user.is_organization_root && canActivate ? <button className={css.heroButton} onClick={() => void handleStatusAction("activate")}>{t("actions.reactivate")}</button> : null}
+                {user.status === "inactive" && !user.archived_at && !user.is_organization_root && canActivate ? <button className={css.heroButton} onClick={() => void handleStatusAction("activate")}>{t("actions.reactivate")}</button> : null}
+                {user.status === "inactive" && !user.is_organization_root && (user.archived_at ? canActivate : canDeactivate) ? <button className={css.heroButton} disabled={isSubmitting} onClick={() => void archiveAccount()}>{t(user.archived_at ? "accountPolicy.restore" : "accountPolicy.archive")}</button> : null}
                 {user.status !== "inactive" && !user.is_organization_root && canDeactivate ? <button type="button" className={css.heroButtonDanger} disabled={isCheckingImpact} onClick={() => void handleDeactivateClick()}>{isCheckingImpact ? t("deactivation.impactLoading") : t("deactivateButton")}</button> : null}
               </div>
             </div>
@@ -358,14 +374,12 @@ export function AdminUserDetail() {
                 </dl>
               </section>
 
+              <section className={css.card}><h2>{t("accountPolicy.title")}</h2><p>{t("accountPolicy.ownerOnly")}</p><p>{t("accountPolicy.timezone")}: {user.timezone ?? "—"}</p>{user.archived_at ? <p>{t("accountPolicy.archived")}: {fmt.dateTime(user.archived_at)}</p> : null}{user.account_change_reason ? <p>{t("accountPolicy.reason")}: {user.account_change_reason}</p> : null}</section>
               <AdminUserRolesManager userId={user.id} userName={user.full_name} isOrganizationRoot={user.is_organization_root} assignedRoles={user.roles} onChanged={load} />
 
               <EffectiveAccessPanel userId={user.id} />
 
-              <section className={css.card}>
-                <header className={css.cardHeader}><div><h2 className={css.cardTitle}>{t("fields.permissions")}</h2><p className={css.cardSubtitle}>{user.is_organization_root ? t("rootHasAllPermissions") : t("overview.permissionsSubtitle")}</p></div></header>
-                {groupedPermissions.length ? <div className={css.permissions}>{groupedPermissions.map(([moduleKey, perms]) => <div className={css.permissionGroup} key={moduleKey}><p className={css.permissionTitle}>{moduleLabel(moduleKey)} <span className={css.count}>{perms.length}</span></p><div className={css.chips}>{perms.map((permission) => <span key={permission} className={css.chip}>{permission}</span>)}</div></div>)}</div> : <span>{t("noPermissions")}</span>}
-              </section>
+
             </div>
 
             <aside className={css.sideColumn}>
@@ -379,6 +393,15 @@ export function AdminUserDetail() {
                 </div>
                 {user.auto_locked_until && canLock && !user.is_organization_root ? <button style={{ ...sharedStyles.secondaryButton, marginTop: 18, width: "100%" }} onClick={() => void handleStatusAction("unlock")}>{t("loginProtection.clearLock")}</button> : null}
               </section>
+              {canLock && !user.is_organization_root ? <section className={css.card}>
+                <header className={css.cardHeader}><div><h2 className={css.cardTitle}>{t("sessions.title")}</h2><p className={css.cardSubtitle}>{t("sessions.subtitle")}</p></div></header>
+                {sessions === null ? <button type="button" style={{ ...sharedStyles.secondaryButton, width: "100%" }}
+                  onClick={() => void getAdminUserSessions(user.id).then(setSessions).catch(caught => setError(getApiErrorMessage(caught, messages)))}>{t("sessions.show")}</button>
+                  : sessions.length === 0 ? <p className={css.cardSubtitle}>{t("sessions.none")}</p>
+                  : <>{sessions.map(x => <div key={x.id} style={{ padding: "8px 0", borderTop: "1px solid var(--border)" }}>
+                      <strong>{x.device}</strong><div style={{ color: "var(--text-muted)", fontSize: 12 }}>{x.ip_address ?? "—"} · {t("sessions.since", { date: fmt.dateTime(x.started_at) })} · {t("sessions.lastActive", { date: fmt.dateTime(x.last_active_at) })}</div></div>)}
+                    <button type="button" style={{ ...sharedStyles.secondaryButton, marginTop: 12, width: "100%" }} onClick={() => void endSessions()}>{t("sessions.endAll")}</button></>}
+              </section> : null}
             </aside>
           </div>
           <Link href="/admin/users" className={css.back}>← {t("backToList")}</Link>

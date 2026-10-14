@@ -1,0 +1,211 @@
+{
+  "title": "Notifications",
+  "subtitle": "What concerns you: your access, your account, delegations, work waiting for you and messages from the administration.",
+  "bell": "Notifications",
+  "unreadCount": "{count, plural, =0 {No unread notifications} one {# unread notification} other {# unread notifications}}",
+  "markAllRead": "Mark all as read",
+  "viewAll": "View all notifications",
+  "empty": "Nothing here yet.",
+  "emptyUnread": "You are all caught up.",
+  "loading": "Loading…",
+  "error": "The notifications could not be loaded.",
+  "new": "New",
+  "done": "Dealt with",
+  "system": "The system",
+  "by": "by {name}",
+  "open": "Open",
+  "markRead": "Mark as read",
+  "filters": {
+    "all": "All",
+    "unread": "Unread",
+    "important": "Important",
+    "access": "Access",
+    "security": "Security",
+    "delegation": "Delegations",
+    "work": "Work",
+    "announcement": "Announcements"
+  },
+  "categories": {
+    "access": "Access and permissions",
+    "security": "Account security",
+    "delegation": "Delegations",
+    "work": "Work",
+    "announcement": "Announcement"
+  },
+  "severity": {
+    "info": "Normal",
+    "important": "Important",
+    "urgent": "Urgent"
+  },
+  "ack": {
+    "title": "Please read and confirm",
+    "subtitle": "{count, plural, one {An announcement requires} other {# announcements require}} your confirmation that you have read it.",
+    "from": "From {name}",
+    "confirm": "I have read it",
+    "confirmed": "Your confirmation was recorded."
+  },
+  "supplierStatus": {
+    "pending": "pending approval",
+    "approved": "approved",
+    "conditional": "conditionally approved",
+    "blocked": "blocked"
+  },
+  "events": {
+    "foundation": {
+      "role": {
+        "assigned": "{actor} gave you the role “{role}”.",
+        "removed": "{actor} removed the role “{role}” from you.",
+        "permissions_changed": "{actor} changed the permissions of your role “{role}”."
+      },
+      "user": {
+        "password_reset": "{actor} reset your password. If you did not ask for it, tell your administrator.",
+        "unlocked": "{actor} unlocked your account.",
+        "new_device": "New sign-in to your account from {device} ({ip}). Review My sessions.",
+        "session_limit": "{count} earlier session(s) ended: the limit is {limit} sessions.",
+        "sessions_ended": "{actor} ended your open sessions. Sign in again."
+      },
+      "delegation": {
+        "awaiting_manager": "{actor} asks to delegate “{permission}” of {delegator} to {delegate}, from {start} to {end}. It awaits your approval.",
+        "awaiting_holder": "{actor} proposes that {delegate} signs “{permission}” on your behalf, from {start} to {end}. It awaits your agreement.",
+        "approved": "{actor} approved the delegation of “{permission}” to {delegate}.",
+        "rejected": "{actor} rejected the delegation of “{permission}” to {delegate}.",
+        "granted": "You may now sign “{permission}” on behalf of {delegator}, from {start} to {end}.",
+        "revoked": "{actor} revoked the delegation of “{permission}” from {delegator} to {delegate}."
+      },
+      "activity_archive": {
+        "ready": "The activity log of {month} ({rows} entries) is past its retention. Download its archive, then delete it; it is deleted automatically on {delete_on}.",
+        "reminder": "Reminder: the activity log of {month} will be deleted automatically on {delete_on}. Download its archive before if you need it.",
+        "deleted": "The activity log of {month} ({rows} entries) was deleted automatically after its archiving period."
+      }
+    },
+    "commercial": {
+      "complaint": {
+        "assigned": "{actor} assigned complaint {number} to you, due {due}.",
+        "close_requested": "Complaint {number} awaits your approval to close (requested by {actor}).",
+        "closed": "{actor} approved the closing of complaint {number}.",
+        "reopened": "{actor} reopened complaint {number}.",
+        "returned": "{actor} returned complaint {number} for more work instead of closing it."
+      },
+      "follow_up": {
+        "assigned": "{actor} assigned you a follow-up: {reason} (due {due})."
+      }
+    },
+    "procurement": {
+      "purchase_order": {
+        "awaiting_approval": "Purchase order {number} ({supplier}) awaits your approval. Prepared by {actor}.",
+        "approved": "{actor} approved purchase order {number}.",
+        "cancelled": "{actor} cancelled purchase order {number}."
+      },
+      "supplier": {
+        "awaiting_approval": "The new supplier {name} ({code}) awaits approval. Added by {actor}.",
+        "status_changed": "{actor} set supplier {name} as {status}."
+      }
+    },
+    "quality": {
+      "ncr": {
+        "assigned": "{actor} made you responsible for non-conformance report {number}: {title}.",
+        "awaiting_verification": "Non-conformance report {number} awaits the verification of its actions. Submitted by {actor}.",
+        "closed": "{actor} verified and closed non-conformance report {number}.",
+        "not_effective": "{actor} found the actions of report {number} not effective: back to the corrective actions."
+      },
+      "ncr_action": {
+        "assigned": "{actor} assigned you a corrective action on report {number}: {action} (due {due})."
+      },
+      "rejection": {
+        "awaiting_decision": "Rejection {number} ({quantity} {unit}) awaits your decision. Recorded by {actor}.",
+        "awaiting_execution": "{actor} decided rejection {number}: it awaits execution."
+      }
+    },
+    "shipping": {
+      "return": {
+        "awaiting_approval": "Customer return {number} ({customer}) awaits your approval. Registered by {actor}.",
+        "awaiting_receipt": "{actor} approved customer return {number} ({customer}): expect the goods back.",
+        "approved": "{actor} approved customer return {number}.",
+        "rejected": "{actor} rejected customer return {number}."
+      }
+    },
+    "production": {
+      "order": {
+        "awaiting_release": "Production order {number} awaits release. Created by {actor}.",
+        "awaiting_close": "Production order {number} is completed and awaits closing."
+      }
+    },
+    "notifications": {
+      "announcement": {
+        "published": "{title}"
+      }
+    }
+  },
+  "announcements": {
+    "title": "Announcements",
+    "subtitle": "Messages to named users, a role's members or the whole organization, and who has read and acknowledged them.",
+    "new": "New announcement",
+    "newSubtitle": "Write a clear message. Choose who receives it and whether they must confirm they have read it.",
+    "backToList": "Back to the list",
+    "search": "Search",
+    "searchPlaceholder": "Search the title or the text…",
+    "empty": "No announcements yet.",
+    "loading": "Loading…",
+    "fields": {
+      "title": "Title",
+      "body": "Message",
+      "severity": "Importance",
+      "audience": "Send to",
+      "users": "Users",
+      "role": "Role",
+      "requiresAck": "The readers must confirm they have read it",
+      "expiresAt": "Shown until (optional)"
+    },
+    "audience": {
+      "users": "Named users",
+      "role": "A role's members",
+      "everyone": "Everyone in the organization"
+    },
+    "choose": "Choose",
+    "send": "Send the announcement",
+    "cancel": "Back",
+    "columns": {
+      "title": "Title",
+      "audience": "Sent to",
+      "severity": "Importance",
+      "sent": "Sent",
+      "read": "Read",
+      "ack": "Acknowledged",
+      "state": "State"
+    },
+    "state": {
+      "live": "Shown",
+      "expired": "Expired",
+      "withdrawn": "Withdrawn"
+    },
+    "everyone": "Everyone",
+    "usersCount": "{count, plural, one {# user} other {# users}}",
+    "readOf": "{done} of {total}",
+    "author": "Sent by {name} on {date}",
+    "withdrawnBy": "Withdrawn by {name} on {date}",
+    "receipts": "Readers",
+    "receiptColumns": {
+      "name": "User",
+      "read": "Read",
+      "ack": "Acknowledged"
+    },
+    "notYet": "Not yet",
+    "withdraw": "Withdraw",
+    "confirmWithdraw": "Withdraw this announcement? Nobody will see it any more.",
+    "sent": "The announcement was sent to {count, plural, one {# person} other {# people}}.",
+    "withdrawn": "The announcement was withdrawn.",
+    "errors": {
+      "generic": "The announcement could not be sent. Check the fields.",
+      "ANNOUNCEMENT_NO_AUDIENCE": "Choose who receives it.",
+      "ANNOUNCEMENT_NO_RECIPIENTS": "Nobody active would receive it.",
+      "ANNOUNCEMENT_EMPTY": "Write the title and the message.",
+      "ANNOUNCEMENT_EXPIRY_PAST": "The end date must be in the future.",
+      "ANNOUNCEMENT_FORBIDDEN": "You cannot withdraw this announcement."
+    },
+    "allStates": "All states"
+  },
+  "hide": "Hide",
+  "hideRead": "Hide all read",
+  "hidden": "Hidden.",
+  "needsAck": "Confirm you have read this announcement first."
+}

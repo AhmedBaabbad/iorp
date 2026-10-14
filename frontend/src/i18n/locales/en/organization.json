@@ -13,7 +13,9 @@
     "status": "Status",
     "logo": "Organization Logo",
     "createdAt": "Created At",
-    "updatedAt": "Last Updated"
+    "updatedAt": "Last Updated",
+    "maxSessions": "Devices per user",
+    "maxSessionsHint": "Signing in on one more device ends the user's oldest session (default two: computer and phone)."
   },
   "codeImmutable": "Organization code is permanent and cannot be changed",
   "statusManagedByPlatform": "Organization status is managed by platform administration",

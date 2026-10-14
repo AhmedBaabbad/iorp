@@ -218,7 +218,13 @@
     "INCOTERM_UNKNOWN": "شروط تسليم غير معروفة.",
     "PAYMENT_TERMS_UNKNOWN": "شروط دفع غير معروفة.",
     "UNIT_PRICE_INVALID": "السطر {line} يحتاج سعر وحدة.",
-    "TOTAL_REQUIRED": "يجب أن يكون إجمالي الأمر أكبر من الصفر."
+    "TOTAL_REQUIRED": "يجب أن يكون إجمالي الأمر أكبر من الصفر.",
+    "APPROVER_IS_PREPARER": "من أعدّ أمر الشراء لا يعتمده: يعتمده شخص آخر.",
+    "APPROVAL_AUTHORITY_REQUIRED": "لا تملك صلاحية الاعتماد، مباشرة أو بتفويض ساري.",
+    "DRIVER_AFFILIATION_REQUIRED": "حدد صفة السائق: داخلي يعمل لدينا أو خارجي.",
+    "TRANSPORT_RECORD_UNAVAILABLE": "السائق أو المركبة أو شركة النقل غير متاحة للاختيار.",
+    "CUSTOMER_DELIVERY_RECORD_UNAVAILABLE": "موقع التسليم أو جهة الاتصال غير متاح لهذا العميل.",
+    "SUPPLIER_CONTACT_UNAVAILABLE": "جهة الاتصال غير متاحة لهذا المورد."
   },
   "lotStatuses": {
     "not_required": "لا تُفحص",

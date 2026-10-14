@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session
 
 _log = logging.getLogger(__name__)
 
+from app.production.application import notices
 from app.core.pagination import paginate
 from app.core.tenancy import TenantContext
-from app.core.utils import utc_now
 from app.production.api.schemas import (
     ProductionOrderItemCreate,
     ProductionOrderItemUpdate,
@@ -334,17 +334,8 @@ class ProductionOrderService:
         self.work_centers = WorkCenterRepository(db)
 
     def _generate_production_order_number(self, tenant: TenantContext) -> str:
-        year = utc_now().year
-        sequence = self.production_orders.count_by_organization(tenant.organization_id) + 1
-        while True:
-            production_order_number = f"PO-{year}{sequence:04d}"
-            existing = self.production_orders.get_by_number(
-                tenant.organization_id,
-                production_order_number,
-            )
-            if existing is None:
-                return production_order_number
-            sequence += 1
+        from app.production.application.order_numbers import next_order_number
+        return next_order_number(self.db, tenant.organization_id)
 
     def create_production_order(
         self,
@@ -381,6 +372,7 @@ class ProductionOrderService:
 
         try:
             self.production_orders.add(production_order)
+            notices.order_awaits_release(self.db, tenant, production_order)
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()

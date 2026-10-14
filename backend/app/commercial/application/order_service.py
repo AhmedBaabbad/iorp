@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.interfaces import approvals
 from app.commercial.application import status_history
 from app.commercial.application.product_rules import assert_known_products
 from app.commercial.api.schemas import (
@@ -19,6 +20,7 @@ from app.commercial.api.schemas import (
     CommercialOrderUpdate,
     OrderDeletionImpact,
 )
+from app.commercial.domain import pricing
 from app.commercial.domain import lifecycle as L
 from app.commercial.domain.enums import CommercialOrderStatus, QuoteStatus
 from app.commercial.infrastructure.models import CommercialOrder, CommercialOrderItem, Quote
@@ -32,6 +34,7 @@ from app.core.interfaces import product_catalog, sales_order_source
 from app.core.tenancy import TenantContext
 from app.core.units import UNITS
 from app.core.utils import utc_now
+from app.core import numbering
 
 CURRENCIES = ("SAR", "USD")
 
@@ -62,7 +65,7 @@ class OrderService:
                 unit=item.unit,
                 agreed_unit_price=item.agreed_unit_price,
                 line_total=(
-                    item.quantity * item.agreed_unit_price
+                    pricing.line_total(item.quantity, item.agreed_unit_price)
                     if item.agreed_unit_price is not None
                     else None
                 ),
@@ -71,7 +74,7 @@ class OrderService:
         ]
 
     def _generate_order_number(self, tenant: TenantContext) -> str:
-        year = utc_now().year
+        year = numbering.organization_year(self.db, tenant.organization_id)
         highest_sequence = self.orders.get_highest_order_number_sequence(tenant.organization_id, year)
         self.orders.ensure_code_counter(tenant.organization_id, year, highest_sequence)
         counter = self.orders.get_code_counter_for_update(tenant.organization_id, year)
@@ -180,15 +183,19 @@ class OrderService:
         if quote.status != QuoteStatus.ACCEPTED:
             raise ValueError("ORDER_QUOTE_NOT_ACCEPTED")
         self._assert_quote_free(tenant, quote.id)
+        lines = sorted(quote.items, key=lambda i: i.line_no)
+        # The price the customer accepted: after each line's discount (domain/pricing.py).
         items = [CommercialOrderItemCreate(line_no=i.line_no, product_type=i.product_type, requested_spec_json=i.requested_spec_json,
-                                           quantity=i.quantity, unit=i.unit, agreed_unit_price=i.unit_price)
-                 for i in sorted(quote.items, key=lambda i: i.line_no)]
+                                           quantity=i.quantity, unit=i.unit, agreed_unit_price=pricing.net_unit_price(i.unit_price, i.discount_percent))
+                 for i in lines]
         order = CommercialOrder(
             organization_id=tenant.organization_id, customer_id=quote.customer_id, quote_id=quote.id,
             order_number=self._generate_order_number(tenant), created_by_user_id=tenant.user_id,
             status=CommercialOrderStatus.DRAFT, order_date=utc_now(), currency=quote.currency,
             items=self._build_order_items(items),
         )
+        for line, source in zip(order.items, lines):
+            line.line_total = source.net_total  # exactly the quotation's line after discount
         self.orders.add(order)
         self.db.flush()
         status_history.record(self.db, tenant.organization_id, status_history.SALES_ORDER, order.id, "create", None,
@@ -303,7 +310,10 @@ class OrderService:
         quote = self.quotes.get_by_id(tenant.organization_id, order.quote_id) if order.quote_id else None
         L.assert_can_confirm(len(order.items), quote.status if quote is not None else None, order.customer_reference,
                              any(i.agreed_unit_price is not None for i in order.items), order.currency)
+        if order.created_by_user_id == tenant.user_id and not tenant.is_organization_root:
+            raise ValueError("ORDER_CONFIRMER_IS_PREPARER")  # separation of duties (the organization's root excepted)
         order.confirmed_at, order.confirmed_by_user_id = utc_now(), tenant.user_id
+        approvals.sign(self.db, tenant, "sales_order", order.id, "confirm", "commercial:orders:confirm")
         return self._transition(tenant, order, "confirm", CommercialOrderStatus.CONFIRMED)
 
     def revise(self, tenant: TenantContext, order_id: UUID, reason: str) -> CommercialOrder | None:

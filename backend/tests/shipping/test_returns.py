@@ -11,13 +11,15 @@ from app.shipping.domain import permissions as S
 from tests.shipping.test_shipments import ROOT, code, go, ship  # noqa: F401 - the shared fixture
 
 RETURNS = "/api/v1/shipping/returns"
-PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+from tests.file_samples import pdf, png
+
+PNG = png()
 
 
 def two_lines(env, **over):
     return env.create(lines=[dict(description="PP Strap 5 mm", width_mm="5", thickness_mm="0.35", quantity="100", unit="roll", weight="1000"),
                              dict(description="PP Strap 15 mm", width_mm="15", thickness_mm="0.85", quantity="40", unit="roll", weight="0.4",
-                                  weight_unit="ton")], driver_name="Saleh", vehicle_plate="ABC 1234", **over)
+                                  weight_unit="ton")], driver_affiliation="external", driver_name="Saleh", vehicle_plate="ABC 1234", **over)
 
 
 def on_the_road(env, **over):
@@ -75,7 +77,7 @@ def test_a_failed_delivery_comes_back_and_sets_out_again_under_the_same_number(s
     assert r.status_code == 409 and code(r) == "RETURN_NOT_RECEIVED"
     assert receive(ship, ret).status_code == 200
     assert set(ship.client.get(f"{ROOT}/{s['id']}").json()["actions"]) == {"reschedule", "close"}
-    again = go(ship, s, "reschedule", driver_name="Fahad", vehicle_plate="XYZ 9", shipment_date="2026-10-06").json()
+    again = go(ship, s, "reschedule", driver_affiliation="external", driver_name="Fahad", vehicle_plate="XYZ 9", shipment_date="2026-10-06").json()
     assert again["status"] == "ready" and again["attempt"] == 2 and again["shipment_no"] == s["shipment_no"]
     assert again["driver_name"] == "Fahad" and again["dispatched_at"] is None and set(again["actions"]) == {"dispatch", "close"}
     assert code(go(ship, s, "reopen")) == "SHIPMENT_LEFT_BEFORE"  # its lines stay as dispatched
@@ -95,7 +97,7 @@ def test_a_returned_note_is_closed_as_not_delivered(ship):
 
 
 def test_a_pickup_is_not_delivered_in_part(ship):
-    s = ship.create(delivery_method="pickup", driver_name="Customer driver", vehicle_plate="P 1")
+    s = ship.create(delivery_method="pickup", driver_affiliation="external", driver_name="Customer driver", vehicle_plate="P 1")
     go(ship, s, "ready")
     r = go(ship, s, "deliver", received_by_name="Ali", refusal_reason="customer_refused",
            lines=[dict(line_id=s["lines"][0]["id"], delivered_quantity="10")])
@@ -226,14 +228,17 @@ def test_the_signed_note_is_kept_as_proof_of_delivery(ship, uploads):
     r = upload(b"MZ executable", "virus.png")
     assert r.status_code == 400 and code(r) == "FILE_UNSUPPORTED_TYPE"
     [item] = upload(PNG).json()
-    assert item["kind"] == "proof_of_delivery" and item["content_type"] == "image/png" and item["uploaded_by_name"] == "Test User"
-    upload(b"%PDF-1.7 signed note", "signed.pdf")
+    assert item["kind"] == "proof_of_delivery" and item["content_type"] == "image/webp" and item["uploaded_by_name"] == "Test User"
+    upload(pdf(), "signed.pdf")
     files = ship.client.get(f"{ROOT}/{s['id']}").json()["attachments"]
-    assert [f["content_type"] for f in files] == ["image/png", "application/pdf"]
+    assert [f["content_type"] for f in files] == ["image/webp", "application/pdf"]  # photos are stored small (WebP)
     got = ship.client.get(f"{ROOT}/{s['id']}/attachments/{item['id']}")
-    assert got.status_code == 200 and got.content == PNG
-    assert len(ship.client.delete(f"{ROOT}/{s['id']}/attachments/{item['id']}").json()) == 1
-    assert not list(uploads.rglob("*.png"))
+    assert got.status_code == 200 and got.content.startswith(b"RIFF")  # stored small, as WebP
+    # The shipment is delivered: its proof is part of the record, so "remove" archives it and the file stays.
+    kept = ship.client.delete(f"{ROOT}/{s['id']}/attachments/{item['id']}").json()
+    assert len(kept) == 2 and next(f for f in kept if f["id"] == item["id"])["archived_at"]
+    assert ship.client.get(f"{ROOT}/{s['id']}/attachments/{item['id']}").status_code == 200
+    assert not list(uploads.rglob("*.png"))  # nothing is stored under the user's file name or type
     ship.ctx.auth_user.permissions.discard(S.SHIPMENTS_DELIVER)
     assert upload(PNG).status_code == 403
 

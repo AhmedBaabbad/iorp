@@ -17,6 +17,8 @@ import { sharedStyles } from "@/styles/shared-styles";
 import type { CustomerDeletionImpact, CustomerDetail, SalesOwnerSummary } from "@/types/customers";
 import { deleteCustomer, getCustomer, getCustomerDeletionImpact } from "./customer-api";
 import { CustomerReportButtons } from "@/features/reports/CustomerReportButtons";
+import { PermissionGuard } from "@/components/PermissionGuard";
+import { CustomerDirectory } from "@/features/reference-directory/DirectoryPanel";
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth";
 import { useListName } from "@/features/masterdata";
@@ -239,7 +241,7 @@ export function CustomerDetailPage() {
         </div>
       }
     >
-      {customer && <CustomerReportButtons customerId={customer.id} />}
+      {customer && <><CustomerReportButtons customerId={customer.id} /><PermissionGuard code="commercial:complaints:read"><Link href={`/complaints?customer_id=${customer.id}`}>{t("complaints")}</Link></PermissionGuard></>}
       {isConfirmPhase && deleteImpact ? (
         <div style={styles.overlay} role="dialog" aria-modal="true">
           <div style={styles.modal}>
@@ -381,7 +383,7 @@ export function CustomerDetailPage() {
             <DetailItem label={t("fields.notes")} value={customer.notes} />
           </section>
 
-          <CustomerInteractionsSection customerId={customer.id} />
+          <CustomerDirectory id={customer.id}/><CustomerInteractionsSection customerId={customer.id} />
           <CustomerFollowUpsSection
             customerId={customer.id}
             customerSalesOwnerId={customer.sales_owner_user_id}

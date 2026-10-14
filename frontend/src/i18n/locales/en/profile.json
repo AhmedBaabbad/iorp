@@ -5,9 +5,27 @@
   "identitySection": "Account Information",
   "profileSection": "Personal Details",
   "securitySection": "Security",
-  "fields": { "fullName": "Full Name", "email": "Email", "phone": "Phone", "preferredLocale": "Preferred Language", "organization": "Organization", "role": "Role", "status": "Status", "memberSince": "Member Since", "lastLogin": "Last Login" },
-  "localeOptions": { "ar": "Arabic", "en": "English", "default": "Default (Organization)" },
-  "statuses": { "active": "Active", "inactive": "Inactive", "locked": "Locked" },
+  "fields": {
+    "fullName": "Full Name",
+    "email": "Email",
+    "phone": "Phone",
+    "preferredLocale": "Preferred Language",
+    "organization": "Organization",
+    "role": "Role",
+    "status": "Status",
+    "memberSince": "Member Since",
+    "lastLogin": "Last Login"
+  },
+  "localeOptions": {
+    "ar": "Arabic",
+    "en": "English",
+    "default": "Default (Organization)"
+  },
+  "statuses": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "locked": "Locked"
+  },
   "saveButton": "Save Changes",
   "saving": "Saving...",
   "updateSuccess": "Profile updated successfully",
@@ -15,7 +33,7 @@
   "changePassword": "Change Password",
   "activeSession": "Active Session",
   "rootNameLocked": "Name cannot be modified for Root account",
-  "emailReadOnly": "Email cannot be changed",
+  "emailReadOnly": "Use the verified email change section to change this address.",
   "identityReadOnlyNote": "This information is managed by your organization administrator",
   "localeChangeNote": "The new language will be applied immediately after saving",
   "rootRole": "Organization Root",
@@ -29,5 +47,35 @@
   "securityTitle": "Your account is protected",
   "securityDescription": "Keep your password private and update it regularly to maintain account security.",
   "sessionProtected": "Protected and verified",
-  "languagePreference": "Interface language"
+  "languagePreference": "Interface language",
+  "timezone": "Time zone (optional)",
+  "emailChange": {
+    "title": "Change sign-in email",
+    "hint": "Your current password and both mailboxes are required. Codes expire after 15 minutes. Sign in again after the change.",
+    "email": "New email",
+    "password": "Current password",
+    "sent": "A code was sent to each mailbox. Paste each code in its corresponding field.",
+    "oldCode": "Current mailbox code",
+    "newCode": "New mailbox code",
+    "error": "Unable to complete the request. Check your details and code validity, then try again.",
+    "confirm": "Confirm and sign out",
+    "request": "Send verification codes",
+    "restart": "Start a new request",
+    "rootProtected": "This is the organization root account. Its identity email is protected by the current system policy and cannot be changed here or by another administrator. Regular administrator accounts can use both-mailbox verification.",
+    "errors": {
+      "ACCOUNT_UNAVAILABLE": "This account is unavailable for this operation.",
+      "ROOT_IDENTITY_PROTECTED": "Root identity cannot be changed here.",
+      "CURRENT_PASSWORD_INCORRECT": "The current password is incorrect. Enter your system sign-in password, not your mailbox password.",
+      "EMAIL_UNCHANGED": "The new email matches your current email. This flow changes your email; it does not verify the current address.",
+      "EMAIL_UNAVAILABLE": "This address cannot be used. Choose another address not linked to an account.",
+      "EMAIL_DELIVERY_FAILED": "Delivery to one of the mailboxes failed. Your email is unchanged; check server SMTP settings and delivery logs.",
+      "EMAIL_CHANGE_EXPIRED": "The verification request has expired or is missing. Start a new request.",
+      "EMAIL_CHANGE_CODES_INVALID": "One of the codes is incorrect. Paste each mailbox code into its corresponding field.",
+      "RATE_LIMIT_EXCEEDED": "Too many attempts. Wait 15 minutes before retrying.",
+      "INVALID_INPUT": "Check the email format and password, or both complete 32-character codes.",
+      "SERVICE_UNAVAILABLE": "The email change service is unavailable. Restart the updated backend.",
+      "SERVER_ERROR": "A server error occurred. Check backend logs and database migrations.",
+      "NETWORK_ERROR": "Cannot reach the server. Check the backend and your connection."
+    }
+  }
 }

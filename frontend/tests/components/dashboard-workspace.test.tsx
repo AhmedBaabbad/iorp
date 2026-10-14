@@ -66,3 +66,10 @@ it('shows a localized Arabic department and a recoverable load error', async () 
   await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
   expect(screen.getByText('الفحوص المكتملة')).toBeTruthy();
 });
+
+it.each(['ar','en'])('localizes units in breakdowns and rankings in %s',async locale=>{
+ api.get.mockResolvedValue({...board,breakdowns:[{key:'test',style:'bar',unit:'roll',items:[{key:'machine',label:'Machine_PP',value:'185'}]}],rankings:[{key:'test',unit:'roll',items:[{label:'Stretch Film',value:'113'}]}]});
+ render(ui(locale as 'ar'|'en','quality'));
+ expect(await screen.findByText(locale==='ar'?'185 لفة':'185 roll')).toBeTruthy();
+ expect(screen.getByText(locale==='ar'?'113 لفة':'113 roll')).toBeTruthy();
+});

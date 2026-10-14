@@ -1,7 +1,8 @@
 "use client";
 
+import { TransportSelection, DriverAffiliation, type TransportValues } from "@/features/reference-directory/DirectorySelect";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { UnitSelect } from "@/components/forms/UnitSelect";
@@ -19,8 +20,9 @@ import { DECIMAL, shippingErrorMessage, todayIso } from "../shipping-errors";
 import { DELIVERY_METHODS, DELIVERY_REASONS, type DeliveryMethod, type DeliveryReason, type Shipment } from "../types";
 import { Attachments } from "./Attachments";
 import { ReturnStatusBadge, ShipmentStatusBadge } from "./ShipmentStatusBadge";
-import { useListName } from "@/features/masterdata";
+import { ListSelect, useListName } from "@/features/masterdata";
 
+import { joinList } from "@/lib/utils";
 function Item({ label, children }: { label: string; children: ReactNode }) {
   return <div><dt className={s.muted}>{label}</dt><dd style={{ margin: "4px 0 0", overflowWrap: "anywhere" }}>{children}</dd></div>;
 }
@@ -36,7 +38,9 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
   const messages = useTranslations("messages");
   const fmt = useFormatter();
   const units = useTranslations("common.units.units");
+  const locale = useLocale();
   const cityName = useListName("city");  // MD-002: the name, not the key
+  const vehicleTypeName = useListName("vehicle_type");  // MD-003
   // Units are codes from the shared catalogue, shown in the screen's language (older free text as written).
   const unit = (code: string) => (units.has(code) ? units(code) : code);
   const canAttach = usePermission(S.SHIPMENTS_DELIVER);
@@ -63,7 +67,7 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
   const pickup = x.delivery_method === "pickup";
   const label = (key: string) => t(`fields.${key}`);
   const kg = (value: string | null) => (value ? fmt.quantity(value, unit("kg")) : "—");
-  const numbers = (list: Shipment["returns"]) => list.map(r => r.return_no).join("، ");
+  const numbers = (list: Shipment["returns"]) => joinList(list.map(r => r.return_no), locale);
   const coming = x.returns.filter(r => r.kind === "delivery" && r.status === "approved");
   const atDoor = x.returns.filter(r => r.kind === "delivery" && r.attempt === x.attempt);
   const received = x.status === "delivered" || x.status === "partially_delivered";
@@ -73,7 +77,7 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
 
   return <PageFrame title={x.shipment_no} subtitle={`${x.customer_name} — ${t(`methods.${x.delivery_method}`)}`} action={back}>
     {x.status === "draft" && x.missing_details.length > 0 && <p role="status" className={s.muted}>
-      {t("missingHint", { fields: x.missing_details.map(label).join("، ") })}</p>}
+      {t("missingHint", { fields: joinList(x.missing_details.map(label), locale) })}</p>}
     {x.status === "cancelled" && <p role="status" className={s.error}>{t("cancelledHint", { reason: x.cancel_reason ?? "" })}</p>}
     {x.status === "returned" && <p role="status" className={s.error}>{coming.length ? t("returningHint", { numbers: numbers(coming) }) : t("backHint")}</p>}
     {x.status === "not_delivered" && <p role="status" className={s.error}>{t("notDeliveredHint", { reason: x.close_reason ?? "" })}</p>}
@@ -120,11 +124,11 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
           <Item label={label("carrier_name")}>{x.carrier_name ?? "—"}</Item>
           <Item label={label("tracking_no")}><bdi dir="ltr">{x.tracking_no ?? "—"}</bdi></Item>
         </> : <>
-          <Item label={pickup ? label("collector_name") : label("driver_name")}>{x.driver_name ?? "—"}</Item>
+          <Item label={pickup ? label("collector_name") : label("driver_name")}>{x.driver_name ?? "—"} — <DriverAffiliation value={x.driver_affiliation}/></Item>
           <Item label={label("driver_phone")}><bdi dir="ltr">{x.driver_phone ?? "—"}</bdi></Item>
           {pickup && <Item label={label("driver_id_no")}><bdi dir="ltr">{x.driver_id_no ?? "—"}</bdi></Item>}
           <Item label={label("vehicle_plate")}><bdi>{x.vehicle_plate ?? "—"}</bdi></Item>
-          <Item label={label("vehicle_type")}>{x.vehicle_type ?? "—"}</Item>
+          <Item label={label("vehicle_type")}>{vehicleTypeName(x.vehicle_type)}</Item>
         </>}
         <Item label={label("dispatched_at")}>{x.dispatched_at ? `${fmt.dateTime(x.dispatched_at)} — ${x.dispatched_by_name ?? ""}` : "—"}</Item>
         <Item label={label("received_by_name")}>{x.received_by_name ? `${x.received_by_name} — ${fmt.dateTime(x.delivered_at!)}` : "—"}</Item>
@@ -238,6 +242,7 @@ function DeliverDialog({ shipment, busy, onClose, onConfirm }: { shipment: Shipm
   const t = useTranslations("shipping");
   const fmt = useFormatter();
   const units = useTranslations("common.units.units");
+  const locale = useLocale();
   const unit = (code: string) => (units.has(code) ? units(code) : code);
   const pickup = shipment.delivery_method === "pickup";
   const [name, setName] = useState(pickup ? shipment.driver_name ?? "" : shipment.consignee_name ?? "");
@@ -272,7 +277,7 @@ function DeliverDialog({ shipment, busy, onClose, onConfirm }: { shipment: Shipm
     </fieldset>}
     {short.length > 0 && <>
       <p role="status" className={s.error} style={{ margin: 0 }}>{t("deliverDialog.partial", {
-        items: short.map(l => `${l.line_no}: ${fmt.quantity(String(Number(l.quantity) - Number(taken[l.id])), unit(l.unit))}`).join("، ") })}</p>
+        items: joinList(short.map(l => `${l.line_no}: ${fmt.quantity(String(Number(l.quantity) - Number(taken[l.id])), unit(l.unit))}`), locale) })}</p>
       <label className={s.field}>{t("deliverDialog.refusalReason")}
         <select required value={reason} disabled={busy} onChange={e => setReason(e.target.value as DeliveryReason)}>
           <option value="">—</option>{DELIVERY_REASONS.map(r => <option key={r} value={r}>{t(`returns.reasons.${r}`)}</option>)}
@@ -316,6 +321,7 @@ type Transport = Required<{ [K in keyof RescheduleBody]: string }>;
 
 function RescheduleDialog({ shipment, busy, onClose, onConfirm }: { shipment: Shipment; busy: boolean; onClose: () => void; onConfirm: (body: RescheduleBody) => void }) {
   const t = useTranslations("shipping");
+  const [transport,setTransport]=useState<TransportValues>({driver_id:shipment.driver_id,vehicle_id:shipment.vehicle_id,carrier_id:shipment.carrier_id,driver_affiliation:shipment.driver_affiliation});
   const [v, setV] = useState<Transport>({
     delivery_method: shipment.delivery_method, shipment_date: todayIso(), driver_name: shipment.driver_name ?? "", driver_phone: shipment.driver_phone ?? "",
     driver_id_no: shipment.driver_id_no ?? "", vehicle_plate: shipment.vehicle_plate ?? "", vehicle_type: shipment.vehicle_type ?? "",
@@ -323,16 +329,16 @@ function RescheduleDialog({ shipment, busy, onClose, onConfirm }: { shipment: Sh
   });
   const set = (field: keyof Transport, value: string) => setV(old => ({ ...old, [field]: value }));
   const method = v.delivery_method as DeliveryMethod;
-  const ok = Boolean(v.shipment_date) && (method === "carrier" ? Boolean(v.carrier_name.trim()) : Boolean(v.driver_name.trim() && v.vehicle_plate.trim()));
+  const ok = Boolean(v.shipment_date) && (method === "carrier" ? Boolean(transport.carrier_id || v.carrier_name.trim()) : Boolean((transport.driver_id || v.driver_name.trim()) && (transport.vehicle_id || v.vehicle_plate.trim())));
   const input = (field: keyof Transport, text: string, extra: Record<string, unknown> = {}) =>
     <label className={s.field}>{text}<input value={v[field]} disabled={busy} onChange={e => set(field, e.target.value)} {...extra} /></label>;
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!ok || busy) return;
-    onConfirm(Object.fromEntries(Object.entries(v).map(([k, value]) => [k, value.trim() || null])) as RescheduleBody);
+    onConfirm({...Object.fromEntries(Object.entries(v).map(([k, value]) => [k, value.trim() || null])),...transport} as RescheduleBody);
   }
   return <Modal title={t("rescheduleDialog.title")} busy={busy} onClose={onClose} onSubmit={submit}>
-    <p className={s.muted} style={{ margin: 0 }}>{t("rescheduleDialog.text", { n: String(shipment.attempt + 1) })}</p>
+    <p className={s.muted} style={{ margin: 0 }}>{t("rescheduleDialog.text", { n: String(shipment.attempt + 1) })}</p><TransportSelection value={transport} onChange={setTransport} carrier={method==="carrier"}/>
     <div className={s.grid}>
       <label className={s.field}>{t("fields.date")}<input type="date" required value={v.shipment_date} disabled={busy} onChange={e => set("shipment_date", e.target.value)} /></label>
       <label className={s.field}>{t("fields.method")}
@@ -340,14 +346,15 @@ function RescheduleDialog({ shipment, busy, onClose, onConfirm }: { shipment: Sh
           {DELIVERY_METHODS.map(m => <option key={m} value={m}>{t(`methods.${m}`)}</option>)}
         </select></label>
       {method === "carrier" ? <>
-        {input("carrier_name", t("fields.carrier_name"), { maxLength: 200, required: true })}
+        {input("carrier_name", t("fields.carrier_name"), { maxLength: 200, required: !transport.carrier_id, disabled:!!transport.carrier_id })}
         {input("tracking_no", t("fields.tracking_no"), { maxLength: 80, dir: "ltr" })}
       </> : <>
-        {input("driver_name", method === "pickup" ? t("fields.collector_name") : t("fields.driver_name"), { maxLength: 200, required: true })}
+        {input("driver_name", method === "pickup" ? t("fields.collector_name") : t("fields.driver_name"), { maxLength: 200, required: !transport.driver_id, disabled:!!transport.driver_id })}
         {input("driver_phone", t("fields.driver_phone"), { maxLength: 30, dir: "ltr", inputMode: "tel" })}
         {method === "pickup" && input("driver_id_no", t("fields.driver_id_no"), { maxLength: 40, dir: "ltr" })}
-        {input("vehicle_plate", t("fields.vehicle_plate"), { maxLength: 40, required: true })}
-        {input("vehicle_type", t("fields.vehicle_type"), { maxLength: 80 })}
+        {input("vehicle_plate", t("fields.vehicle_plate"), { maxLength: 40, required: !transport.vehicle_id, disabled:!!transport.vehicle_id })}
+        <label className={s.field}>{t("fields.vehicle_type")}
+          <ListSelect list="vehicle_type" value={v.vehicle_type} disabled={busy} ariaLabel={t("fields.vehicle_type")} onChange={key => set("vehicle_type", key)} /></label>
       </>}
     </div>
     <div className={s.actions}>

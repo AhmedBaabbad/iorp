@@ -235,11 +235,18 @@
     "RETURN_IS_FINAL": "The return is final.",
     "TOO_MANY_FILES": "At most {limit} files.",
     "FILE_EMPTY": "The file is empty.",
-    "FILE_TOO_LARGE": "The file is larger than 10 MB.",
+    "FILE_TOO_LARGE": "The file is larger than allowed.",
     "FILE_UNSUPPORTED_TYPE": "Only images (PNG, JPEG, WebP) and PDF files.",
     "FILE_INVALID_PATH": "The file could not be saved.",
     "ATTACHMENT_KIND_UNKNOWN": "Choose the file type from the list.",
-    "ATTACHMENT_NOT_FOUND": "The file was not found."
+    "ATTACHMENT_NOT_FOUND": "The file was not found.",
+    "FILE_QUOTA_EXCEEDED": "The organization's storage is full: the file was not uploaded.",
+    "FILE_INVALID_IMAGE": "The image could not be read.",
+    "FILE_INVALID_PDF": "The PDF file is incomplete or damaged.",
+    "DRIVER_AFFILIATION_REQUIRED": "Choose whether the driver is an internal employee or external.",
+    "TRANSPORT_RECORD_UNAVAILABLE": "The selected driver, vehicle or carrier is unavailable.",
+    "CUSTOMER_DELIVERY_RECORD_UNAVAILABLE": "The selected delivery site or contact is unavailable for this customer.",
+    "SUPPLIER_CONTACT_UNAVAILABLE": "The selected contact is unavailable for this supplier."
   },
   "productionOrder": {
     "none": "Not linked",

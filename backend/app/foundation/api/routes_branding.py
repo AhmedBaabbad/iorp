@@ -2,6 +2,7 @@ import base64
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Response
 from sqlalchemy.orm import Session
 from app.dependencies import get_db, require_permission
+from app.core import files
 from app.core.storage import InvalidLogoError
 from app.foundation.application.branding_service import BrandingService
 from app.foundation.api.branding_schemas import BrandingUpdate
@@ -19,7 +20,7 @@ def update(data: BrandingUpdate, current=Depends(require_permission('organizatio
 @router.post('/logo')
 async def upload(secondary: bool = False, file: UploadFile = File(...), current=Depends(require_permission('organization:branding:update')), db: Session = Depends(get_db)):
     try:
-        return BrandingService(db).upload(current.tenant.organization_id, await file.read(2 * 1024 * 1024 + 1), current.user.id, secondary)
+        return BrandingService(db).upload(current.tenant.organization_id, await file.read(files.read_limit('logo')), current.user.id, secondary)
     except InvalidLogoError as exc:
         raise HTTPException(422, detail=str(exc)) from exc
 

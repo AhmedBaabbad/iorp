@@ -133,7 +133,7 @@ describe("shipment lines", () => {
     for (const label of ["الوصف", "العرض (مم)", "السماكة (مم)", "الكمية", "الوزن"]) expect(screen.getByLabelText(label)).toBeTruthy();
     for (const gone of ["الوزن الصافي", "الوزن الإجمالي", "عدد العبوات", "نوع العبوة", "رقم الدفعة"]) expect(screen.queryByLabelText(gone)).toBeNull();
     const unit = screen.getByLabelText("الوحدة", { selector: "select" });
-    for (const name of ["رول", "كيلوجرام (كجم)", "طن", "طبلية", "متر طولي (م.ط)", "قطعة"]) expect(within(unit).getByRole("option", { name })).toBeTruthy();
+    for (const name of ["لفة", "كيلوجرام (كجم)", "طن", "طبلية", "متر طولي (م.ط)", "قطعة"]) expect(within(unit).getByRole("option", { name })).toBeTruthy();
     const weight = screen.getByLabelText("وحدة الوزن", { selector: "select" }) as HTMLSelectElement;
     expect(Array.from(weight.options).map(o => o.value).filter(Boolean)).toEqual(["g", "kg", "ton", "lb", "oz"]);
     expect(weight.value).toBe("kg");
@@ -144,7 +144,7 @@ describe("shipment lines", () => {
     ui(<ShipmentDetail shipmentId="s1" />, "ar");
     expect(await screen.findByText("0.35")).toBeTruthy();
     expect(screen.getByText("1.2 طن")).toBeTruthy();
-    expect(screen.getByText("الإجمالي: 120 رول · الوزن 1200 كجم")).toBeTruthy();
+    expect(screen.getByText("الإجمالي: 120 لفة · الوزن 1200 كجم")).toBeTruthy();
   });
 });
 

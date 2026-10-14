@@ -36,8 +36,8 @@ def split(inspected: Decimal, parts: dict) -> tuple[Decimal, Decimal, QualityChe
     return accepted, rejected, QualityCheckResult.ACCEPTED if rejected == ZERO else QualityCheckResult.REJECTED
 
 
-def rejection_reason(return_reason: str | None) -> RejectionReason:
-    return REJECTION_REASON.get(return_reason or "", RejectionReason.OTHER)
+def rejection_reason(return_reason: str | None) -> str:
+    return REJECTION_REASON.get(return_reason or "", RejectionReason.OTHER).value
 
 
 def assert_awaiting(found: dict | None, already_inspected: bool) -> None:

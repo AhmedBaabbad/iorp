@@ -143,3 +143,18 @@ def test_b11_master_data_is_reached_only_through_core():
 
     tables = _model_tables(models)
     assert tables and all(table.startswith("masterdata_") for table in tables)
+
+
+def test_b12_notifications_are_reached_only_through_core():
+    """PROJECT-NOTIFY-001: modules tell people through core/interfaces/notifications; nobody imports the notifications
+    module (the permission catalog reads its pure permission codes, as for the others), and it imports no business module."""
+    business = ("app.commercial", "app.production", "app.quality", "app.shipping", "app.procurement", "app.workforce", "app.masterdata",
+                "app.foundation", "app.platform")
+    assert not {item for item in _imports(APP_ROOT / "notifications") if item.startswith(business)}
+    for module in ("commercial", "production", "quality", "shipping", "procurement", "workforce", "masterdata", "platform"):
+        assert not {item for item in _imports(APP_ROOT / module) if item.startswith("app.notifications")}, module
+    assert {item for item in _imports(APP_ROOT / "foundation") if item.startswith("app.notifications")} <= {"app.notifications.domain"}
+    from app.notifications.infrastructure import models
+
+    tables = _model_tables(models)
+    assert tables and all(table.startswith("notifications_") for table in tables)

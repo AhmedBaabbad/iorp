@@ -7,10 +7,14 @@ import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth/permission-hooks";
 import s from "@/features/production-demands/demands.module.css";
 import { MD } from "@/lib/masterdata-permissions";
-import { addStandardItems, createListItem, getListItems, getListLegacy, mapListLegacy, updateListItem } from "../api";
+import { addStandardItems, createListItem, deleteListItem, getListItems, getListLegacy, mapListLegacy, updateListItem } from "../api";
 import { refreshCatalog } from "../catalog";
 import { masterdataErrorMessage } from "../masterdata-errors";
-import { LIST_NAMES, type LegacyValue, type ListItem, type ListName } from "../types";
+import { LIST_GROUPS, LIST_NAMES, type LegacyValue, type ListItem, type ListName } from "../types";
+
+// Lists whose records keep the item's key (their old free texts can be mapped to an item).
+const KEY_LISTS: ListName[] = ["sector", "opportunity_source", "country", "city", "supplier_category", "material_category", "defect_category",
+  "rejection_reason", "complaint_category", "interaction_type", "vehicle_type"];
 
 const PARENT: Partial<Record<ListName, ListName>> = { city: "country" };
 
@@ -48,9 +52,12 @@ export function ReferenceLists({ initialList }: { initialList?: string }) {
   }
 
   return <PageFrame title={t("title")} subtitle={t("subtitle")}>
-    <nav className={s.actions} aria-label={t("title")} style={{ marginBottom: 12 }}>
-      {LIST_NAMES.map(l => <button key={l} type="button" className={`${s.button} ${l === list ? s.primary : ""}`} aria-pressed={l === list}
-        onClick={() => { setList(l); setMessage(""); }}>{t(`names.${l}`)}</button>)}
+    <nav aria-label={t("title")} style={{ display: "grid", gap: 8, marginBottom: 12 }}>
+      {LIST_GROUPS.map(({ group, lists }) => <div key={group} className={s.actions} style={{ alignItems: "center" }}>
+        <strong style={{ minWidth: 110, color: "var(--text-muted)" }}>{t(`groups.${group}`)}</strong>
+        {lists.map(l => <button key={l} type="button" className={`${s.button} ${l === list ? s.primary : ""}`} aria-pressed={l === list}
+          onClick={() => { setList(l); setMessage(""); }}>{t(`names.${l}`)}</button>)}
+      </div>)}
     </nav>
     <section className={s.panel} aria-label={t(`names.${list}`)}>
       <div className={s.actions} style={{ justifyContent: "space-between" }}>
@@ -65,12 +72,12 @@ export function ReferenceLists({ initialList }: { initialList?: string }) {
       {rows?.length === 0 && <p className={s.muted}>{t("empty")}</p>}
       {rows && rows.length > 0 && <div className={s.tableWrap}><table className={s.table} aria-label={t(`names.${list}`)}>
         <thead><tr><th>{t("fields.name_ar")}</th><th>{t("fields.name_en")}</th><th>{t("fields.key")}</th>{parentList && <th>{t(`names.${parentList}`)}</th>}
-          <th>{t("fields.active")}</th>{canManage && <th />}</tr></thead>
-        <tbody>{rows.map(r => <Row key={r.id} item={r} parents={parents} canManage={canManage} onSaved={changed}
+          <th>{t("fields.uses")}</th><th>{t("fields.active")}</th>{canManage && <th />}</tr></thead>
+        <tbody>{rows.map(r => <Row key={r.id} item={r} parents={parents} canManage={canManage} onSaved={changed} onDeleted={(text) => { setMessage(text); changed(); }}
           parentName={(key) => { const p = parents.find(x => x.key === key); return p ? name(p) : key ?? "—"; }} />)}</tbody>
       </table></div>}
     </section>
-    {canMapLegacy && rows && <Legacy list={list} items={rows} onMapped={changed} />}
+    {canMapLegacy && rows && KEY_LISTS.includes(list) && <Legacy list={list} items={rows} onMapped={changed} />}
   </PageFrame>;
 }
 
@@ -104,8 +111,8 @@ function AddItem({ list, parents, onAdded }: { list: ListName; parents: ListItem
   </form>;
 }
 
-function Row({ item, parents, canManage, onSaved, parentName }: { item: ListItem; parents: ListItem[]; canManage: boolean; onSaved: () => void;
-  parentName: (key: string | null) => string }) {
+function Row({ item, parents, canManage, onSaved, onDeleted, parentName }: { item: ListItem; parents: ListItem[]; canManage: boolean; onSaved: () => void;
+  onDeleted: (message: string) => void; parentName: (key: string | null) => string }) {
   const t = useTranslations("masterdata.lists");
   const errors = useTranslations("masterdata.errors");
   const locale = useLocale();
@@ -122,18 +129,31 @@ function Row({ item, parents, canManage, onSaved, parentName }: { item: ListItem
       setEditing(false); onSaved();
     } catch (e) { setError(masterdataErrorMessage(e, errors)); }
   }
+  // MD-003: an item nothing uses is deleted; one in use is only deactivated (its records keep showing its name).
+  const uses = item.uses ?? 0;
+  const deletable = uses === 0 && !item.protected;
+  async function remove() {
+    if (!window.confirm(t("confirmDelete", { name: locale === "ar" ? item.name_ar : item.name_en }))) return;
+    setError("");
+    try { await deleteListItem(item.id); onDeleted(t("deleted")); }
+    catch (e) { setError(masterdataErrorMessage(e, errors)); }
+  }
   return <tr style={item.active ? undefined : { opacity: 0.6 }}>
     <td>{editing ? <input aria-label={t("fields.name_ar")} dir="rtl" value={v.name_ar} onChange={e => setV({ ...v, name_ar: e.target.value })} /> : item.name_ar}</td>
     <td>{editing ? <input aria-label={t("fields.name_en")} dir="ltr" value={v.name_en} onChange={e => setV({ ...v, name_en: e.target.value })} /> : item.name_en}</td>
     <td><bdi dir="ltr">{item.key}</bdi></td>
     {hasParent && <td>{editing ? <select aria-label={t(`names.${PARENT[item.list]}`)} value={v.parent_key} onChange={e => setV({ ...v, parent_key: e.target.value })}>
       {parents.map(p => <option key={p.key} value={p.key}>{locale === "ar" ? p.name_ar : p.name_en}</option>)}</select> : parentName(item.parent_key)}</td>}
+    <td>{uses}</td>
     <td>{canManage ? <input type="checkbox" aria-label={t("fields.active")} checked={item.active} onChange={e => void save({ active: e.target.checked })} />
       : item.active ? t("yes") : t("no")}</td>
     {canManage && <td><span className={s.actions}>
       {editing ? <><button type="button" className={`${s.button} ${s.primary}`} onClick={() => void save()}>{t("save")}</button>
         <button type="button" className={s.button} onClick={() => setEditing(false)}>{t("cancel")}</button></>
         : <button type="button" className={s.button} onClick={() => setEditing(true)}>{t("edit")}</button>}
+      {!editing && <button type="button" className={s.button} disabled={!deletable} onClick={() => void remove()}
+        title={item.protected ? t("protectedHint") : uses > 0 ? t("inUse", { count: uses }) : undefined}>{t("delete")}</button>}
+      {!editing && !deletable && <small className={s.muted}>{item.protected ? t("protectedHint") : t("inUse", { count: uses })}</small>}
       {error && <span role="alert" className={s.error}>{error}</span>}
     </span></td>}
   </tr>;

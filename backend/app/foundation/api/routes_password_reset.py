@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Request
+from typing import Literal
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field, model_validator
 from sqlalchemy.orm import Session
@@ -12,6 +13,7 @@ router = APIRouter(prefix="/auth", tags=["tenant-password-reset"])
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+    locale: Literal['ar', 'en'] | None = None
 
 
 class ResetPasswordRequest(BaseModel):
@@ -37,7 +39,7 @@ def _limited(request: Request, scope: str, limit: int):
 def forgot_password(payload: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
     limited = _limited(request, "tenant_forgot_password", 3)
     if limited: return limited
-    TenantPasswordResetService().request_reset(db, str(payload.email))
+    TenantPasswordResetService().request_reset(db, str(payload.email), payload.locale)
     return {"message": "If this email is registered, a reset link has been sent."}
 
 

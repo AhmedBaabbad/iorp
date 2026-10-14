@@ -1,3 +1,4 @@
+import { formatUnit } from "./localized-units";
 import type { Locale } from "@/i18n/config";
 
 const NO_VALUE = "—";
@@ -164,7 +165,7 @@ export function formatQuantity(
   const formatted = formatNumber(value, locale);
   if (formatted === NO_VALUE) return NO_VALUE;
   if (!unit) return formatted;
-  return `${formatted} ${unit}`;
+  return `${formatted} ${formatUnit(unit, locale)}`;
 }
 
 export function formatDuration(

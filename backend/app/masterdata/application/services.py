@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.core.interfaces.product_types import product_type_holders
+from app.core import numbering
 from app.masterdata.domain import rules
 from app.masterdata.domain.rules import MasterDataError
 from app.masterdata.infrastructure.models import MasterDataCounter, MasterDataSettings, Product, ProductProperty
@@ -55,13 +56,8 @@ class ProductService:
         return list(self.db.scalars(query.order_by(Product.active.desc(), Product.name_ar).limit(limit)))
 
     def _next_code(self) -> str:
-        counter = self.db.get(MasterDataCounter, (self.org, "PRD"), with_for_update=True)
-        if counter is None:
-            counter = MasterDataCounter(organization_id=self.org, kind="PRD", value=0)
-            self.db.add(counter)
-        counter.value += 1
-        self.db.flush()
-        return f"PRD-{counter.value:04d}"
+        # A master record: one sequence that never restarts (core/numbering.py takes it without a race).
+        return f"PRD-{numbering.take(self.db, MasterDataCounter, organization_id=self.org, kind='PRD'):04d}"
 
     def _write_template(self, product, properties):
         rules.assert_template(properties)

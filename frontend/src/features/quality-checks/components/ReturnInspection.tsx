@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useEffect, useState, type FormEvent } from "react";
 
 import s from "@/features/production-demands/demands.module.css";
@@ -10,6 +10,7 @@ import { getBatchShipments } from "../api/quality-checks-api";
 import { RETURN_PARTS, type BatchShipment, type QualityCheckData, type ReturnDecisionRequest, type ReturnPart } from "../types";
 import { QUANTITY } from "./quality-errors";
 
+import { joinList } from "@/lib/utils";
 const thousandths = (value: string) => Math.round(Number(value || 0) * 1000);
 
 // The returned goods an inspection is about, and every delivery note that carried the same production order
@@ -20,6 +21,7 @@ export function ReturnSourceSection({ check }: { check: QualityCheckData }) {
   const statuses = useTranslations("shipping.statuses");
   const fmt = useFormatter();
   const units = useTranslations("common.units.units");
+  const locale = useLocale();
   const unit = (code: string) => (units.has(code) ? units(code) : code);
   const [batch, setBatch] = useState<BatchShipment[] | null>(null);
   const source = check.return_source!;
@@ -46,7 +48,7 @@ export function ReturnSourceSection({ check }: { check: QualityCheckData }) {
     {check.production_order_id && <section className={s.panel} aria-label={batchTitle}>
       <h2 style={{ marginTop: 0 }}>{batchTitle}</h2>
       <p className={s.muted} style={{ marginTop: 0 }}>{t("batchHint")}</p>
-      {leaving.length > 0 && <p role="status" className={s.error}>{t("batchLeaving", { notes: leaving.map(b => b.shipment_no).join("، ") })}</p>}
+      {leaving.length > 0 && <p role="status" className={s.error}>{t("batchLeaving", { notes: joinList(leaving.map(b => b.shipment_no), locale) })}</p>}
       {batch === null ? null : batch.length === 0 ? <p className={s.muted} style={{ margin: 0 }}>{t("batchEmpty")}</p> : <div className={s.tableWrap}><table className={s.table}>
         <thead><tr><th>{t("note")}</th><th>{t("date")}</th><th>{t("customer")}</th><th>{t("quantity")}</th><th>{t("status")}</th></tr></thead>
         <tbody>{batch.map(b => <tr key={`${b.shipment_id}-${b.quantity}`}>

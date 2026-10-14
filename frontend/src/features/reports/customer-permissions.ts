@@ -1,1 +1,1 @@
-export const CUSTOMER_REPORTS = ['customer_profile', 'directory', 'activity_summary', 'quotations_report', 'demand_fulfillment', 'growth_retention', 'customer_statement'].map(key => `reports:customers:${key}`);
+export const CUSTOMER_REPORTS = ['customer_profile', 'directory', 'activity_summary', 'quotations_report', 'demand_fulfillment', 'growth_retention', 'customer_statement'].map(key => `reports:customers:${key}`).concat("commercial:complaints:report");

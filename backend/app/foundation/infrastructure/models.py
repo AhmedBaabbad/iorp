@@ -1,7 +1,7 @@
 from datetime import datetime
 import uuid
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -39,6 +39,10 @@ class Organization(Base):
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="UTC")
     default_locale: Mapped[str] = mapped_column(String(10), nullable=False, default="ar")
     logo_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Bytes this organization's files may occupy; empty = the platform default (FILE_ORGANIZATION_QUOTA, core/files.py).
+    storage_quota_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    # SEC-001: how many devices one user may be signed in on at once; a further sign-in ends the oldest.
+    max_sessions_per_user: Mapped[int] = mapped_column(Integer, nullable=False, default=2, server_default="2")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -91,6 +95,9 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     preferred_locale: Mapped[str | None] = mapped_column(String(10), nullable=True, default=None)
+    timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    account_change_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     token_version: Mapped[int] = mapped_column(
         Integer,
@@ -325,6 +332,9 @@ class TenantSecurityEvent(Base):
     user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
     details: Mapped[dict | list | None] = mapped_column(JSON().with_variant(JSONB(), "postgresql"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
+    # A routine success repeated from the same device shortly after is counted here (security_log.MERGE_WINDOW).
+    occurrences: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    last_seen_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
 
 
 class TenantActivityLog(Base):
@@ -362,3 +372,58 @@ class TenantPasswordResetToken(Base):
     expires_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
+
+
+class TenantAuditEntry(Base):
+    """The organization's audit trail (ORG-AUDIT-002): who changed what in its administration and governance — users,
+    roles, permissions, the organization's settings, delegations, announcements — when, and the values before and after.
+    Written in the transaction of the change; never updated nor deleted."""
+    __tablename__ = "foundation_audit_log"
+    __table_args__ = (
+        Index("ix_foundation_audit_org_created", "organization_id", "created_at"),
+        Index("ix_foundation_audit_org_entity", "organization_id", "entity_type"),
+        Index("ix_foundation_audit_action", "action"),
+        Index("ix_foundation_audit_actor", "actor_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False)
+    action: Mapped[str] = mapped_column(String(80), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    entity_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    entity_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    actor_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    details: Mapped[dict | list | None] = mapped_column(JSON().with_variant(JSONB(), "postgresql"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
+
+
+class ActivityArchive(Base):
+    """One month of the activity log past its retention (ORG-AUDIT-003): when its holders were told, reminded, when it
+    was downloaded and by whom, and when it was deleted. The archive file itself is never stored: it is built from the
+    log when downloaded."""
+    __tablename__ = "foundation_activity_archives"
+    __table_args__ = (UniqueConstraint("organization_id", "month", name="uq_activity_archive_month"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False)
+    month: Mapped[str] = mapped_column(String(7), nullable=False)  # YYYY-MM
+    rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    notified_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    reminded_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    downloaded_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    downloaded_by_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
+    deleted_by_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class UserEmailChange(Base):
+    __tablename__ = "foundation_user_email_changes"
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), primary_key=True)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), nullable=False)
+    old_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    new_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    old_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    new_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    token_version: Mapped[int] = mapped_column(Integer, nullable=False)

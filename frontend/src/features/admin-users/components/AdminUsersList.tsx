@@ -91,6 +91,7 @@ export function AdminUsersList() {
   const canActivate = usePermission("foundation:users:activate");
   const canDeactivate = usePermission("foundation:users:deactivate");
   const canLock = usePermission("foundation:users:lock");
+  const [showArchived, setShowArchived] = useState(false);
   const [users, setUsers] = useState<AdminUserListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -134,6 +135,7 @@ export function AdminUsersList() {
       subtitle={t("subtitle")}
       action={canWrite ? <Link href="/admin/users/new" style={sharedStyles.button}>{t("newButton")}</Link> : null}
     >
+      <label><input type="checkbox" checked={showArchived} onChange={event => setShowArchived(event.target.checked)} />{t("accountPolicy.showArchived")}</label>
       {isLoading ? <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>{t("loading")}</div> : null}
       {!isLoading && error ? <div style={sharedStyles.error} role="alert">{error}</div> : null}
       {!isLoading && !error && users.length === 0 ? (
@@ -154,24 +156,23 @@ export function AdminUsersList() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {users.filter(user => showArchived || !user.archived_at).map((user) => (
                   <tr key={user.id}>
                     <td style={styles.td}>
                       <Link href={`/admin/users/${user.id}`}>{user.full_name}</Link>
                       {user.is_organization_root ? <span style={styles.rootBadge}>{t("rootBadge")}</span> : null}
                     </td>
                     <td style={styles.td}>{user.email}</td>
-                    <td style={styles.td}><span style={statusBadge(user.status)}>{enumLabel("user", "status", user.status)}</span></td>
+                    <td style={styles.td}><span style={statusBadge(user.status)}>{user.archived_at ? t("accountPolicy.archived") : enumLabel("user", "status", user.status)}</span>{user.activation_pending ? <span style={{ ...styles.badge, marginInlineStart: 6, background: "var(--warning-soft, var(--surface-muted))", color: "var(--warning, var(--text-muted))" }}>{t("invitation.pending")}</span> : null}</td>
                     <td style={styles.td}>{user.roles.length ? user.roles.map((role) => <span key={role.id} style={styles.badge}>{role.name}</span>) : t("notAvailable")}</td>
                     <td style={styles.td}>{fmt.date(user.created_at)}</td>
                     <td style={styles.td}>
                       <div style={styles.actions}>
                         <Link href={`/admin/users/${user.id}`} style={sharedStyles.secondaryButton}>{common("actions.view")}</Link>
-                        {canWrite && (user.status === "active" || user.is_organization_root) ? <Link href={`/admin/users/${user.id}/edit`} style={sharedStyles.secondaryButton}>{common("actions.edit")}</Link> : null}
-                        {!user.is_organization_root && user.status === "active" && canLock ? <button style={sharedStyles.secondaryButton} onClick={() => void runAction(() => lockAdminUser(user.id))}>{t("actions.lock")}</button> : null}
-                        {!user.is_organization_root && user.status === "locked" && canLock ? <button style={sharedStyles.secondaryButton} onClick={() => void runAction(() => unlockAdminUser(user.id))}>{t("actions.unlock")}</button> : null}
+                        {!user.is_organization_root && user.status === "active" && canLock ? <button style={sharedStyles.secondaryButton} onClick={() => void runAction(async () => { const reason = window.prompt(t("accountPolicy.reason")); if (reason && reason.trim().length >= 3) await lockAdminUser(user.id, reason); })}>{t("actions.lock")}</button> : null}
+                        {!user.is_organization_root && user.status === "locked" && canLock ? <button style={sharedStyles.secondaryButton} onClick={() => void runAction(async () => { const reason = window.prompt(t("accountPolicy.reason")); if (reason && reason.trim().length >= 3) await unlockAdminUser(user.id, reason); })}>{t("actions.unlock")}</button> : null}
                         {!user.is_organization_root && user.status !== "inactive" && canDeactivate ? <Link style={styles.deleteButton} href={`/admin/users/${user.id}`}>{t("actions.deactivate")}</Link> : null}
-                        {!user.is_organization_root && user.status === "inactive" && canActivate ? <button style={sharedStyles.secondaryButton} onClick={() => void runAction(() => activateAdminUser(user.id))}>{t("actions.reactivate")}</button> : null}
+                        {!user.is_organization_root && user.status === "inactive" && !user.archived_at && canActivate ? <button style={sharedStyles.secondaryButton} onClick={() => void runAction(async () => { const reason = window.prompt(t("accountPolicy.reason")); if (reason && reason.trim().length >= 3) await activateAdminUser(user.id, reason); })}>{t("actions.reactivate")}</button> : null}
                       </div>
                     </td>
                   </tr>

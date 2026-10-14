@@ -1,7 +1,8 @@
+from typing import Annotated
 from datetime import date
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.core.types import ISODatetime
 from app.quality.domain.enums import (
@@ -9,13 +10,17 @@ from app.quality.domain.enums import (
     DefectSeverity,
 )
 
+# MD-003: a key of one of the organization's reference lists (validated against the list by the service).
+ListKey = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{1,59}$")]
+
+
 
 class QualityDefectCreate(BaseModel):
     # quality_check_id is derived from the URL path — never a body field.
     production_order_id: UUID | None = None
     production_order_item_id: UUID | None = None
     defect_date: date
-    defect_category: DefectCategory
+    defect_category: ListKey
     severity: DefectSeverity
     defect_count: int = Field(default=1, gt=0)
     description: str = Field(min_length=1)
@@ -30,7 +35,7 @@ class QualityDefectUpdate(BaseModel):
     production_order_id: UUID | None = None
     production_order_item_id: UUID | None = None
     defect_date: date | None = None
-    defect_category: DefectCategory | None = None
+    defect_category: ListKey | None = None
     severity: DefectSeverity | None = None
     defect_count: int | None = Field(default=None, gt=0)
     description: str | None = Field(default=None, min_length=1)
@@ -44,7 +49,7 @@ class QualityDefectListItem(BaseModel):
     production_order_id: UUID | None
     production_order_item_id: UUID | None
     defect_date: date
-    defect_category: DefectCategory
+    defect_category: ListKey
     severity: DefectSeverity
     defect_count: int
     description: str

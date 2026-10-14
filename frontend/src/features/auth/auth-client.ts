@@ -23,8 +23,8 @@ export function updateMyProfile(payload: UserProfileUpdate) {
   return apiClient<CurrentUser>("/auth/me", { method: "PATCH", body: payload });
 }
 
-export function getMyEffectiveAccess() {
-  return apiClient<EffectiveAccessReport>("/auth/me/effective-access");
+export function getMyEffectiveAccess(locale?: string) {
+  return apiClient<EffectiveAccessReport>("/auth/me/effective-access", { headers: locale ? { "Accept-Language": locale } : undefined });
 }
 
 export function changePassword(payload: {

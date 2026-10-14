@@ -21,6 +21,8 @@ export const IconList = icon(<><path d="M8 6h13" /><path d="M8 12h13" /><path d=
 // ── customers and sales ────────────────────────────────────────────────────────────────────────────────────────
 export const IconCustomers = icon(<><circle cx="9" cy="7" r="4" /><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /><path d="M16 3.1a4 4 0 0 1 0 7.8" /><path d="M21 21v-2a4 4 0 0 0-3-3.9" /></>);
 export const IconChat = icon(<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />);
+// A customer complaint: a message carrying a concern.
+export const IconComplaint = icon(<><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /><path d="M12 7v4" /><path d="M12 14h.01" /></>);
 export const IconBell = icon(<><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></>);
 export const IconFlask = icon(<><path d="M9 3h6" /><path d="M10 3v6L4.5 18.5A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-2.5L14 9V3" /><path d="M7 15h10" /></>);
 export const IconQuote = icon(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M8 13h8" /><path d="M8 17h5" /></>);
@@ -55,6 +57,10 @@ export const IconReturnTruck = icon(<><path d="M9 14 4 9l5-5" /><path d="M20 20v
 export const IconSupplier = icon(<><path d="M3 21h18" /><path d="M5 21V7l8-4v18" /><path d="M19 21V11l-6-4" /><path d="M9 9v.01" /><path d="M9 12v.01" /><path d="M9 15v.01" /></>);
 export const IconMaterial = icon(<><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5" /><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3" /></>);
 export const IconPurchase = icon(<><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></>);
+/** The transport directory: an address book holding a truck (drivers, vehicles, carriers). */
+export const IconTransportDirectory = icon(<><rect x="5" y="2" width="15" height="20" rx="2" /><path d="M3 7h3" /><path d="M3 12h3" /><path d="M3 17h3" />
+  <path d="M8.5 8h5v5h-5z" /><path d="M13.5 10h2.2l1.3 1.6V13h-3.5" /><circle cx="10.2" cy="14.6" r="1.1" /><circle cx="15.2" cy="14.6" r="1.1" /></>);
+
 export const IconReceipt = icon(<><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-1 .7-3-2-3 2-3-2-3 2-3-2z" /><path d="M8 8h8" /><path d="M8 12h8" /><path d="M8 16h5" /></>);
 
 // ── master data and administration ─────────────────────────────────────────────────────────────────────────────
@@ -71,14 +77,14 @@ export const IconActivity = icon(<path d="M22 12h-4l-3 9L9 3l-3 9H2" />);
 /** The icon of each page in the sidebar, by its address. */
 export const MENU_ICONS: Record<string, (props: IconProps) => ReactNode> = {
   "/customer-reports": IconReport, "/customers": IconCustomers, "/customer-interactions": IconChat, "/follow-ups": IconBell,
-  "/samples": IconFlask, "/quotes": IconQuote, "/commercial-orders": IconCart,
+  "/complaints": IconComplaint, "/samples": IconFlask, "/quotes": IconQuote, "/commercial-orders": IconCart,
   "/workforce": IconBadge,
   "/commercial-dashboard": IconDashboard, "/quality-dashboard": IconDashboard, "/shipping-dashboard": IconDashboard, "/production": IconDashboard, "/work-centers": IconMachine, "/shifts": IconClock, "/shift-rosters": IconCrew, "/production/demands": IconInbox,
   "/production/planning": IconPlanning, "/production-orders": IconWorkOrder, "/production-results": IconBoxCheck, "/production-reports": IconReport,
   "/downtime-events": IconPause, "/waste-records": IconTrash,
   "/quality-checks": IconInspect, "/quality-rejections": IconReject, "/quality-returns": IconReturnBox, "/quality-incoming": IconIncoming,
   "/quality-certificates": IconCertificate, "/quality-specifications": IconSpec, "/quality-test-parameters": IconRuler, "/quality-reports": IconReport,
-  "/shipments": IconShipment, "/shipment-returns": IconReturnTruck,
+  "/shipments": IconShipment, "/shipment-returns": IconReturnTruck, "/shipping-directory": IconTransportDirectory,
   "/suppliers": IconSupplier, "/materials": IconMaterial, "/purchase-orders": IconPurchase, "/goods-receipts": IconReceipt,
   "/master-data/products": IconProduct, "/master-data/lists": IconGlobe, "/master-data/settings": IconSettings,
   "/non-conformance-reports": IconAlert, "/corrective-actions": IconWrench,

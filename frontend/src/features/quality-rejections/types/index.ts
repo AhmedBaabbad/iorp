@@ -2,8 +2,8 @@
 import type { DefectCategory, DefectSeverity } from "@/features/quality-defects/types";
 import type { HistoryEntry } from "@/features/quality-checks/types";
 
-export type RejectionReason =
-  | "failed_quality_check" | "critical_defect" | "out_of_spec" | "dimension_failure" | "surface_failure" | "packaging_failure" | "labeling_issue" | "other";
+/** MD-003: a key of the organization's rejection reasons (master data); REJECTION_REASONS are their usual values. */
+export type RejectionReason = string;
 export type Disposition = "hold" | "scrap" | "rework" | "return_to_process" | "use_as_is";
 export type DispositionStatus = "pending" | "decided" | "executed";
 export type RejectionAction = "edit" | "decide" | "execute";

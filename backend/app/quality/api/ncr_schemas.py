@@ -184,6 +184,7 @@ class AttachmentRead(BaseModel):
     size_bytes: int
     uploaded_by_name: str | None
     uploaded_at: ISODatetime
+    archived_at: ISODatetime | None = None  # a file of a finished record: kept, not deleted
 
 
 class HistoryEntry(BaseModel):
@@ -271,6 +272,9 @@ class NCRRead(NCRListItem):
     rejection_code: str | None = None
     order_number: str | None = None
     return_no: str | None = None
+    # The customer complaint this report was opened for, when the reader may see complaints.
+    complaint_id: UUID | None = None
+    complaint_number: str | None = None
     detected_by_name: str | None = None
     containment: str | None
     contained_at: ISODatetime | None
@@ -286,6 +290,7 @@ class NCRRead(NCRListItem):
     verification_notes: str | None
     verified_at: ISODatetime | None
     verified_by_name: str | None = None
+    verification_signature: dict | None = None  # PROJECT-GOV-004: signer and authority
     closed_at: ISODatetime | None
     cancel_reason: str | None
     effectiveness_due_date: date | None

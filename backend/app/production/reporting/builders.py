@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from app.core.interfaces.reference_lists import list_items
 from app.core.db import Base
 from app.core.units import unit_label
 from app.core.reporting.contracts import ReportData, TableSection
@@ -84,6 +85,13 @@ def text(value, zone=None):
         return format(value, 'f')
     return str(value)
 
+
+
+def listed(db, organization_id, list_name, key, lang):
+    """MD-003: an item of the organization's reference list by its name in the report's language (else the usual label)."""
+    key = text(key)
+    found = list_items(db, organization_id, list_name, [key])
+    return found[key].name(lang) if key in found else label(key, lang)
 
 def applied_filters(params):
     names={'date_from':('من','From'),'date_to':('إلى','To'),'date_basis':('أساس التاريخ','Date basis'),
@@ -252,7 +260,7 @@ def order_full(db, tenant, params, selected):
             rejections.production_order_id==order.id).order_by(rejections.rejection_date,rejections.rejection_code)).all()
         sections.append(table('quality_rejections','حالات رفض الجودة','Quality rejections',['الرمز / Code','التاريخ / Date','البند / Line','الكمية / Quantity',label('unit',lang),
             'السبب / Reason','القرار / Disposition','الحالة / Status'],
-            [(r.rejection_code,r.rejection_date,lines.get(r.production_order_item_id),r.quantity_rejected,r.unit,label(text(r.rejection_reason),lang),
+            [(r.rejection_code,r.rejection_date,lines.get(r.production_order_item_id),r.quantity_rejected,r.unit,listed(db,tenant.organization_id,'rejection_reason',r.rejection_reason,lang),
               label(text(r.disposition),lang) if r.disposition else None,label(text(r.disposition_status),lang)) for r in rows],lang))
     if 'notes' in selected:
         sections.append(table('notes','الملاحظات','Notes',['الملاحظات / Notes'],[[order.notes]] if order.notes else [],lang))

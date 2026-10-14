@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from json import dumps
 from uuid import UUID
 
@@ -18,6 +17,7 @@ from app.commercial.infrastructure.repositories import (
     SampleRepository,
 )
 from app.core.tenancy import TenantContext
+from app.core import numbering
 from app.foundation.application.services import FoundationService
 
 
@@ -45,7 +45,7 @@ class SampleService:
             return None
         product_catalog.validate_sample_properties(self.db,tenant.organization_id,data.product_type,data.requested_spec_json or {})
 
-        year = datetime.now(timezone.utc).year
+        year = numbering.organization_year(self.db, tenant.organization_id)
         highest = self.samples.get_highest_sample_code_sequence(tenant.organization_id, year)
         self.samples.ensure_code_counter(tenant.organization_id, year, highest)
         counter = self.samples.get_code_counter_for_update(tenant.organization_id, year)

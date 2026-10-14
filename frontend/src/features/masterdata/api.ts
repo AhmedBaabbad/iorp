@@ -24,6 +24,8 @@ export const getListItems = (list?: ListName) => apiClient<ListItem[]>(`${ROOT}/
 export const createListItem = (list: ListName, body: ListItemInput) => apiClient<ListItem>(`${ROOT}/lists/${list}`, { method: "POST", body });
 export const updateListItem = (id: string, body: Partial<Omit<ListItem, "id" | "list" | "key">>) =>
   apiClient<ListItem>(`${ROOT}/lists/items/${id}`, { method: "PATCH", body });
+/** MD-003: deletes an item nothing uses (an item in use answers ITEM_IN_USE: deactivate it instead). */
+export const deleteListItem = (id: string) => apiClient<{ deleted: number }>(`${ROOT}/lists/items/${id}`, { method: "DELETE" });
 export const addStandardItems = (list: ListName) => apiClient<ListItem[]>(`${ROOT}/lists/${list}/standard`, { method: "POST" });
 export const getListLegacy = (list: ListName) => apiClient<LegacyValue[]>(`${ROOT}/lists/${list}/legacy`);
 export const mapListLegacy = (list: ListName, value: string, item_id: string) =>

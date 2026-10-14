@@ -11,7 +11,6 @@ import type {
   PlatformLoginResponse,
   PlatformOrganizationSummary,
   PlatformOrganizationDetail,
-  ResetOrganizationRootPasswordRequest,
   ResetOrganizationRootPasswordResponse,
 } from "@/types/platform";
 
@@ -70,26 +69,15 @@ export function deactivatePlatformAdministrator(id: string, token?: string | nul
   return apiClient<PlatformAdministrator>(`/platform/administrators/${id}`, { method: "DELETE", token });
 }
 
-export function resetPlatformAdministratorPassword(
-  id: string,
-  payload: { new_password: string; new_password_confirmation: string },
-  token?: string | null,
-) {
-  return apiClient<{ message: string; sessions_invalidated: boolean }>(
-    `/platform/administrators/${id}/reset-password`,
-    { method: "POST", body: payload, token },
-  );
+/** SEC-002: the administrator receives a reset link and chooses their own password; nobody sets it for them. */
+export function resetPlatformAdministratorPassword(id: string, token?: string | null) {
+  return apiClient<{ message: string; email: string }>(`/platform/administrators/${id}/reset-password`, { method: "POST", body: {}, token });
 }
 
-export function resetOrganizationRootPassword(
-  organizationId: string,
-  payload: ResetOrganizationRootPasswordRequest,
-  token?: string | null,
-) {
-  return apiClient<ResetOrganizationRootPasswordResponse>(
-    `/platform/organizations/${organizationId}/reset-root-password`,
-    { method: "POST", body: payload, token },
-  );
+/** SEC-002: the organization's root receives a reset link; the platform never sets a customer's password. */
+export function resetOrganizationRootPassword(organizationId: string, token?: string | null) {
+  return apiClient<ResetOrganizationRootPasswordResponse>(`/platform/organizations/${organizationId}/reset-root-password`,
+    { method: "POST", body: {}, token });
 }
 
 export function getPlatformAccount(token?: string | null) {

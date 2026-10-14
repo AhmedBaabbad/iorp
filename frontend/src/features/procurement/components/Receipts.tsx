@@ -1,5 +1,6 @@
 "use client";
 
+import { TransportSelection, DriverAffiliation, type TransportValues } from "@/features/reference-directory/DirectorySelect";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -136,6 +137,7 @@ export function ReceiptForm({ receiptId, supplierId, orderId }: { receiptId?: st
   const [materials, setMaterials] = useState<Material[]>([]);
   const [date, setDate] = useState(todayIso());
   const [h, setH] = useState<Header>(EMPTY_HEADER);
+  const [transport,setTransport]=useState<TransportValues>({});
   const [lines, setLines] = useState<Line[]>([{ ...EMPTY_LINE }]);
   const [order, setOrder] = useState(orderId ?? "");
   const [orders, setOrders] = useState<OpenOrder[]>([]);
@@ -178,6 +180,7 @@ export function ReceiptForm({ receiptId, supplierId, orderId }: { receiptId?: st
     let active = true;
     getReceipt(receiptId).then(r => {
       if (!active) return;
+      setTransport({driver_id:r.driver_id,vehicle_id:r.vehicle_id,driver_affiliation:r.driver_affiliation});
       setSupplier(r.supplier_id); setDate(r.receipt_date); setOrder(r.purchase_order_id ?? "");
       setSuppliers(old => [...old, { id: r.supplier_id, supplier_code: "", name: r.supplier_name, status: r.supplier_status ?? "approved" }]);
       setH(Object.fromEntries(Object.keys(EMPTY_HEADER).map(k => [k, (r[k as keyof Header] as string | null) ?? ""])) as Header);
@@ -203,7 +206,7 @@ export function ReceiptForm({ receiptId, supplierId, orderId }: { receiptId?: st
     event.preventDefault();
     if (!valid || busy) return;
     setBusy(true); setError("");
-    const body: ReceiptInput = { supplier_id: supplier, receipt_date: date, ...(Object.fromEntries(Object.entries(h).map(([k, v]) => [k, blank(v)])) as Record<keyof Header, string | null>),
+    const body: ReceiptInput = { ...transport, supplier_id: supplier, receipt_date: date, ...(Object.fromEntries(Object.entries(h).map(([k, v]) => [k, blank(v)])) as Record<keyof Header, string | null>),
       purchase_order_id: order || null,
       lines: lines.map(l => ({ material_id: l.material_id || null, description: blank(l.description), supplier_lot: blank(l.supplier_lot), quantity: l.quantity.trim(),
         unit: l.unit, package_count: l.package_count.trim() ? Number(l.package_count) : null, weight: blank(l.weight), weight_unit: l.weight_unit, notes: null,
@@ -238,7 +241,7 @@ export function ReceiptForm({ receiptId, supplierId, orderId }: { receiptId?: st
             {input("supplier_invoice_no", { maxLength: 80, dir: "ltr" })}
             {!order && input("purchase_reference", { maxLength: 80, dir: "ltr" })}
             {input("vehicle_plate", { maxLength: 40 })}
-            {input("driver_name", { maxLength: 200 })}
+            <TransportSelection value={transport} onChange={setTransport}/>{input("driver_name", { maxLength: 200, disabled:!!transport.driver_id })}
           </div>
           {chosen && chosen.status !== "approved" && <p className={s.error} role="status" style={{ marginBottom: 0 }}>
             {t("receipts.supplierNotApproved")} <SupplierStatusBadge status={chosen.status} /></p>}
@@ -335,7 +338,7 @@ export function ReceiptDetail({ receiptId }: { receiptId: string }) {
         <Item label={t("fields.supplier_invoice_no")}><bdi>{x.supplier_invoice_no ?? "—"}</bdi></Item>
         <Item label={t("fields.purchase_reference")}>{x.purchase_order_id ? <Link href={`/purchase-orders/${x.purchase_order_id}`}><bdi>{x.po_number}</bdi></Link>
           : <bdi>{x.purchase_reference ?? "—"}</bdi>}</Item>
-        <Item label={t("fields.vehicle_plate")}><bdi>{[x.vehicle_plate, x.driver_name].filter(Boolean).join(" — ") || "—"}</bdi></Item>
+        <Item label={t("fields.vehicle_plate")}><bdi>{[x.vehicle_plate, x.driver_name].filter(Boolean).join(" — ") || "—"}</bdi> <DriverAffiliation value={x.driver_affiliation}/></Item>
         <Item label={t("receipts.receivedBy")}>{x.received_by_name ? `${x.received_by_name} — ${fmt.dateTime(x.received_at!)}` : "—"}</Item>
       </dl>
     </section>

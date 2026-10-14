@@ -10,6 +10,7 @@ from datetime import timedelta
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
+from app.core.interfaces import approvals
 from app.core.units import to_kilograms
 from app.core.utils import utc_now
 from app.core.interfaces.product_catalog import unknown_product_types
@@ -21,10 +22,11 @@ from app.procurement.domain.rules import ProcurementError
 from app.procurement.infrastructure.models import GoodsReceipt, GoodsReceiptLine, Material, PurchaseOrder, Supplier
 from .purchase_order_service import PurchaseOrderService, by_line_owner
 from .support import QualityReads, history, log_activity, next_code, next_receipt_number, record, settings, user_names
+from . import notices
 
 SUPPLIER_FIELDS = ("name", "category", "supplies", "contact_name", "email", "address", "city", "country", "vat_number", "cr_number", "notes")
 MATERIAL_FIELDS = ("name", "category", "unit", "inspection_required", "spec_product_type", "active", "notes")
-RECEIPT_FIELDS = ("receipt_date", "supplier_delivery_no", "supplier_invoice_no", "purchase_reference", "vehicle_plate", "driver_name", "notes")
+RECEIPT_FIELDS = ("driver_id", "vehicle_id", "driver_affiliation", "receipt_date", "supplier_delivery_no", "supplier_invoice_no", "purchase_reference", "vehicle_plate", "driver_name", "notes")
 LINE_FIELDS = ("material_id", "description", "supplier_lot", "quantity", "unit", "package_count", "weight", "weight_unit", "notes", "po_line_id")
 
 
@@ -87,8 +89,9 @@ class SupplierService:
         return out
 
     def _apply(self, supplier, values):
-        if values.get("category") is not None and values["category"] not in rules.SUPPLIER_CATEGORIES:
-            raise ProcurementError("CATEGORY_UNKNOWN", 400)
+        if values.get("category") and unknown_list_values(self.db, self.org, "supplier_category", [values["category"]],
+                                                          [supplier.category] if getattr(supplier, "category", None) else ()):
+            raise ProcurementError("CATEGORY_UNKNOWN", 400)  # MD-003: from the organization's supplier categories
         for field in ("country", "city"):  # MD-002: from the organization's lists; the value already stored may stay
             if values.get(field) and unknown_list_values(self.db, self.org, field, [values[field]], [getattr(supplier, field)] if getattr(supplier, field, None) else ()):
                 raise ProcurementError("LIST_VALUE_UNKNOWN", 400, field=field, value=values[field])
@@ -103,6 +106,7 @@ class SupplierService:
         self.db.add(supplier)
         self.db.flush()
         record(self.db, self.org, "supplier", supplier.id, "create", self.tenant.user_id, None, rules.PENDING)
+        notices.supplier_awaits_approval(self.db, self.tenant, supplier)
         self.db.commit()
         log_activity(self.db, self.org, self.tenant.user_id, "supplier.created", "supplier", supplier.id, supplier.name)
         return self._get(supplier.id)
@@ -128,7 +132,9 @@ class SupplierService:
         before = supplier.status
         supplier.status, supplier.status_reason = status, (reason or "").strip() or None
         supplier.status_changed_at, supplier.status_changed_by_user_id = utc_now(), self.tenant.user_id
+        approvals.sign(self.db, self.tenant, "supplier", supplier.id, status, "procurement:suppliers:approve", supplier.status_reason)
         record(self.db, self.org, "supplier", supplier.id, "status", self.tenant.user_id, before, status, supplier.status_reason)
+        notices.supplier_status_changed(self.db, self.tenant, supplier)
         self.db.commit()
         log_activity(self.db, self.org, self.tenant.user_id, f"supplier.{status}", "supplier", supplier.id, supplier.name)
         return self._get(supplier.id)
@@ -155,8 +161,9 @@ class MaterialService:
         return list(self.db.scalars(query.order_by(Material.name).limit(limit)))
 
     def _apply(self, material, values):
-        if values.get("category") is not None and values["category"] not in rules.MATERIAL_CATEGORIES:
-            raise ProcurementError("CATEGORY_UNKNOWN", 400)
+        if values.get("category") and unknown_list_values(self.db, self.org, "material_category", [values["category"]],
+                                                          [material.category] if getattr(material, "category", None) else ()):
+            raise ProcurementError("CATEGORY_UNKNOWN", 400)  # MD-003: from the organization's material categories
         # MD-001: the specification key is a product of the organization (asked through core); the one stored may stay.
         if values.get("spec_product_type") and unknown_product_types(self.db, self.org, [values["spec_product_type"]],
                                                                      [material.spec_product_type] if material.spec_product_type else ()):
@@ -285,7 +292,7 @@ class ReceiptService:
         supplier = self._supplier(data.supplier_id)
         receipt = GoodsReceipt(organization_id=self.org, receipt_no=next_receipt_number(self.db, self.org), status=rules.DRAFT,
                                receipt_date=data.receipt_date, supplier_id=supplier.id, supplier_name=supplier.name, created_by_user_id=self.tenant.user_id)
-        _set(receipt, data.model_dump(exclude={"lines", "supplier_id"}), RECEIPT_FIELDS, required=("receipt_date",))
+        _set(receipt, apply_transport(self.db, self.org, receipt, data.model_dump(exclude={"lines", "supplier_id"})), RECEIPT_FIELDS, required=("receipt_date",))
         self._order(receipt, data.purchase_order_id)
         self.db.add(receipt)
         self.db.flush()
@@ -302,7 +309,7 @@ class ReceiptService:
         if values.get("supplier_id"):
             supplier = self._supplier(values["supplier_id"])
             receipt.supplier_id, receipt.supplier_name = supplier.id, supplier.name
-        _set(receipt, values, RECEIPT_FIELDS, required=("receipt_date",))
+        _set(receipt, apply_transport(self.db, self.org, receipt, values), RECEIPT_FIELDS, required=("receipt_date",))
         if "purchase_order_id" in values or values.get("supplier_id"):
             self._order(receipt, values.get("purchase_order_id", receipt.purchase_order_id))
             if data.lines is None and any(line.po_line_id for line in receipt.lines):
@@ -365,3 +372,5 @@ class _LineData:
         for field in LINE_FIELDS:
             setattr(data, field, getattr(line, field))
         return data
+
+from app.core.interfaces.transport_directory import apply_transport

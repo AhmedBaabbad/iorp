@@ -1,1 +1,35 @@
-{"title":"سجل النشاطات","subtitle":"عرض جميع العمليات على البيانات في المنظمة","actions":{"user.created":"إنشاء مستخدم","user.updated":"تحديث مستخدم","user.deactivated":"تعطيل مستخدم","user.activated":"تفعيل مستخدم","user.locked":"قفل مستخدم","user.unlocked":"فتح مستخدم","user.password_changed":"تغيير كلمة مرور","user.password_reset":"إعادة ضبط كلمة مرور","role.created":"إنشاء دور","role.updated":"تحديث دور","role.deleted":"حذف دور","role_assignment.added":"تعيين دور لمستخدم","role_assignment.removed":"إزالة دور من مستخدم","role.permissions_updated":"تحديث صلاحيات دور","customer.created":"إنشاء عميل","customer.updated":"تحديث عميل","customer.deleted":"حذف عميل","customer.owner_changed":"تغيير مسؤول مبيعات العميل","followup.created":"إنشاء متابعة","followup.updated":"تحديث متابعة","followup.completed":"إكمال متابعة","followup.cancelled":"إلغاء متابعة","workforce_member.created":"إضافة عضو فريق","workforce_member.updated":"تحديث عضو فريق","workforce_member.deleted":"إزالة عضو فريق","organization.profile_updated":"تحديث ملف المنظمة","organization.logo_uploaded":"رفع شعار المنظمة","organization.logo_removed":"إزالة شعار المنظمة"},"filters":{"searchPlaceholder":"تصفية حسب العملية...","dateFrom":"من تاريخ","dateTo":"إلى تاريخ","apply":"تطبيق"},"loading":"جاري التحميل...","empty":"لا توجد نشاطات مسجلة","error":"تعذر تحميل النشاطات.","accessDenied":"ليس لديك صلاحية لعرض هذا السجل.","system":"النظام","noDetails":"لا توجد تفاصيل","previous":"السابق","next":"التالي","page":"الصفحة {page} من {pages}"}
+{
+  "title": "سجل النشاطات",
+  "subtitle": "ما يحدث في العمل اليومي: العملاء والطلبات والإنتاج والجودة والشحن والمشتريات. (تغييرات الإدارة في سجل التدقيق.)",
+  "actions": {},
+  "loading": "جارٍ التحميل…",
+  "empty": "لا توجد نشاطات مسجلة",
+  "error": "تعذّر تحميل النشاطات.",
+  "accessDenied": "ليست لديك صلاحية لعرض هذا السجل.",
+  "archiveTitle": "الأرشيف: أشهر انتهت مدة حفظها (12 شهرًا)",
+  "archiveHint": "نزّل أرشيف كل شهر واحفظه عندك، ثم احذفه من النظام. أي شهر لا يُؤرشف يُحذف تلقائيًا في تاريخه.",
+  "archiveEmpty": "لا توجد أشهر مستحقة للأرشفة.",
+  "month": "الشهر",
+  "rows": "عدد الأسطر",
+  "deleteOn": "يُحذف تلقائيًا في",
+  "downloaded": "نُزّل بواسطة {name} في {date}",
+  "download": "تنزيل الأرشيف",
+  "delete": "تأكدت من حفظ الملف — احذف",
+  "confirmDelete": "سيُحذف سجل نشاطات شهر {month} نهائيًا من النظام. هل حفظت ملف الأرشيف؟",
+  "deleted": "تم حذف {rows} سطرًا من سجل نشاطات شهر {month}.",
+  "downloadFailed": "تعذّر تنزيل الأرشيف.",
+  "deleteFailed": "تعذّر الحذف.",
+  "person": "الشخص",
+  "allPeople": "كل الأشخاص",
+  "area": "القسم",
+  "allAreas": "كل الأقسام",
+  "areas": {
+    "commercial": "المبيعات والعملاء",
+    "production": "الإنتاج",
+    "quality": "الجودة",
+    "shipping": "الشحن",
+    "procurement": "المشتريات",
+    "masterdata": "البيانات الأساسية",
+    "workforce": "القوى العاملة"
+  }
+}

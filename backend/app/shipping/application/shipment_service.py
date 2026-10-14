@@ -24,12 +24,12 @@ from .return_service import ReturnService, available, taken_back
 from .support import (CustomerReads, ProductionOrderReads, attachments, history, log_activity, next_number, record, settings,
                       user_names)
 
-HEADER = ("delivery_method", "shipment_date", "customer_reference", "consignee_name", "consignee_email", "notify_consignee",
+HEADER = ("driver_id", "vehicle_id", "carrier_id", "driver_affiliation", "customer_contact_id", "delivery_site_id", "delivery_method", "shipment_date", "customer_reference", "consignee_name", "consignee_email", "notify_consignee",
           "delivery_address", "delivery_city", "location_url", "driver_name", "driver_id_no", "vehicle_plate", "vehicle_type",
           "carrier_name", "tracking_no", "notes")
 PHONES = ("consignee_phone", "driver_phone")
 # What a rescheduled note may change: who carries it, and when (never its customer or its lines).
-TRANSPORT = ("delivery_method", "shipment_date", "driver_name", "driver_phone", "driver_id_no", "vehicle_plate", "vehicle_type",
+TRANSPORT = ("driver_id", "vehicle_id", "carrier_id", "driver_affiliation", "delivery_method", "shipment_date", "driver_name", "driver_phone", "driver_id_no", "vehicle_plate", "vehicle_type",
              "carrier_name", "tracking_no")
 LINE_FIELDS = ("description", "width_mm", "thickness_mm", "quantity", "unit", "weight", "weight_unit", "production_order_id")
 
@@ -119,7 +119,9 @@ class ShipmentService:
 
     # ── writes ──────────────────────────────────────────────────────────────────────────────────
     def _apply(self, shipment, values: dict, fields=HEADER):
-        values = dict(values)
+        from app.core.interfaces.transport_directory import apply_transport
+        values = apply_transport(self.db, self.org, shipment, values)
+        self._delivery_selection(shipment, values)
         if "customer_id" in values:
             shipment.customer_id = None
             if values["customer_id"]:
@@ -150,8 +152,9 @@ class ShipmentService:
                 setattr(shipment, field, rules.normalize_phone(values[field]))
         if shipment.delivery_method == rules.CARRIER:
             shipment.driver_name = shipment.driver_phone = shipment.driver_id_no = None
+            shipment.driver_id = shipment.driver_affiliation = None
         else:
-            shipment.carrier_name = shipment.tracking_no = None
+            shipment.carrier_name = shipment.tracking_no = shipment.carrier_id = None
 
     def _write_lines(self, shipment, lines):
         numbers = self.orders.numbers([data.production_order_id for data in lines])
@@ -166,8 +169,31 @@ class ShipmentService:
             rules.assert_line(line)
             shipment.lines.append(line)
 
+    def _delivery_selection(self, shipment, values):
+        from app.core.interfaces.customer_delivery import directory
+        contact_explicit='customer_contact_id' in values
+        customer_id=values.get('customer_id',shipment.customer_id)
+        changed=customer_id!=shipment.customer_id
+        for key in ('delivery_site_id','customer_contact_id'):
+            if changed and key not in values:values[key]=None
+        for key,kind,mapping in (
+            ('delivery_site_id','sites',{'address':'delivery_address','city':'delivery_city','location_url':'location_url'}),
+            ('customer_contact_id','contacts',{'name':'consignee_name','phone':'consignee_phone','email':'consignee_email'})):
+            selected=values.get(key,getattr(shipment,key,None))
+            if changed and not selected and getattr(shipment,key,None):
+                for target in mapping.values():
+                    if target not in values or values[target]==getattr(shipment,target):values[target]=None
+            if not selected:continue
+            if selected!=getattr(shipment,key,None) or changed:
+                source=directory().resolve(self.db,self.org,customer_id,kind,selected)
+                values.update({target:source[field] for field,target in mapping.items()})
+                if kind=='sites' and source.get('contact_id') and not contact_explicit:
+                    values['customer_contact_id']=source['contact_id']
+            else:
+                values.update({target:getattr(shipment,target) for target in mapping.values()})
+
     def create(self, data) -> Shipment:
-        values = data.model_dump(exclude={"lines"})
+        values = data.model_dump(exclude={"lines"},exclude_unset=True)
         if not values.get("customer_id") and not (values.get("customer_name") or "").strip():
             raise ShippingError("CUSTOMER_REQUIRED", 400)
         shipment = Shipment(organization_id=self.org, shipment_no=next_number(self.db, self.org), status=rules.DRAFT, attempt=1,

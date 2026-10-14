@@ -66,8 +66,12 @@ def test_server_computes_vat_from_the_rate_and_numbers_are_qt(doc_env):
     assert quote['quote_number'].startswith('QT-')
     assert Decimal(quote['subtotal_amount']) == Decimal('199000') and Decimal(quote['tax_amount']) == Decimal('29850.00')
     assert Decimal(quote['total_amount']) == Decimal('228850.00')
-    r = doc_env.client.patch(f"{QUOTES}/quotes/{quote['id']}", json=dict(discount_amount='1000'))
-    assert Decimal(r.json()['tax_amount']) == Decimal('29700.00')  # recomputed on the discounted subtotal
+    items = [dict({k: i[k] for k in ('line_no', 'product_type', 'requested_spec_json', 'quantity', 'unit', 'unit_price')}, discount_percent='10')
+             for i in quote['items']]
+    r = doc_env.client.patch(f"{QUOTES}/quotes/{quote['id']}", json=dict(items=items, discount_amount='1'))  # an amount is not taken
+    assert Decimal(r.json()['discount_amount']) == Decimal('19900.00')  # 10 % of every line
+    assert Decimal(r.json()['tax_amount']) == Decimal('26865.00')  # 15 % of 179,100 after the discount
+    assert Decimal(r.json()['total_amount']) == Decimal('205965.00')
 
 
 def test_settings_round_trip_and_defaults(doc_env):
@@ -90,7 +94,7 @@ def test_bank_accounts_are_normalised_and_validated(doc_env):
 def test_arabic_document_content(doc_env):
     settle(doc_env)
     text = html(doc_env, create_quote(doc_env))
-    for expected in ('عرض سعر', 'مدير المشتريات', 'عرض سعر 15MM + 5MM', 'شريط تربيط أسود مقاس 5MM × 0.35MM × 10KG', 'رول',
+    for expected in ('عرض سعر', 'مدير المشتريات', 'عرض سعر 15MM + 5MM', 'شريط تربيط أسود مقاس 5MM × 0.35MM × 10KG', 'لفة',
                      '2,000', '190,000.00', 'ضريبة القيمة المضافة (15%)', '29,850.00', '228,850.00', 'الإجمالي شامل الضريبة',
                      'الشروط والأحكام', 'خامات شريط PP', 'مع خالص التحية', 'مدير المبيعات', 'مصرف الراجحي', 'SA0380000000608010167519',
                      'factory@rehanh.com', 'factory.rehanh.com'):
@@ -178,3 +182,38 @@ def test_real_quotation_pdf_samples(doc_env):
         text = ''.join(page.get_text() for page in pdf)
         assert quote['quote_number'] in text and 'SA0380000000608010167519' in text
         pdf[0].get_pixmap(matrix=pymupdf.Matrix(1.3, 1.3)).save(str(out / f'quotation-{lang}.png'))
+
+
+def discounted(e, first='10', second='0'):
+    quote = create_quote(e)
+    items = [dict({k: i[k] for k in ('line_no', 'product_type', 'requested_spec_json', 'quantity', 'unit', 'unit_price', 'description_ar', 'description_en')},
+                  discount_percent=pct) for i, pct in zip(quote['items'], (first, second))]
+    r = e.client.patch(f"{QUOTES}/quotes/{quote['id']}", json=dict(items=items))
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_discount_on_one_line_is_taken_before_vat(doc_env):
+    quote = discounted(doc_env)  # line 1: 2,000 × 95 = 190,000 less 10 %; line 2: 150 × 60 = 9,000, no discount
+    first, second = quote['items']
+    assert Decimal(first['discount_amount']) == Decimal('19000.00') and Decimal(first['net_total']) == Decimal('171000.00')
+    assert Decimal(second['discount_amount']) == 0 and Decimal(second['net_total']) == Decimal('9000.00')
+    assert Decimal(quote['subtotal_amount']) == Decimal('199000.00') and Decimal(quote['discount_amount']) == Decimal('19000.00')
+    assert Decimal(quote['tax_amount']) == Decimal('27000.00')  # 15 % of 180,000
+    assert Decimal(quote['total_amount']) == Decimal('207000.00')
+    r = doc_env.client.patch(f"{QUOTES}/quotes/{quote['id']}", json=dict(items=[dict(line_no=1, product_type='strap', quantity='1', unit='roll',
+                                                                                      unit_price='1', discount_percent='101')]))
+    assert r.status_code == 422
+
+
+def test_document_shows_the_discount_lines_and_totals(doc_env):
+    settle(doc_env)
+    text = html(doc_env, discounted(doc_env))
+    for expected in ('المجموع قبل الخصم', '199,000.00', 'الخصم على البند 1 (10%)', '- 19,000.00', 'المجموع بعد الخصم', '180,000.00',
+                     'ضريبة القيمة المضافة (15%)', '27,000.00', '207,000.00', 'الصافي', '10% = 19,000.00', '171,000.00'):
+        assert expected in text, expected
+    text = html(doc_env, discounted(doc_env, '10', '10'), 'en')
+    for expected in ('Subtotal before discount', 'Discount (10%)', 'Subtotal after discount', '179,100.00', 'Net'):
+        assert expected in text, expected
+    plain = html(doc_env, create_quote(doc_env))
+    assert 'الصافي' not in plain and 'المجموع قبل الضريبة' in plain  # a quotation without a discount reads as before

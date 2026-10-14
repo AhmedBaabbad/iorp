@@ -13,6 +13,8 @@ import { getAdminRole } from "../api/admin-roles-api";
 import type { AdminRoleDetail as AdminRoleDetailType } from "../types";
 import { AdminRolePermissionsManager } from "./AdminRolePermissionsManager";
 
+import styles from "./roles.module.css";
+
 export function AdminRoleDetail() {
   const params = useParams<{ id: string }>();
   const t = useTranslations("administration.roles");
@@ -43,12 +45,12 @@ export function AdminRoleDetail() {
       {error ? <div style={sharedStyles.error}>{error}</div> : null}
       {role ? (
         <div style={{ display: "grid", gap: "16px" }}>
-          <section style={{ ...sharedStyles.state, alignItems: "start", textAlign: "start" }}>
-            <strong>{role.code}</strong>
-            <span>{role.is_system ? t("systemBadge") : t("customBadge")}{role.is_protected ? ` · ${t("protectedBadge")}` : ""}</span>
-            <span>{role.is_system && t.has(`systemRoleDescriptions.${role.code}`) ? t(`systemRoleDescriptions.${role.code}`) : role.description ?? "-"}</span>
-            <span>{t("impactSummary", { users: role.user_count, permissions: role.permission_count })}</span>
-            {!role.is_editable ? <span>{t("systemEditBlocked")}</span> : null}
+          <section className={styles.roleCard}>
+            <div className={styles.stats}><span className={styles.badge}>{role.is_system ? t("systemBadge") : t("customBadge")}</span>{role.is_protected ? <span className={styles.badge}>{t("protectedBadge")}</span> : null}</div>
+            <p>{role.is_system && t.has(`systemRoleDescriptions.${role.code}`) ? t(`systemRoleDescriptions.${role.code}`) : role.description ?? "-"}</p>
+            <code dir="ltr">{role.code}</code>
+            <div className={styles.stats}><div className={styles.stat}><strong>{role.user_count}</strong><span>{t("fields.userCount")}</span></div><div className={styles.stat}><strong>{role.permission_count}</strong><span>{t("fields.permissionCount")}</span></div></div>
+            {!role.is_editable ? <p>{t("systemEditBlocked")}</p> : null}
           </section>
           <AdminRolePermissionsManager roleId={role.id} readOnly={!role.is_editable} />
           <Link href="/admin/roles" style={sharedStyles.secondaryButton}>{t("backToList")}</Link>

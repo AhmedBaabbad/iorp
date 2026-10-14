@@ -67,10 +67,14 @@ describe('branding editor', () => {
   });
 
   it('rejects an unsupported logo before upload and uploads a valid one through the API client', async () => {
-    mocks.api.mockResolvedValue({ name: 'Company' }); ui(<BrandingEditor />, 'en');
+    const images = { types: ['image/png', 'image/jpeg', 'image/webp'], max_bytes: { 'image/png': 1048576, 'image/jpeg': 1048576, 'image/webp': 1048576 } };
+    const policy = { logo: images, attachment: images };
+    mocks.api.mockImplementation((path: string) => Promise.resolve(path === '/system/file-policy' ? policy : { name: 'Company' }));
+    ui(<BrandingEditor />, 'en');
     const input = await screen.findByLabelText('Upload secondary logo');
+    await screen.findByText(/PNG, JPEG, WebP up to 1 MB/);  // the limits come from the one server policy
     fireEvent.change(input, { target: { files: [new File(['<svg/>'], 'x.svg', { type: 'image/svg+xml' })] } });
-    expect((await screen.findByRole('alert')).textContent).toBe('Use a PNG, JPEG or WEBP logo, up to 2 MB.');
+    expect((await screen.findByRole('alert')).textContent).toBe('This file type is not accepted. Allowed: PNG, JPEG, WebP.');
     fireEvent.change(input, { target: { files: [new File([new Uint8Array([137, 80, 78, 71])], 'logo.png', { type: 'image/png' })] } });
     await waitFor(() => expect(mocks.api).toHaveBeenCalledWith('/organization/branding/logo?secondary=true', expect.objectContaining({ method: 'POST', body: expect.any(FormData) })));
   });

@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from app.core.db import Base
 from app.core.interfaces.activity_log import get_registered_activity_logger
-from app.core.utils import utc_now
+from app.core import numbering
 from app.shipping.domain import returns as R
 from app.shipping.domain import rules
 from app.shipping.infrastructure.models import (ShipmentEvent, ShippingAttachment, ShippingCodeCounter, ShippingReturnCounter,
@@ -118,14 +118,8 @@ def settings(db, organization_id) -> ShippingSettings:
 
 def _next(db, model, organization_id, prefix) -> str:
     """PREFIX-YYYY-NNNN from a locked per-organization, per-year counter: never repeated under concurrency."""
-    year = utc_now().year
-    counter = db.get(model, (organization_id, year), with_for_update=True)
-    if counter is None:
-        counter = model(organization_id=organization_id, year=year, value=0)
-        db.add(counter)
-    counter.value += 1
-    db.flush()
-    return rules.number(prefix, year, counter.value)
+    year = numbering.organization_year(db, organization_id)  # the organization's year (core/numbering.py)
+    return rules.number(prefix, year, numbering.take(db, model, organization_id=organization_id, year=year))
 
 
 def next_number(db, organization_id) -> str:
@@ -171,7 +165,7 @@ def attachments(db, organization_id, shipment_id=None, return_id=None) -> list[d
     rows = list(db.scalars(query.order_by(ShippingAttachment.uploaded_at)))
     names = user_names(db, organization_id, [r.uploaded_by_user_id for r in rows])
     return [dict(id=r.id, kind=r.kind, file_name=r.file_name, content_type=r.content_type, size_bytes=r.size_bytes,
-                 uploaded_by_name=names.get(r.uploaded_by_user_id), uploaded_at=r.uploaded_at) for r in rows]
+                 uploaded_by_name=names.get(r.uploaded_by_user_id), uploaded_at=r.uploaded_at, archived_at=r.archived_at) for r in rows]
 
 
 def log_activity(db, organization_id, actor_id, action, entity_id, name, entity="shipment"):

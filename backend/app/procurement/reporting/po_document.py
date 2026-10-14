@@ -65,6 +65,12 @@ def build(db, tenant, params, selected) -> ReportData:
     day = lambda v: v.strftime("%d / %m / %Y") if v else ""  # noqa: E731
     moment = lambda v: v.astimezone(zone).strftime("%d / %m / %Y") if v else ""  # noqa: E731
     names = user_names(db, tenant.organization_id, [o.created_by_user_id, o.approved_by_user_id])
+    from app.core.interfaces import approvals
+    signed = approvals.latest(approvals.signatures(db, tenant.organization_id, "purchase_order", [o.id]).get(o.id, []), "approve")
+    approver = names.get(o.approved_by_user_id) or ""
+    if signed and signed["delegated"]:  # the signer, and whose authority it was
+        approver = (f"{signed['signer_name']} — بالتفويض عن {signed['authority_name']}" if params.lang == "ar"
+                    else f"{signed['signer_name']} — on behalf of {signed['authority_name']}")
     v = lambda value: value or "—"  # noqa: E731
     # MD-002: the supplier's city and country by their names in the document's language.
     city = list_names(db, tenant.organization_id, "city", [supplier.city], params.lang).get(supplier.city) if supplier else None
@@ -100,7 +106,7 @@ def build(db, tenant, params, selected) -> ReportData:
         number=o.po_number, date=day(o.order_date), required_date=day(o.required_date), status=o.status, currency=o.currency,
         currency_name=CURRENCY.get(o.currency, (o.currency, o.currency))[not ar], supplier=party, delivery=delivery, subject=o.subject or "",
         lines=lines, totals=totals, vat_note=vat_note, notes=o.notes or "", terms=PurchaseOrderService(db, tenant).terms(params.lang),
-        prepared_by=names.get(o.created_by_user_id) or "", approved_by=names.get(o.approved_by_user_id) or "", approved_at=moment(o.approved_at),
+        prepared_by=names.get(o.created_by_user_id) or "", approved_by=approver, approved_at=moment(o.approved_at),
         cancel_reason=o.cancel_reason)
     return ReportData(sections=[], subject=o.po_number, prepared_for=o.supplier_name, document=document)
 

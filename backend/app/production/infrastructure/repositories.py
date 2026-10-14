@@ -207,12 +207,6 @@ class ProductionOrderRepository:
     def list_by_organization(self, organization_id: UUID, **filters) -> list[ProductionOrder]:
         return list(self.db.scalars(self.list_statement(organization_id, **filters)))
 
-    def count_by_organization(self, organization_id: UUID) -> int:
-        statement = select(func.count(ProductionOrder.id)).where(
-            ProductionOrder.organization_id == organization_id
-        )
-        return self.db.scalar(statement) or 0
-
 
 
 class ProductionOrderItemRepository:

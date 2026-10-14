@@ -19,12 +19,15 @@ import {
   IconChevron,
   IconChevronUp,
   IconClipboardCheck,
+  IconDelegation,
   IconFactory,
   IconGrid,
   IconIdCard,
   IconKey,
   IconLayers,
+  IconBell,
   IconLogOut,
+  IconMegaphone,
   IconMenu,
   IconShield,
   IconShieldCheck,
@@ -35,6 +38,9 @@ import {
   IconX,
 } from "./nav-icons";
 import { DEPARTMENTS } from "@/features/dashboard/departments";
+import { DELEGATIONS_PAGE, useDelegationsWaiting } from "@/lib/delegations";
+import { ANNOUNCEMENTS_PAGE } from "@/lib/notifications";
+import { AcknowledgeGate, NotificationBell } from "@/components/notify/NotificationCenter";
 import { P, PRODUCTION_REPORTS } from "@/lib/production-permissions";
 import { Q, QUALITY_REPORTS } from "@/lib/quality-permissions";
 import { S } from "@/lib/shipping-permissions";
@@ -58,7 +64,7 @@ type StaticNavLink = {
   anyPermissions?: string[];
   icon?: NavIcon;
   // A count next to the link of what needs the user's attention there.
-  badge?: "capa";
+  badge?: "capa" | "delegations";
 };
 
 type StaticNavGroup = {
@@ -133,6 +139,7 @@ const staticNavGroups: StaticNavGroup[] = [
       { href: "/customers", labelKey: "links.customers", permission: "commercial:customers:read" },
       { href: "/customer-interactions", labelKey: "links.customerInteractions", permission: "commercial:interactions:read" },
       { href: "/follow-ups", labelKey: "links.followUps", permission: "commercial:follow_ups:read" },
+      { href: "/complaints", labelKey: "links.complaints", permission: "commercial:complaints:read" },
       { href: "/samples", labelKey: "links.samples", permission: "commercial:samples:read" },
       { href: "/quotes", labelKey: "links.quotes", permission: "commercial:quotes:read" },
       { href: "/commercial-orders", labelKey: "links.commercialOrders", permission: "commercial:orders:read" },
@@ -184,6 +191,7 @@ const staticNavGroups: StaticNavGroup[] = [
     icon: IconTruck,
     links: [
       { href: "/shipping-dashboard", labelKey: "links.shippingDashboard", anyPermissions: [...DEPARTMENTS.find(d => d.key === "shipping")!.permissions] },
+      { href: "/shipping-directory", labelKey: "links.transportDirectory", permission: "shipping:directory:read" },
       { href: "/shipments", labelKey: "links.shipments", permission: S.SHIPMENTS_READ },
       { href: "/shipment-returns", labelKey: "links.shipmentReturns", permission: S.RETURNS_READ },
     ],
@@ -271,6 +279,8 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
     "foundation:users:read",
     "foundation:roles:read",
     "foundation:permissions:read",
+    ...DELEGATIONS_PAGE,  // a holder of any approval delegates it from here
+    ...ANNOUNCEMENTS_PAGE,  // who writes announcements follows them from here
   ]);
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -306,7 +316,9 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
     });
   }
   const capaAlerts = useCapaAlerts(hasPermission(Q.NCR_ACTIONS_READ) || hasPermission(Q.NCR_READ));
-  const badges: Record<string, number> = { capa: capaAlerts?.total ?? 0 };
+  const canDelegate = useHasAnyPermission(DELEGATIONS_PAGE);
+  const delegationsWaiting = useDelegationsWaiting(canDelegate);
+  const badges: Record<string, number> = { capa: capaAlerts?.total ?? 0, delegations: delegationsWaiting };
 
   const visibleStaticNavGroups = staticNavGroups
     .map((group) => ({
@@ -335,6 +347,12 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
               : []),
             ...(hasPermission("foundation:permissions:read")
               ? [{ href: "/admin/permissions", labelKey: "links.adminPermissions", icon: IconKey }]
+              : []),
+            ...(canDelegate
+              ? [{ href: "/admin/delegations", labelKey: "links.delegations", icon: IconDelegation, badge: "delegations" as const }]
+              : []),
+            ...(ANNOUNCEMENTS_PAGE.some(hasPermission)
+              ? [{ href: "/admin/announcements", labelKey: "links.announcements", icon: IconMegaphone }]
               : []),
             ...(hasPermission("foundation:audit:read")
               ? [{ href: "/admin/audit-log", labelKey: "links.auditLog", icon: IconClipboardCheck }]
@@ -426,6 +444,8 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
               <div className={side.menu} role="menu" aria-label={t("userMenu.label")}>
                 <Link href="/admin/profile" className={side.menuItem} role="menuitem"><IconIdCard size={16} />{t("userMenu.profile")}</Link>
                 <Link href="/admin/change-password" className={side.menuItem} role="menuitem"><IconKey size={16} />{t("userMenu.changePassword")}</Link>
+                <Link href="/admin/sessions" className={side.menuItem} role="menuitem"><IconShield size={16} />{t("userMenu.sessions")}</Link>
+                <Link href="/notifications" className={side.menuItem} role="menuitem"><IconBell size={16} />{t("links.notifications")}</Link>
                 <div className={side.menuDivider} />
                 <div className={side.menuSetting}><LanguageSwitcher label={t("language")} /></div>
                 <div className={side.menuSetting}><ThemeToggle /></div>
@@ -466,7 +486,9 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
               >
                 {mobileOpen ? <IconX size={18} /> : <IconMenu size={18} />}
               </button>
+              <NotificationBell />
             </div>
+            <AcknowledgeGate />
             <header style={styles.header}>
               <div>
                 <p style={styles.eyebrow}>{formatSectionLabel(section, t)}</p>

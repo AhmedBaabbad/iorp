@@ -89,7 +89,7 @@ def build(db, tenant, params, selected) -> ReportData:
         method=tr(METHOD[r.root_cause_method]) if r.root_cause_method else "", no_action=r.no_action_justification,
         investigated=f"{v(view['investigated_by_name'])} · {moment(r.investigated_at)}" if r.investigated_at else "",
         actions=actions, verification=r.verification_notes, verified_effective=r.status == N.CLOSED and r.verified_at is not None,
-        verified=f"{v(view['verified_by_name'])} · {moment(r.verified_at)}" if r.verified_at else "", attempts=r.verification_attempts,
+        verified=f"{v(_signer(view, params.lang))} · {moment(r.verified_at)}" if r.verified_at else "", attempts=r.verification_attempts,
         review_due=str(r.effectiveness_due_date) if r.effectiveness_due_date else "", review_result=r.effectiveness_result or "",
         review_notes=r.effectiveness_notes or "",
         reviewed=f"{v(view['effectiveness_reviewed_by_name'])} · {moment(r.effectiveness_reviewed_at)}" if r.effectiveness_reviewed_at else "",
@@ -98,7 +98,7 @@ def build(db, tenant, params, selected) -> ReportData:
         costs=costs, total_cost=_num(view["total_cost"]) if view["total_cost"] is not None else "",
         claim=f"{_num(r.claim_amount)} — {tr(CLAIM[r.claim_status])}" if r.claim_amount is not None else (tr(CLAIM[r.claim_status]) if r.claim_status != "none" else ""),
         cancel_reason=r.cancel_reason, detected_by=v(view["detected_by_name"]),
-        investigator=view["investigated_by_name"] or "", verifier=view["verified_by_name"] or "")
+        investigator=view["investigated_by_name"] or "", verifier=_signer(view, params.lang) or "")
     return ReportData(sections=[], subject=r.report_number, document=document)
 
 
@@ -113,3 +113,12 @@ def register_ncr_document():
         KEY, "quality", "تقرير عدم مطابقة", "Non-Conformance Report", NCRParams, (SectionDefinition("document", "التقرير", "Report"),),
         Q.NCR_READ, build, "ncr_body.html", watermark=watermark, filename_prefix="NCR",
         layout_templates=("ncr_document.html", "header.html", "footer.html"), listed=False, classification="external"))
+
+
+def _signer(view, lang):
+    """Who verified, and on whose behalf when it was signed under a delegation (PROJECT-GOV-004)."""
+    signed = view.get("verification_signature")
+    if signed and signed["delegated"]:
+        return (f"{signed['signer_name']} — بالتفويض عن {signed['authority_name']}" if lang == "ar"
+                else f"{signed['signer_name']} — on behalf of {signed['authority_name']}")
+    return view["verified_by_name"]

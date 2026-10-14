@@ -87,6 +87,6 @@ it('uses Arabic Master Data labels and choice labels', async () => {
   render(<NextIntlClientProvider locale="ar" messages={ar} timeZone="UTC"><div dir="rtl">
     <SamplePropertyValues definition={product} values={{ size: 12, finish: 'smooth' }} />
   </div></NextIntlClientProvider>);
-  expect(screen.getByText('المقاس (mm)')).toBeTruthy();
+  expect(screen.getByText('المقاس (مم)')).toBeTruthy();
   expect(screen.getByText('ناعم')).toBeTruthy();
 });

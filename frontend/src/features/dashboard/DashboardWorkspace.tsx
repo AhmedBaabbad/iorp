@@ -94,12 +94,12 @@ function DepartmentSection({ department, period, refresh, compact = false }: { d
           return <article key={b.key} className={s.breakdown}><span className={s.eyebrow}>{common("distribution")}</span><h3>{label("breakdowns", b.key)}</h3>
             {total === 0 ? <p className={s.empty}>{common("empty")}</p> : <>
               {b.style === "donut" && <div className={s.segmentBar} aria-hidden="true">{b.items.map((item, i) => <span key={item.key} style={{ width: `${Math.max(0, Number(item.value)) / total * 100}%`, background: chartTone(item.key, i) }} />)}</div>}
-              <div className={s.bars}>{b.items.map((item, i) => <div key={item.key} className={s.barRow}><div><span>{item.label || label("labels", item.key)}</span><strong>{f.number(item.value)} {b.unit || ""}</strong></div><div className={s.track}><span style={{ width: `${Math.max(0, Number(item.value)) / total * 100}%`, background: chartTone(item.key, i) }} /></div></div>)}</div>
+              <div className={s.bars}>{b.items.map((item, i) => <div key={item.key} className={s.barRow}><div><span>{item.label || label("labels", item.key)}</span><strong>{f.number(item.value)} {f.unit(b.unit)}</strong></div><div className={s.track}><span style={{ width: `${Math.max(0, Number(item.value)) / total * 100}%`, background: chartTone(item.key, i) }} /></div></div>)}</div>
             </>}
           </article>;
         })}
       </div>
-      {!compact && board.rankings?.map(rank => <article className={s.ranking} key={rank.key}><h3>{label("rankings", rank.key)} {rank.unit && <small> · {rank.unit}</small>}</h3>{!rank.items.length ? <p className={s.empty}>{common("empty")}</p> : rank.items.map((item, i) => <div className={s.rankRow} key={`${item.label}-${i}`}><span className={s.rankNumber}>{f.number(i + 1)}</span>{item.href ? <Link href={item.href}>{item.label}</Link> : <span>{item.label}</span>}<strong>{f.number(item.value)} {rank.unit || ""}</strong></div>)}</article>)}
+      {!compact && board.rankings?.map(rank => <article className={s.ranking} key={rank.key}><h3>{label("rankings", rank.key)} {rank.unit && <small> · {f.unit(rank.unit)}</small>}</h3>{!rank.items.length ? <p className={s.empty}>{common("empty")}</p> : rank.items.map((item, i) => <div className={s.rankRow} key={`${item.label}-${i}`}><span className={s.rankNumber}>{f.number(i + 1)}</span>{item.href ? <Link href={item.href}>{item.label}</Link> : <span>{item.label}</span>}<strong>{f.number(item.value)} {f.unit(rank.unit)}</strong></div>)}</article>)}
       {!compact && <AttentionTable items={board.attention} total={board.attention_total} kinds={key => label("attention", key)} />}
       {compact && <footer className={s.departmentFooter}><span>{common("waiting", { count: board.attention_total })}</span><Link href={`${config.href}?period=${period}`}>{common("viewPriorities")}</Link></footer>}
     </>}

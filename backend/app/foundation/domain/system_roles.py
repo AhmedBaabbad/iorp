@@ -40,6 +40,8 @@ _SALES_REP = (
     "commercial:orders:read", "commercial:orders:create", "commercial:orders:update",
     "reports:customers:customer_profile", "reports:customers:directory", "reports:customers:activity_summary",
     "reports:customers:customer_statement", S.SHIPMENTS_READ, S.RETURNS_READ, S.RETURNS_CREATE, *MD.READ,
+    # Complaints of their own customers: register and follow up; assigning, deciding and closing stay with the managers.
+    "commercial:complaints:read", "commercial:complaints:create", "commercial:complaints:update",
 )
 _PRODUCTION_SUPERVISOR = (
     P.WORK_CENTERS_READ, P.code("shifts", "read"), P.code("shift_rosters", "read"), P.code("shift_rosters", "manage_members"),
@@ -78,7 +80,9 @@ SYSTEM_ROLES: tuple[dict[str, object], ...] = (
      "description_ar": "يسجّل عمل الوردية: التشغيل والنتائج والتوقف والهالك", "permissions": _PRODUCTION_SUPERVISOR},
     {"code": "quality_manager", "name_en": "Quality Manager", "name_ar": "مدير الجودة", "description_en": "Runs the quality module, its decisions and reports",
      "description_ar": "يدير موديل الجودة كاملاً مع قراراته وتقاريره",
-     "permissions": (*Q.ALL, *QR.ALL, P.ORDERS_READ, S.SHIPMENTS_READ, S.RETURNS_READ, *PR.READ, PR.SUPPLIERS_APPROVE, PR.MATERIALS_UPDATE, *_MD_DEFINE)},
+     "permissions": (*Q.ALL, *QR.ALL, P.ORDERS_READ, S.SHIPMENTS_READ, S.RETURNS_READ, *PR.READ, PR.SUPPLIERS_APPROVE, PR.MATERIALS_UPDATE, *_MD_DEFINE,
+                     # Customer complaints referred to quality: investigate (measurements, findings) and record the resolution.
+                     "commercial:complaints:read", "commercial:complaints:investigate", "commercial:complaints:resolve")},
     {"code": "quality_inspector", "name_en": "Quality Inspector", "name_ar": "مفتش جودة", "description_en": "Carries out inspections: checks, measurements, defects",
      "description_ar": "ينفّذ الفحوصات: القياسات والعيوب وتسجيل المرفوض", "permissions": _QUALITY_INSPECTOR},
     {"code": "procurement_manager", "name_en": "Procurement Manager", "name_ar": "مدير المشتريات", "description_en": "Runs procurement: suppliers, materials, purchase orders and goods receipts",
@@ -110,6 +114,7 @@ SYSTEM_ROLE_SCOPE_OVERRIDES: dict[str, dict[str, str]] = {
         "commercial:quotes:read": "own",
         "commercial:orders:read": "own",
         "commercial:samples:read": "own",
+        "commercial:complaints:read": "own",
     },
 }
 

@@ -35,6 +35,11 @@ class AuthSession(Base):
     replaced_by_jti_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     revocation_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    # SEC-001: one sign-in is a family of rotated tokens. When it began (its absolute lifetime counts from here), and the
+    # device it began on — shown to the user ("my sessions") and used to tell a new device.
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 class AuthSecurityEvent(Base):

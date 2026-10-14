@@ -34,7 +34,7 @@ def env(ship):
 
 def delivered(env, **over):
     s = env.create(lines=[dict(description="PP Strap 5 mm", width_mm="5", thickness_mm="0.35", quantity="100", unit="roll", weight="1000",
-                               production_order_id=str(env.order_id))], driver_name="Saleh", vehicle_plate="ABC 1", **over)
+                               production_order_id=str(env.order_id))], driver_affiliation="external", driver_name="Saleh", vehicle_plate="ABC 1", **over)
     go(env, s, "ready"); go(env, s, "dispatch")
     return go(env, s, "deliver", received_by_name="Khalid").json()
 
@@ -116,7 +116,7 @@ def test_containment_lists_every_note_that_carried_the_production_order(env):
     first, ret = returned(env)
     other = delivered(env)
     ready = env.create(lines=[dict(description="PP Strap 5 mm", quantity="30", unit="roll", production_order_id=str(env.order_id))],
-                       driver_name="Saleh", vehicle_plate="ABC 1")
+                       driver_affiliation="external", driver_name="Saleh", vehicle_plate="ABC 1")
     go(env, ready, "ready")
     env.create(lines=[dict(description="draft", quantity="1", unit="roll", production_order_id=str(env.order_id))])  # a draft has not left
     line = env.client.get(f"{QUALITY}/returns/awaiting").json()[0]["lines"][0]

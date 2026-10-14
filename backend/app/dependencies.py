@@ -10,7 +10,7 @@ from app.core.auth import AuthenticatedUser
 from app.core.authorization.scoped_policy import ScopedAuthorizationPolicy
 from app.core.db import get_db_session
 from app.core.permission import has_any_permission, has_permission, has_role
-from app.core.security import TokenValidationError, decode_token, record_security_event
+from app.core.security import TokenValidationError, decode_token, record_security_event, session_active
 from app.core.tenancy import TenantContext
 from app.core.interfaces.organization_queries import OrganizationProvisioningInterface
 from app.core.interfaces.user_credentials import UserCredentialInterface
@@ -90,6 +90,7 @@ class CurrentUserContext:
     profile: CurrentUserResponse
     auth_user: AuthenticatedUser
     tenant: TenantContext
+    session_id: str | None = None  # SEC-001: the sign-in this request belongs to ("this device" in my sessions)
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -263,6 +264,14 @@ def get_current_user(
     if organization.status != OrganizationStatus.ACTIVE:
         from app.core.organization_access import OrganizationAccessError
         raise OrganizationAccessError(organization.status.value)
+    # (after the organization's status, which explains itself to the user)
+    # SEC-001: a sign-in that was ended (signed out, ended from "my sessions" or by an administrator, or by the session
+    # limit) stops its access token at once, not when the token would have expired.
+    if payload.get("sid") and not session_active(db, payload["sid"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "SESSION_ENDED", "message": "This session was ended. Please log in again."},
+        )
 
     try:
         profile = service.build_current_user_response(user)
@@ -291,6 +300,7 @@ def get_current_user(
             permissions=permissions,
             is_organization_root=user.is_organization_root,
         ),
+        session_id=payload.get("sid"),
     )
 
 

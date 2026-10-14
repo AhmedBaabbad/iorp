@@ -1,4 +1,6 @@
 "use client";
+import { ReferenceTextSelect } from "@/features/reference-directory/ReferenceTextSelect";
+
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -72,7 +74,7 @@ export function TestParametersPage() {
             <td>{t(`kinds.${p.kind}`)}</td>
             <td>{p.kind === "numeric" ? <input aria-label={t("fields.unit")} dir="ltr" style={{ width: 70 }} value={editing.unit ?? ""}
               onChange={e => setEditing({ ...editing, unit: e.target.value })} /> : "—"}</td>
-            <td><input aria-label={t("fields.method")} dir="ltr" value={editing.method ?? ""} onChange={e => setEditing({ ...editing, method: e.target.value })} /></td>
+            <td><ReferenceTextSelect list="test_method" ariaLabel={t("fields.method")} value={editing.method??""} onChange={v=>setEditing({...editing,method:v})}/></td>
             <td><label><input type="checkbox" checked={editing.is_active} onChange={e => setEditing({ ...editing, is_active: e.target.checked })} /> {t("active")}</label></td>
             <td><form onSubmit={save} className={s.actions}>
               <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy}>{t("save")}</button>
@@ -103,7 +105,7 @@ export function TestParametersPage() {
           </select>
         </label>
         {draft.kind === "numeric" && <label className={s.field}>{t("fields.unit")}<input maxLength={16} dir="ltr" value={draft.unit} onChange={e => set("unit", e.target.value)} /></label>}
-        <label className={s.field}>{t("fields.method")}<input maxLength={255} dir="ltr" value={draft.method} onChange={e => set("method", e.target.value)} /></label>
+        <label className={s.field}>{t("fields.method")}<ReferenceTextSelect list="test_method" value={draft.method} onChange={v=>set("method",v)}/></label>
       </div>
       <p className={s.muted}>{t("kindHint")}</p>
       <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy}>{t("add")}</button>

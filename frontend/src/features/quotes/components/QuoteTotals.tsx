@@ -44,8 +44,15 @@ export function QuoteTotals({ totals }: QuoteTotalsProps) {
 
   return (
     <section style={styles.panel} aria-label={t("summary.sectionTitle")}>
-      <TotalsRow label={t("fields.subtotal")} value={fmt.decimal(totals.subtotal)} />
-      <TotalsRow label={t("fields.discount")} value={`- ${fmt.decimal(totals.discount)}`} />
+      {Number(totals.discount) > 0 ? (
+        <>
+          <TotalsRow label={t("discount.subtotalBefore")} value={fmt.decimal(totals.subtotal)} />
+          <TotalsRow label={t("discount.total")} value={`- ${fmt.decimal(totals.discount)}`} />
+          <TotalsRow label={t("discount.subtotalAfter")} value={fmt.decimal(Number(totals.subtotal) - Number(totals.discount))} />
+        </>
+      ) : (
+        <TotalsRow label={t("fields.subtotal")} value={fmt.decimal(totals.subtotal)} />
+      )}
       <TotalsRow label={t("fields.tax")} value={fmt.decimal(totals.tax)} />
       <TotalsRow
         label={t("summary.totalLabel")}

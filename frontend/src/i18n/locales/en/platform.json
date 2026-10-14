@@ -129,7 +129,10 @@
     },
     "status": {
       "active": "Active",
-      "provisioning": "Provisioning", "active": "Active", "suspended": "Suspended", "inactive": "Inactive", "archived": "Archived"
+      "provisioning": "Provisioning",
+      "suspended": "Suspended",
+      "inactive": "Inactive",
+      "archived": "Archived"
     },
     "actions": {
       "view": "View Details",
@@ -138,18 +141,14 @@
       "resetRootPassword": "Reset Root Password"
     },
     "resetRoot": {
-      "title": "Reset Organization Root Password",
-      "message": "Set a new password for {organization}. The current root account is {email}.",
+      "title": "Reset the organization root's password",
+      "message": "A link goes to {email} (the root of {organization}) to choose their own password. The platform never sets a customer's password.",
       "unknownEmail": "root email unavailable",
-      "newPassword": "New Password",
-      "confirmPassword": "Confirm New Password",
-      "resetButton": "Reset Password",
-      "resetting": "Resetting...",
+      "resetButton": "Send a reset link",
+      "resetting": "Sending…",
       "cancelButton": "Cancel",
-      "success": "The Root password for {organization} ({email}) was reset and all previous sessions were invalidated.",
-      "errorTooShort": "The Root password must contain at least 12 characters.",
-      "errorMismatch": "The passwords do not match.",
-      "errorGeneric": "Could not reset the Root password. Please try again."
+      "success": "A reset link was sent to {email} ({organization}).",
+      "errorGeneric": "The link could not be sent. Check the mail settings and the address."
     },
     "confirmSuspend": "Suspend this organization? All its users will be immediately signed out and unable to log in until reactivated.",
     "confirmActivate": "Reactivate this organization?",
@@ -157,24 +156,95 @@
       "eyebrow": "Platform administration",
       "listTitle": "Organizations management",
       "listSubtitle": "Monitor, search, and manage every organization registered on the platform.",
-      "languageLabel": "Language", "dismiss": "Dismiss notification",
-      "kpi": { "label": "Organization summary", "total": "Total organizations", "active": "Active", "suspended": "Suspended", "archived": "Archived" },
-      "searchPlaceholder": "Search by name or code...", "searchLabel": "Search organizations", "clearSearch": "Clear search", "createButton": "Create organization", "createEyebrow": "Organization provisioning",
-      "organizationSection": "Organization information", "rootSection": "Organization Root account", "rootAccountNote": "A protected Root account will be created for this organization.", "optional": "(optional)",
-      "filters": { "statusLabel": "Filter by status", "industryLabel": "Filter by industry", "allStatuses": "All statuses", "allIndustries": "All industries", "clearAll": "Clear filters" },
-      "columns": { "logo": "Logo", "name": "Organization name", "code": "Code", "status": "Status", "industry_type": "Industry", "timezone": "Timezone", "user_count": "Users", "rootEmail": "Root email", "created_at": "Created", "actions": "Actions" },
-      "logoAlt": "{name} logo", "emptyTitle": "No organizations found", "emptyMessage": "No organizations match the current search and filters.", "emptyFirstOrg": "Create the first organization to get started.",
-      "errorTitle": "Organizations could not be loaded", "errorMessage": "An error occurred while loading the organization list.", "retryButton": "Try again",
-      "actions": { "view": "View", "suspend": "Suspend", "activate": "Reactivate", "deactivate": "Deactivate", "archive": "Archive", "resetRootPassword": "Reset Root password", "moreActions": "More actions" },
-      "pagination": { "showing": "Showing {from}–{to} of {total}", "perPage": "Per page", "previous": "Previous", "next": "Next" },
+      "languageLabel": "Language",
+      "dismiss": "Dismiss notification",
+      "kpi": {
+        "label": "Organization summary",
+        "total": "Total organizations",
+        "active": "Active",
+        "suspended": "Suspended",
+        "archived": "Archived"
+      },
+      "searchPlaceholder": "Search by name or code...",
+      "searchLabel": "Search organizations",
+      "clearSearch": "Clear search",
+      "createButton": "Create organization",
+      "createEyebrow": "Organization provisioning",
+      "organizationSection": "Organization information",
+      "rootSection": "Organization Root account",
+      "rootAccountNote": "A protected root account is created for this organization; its owner receives an activation link by e-mail, valid for 24 hours, to choose their own password.",
+      "optional": "(optional)",
+      "filters": {
+        "statusLabel": "Filter by status",
+        "industryLabel": "Filter by industry",
+        "allStatuses": "All statuses",
+        "allIndustries": "All industries",
+        "clearAll": "Clear filters"
+      },
+      "columns": {
+        "logo": "Logo",
+        "name": "Organization name",
+        "code": "Code",
+        "status": "Status",
+        "industry_type": "Industry",
+        "timezone": "Timezone",
+        "user_count": "Users",
+        "rootEmail": "Root email",
+        "created_at": "Created",
+        "actions": "Actions"
+      },
+      "logoAlt": "{name} logo",
+      "emptyTitle": "No organizations found",
+      "emptyMessage": "No organizations match the current search and filters.",
+      "emptyFirstOrg": "Create the first organization to get started.",
+      "errorTitle": "Organizations could not be loaded",
+      "errorMessage": "An error occurred while loading the organization list.",
+      "retryButton": "Try again",
+      "actions": {
+        "view": "View",
+        "suspend": "Suspend",
+        "activate": "Reactivate",
+        "deactivate": "Deactivate",
+        "archive": "Archive",
+        "resetRootPassword": "Reset Root password",
+        "moreActions": "More actions"
+      },
+      "pagination": {
+        "showing": "Showing {from}–{to} of {total}",
+        "perPage": "Per page",
+        "previous": "Previous",
+        "next": "Next"
+      },
       "confirm": {
         "reasonLabel": "Reason",
-        "suspend": { "title": "Suspend organization", "message": "Suspend {name}?", "warning": "All organization users will immediately lose access.", "button": "Suspend organization" },
-        "activate": { "title": "Reactivate organization", "message": "Reactivate {name}?", "button": "Reactivate organization" },
-        "deactivate": { "title": "Deactivate organization", "message": "Deactivate {name}?", "button": "Deactivate organization" },
-        "archive": { "title": "Archive organization", "message": "Archive {name}?", "warning": "Archiving is permanent and cannot be undone.", "button": "Archive organization", "reasonRequired": "A reason is required to archive an organization." }
+        "suspend": {
+          "title": "Suspend organization",
+          "message": "Suspend {name}?",
+          "warning": "All organization users will immediately lose access.",
+          "button": "Suspend organization"
+        },
+        "activate": {
+          "title": "Reactivate organization",
+          "message": "Reactivate {name}?",
+          "button": "Reactivate organization"
+        },
+        "deactivate": {
+          "title": "Deactivate organization",
+          "message": "Deactivate {name}?",
+          "button": "Deactivate organization"
+        },
+        "archive": {
+          "title": "Archive organization",
+          "message": "Archive {name}?",
+          "warning": "Archiving is permanent and cannot be undone.",
+          "button": "Archive organization",
+          "reasonRequired": "A reason is required to archive an organization."
+        }
       },
-      "cancel": "Cancel", "processing": "Processing...", "actionSuccess": "The organization status was updated successfully.", "actionError": "The organization status could not be updated. Try again."
+      "cancel": "Cancel",
+      "processing": "Processing...",
+      "actionSuccess": "The organization status was updated successfully.",
+      "actionError": "The organization status could not be updated. Try again."
     },
     "create": {
       "title": "New Organization",
@@ -192,15 +262,10 @@
       "adminFullName": "Admin Full Name",
       "adminEmail": "Admin Email",
       "adminPhone": "Admin Phone",
-      "adminPassword": "Admin Password",
-      "adminPasswordConfirm": "Confirm Password",
       "submit": "Create Organization",
       "submitting": "Creating...",
       "cancel": "Cancel",
       "errorInvalidCode": "Organization code may only contain letters, numbers, and hyphens.",
-      "errorPasswordTooShort": "The Root password must be at least 12 characters.",
-      "errorPasswordEmail": "The password must not contain the Root account email.",
-      "errorPasswordMismatch": "Password and confirmation do not match.",
       "errorInvalidLogo": "Choose a PNG, JPEG, or WebP image no larger than 2 MB.",
       "errorCodeTaken": "This organization code is already in use.",
       "errorEmailTaken": "This email address is already registered.",
@@ -228,27 +293,170 @@
     "bootstrapProtected": "Original Platform Root — protected",
     "notAvailable": "Not available",
     "confirmDeactivate": "Deactivate {name}?",
-    "resetTitle": "Reset password for {name}",
-    "fields": { "fullName": "Full Name", "email": "Email", "role": "Role", "password": "Password", "confirmPassword": "Confirm Password" },
-    "roles": { "root": "Platform Root", "admin": "Platform Admin" },
-    "statuses": { "active": "Active", "inactive": "Inactive" },
-    "table": { "name": "Name", "email": "Email", "role": "Role", "status": "Status", "lastLogin": "Last Login", "actions": "Actions" },
-    "actions": { "promote": "Promote to Root", "demote": "Change to Admin", "resetPassword": "Reset Password", "deactivate": "Deactivate" },
-    "errors": { "passwordMismatch": "The passwords do not match.", "generic": "The operation could not be completed." }
+    "resetTitle": "Reset the password of {name}",
+    "fields": {
+      "fullName": "Full Name",
+      "email": "Email",
+      "role": "Role",
+      "password": "Password",
+      "confirmPassword": "Confirm Password"
+    },
+    "roles": {
+      "root": "Platform Root",
+      "admin": "Platform Admin"
+    },
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "status": "Status",
+      "lastLogin": "Last Login",
+      "actions": "Actions"
+    },
+    "actions": {
+      "promote": "Promote to Root",
+      "demote": "Change to Admin",
+      "resetPassword": "Reset Password",
+      "deactivate": "Deactivate"
+    },
+    "errors": {
+      "generic": "The operation could not be completed."
+    },
+    "resetLinkHint": "A link goes to {email} to choose their own password. Nobody chooses another person's password.",
+    "sendResetLink": "Send a reset link",
+    "resetLinkSent": "A reset link was sent to {email}.",
+    "invitation": {
+      "note": "No password is typed. The new administrator receives an activation link by e-mail, valid for 24 hours, and chooses their own.",
+      "sent": "The account was created and the activation link was sent to {email}.",
+      "notSent": "The account was created but the activation link could not be sent. Check the mail settings, then resend it.",
+      "pending": "Pending activation",
+      "resend": "Resend activation link"
+    }
   },
   "organizationDetail": {
-    "backToList": "Back to organizations", "pageTitle": "Organization details", "languageLabel": "Language", "dismiss": "Dismiss notification", "sectionEyebrow": "Platform organization", "logoAlt": "{name} logo", "createdLabel": "Created {date}",
-    "sections": { "stats": "Organization health", "orgInfo": "Organization information", "rootAccount": "Root account", "lifecycle": "Organization lifecycle" },
-    "fields": { "name": "Organization name", "code": "Code", "industry": "Industry", "timezone": "Timezone", "language": "Default language", "createdAt": "Created at", "updatedAt": "Updated at" },
-    "stats": { "users": "Users", "roles": "Roles", "status": "Status", "lastActivity": "Last activity", "noActivity": "No activity" },
-    "statuses": { "provisioning": "Provisioning", "active": "Active", "suspended": "Suspended", "inactive": "Inactive", "archived": "Archived" },
-    "userStatuses": { "active": "Active", "inactive": "Inactive", "locked": "Locked" },
-    "locales": { "ar": "Arabic", "en": "English" },
-    "root": { "status": "Status", "lastLogin": "Last login", "neverLoggedIn": "Never logged in", "resetPassword": "Reset Root password", "resetPasswordTitle": "Reset Root account password", "resetPasswordMessage": "You are resetting the Root password for {orgName}. All existing sessions will be invalidated.", "newPassword": "New password", "confirmPassword": "Confirm new password", "resetting": "Resetting...", "resetSuccess": "The Root password was reset and all previous sessions were invalidated.", "passwordTooShort": "The password must contain at least 12 characters.", "sessionsNotice": "Submitting this change invalidates every existing Root session.", "protectedNotice": "This account is protected and cannot be deleted or deactivated.", "missing": "No Root account was found for this organization." },
-    "lifecycle": { "currentStatus": "Current status", "lastChange": "Last status change", "changeSummary": "Changed on {date} by {who}", "unknownActor": "Platform account", "reasonValue": "Reason: {reason}", "noChanges": "Organization status has not changed since creation.", "archivedNotice": "This organization is archived and cannot be reactivated.", "readOnly": "You do not have permission to change organization status.", "availableActions": "Available actions", "noActions": "No actions are currently available." },
-    "actions": { "suspend": "Suspend organization", "activate": "Activate organization", "deactivate": "Deactivate organization", "archive": "Archive organization" },
-    "confirm": { "suspend": { "title": "Suspend organization", "message": "Suspend {name}?", "warning": "All organization users will lose access immediately.", "button": "Suspend" }, "activate": { "title": "Activate organization", "message": "Activate {name}?", "button": "Activate" }, "deactivate": { "title": "Deactivate organization", "message": "Deactivate {name}?", "button": "Deactivate" }, "archive": { "title": "Archive organization", "message": "Archive {name}?", "warning": "This is permanent and cannot be undone.", "button": "Archive" } },
-    "reasonLabel": "Reason (optional)", "reasonRequired": "A reason is required to archive an organization.", "cancel": "Cancel", "processing": "Processing...", "createdSuccess": "Organization created successfully.", "changeSuccess": "Organization status updated successfully.", "changeError": "Could not update organization status.", "passwordMismatch": "The passwords do not match.", "resetError": "Could not reset the Root password.",
-    "loading": "Loading organization details...", "errorTitle": "Could not load organization", "errorMessage": "An error occurred while loading organization details.", "retryButton": "Try again", "notFoundTitle": "Organization not found", "notFoundMessage": "The requested organization could not be found.", "notAvailable": "Not available"
+    "backToList": "Back to organizations",
+    "pageTitle": "Organization details",
+    "languageLabel": "Language",
+    "dismiss": "Dismiss notification",
+    "sectionEyebrow": "Platform organization",
+    "logoAlt": "{name} logo",
+    "createdLabel": "Created {date}",
+    "sections": {
+      "stats": "Organization health",
+      "orgInfo": "Organization information",
+      "rootAccount": "Root account",
+      "lifecycle": "Organization lifecycle"
+    },
+    "fields": {
+      "name": "Organization name",
+      "code": "Code",
+      "industry": "Industry",
+      "timezone": "Timezone",
+      "language": "Default language",
+      "createdAt": "Created at",
+      "updatedAt": "Updated at"
+    },
+    "stats": {
+      "users": "Users",
+      "roles": "Roles",
+      "status": "Status",
+      "lastActivity": "Last activity",
+      "noActivity": "No activity"
+    },
+    "statuses": {
+      "provisioning": "Provisioning",
+      "active": "Active",
+      "suspended": "Suspended",
+      "inactive": "Inactive",
+      "archived": "Archived"
+    },
+    "userStatuses": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "locked": "Locked"
+    },
+    "locales": {
+      "ar": "Arabic",
+      "en": "English"
+    },
+    "root": {
+      "status": "Status",
+      "lastLogin": "Last login",
+      "neverLoggedIn": "Never logged in",
+      "resetPassword": "Send the Root a reset link",
+      "resetPasswordTitle": "Reset the Root account password",
+      "resetPasswordMessage": "A link goes to {email} (the Root of {orgName}) to choose their own password. The platform never sets a customer's password.",
+      "resetting": "Sending…",
+      "resetSuccess": "A reset link was sent to {email}.",
+      "sessionsNotice": "The Root's sessions end once they set the new password.",
+      "protectedNotice": "This account is protected and cannot be deleted or deactivated.",
+      "missing": "No Root account was found for this organization.",
+      "invitationSent": "The activation link was sent to the root account's e-mail.",
+      "invitationNotSent": "The activation link could not be sent. Check the mail settings, then resend it from here.",
+      "activationPending": "Pending activation: the owner has not chosen a password yet.",
+      "resendActivation": "Resend activation link"
+    },
+    "lifecycle": {
+      "currentStatus": "Current status",
+      "lastChange": "Last status change",
+      "changeSummary": "Changed on {date} by {who}",
+      "unknownActor": "Platform account",
+      "reasonValue": "Reason: {reason}",
+      "noChanges": "Organization status has not changed since creation.",
+      "archivedNotice": "This organization is archived and cannot be reactivated.",
+      "readOnly": "You do not have permission to change organization status.",
+      "availableActions": "Available actions",
+      "noActions": "No actions are currently available."
+    },
+    "actions": {
+      "suspend": "Suspend organization",
+      "activate": "Activate organization",
+      "deactivate": "Deactivate organization",
+      "archive": "Archive organization"
+    },
+    "confirm": {
+      "suspend": {
+        "title": "Suspend organization",
+        "message": "Suspend {name}?",
+        "warning": "All organization users will lose access immediately.",
+        "button": "Suspend"
+      },
+      "activate": {
+        "title": "Activate organization",
+        "message": "Activate {name}?",
+        "button": "Activate"
+      },
+      "deactivate": {
+        "title": "Deactivate organization",
+        "message": "Deactivate {name}?",
+        "button": "Deactivate"
+      },
+      "archive": {
+        "title": "Archive organization",
+        "message": "Archive {name}?",
+        "warning": "This is permanent and cannot be undone.",
+        "button": "Archive"
+      }
+    },
+    "reasonLabel": "Reason (optional)",
+    "reasonRequired": "A reason is required to archive an organization.",
+    "cancel": "Cancel",
+    "processing": "Processing...",
+    "createdSuccess": "Organization created successfully.",
+    "changeSuccess": "Organization status updated successfully.",
+    "changeError": "Could not update organization status.",
+    "passwordMismatch": "The passwords do not match.",
+    "resetError": "The link could not be sent. Check the mail settings and the address.",
+    "loading": "Loading organization details...",
+    "errorTitle": "Could not load organization",
+    "errorMessage": "An error occurred while loading organization details.",
+    "retryButton": "Try again",
+    "notFoundTitle": "Organization not found",
+    "notFoundMessage": "The requested organization could not be found.",
+    "notAvailable": "Not available"
   }
 }

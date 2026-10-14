@@ -8,13 +8,11 @@ import type { FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { PasswordInput } from "@/components/PasswordInput";
 import { API_BASE_URL, ApiClientError } from "@/lib/api-client";
 import type { OrganizationLifecycleAction, OrganizationLifecycleStatus, PlatformOrganizationDetail } from "@/types/platform";
 import { changeOrganizationStatus, getPlatformOrganization, resetOrganizationRootPassword } from "./platform-api";
 import { usePlatformAuth } from "./platform-auth-context";
 import { PlatformProtectedRoute } from "./platform-protected-route";
-import { platformStyles as styles } from "./platform-styles";
 import css from "./platform-organization-detail-page.module.css";
 
 const actionForTarget: Partial<Record<OrganizationLifecycleStatus, OrganizationLifecycleAction>> = {
@@ -84,8 +82,6 @@ function Content() {
   const [actionError, setActionError] = useState("");
   const [busy, setBusy] = useState(false);
   const [showReset, setShowReset] = useState(false);
-  const [password, setPassword] = useState("");
-  const [confirmation, setConfirmation] = useState("");
   const [resetError, setResetError] = useState("");
 
   const load = useCallback(async () => {
@@ -96,7 +92,11 @@ function Content() {
   }, [id, token]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { if (searchParams.get("created") === "1") setNotice(t("createdSuccess")); }, [searchParams, t]);
+  useEffect(() => {
+    if (searchParams.get("created") !== "1") return;
+    // SEC-003: the root chooses their own password through the e-mailed activation link
+    setNotice(`${t("createdSuccess")} ${searchParams.get("invited") === "0" ? t("root.invitationNotSent") : t("root.invitationSent")}`);
+  }, [searchParams, t]);
 
   const actions = useMemo(() => (organization?.allowed_transitions ?? [])
     .map((target) => actionForTarget[target])
@@ -127,12 +127,10 @@ function Content() {
   async function applyReset(event: FormEvent) {
     event.preventDefault();
     if (!isRoot) return;
-    if (password.length < 12) { setResetError(t("root.passwordTooShort")); return; }
-    if (password !== confirmation) { setResetError(t("passwordMismatch")); return; }
     setBusy(true); setResetError("");
     try {
-      await resetOrganizationRootPassword(id, { new_password: password, new_password_confirmation: confirmation }, token);
-      setShowReset(false); setPassword(""); setConfirmation(""); setNotice(t("root.resetSuccess"));
+      await resetOrganizationRootPassword(id, token);
+      setShowReset(false); setNotice(t("root.resetSuccess", { email: organization?.root_user?.email ?? "" }));
     } catch { setResetError(t("resetError")); }
     finally { setBusy(false); }
   }
@@ -181,7 +179,7 @@ function Content() {
         </dl></section>
 
         <section className={css.panel}><div className={css.sectionHeading}><span>{icons.users}</span><div><p>{t("sectionEyebrow")}</p><h2>{t("sections.rootAccount")}</h2></div></div>
-          {organization.root_user ? <div className={css.rootCard}><span className={css.avatar} style={{ backgroundColor: identityColor(organization.root_user.full_name) }}>{initials(organization.root_user.full_name)}</span><div className={css.rootIdentity}><h3>{organization.root_user.full_name}</h3><a href={`mailto:${organization.root_user.email}`}>{organization.root_user.email}</a></div><dl><div><dt>{t("root.status")}</dt><dd><span className={`${css.statusBadge} ${css.status_active}`}><i />{t(`userStatuses.${organization.root_user.status}`)}</span></dd></div><div><dt>{t("root.lastLogin")}</dt><dd>{organization.root_user.last_login_at ? formatDate(organization.root_user.last_login_at) : t("root.neverLoggedIn")}</dd></div></dl>{isRoot && <button className={css.secondaryButton} type="button" onClick={() => setShowReset(true)}>{t("root.resetPassword")}</button>}</div> : <p className={css.muted}>{t("root.missing")}</p>}
+          {organization.root_user ? <div className={css.rootCard}><span className={css.avatar} style={{ backgroundColor: identityColor(organization.root_user.full_name) }}>{initials(organization.root_user.full_name)}</span><div className={css.rootIdentity}><h3>{organization.root_user.full_name}</h3><a href={`mailto:${organization.root_user.email}`}>{organization.root_user.email}</a></div><dl><div><dt>{t("root.status")}</dt><dd><span className={`${css.statusBadge} ${css.status_active}`}><i />{t(`userStatuses.${organization.root_user.status}`)}</span></dd></div><div><dt>{t("root.lastLogin")}</dt><dd>{organization.root_user.last_login_at ? formatDate(organization.root_user.last_login_at) : t("root.neverLoggedIn")}</dd></div></dl>{organization.root_user.activation_pending ? <p className={css.muted}>{t("root.activationPending")}</p> : null}{isRoot && <button className={css.secondaryButton} type="button" onClick={() => setShowReset(true)}>{organization.root_user.activation_pending ? t("root.resendActivation") : t("root.resetPassword")}</button>}</div> : <p className={css.muted}>{t("root.missing")}</p>}
           <p className={css.protectedNotice}>{icons.shield}<span>{t("root.protectedNotice")}</span></p>
         </section>
 
@@ -195,7 +193,7 @@ function Content() {
 
     {action && organization && <div className={css.overlay}><form className={css.dialog} onSubmit={applyStatus}><span className={`${css.dialogIcon} ${css[`action_${action}`]}`}>{action === "activate" ? icons.status : icons.alert}</span><h2>{t(`confirm.${action}.title`)}</h2><p>{t(`confirm.${action}.message`, { name: organization.name })}</p>{(action === "suspend" || action === "archive") && <p className={css.dialogWarning}>{t(`confirm.${action}.warning`)}</p>}<label><span>{t("reasonLabel")}</span><textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} required={action === "archive"} rows={3} /></label>{actionError && <p className={css.formError}>{actionError}</p>}<div className={css.dialogActions}><button type="button" className={css.cancelButton} onClick={() => { setAction(null); setReason(""); }}>{t("cancel")}</button><button className={`${css.actionButton} ${css[`action_${action}`]}`} disabled={busy}>{busy ? t("processing") : t(`confirm.${action}.button`)}</button></div></form></div>}
 
-    {showReset && organization && <div className={css.overlay}><form className={css.dialog} onSubmit={applyReset}><span className={css.dialogIcon}>{icons.shield}</span><h2>{t("root.resetPasswordTitle")}</h2><p>{t("root.resetPasswordMessage", { orgName: organization.name })}</p><label><span>{t("root.newPassword")}</span><PasswordInput inputStyle={styles.input} minLength={12} value={password} onChange={(event) => setPassword(event.target.value)} required /></label><label><span>{t("root.confirmPassword")}</span><PasswordInput inputStyle={styles.input} minLength={12} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} required /></label><p className={css.dialogWarning}>{t("root.sessionsNotice")}</p>{resetError && <p className={css.formError}>{resetError}</p>}<div className={css.dialogActions}><button type="button" className={css.cancelButton} onClick={() => setShowReset(false)}>{t("cancel")}</button><button className={css.dangerButton} disabled={busy}>{busy ? t("root.resetting") : t("root.resetPassword")}</button></div></form></div>}
+    {showReset && organization && <div className={css.overlay}><form className={css.dialog} onSubmit={applyReset}><span className={css.dialogIcon}>{icons.shield}</span><h2>{t("root.resetPasswordTitle")}</h2><p>{t("root.resetPasswordMessage", { orgName: organization.name, email: organization.root_user?.email ?? "" })}</p><p className={css.dialogWarning}>{t("root.sessionsNotice")}</p>{resetError && <p className={css.formError}>{resetError}</p>}<div className={css.dialogActions}><button type="button" className={css.cancelButton} onClick={() => setShowReset(false)}>{t("cancel")}</button><button className={css.dangerButton} disabled={busy}>{busy ? t("root.resetting") : t("root.resetPassword")}</button></div></form></div>}
   </main>;
 }
 

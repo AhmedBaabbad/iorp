@@ -1,5 +1,7 @@
 import logging
 import smtplib
+import ssl
+from email.utils import formataddr, formatdate, make_msgid
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -18,13 +20,19 @@ class EmailService:
                 logger.info("Transactional email suppressed (console mode); message content is not logged")
                 return True
             message = MIMEMultipart("alternative")
-            message["Subject"], message["From"], message["To"] = subject, self.settings.email_from, to_email
+            message["Subject"], message["From"], message["To"] = subject, formataddr((self.settings.email_from_name, self.settings.email_from)), to_email
+            message['Date'] = formatdate(localtime=False)
+            message['Message-ID'] = make_msgid()
             if text_body:
                 message.attach(MIMEText(text_body, "plain", "utf-8"))
             message.attach(MIMEText(html_body, "html", "utf-8"))
-            with smtplib.SMTP(self.settings.smtp_host, self.settings.smtp_port, timeout=self.settings.smtp_timeout_seconds) as server:
+            context = ssl.create_default_context()
+            connection = (smtplib.SMTP_SSL(self.settings.smtp_host, self.settings.smtp_port,
+                timeout=self.settings.smtp_timeout_seconds, context=context) if self.settings.smtp_ssl else
+                smtplib.SMTP(self.settings.smtp_host, self.settings.smtp_port, timeout=self.settings.smtp_timeout_seconds))
+            with connection as server:
                 if self.settings.smtp_tls:
-                    server.starttls()
+                    server.starttls(context=context)
                 if self.settings.smtp_user:
                     server.login(self.settings.smtp_user, self.settings.smtp_password or "")
                 server.send_message(message)

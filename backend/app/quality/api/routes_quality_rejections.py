@@ -42,7 +42,7 @@ def create_quality_rejection(payload: QualityRejectionCreate, tenant: TenantCont
 @router.get("", response_model=Page[QualityRejectionListItem], dependencies=[Depends(require_permission(Q.REJECTIONS_READ))])
 def list_quality_rejections(
     production_order_id: UUID | None = Query(default=None), quality_check_id: UUID | None = Query(default=None),
-    rejection_reason: RejectionReason | None = Query(default=None), disposition: Disposition | None = Query(default=None),
+    rejection_reason: str | None = Query(default=None), disposition: Disposition | None = Query(default=None),
     disposition_status: DispositionStatus | None = Query(default=None), date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None), search: str | None = Query(default=None, max_length=60),
     unresolved: bool | None = Query(default=None), params: PageParams = Depends(page_params),

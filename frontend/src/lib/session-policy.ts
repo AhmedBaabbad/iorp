@@ -1,9 +1,11 @@
 // Client session policy: sign out after inactivity, keep an active user's token fresh.
 // Pure functions so the timing rules can be tested without a browser.
 
-const minutes = Number(process.env.NEXT_PUBLIC_IDLE_TIMEOUT_MINUTES ?? "5");
+// SEC-001: 15 minutes without any activity (PCI-DSS 8.2.8; NIST 800-63B allows up to 30); the session lasts as long as the
+// user keeps working.
+const minutes = Number(process.env.NEXT_PUBLIC_IDLE_TIMEOUT_MINUTES ?? "15");
 /** Inactivity (no pointer, key, touch or scroll) that ends the session. */
-export const IDLE_TIMEOUT_MS = (Number.isFinite(minutes) && minutes > 0 ? minutes : 5) * 60_000;
+export const IDLE_TIMEOUT_MS = (Number.isFinite(minutes) && minutes > 0 ? minutes : 15) * 60_000;
 /** How long before the idle logout the countdown warning appears. */
 export const IDLE_WARNING_MS = Math.min(60_000, IDLE_TIMEOUT_MS / 2);
 /** Renew the access token this long before it expires, but only for an active user. */

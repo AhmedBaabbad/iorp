@@ -36,7 +36,7 @@ export const defectSeverityColors: Record<DefectSeverity, BadgeColor> = {
   critical: { background: "var(--danger-soft)", color: "var(--danger)" },
 };
 
-export const defectCategoryColors: Record<DefectCategory, BadgeColor> = {
+export const defectCategoryColors: Partial<Record<DefectCategory, BadgeColor>> = {  // an added category: neutral
   dimension: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
   thickness: { background: "var(--accent-soft)", color: "var(--accent-strong)" },
   surface: { background: "var(--surface-muted)", color: "var(--text-muted)" },

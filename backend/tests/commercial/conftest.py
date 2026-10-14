@@ -24,6 +24,21 @@ def auth_headers(client, db, test_org, test_user):
 
 
 @pytest.fixture
+def approver_headers(client, db, test_org):
+    """Another commercial manager: who prepared a sales order does not confirm it (PROJECT-GOV-004)."""
+    from app.core.security import hash_password
+    from app.foundation.domain.enums import UserStatus
+    from app.foundation.infrastructure.models import User
+    approver = User(organization_id=test_org.id, full_name="Confirming Manager", email="confirming-manager@example.com",
+                    password_hash=hash_password("Approver123!"), status=UserStatus.ACTIVE)
+    db.add(approver); db.commit()
+    grant_commercial_role(db, test_org, approver)
+    resp = client.post("/api/v1/auth/login", json={"email": "confirming-manager@example.com", "password": "Approver123!"})
+    assert resp.status_code == 200, resp.text
+    return {"Authorization": f"Bearer {resp.json()['access_token']}"}
+
+
+@pytest.fixture
 def with_owner(test_user):
     """Customers require a Sales Owner; the commercial-manager test user is an eligible one."""
     return lambda body: {**body, "sales_owner_user_id": str(test_user.id)}

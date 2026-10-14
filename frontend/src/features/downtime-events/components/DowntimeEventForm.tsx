@@ -1,5 +1,6 @@
 "use client";
 
+import { ReferenceTextSelect } from "@/features/reference-directory/ReferenceTextSelect";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -114,7 +115,7 @@ export function DowntimeEventForm({ eventId }: { eventId?: string }) {
         </label>
         <label className={s.field}>{t("fields.startTime")}<input type="datetime-local" required value={values.start} disabled={busy || locked} onChange={e => set("start", e.target.value)} /></label>
         <label className={s.field}>{t("fields.endTimeOptional")}<input type="datetime-local" value={values.end} min={values.start || undefined} disabled={busy || locked} onChange={e => set("end", e.target.value)} /></label>
-        <label className={s.field}>{t("fields.reasonCode")}<input maxLength={255} value={values.reason} disabled={busy || locked} onChange={e => set("reason", e.target.value)} /></label>
+        <label className={s.field}>{t("fields.reasonCode")}<ReferenceTextSelect list="downtime_reason" value={values.reason} disabled={busy || locked} onChange={v => set("reason", v)} /></label>
       </div>
       <p className={s.muted}>{hints(values.category)} {isPlanned(values.category) ? t("hints.plannedType") : t("hints.lossType")}</p>
       {!values.end && <p className={s.muted}>{t("hints.openStop")}</p>}

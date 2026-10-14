@@ -147,7 +147,9 @@ class SettingsRead(BaseModel):
 
 
 # ── reference lists (MD-002) ────────────────────────────────────────────────────────────────────
-ListName = Literal["sector", "opportunity_source", "country", "city"]
+ListName = Literal["sector", "opportunity_source", "country", "city", "downtime_reason", "waste_reason", "workforce_skill", "test_method",
+                   "supplier_category", "material_category", "defect_category", "rejection_reason", "complaint_category", "interaction_type",
+                   "vehicle_type"]
 
 
 class ListItemCreate(_Input):
@@ -175,6 +177,8 @@ class ListItemRead(BaseModel):
     parent_key: str | None
     active: bool
     sort_order: int
+    uses: int = 0  # records that store it (MD-003): deletable only at 0
+    protected: bool = False  # written by the system itself: never deleted
 
 
 class ListLegacyMapInput(BaseModel):

@@ -38,6 +38,14 @@ def quotation_pdf(quote_id:UUID, lang:str|None=Query(None, pattern='^(ar|en)$'),
 @router.get('/reports/customers/lookups/{kind}')
 def lookups(kind:str,q:str=Query('',max_length=120),current=Depends(get_current_user),db=Depends(get_db)):
     can=can_for(current)
+    if kind in ('complaints','complaint_customers'):
+        if not can('commercial:complaints:read') or not can('commercial:complaints:report'):
+            raise HTTPException(403,'REPORT_PERMISSION_DENIED')
+        from app.commercial.application.complaint_service import ComplaintService
+        service=ComplaintService(db,current.tenant)
+        if kind=='complaints':
+            return [dict(id=str(c.id),label=f'{c.number} — {c.title}') for c in db.scalars(service.filtered(search=q).limit(50))]
+        return [dict(id=str(c.id),label=c.name) for c in db.scalars(service.customers().where(Customer.name.icontains(q,autoescape=True)).order_by(Customer.name,Customer.id).limit(50))]
     if not can(READ) or not any(can(p) for p in PERMISSIONS if not p.endswith('internal_audience')):
         raise HTTPException(403,'REPORT_PERMISSION_DENIED')
     query=scoped(db,current.tenant)

@@ -10,6 +10,7 @@ export type LoginResponse = {
 };
 
 export type CurrentUser = {
+  timezone?: string | null;
   id: string;
   organization_id: string;
   organization_code: string;
@@ -38,6 +39,7 @@ export type CurrentUser = {
 };
 
 export type UserProfileUpdate = {
+  timezone?: string | null;
   full_name?: string;
   phone?: string | null;
   preferred_locale?: "ar" | "en" | null;

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 if TYPE_CHECKING:
     from app.core.interfaces.authorization_policy import AuthorizationContext, AuthorizationPolicy
 
+from app.commercial.application import notices
 from app.commercial.application.product_rules import assert_list_values
 from app.commercial.api.schemas import (
     CreatedBySummary,
@@ -39,6 +40,7 @@ from app.commercial.infrastructure.repositories import (
     QuoteRepository,
     SampleRepository,
 )
+from app.core.interfaces.reference_lists import unknown_list_values
 from app.core.tenancy import TenantContext
 from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.core.utils import utc_now
@@ -109,6 +111,11 @@ class CustomerService:
         self.db.refresh(customer)
         return self._attach_customer_associations(tenant, customer)
 
+    def _customer_name(self, tenant, customer_id):
+        """The customer an entry of the activity log is about, by name (ORG-AUDIT-003)."""
+        customer = self.customers.get_by_id(tenant.organization_id, customer_id)
+        return customer.name if customer else None
+
     def create_interaction(
         self,
         tenant: TenantContext,
@@ -118,6 +125,8 @@ class CustomerService:
         customer = self._writable_customer(tenant, customer_id)
         if customer is None:
             return None
+        if unknown_list_values(self.db, tenant.organization_id, "interaction_type", [data.interaction_type]):
+            raise ValueError("The interaction type is not in the organization's list.")  # MD-003
 
         interaction = CustomerInteraction(
             customer_id=customer.id,
@@ -127,7 +136,7 @@ class CustomerService:
 
         try:
             self.interactions.add(interaction)
-            get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "interaction.created", "interaction", interaction.id, actor_id=tenant.user_id, details={"customer_id": str(customer.id)})
+            get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "interaction.created", "interaction", interaction.id, entity_name=self._customer_name(tenant, interaction.customer_id), actor_id=tenant.user_id, details={"customer_id": str(customer.id)})
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
@@ -159,11 +168,14 @@ class CustomerService:
         if interaction is None:
             return None
         changes = data.model_dump(exclude_unset=True)
+        if changes.get("interaction_type") and unknown_list_values(self.db, tenant.organization_id, "interaction_type",
+                                                                   [changes["interaction_type"]], [interaction.interaction_type]):
+            raise ValueError("The interaction type is not in the organization's list.")  # MD-003
         for field, value in changes.items():
             if field in ("interaction_type", "interaction_date", "subject") and value is None:
                 raise ValueError(f"{field} cannot be empty.")
             setattr(interaction, field, value)
-        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "interaction.updated", "interaction", interaction.id,
+        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "interaction.updated", "interaction", interaction.id, entity_name=self._customer_name(tenant, interaction.customer_id),
                                                       actor_id=tenant.user_id, details={"customer_id": str(customer_id), "fields": sorted(changes)})
         self.db.commit()
         self.db.refresh(interaction)
@@ -179,7 +191,7 @@ class CustomerService:
             return False
         if self.db.scalar(select(FollowUp.id).where(FollowUp.interaction_id == interaction.id).limit(1)) is not None:
             raise ValueError("INTERACTION_HAS_FOLLOW_UPS")
-        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "interaction.deleted", "interaction", interaction.id,
+        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "interaction.deleted", "interaction", interaction.id, entity_name=self._customer_name(tenant, interaction.customer_id),
                                                       actor_id=tenant.user_id, details={"customer_id": str(customer_id), "subject": interaction.subject})
         self.interactions.delete(interaction)
         self.db.commit()
@@ -240,7 +252,8 @@ class CustomerService:
 
         try:
             self.follow_ups.add(follow_up)
-            get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.created", "followup", follow_up.id, actor_id=tenant.user_id, details={"customer_id": str(customer.id)})
+            get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.created", "followup", follow_up.id, entity_name=follow_up.reason, actor_id=tenant.user_id, details={"customer_id": str(customer.id)})
+            notices.follow_up_assigned(self.db, tenant, follow_up)
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
@@ -312,11 +325,14 @@ class CustomerService:
                     if not eligibility.is_user_eligible(new_assignee, tenant.organization_id):
                         raise ValueError("User is not eligible as a follow-up assignee.")
 
+        reassigned = "assigned_user_id" in payload and payload["assigned_user_id"] != follow_up.assigned_user_id
         for field, value in payload.items():
             setattr(follow_up, field, value)
 
         try:
-            get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.updated", "followup", follow_up.id, actor_id=tenant.user_id, details=payload)
+            if reassigned:
+                notices.follow_up_assigned(self.db, tenant, follow_up)
+            get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.updated", "followup", follow_up.id, entity_name=follow_up.reason, actor_id=tenant.user_id, details=payload)
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
@@ -330,7 +346,7 @@ class CustomerService:
         if follow_up is None:
             return False
         self.follow_ups.delete(follow_up)
-        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.deleted", "followup", follow_up.id, actor_id=tenant.user_id)
+        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.deleted", "followup", follow_up.id, entity_name=follow_up.reason, actor_id=tenant.user_id)
         self.db.commit()
         return True
 
@@ -351,7 +367,7 @@ class CustomerService:
         if data.notes is not None:
             follow_up.notes = data.notes
 
-        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.completed", "followup", follow_up.id, actor_id=tenant.user_id)
+        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.completed", "followup", follow_up.id, entity_name=follow_up.reason, actor_id=tenant.user_id)
         self.db.commit()
         self.db.refresh(follow_up)
         return self._attach_follow_up_associations(tenant, follow_up)
@@ -366,7 +382,7 @@ class CustomerService:
         follow_up.status = FollowUpStatus.PENDING
         follow_up.completed_at = None
 
-        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.reopened", "followup", follow_up.id, actor_id=tenant.user_id)
+        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.reopened", "followup", follow_up.id, entity_name=follow_up.reason, actor_id=tenant.user_id)
         self.db.commit()
         self.db.refresh(follow_up)
         return self._attach_follow_up_associations(tenant, follow_up)
@@ -381,7 +397,7 @@ class CustomerService:
         follow_up.status = FollowUpStatus.CANCELLED
         follow_up.completed_at = None
 
-        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.cancelled", "followup", follow_up.id, actor_id=tenant.user_id)
+        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.cancelled", "followup", follow_up.id, entity_name=follow_up.reason, actor_id=tenant.user_id)
         self.db.commit()
         self.db.refresh(follow_up)
         return self._attach_follow_up_associations(tenant, follow_up)

@@ -53,9 +53,10 @@ def build(db, tenant, params, selected) -> ReportData:
     else:
         who = tr("المستلم من المصنع", "Collected by") if s.delivery_method == rules.PICKUP else tr("السائق", "Driver")
         transport = [(who, s.driver_name or "—"), (tr("الجوال", "Phone"), s.driver_phone or "—"),
-                     (tr("رقم اللوحة", "Vehicle plate"), s.vehicle_plate or "—"), (tr("نوع المركبة", "Vehicle type"), s.vehicle_type or "—")]
+                     (tr("رقم اللوحة", "Vehicle plate"), s.vehicle_plate or "—"), (tr("نوع المركبة", "Vehicle type"), list_names(db, tenant.organization_id, "vehicle_type", [s.vehicle_type], params.lang).get(s.vehicle_type) or "—")]
         if s.delivery_method == rules.PICKUP:
             transport.append((tr("رقم الهوية / الإقامة", "ID / Iqama no."), s.driver_id_no or "—"))
+        transport.append((tr("صفة السائق", "Driver affiliation"), tr("داخلي", "Internal") if s.driver_affiliation=="internal" else tr("خارجي", "External") if s.driver_affiliation=="external" else tr("غير محدد — سجل قديم", "Unclassified — legacy record")))
     transport.append((tr("وقت الخروج", "Dispatched"), moment(s.dispatched_at) or "—"))
     totals = rules.totals(s.lines)
     unit = lambda code: unit_label(code, params.lang)  # noqa: E731

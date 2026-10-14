@@ -17,7 +17,7 @@ UNITS: dict[str, tuple[str, str]] = {
     "dozen": ("دستة", "Dozen"),
     "lot": ("دفعة", "Lot"),
     # Packaging
-    "roll": ("رول", "Roll"),
+    "roll": ("لفة", "Roll"),
     "reel": ("بكرة", "Reel"),
     "coil": ("لفّة", "Coil"),
     "bundle": ("حزمة", "Bundle"),
@@ -62,7 +62,7 @@ SYMBOLS: dict[str, tuple[str, str]] = {
     "set": ("طقم", "set"),
     "dozen": ("دستة", "doz"),
     "lot": ("دفعة", "lot"),
-    "roll": ("رول", "roll"),
+    "roll": ("لفة", "roll"),
     "reel": ("بكرة", "reel"),
     "coil": ("لفّة", "coil"),
     "bundle": ("حزمة", "bdl"),

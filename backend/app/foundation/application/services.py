@@ -9,7 +9,7 @@ from app.core.interfaces.workforce_queries import WorkforceQueryInterface
 from app.core.account_access import AccountAccessError
 from app.core.interfaces.platform_email_queries import PlatformEmailQueryInterface
 from app.core.exceptions import EmailAlreadyExistsError
-from app.core.security import hash_password, issue_token_pair, normalize_email, revoke_account_sessions, verify_password
+from app.core.security import active_sessions, decode_token, describe_device, end_sessions, has_usable_password, hash_password, issue_token_pair, known_device, normalize_email, revoke_account_sessions, unusable_password_hash, verify_password
 from app.core.password_policy import validate_password
 from app.core.organization_access import ensure_organization_access
 from app.core.config import settings
@@ -56,12 +56,15 @@ from app.foundation.infrastructure.models import (
 )
 from app.foundation.domain.enums import OrganizationStatus, UserStatus
 from app.foundation.domain.user_lifecycle import DeactivationImpact, validate_user_transition
+from app.foundation.application import notices
+from app.foundation.application.account_alerts import alert_email_change
 from app.foundation.application.audit import (
     ROLE_ASSIGNED, ROLE_CREATED, ROLE_DELETED, ROLE_PERMISSIONS_UPDATED, ROLE_REMOVED, ROLE_UPDATED,
     USER_ACTIVATED, USER_CREATED, USER_DEACTIVATED, USER_LOCKED, USER_PASSWORD_CHANGED,
     USER_AUTO_LOCKED, USER_PASSWORD_RESET, USER_UNLOCKED, USER_UPDATED, log_tenant_audit,
 )
 from app.foundation.application.security_log import (
+    TENANT_SESSIONS_ENDED,
     TENANT_ACCOUNT_LOCKED, TENANT_ACCOUNT_UNLOCKED, TENANT_AUTO_LOCKED,
     TENANT_LOGIN_FAILED,
     TENANT_LOGIN_SUCCESS,
@@ -77,6 +80,12 @@ from app.foundation.infrastructure.repositories import (
     UserRoleRepository,
 )
 
+
+
+
+class PasswordResetEmailError(RuntimeError):
+    """SEC-002: the reset e-mail could not be sent (no mail service, or a wrong address): the administrator corrects the
+    user's e-mail (both addresses are alerted) or the mail settings, then sends the link again."""
 
 class RoleGovernanceError(Exception):
     def __init__(self, code: str, message: str, status_code: int, user_count: int | None = None) -> None:
@@ -285,7 +294,7 @@ class FoundationService:
     def list_permissions_for_role(self, role_id: UUID) -> list[Permission]:
         return self.role_permissions.list_permissions_for_role(role_id)
 
-    def authenticate_user(self, data: LoginRequest) -> User | None:
+    def authenticate_user(self, data: LoginRequest, *, ip: str | None = None, user_agent: str | None = None) -> User | None:
         matches = self.users.list_by_email(normalize_email(str(data.email)))
         if len(matches) != 1:
             verify_password(data.password, None)
@@ -317,7 +326,7 @@ class FoundationService:
                 )
             except LoginProtectionError:
                 log_tenant_security(
-                    self.db, user.organization_id, TENANT_AUTO_LOCKED, user.id, user.email,
+                    self.db, user.organization_id, TENANT_AUTO_LOCKED, user.id, user.email, ip, user_agent,
                     details={
                         "failed_login_attempts": user.failed_login_attempts,
                         "auto_locked_until": user.auto_locked_until.isoformat() if user.auto_locked_until else None,
@@ -325,11 +334,11 @@ class FoundationService:
                 )
                 self.db.commit()
                 raise
+            # Every failure is recorded with its device — the root's too, though the root is never locked out.
+            log_tenant_security(self.db, user.organization_id, TENANT_LOGIN_FAILED, user.id, user.email, ip, user_agent,
+                                details={"failed_login_attempts": failed_attempts})
+            self.db.commit()
             if not user.is_organization_root:
-                log_tenant_security(self.db, user.organization_id, TENANT_LOGIN_FAILED,
-                                    user.id, user.email,
-                                    details={"failed_login_attempts": failed_attempts})
-                self.db.commit()
                 raise InvalidCredentialsError(
                     failed_attempts=failed_attempts,
                     remaining_attempts=max(0, settings.login_max_attempts - failed_attempts),
@@ -339,7 +348,7 @@ class FoundationService:
         return user
 
     def login(self, data: LoginRequest, *, ip: str | None = None, user_agent: str | None = None) -> LoginResponse | None:
-        user = self.authenticate_user(data)
+        user = self.authenticate_user(data, ip=ip, user_agent=user_agent)
         if user is None:
             return None
 
@@ -357,7 +366,24 @@ class FoundationService:
             ip=ip,
             user_agent=user_agent,
         )
+        self._after_sign_in(user, decode_token(pair.access_token, "access")["sid"], ip, user_agent)
         return LoginResponse(access_token=pair.access_token, refresh_token=pair.refresh_token, expires_in=pair.access_expires_in)
+
+    def _after_sign_in(self, user: User, family_id: str, ip: str | None, user_agent: str | None) -> None:
+        """SEC-001: the session limit (a sign-in beyond it ends the oldest ones) and a notice of a new device."""
+        family = UUID(family_id)
+        organization = self.organizations.get(user.organization_id)
+        limit = max(1, getattr(organization, "max_sessions_per_user", None) or 2)
+        live = active_sessions(self.db, "tenant", user.id)  # newest first, this one included
+        oldest = [s for s in live if s["id"] != family][max(0, limit - 1):]
+        if oldest:
+            end_sessions(self.db, "tenant", user.id, [s["id"] for s in oldest], reason="session_limit")
+            log_tenant_security(self.db, user.organization_id, TENANT_SESSIONS_ENDED, user.id, user.email, ip, user_agent,
+                                details={"reason": "session_limit", "sessions": len(oldest)})
+            notices.sessions_ended_by_limit(self.db, user.organization_id, user.id, len(oldest), limit)
+        if known_device(self.db, "tenant", user.id, user_agent, exclude_family=family) is False:
+            notices.new_device(self.db, user.organization_id, user.id, describe_device(user_agent), ip)
+        self.db.commit()
 
     def change_password(self, user: User, data: PasswordChangeRequest) -> None:
         if not verify_password(data.current_password, user.password_hash):
@@ -378,31 +404,22 @@ class FoundationService:
                             user.id, user.email, details={"sessions_invalidated": True})
         self.db.commit()
 
-    def reset_user_password_for_tenant(
-        self,
-        organization_id: UUID,
-        user_id: UUID,
-        new_password: str,
-        confirmation: str,
-        actor: User | None = None,
-    ) -> User:
+    def reset_user_password_for_tenant(self, organization_id: UUID, user_id: UUID, actor: User | None = None) -> dict:
+        """SEC-002: e-mails the user a reset link; the user chooses their own password (their sessions end when they do).
+        No administrator ever chooses, sees or holds a user's password, not even for a moment. Audited."""
         user = self.get_user_by_id_in_organization(user_id, organization_id)
         if user is None:
             raise LookupError("User not found.")
         if user.is_organization_root:
             raise _cannot_deactivate_root()
-        validate_password(new_password, confirmation, user.email, 8)
-        if verify_password(new_password, user.password_hash):
-            raise ValueError("New password must be different from current password")
-        user.password_hash = hash_password(new_password)
-        user.token_version += 1
-        revoke_account_sessions(self.db, "tenant", user.id, reason="password_reset")
-        log_tenant_audit(self.db, organization_id, USER_PASSWORD_RESET, "user", user.id, actor.id if actor else None, actor.full_name if actor else None, actor.email if actor else None, user.full_name, {"password_changed": True, "sessions_invalidated": True})
-        log_tenant_security(self.db, organization_id, TENANT_PASSWORD_CHANGED,
-                            user.id, user.email, details={"reset_by_admin": True, "sessions_invalidated": True})
+        from app.foundation.application.password_reset import TenantPasswordResetService
+        if not TenantPasswordResetService().request_reset(self.db, user.email, user.preferred_locale):
+            raise PasswordResetEmailError()
+        method = "link" if has_usable_password(user.password_hash) else "invitation"  # SEC-003: resent activation
+        log_tenant_audit(self.db, organization_id, USER_PASSWORD_RESET, "user", user.id, actor.id if actor else None,
+                         actor.full_name if actor else None, actor.email if actor else None, user.full_name, {"method": method})
         self.db.commit()
-        self.db.refresh(user)
-        return user
+        return {"method": method, "email": user.email}
 
     def build_current_user_response(self, user: User) -> CurrentUserResponse:
         organization = self.organizations.get(user.organization_id)
@@ -419,7 +436,11 @@ class FoundationService:
             if user.is_organization_root
             else self.permissions.get_permissions_for_user(user.id, user.organization_id)
         )
+        if not user.is_organization_root:  # PROJECT-GOV-004: approvals delegated to the user and in force today
+            from app.foundation.application.delegation_service import delegated_permissions
+            permissions = set(permissions) | delegated_permissions(self.db, user)
         return CurrentUserResponse(
+            timezone=user.timezone,
             id=user.id,
             organization_id=user.organization_id,
             organization_code=organization.code,
@@ -457,6 +478,7 @@ class FoundationService:
             raise ValueError("User organization not found.")
         roles = self.user_roles.list_roles_for_user(user.id, user.organization_id)
         return UserProfileResponse(
+            timezone=user.timezone,
             id=user.id,
             full_name=user.full_name,
             email=user.email,
@@ -474,7 +496,13 @@ class FoundationService:
         )
 
     def update_my_profile(self, user: User, data: UserProfileUpdate) -> UserProfileResponse:
-        before = {field: getattr(user, field) for field in ("full_name", "phone", "preferred_locale")}
+        if "timezone" in data.model_fields_set and data.timezone:
+            from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+            try:
+                ZoneInfo(data.timezone)
+            except (ZoneInfoNotFoundError, ValueError) as exc:
+                raise ValueError("Invalid timezone.") from exc
+        before = {field: getattr(user, field) for field in ("full_name", "phone", "preferred_locale", "timezone")}
         if (
             user.is_organization_root
             and "full_name" in data.model_fields_set
@@ -486,6 +514,8 @@ class FoundationService:
             raise ValueError("Invalid preferred locale.")
         if "full_name" in data.model_fields_set and data.full_name is not None:
             user.full_name = data.full_name
+        if "timezone" in data.model_fields_set:
+            user.timezone = data.timezone or None
         if "phone" in data.model_fields_set:
             user.phone = data.phone
         if "preferred_locale" in data.model_fields_set:
@@ -515,7 +545,7 @@ class FoundationService:
             email=email,
             phone=data.phone,
             preferred_locale=data.preferred_locale,
-            password_hash=hash_password(data.password),
+            password_hash=unusable_password_hash(),  # SEC-003: the user chooses it through the activation link
             status=UserStatus.ACTIVE,
         )
         self.users.add(user)
@@ -533,42 +563,15 @@ class FoundationService:
         self.db.refresh(user)
         return user
 
+    def send_activation_link(self, user: User) -> bool:
+        """SEC-003: e-mails a new user their activation link (valid ACCOUNT_INVITATION_EXPIRY_HOURS); True when it went out."""
+        from app.foundation.application.password_reset import TenantPasswordResetService
+        return TenantPasswordResetService().request_reset(self.db, user.email, user.preferred_locale)
+
     def update_user(self, user: User, data: UserUpdateRequest, platform_emails: PlatformEmailQueryInterface | None = None, actor: User | None = None) -> User:
-        before = {field: getattr(user, field) for field in ("full_name", "email", "phone", "preferred_locale")}
-        if user.is_organization_root:
-            changes_name = (
-                "full_name" in data.model_fields_set
-                and data.full_name is not None
-                and data.full_name != user.full_name
-            )
-            changes_email = (
-                "email" in data.model_fields_set
-                and data.email is not None
-                and str(data.email).lower() != user.email.lower()
-            )
-            if changes_name or changes_email:
-                raise _cannot_modify_root_identity()
-        if data.full_name is not None:
-            user.full_name = data.full_name
-        if data.email is not None:
-            email = normalize_email(str(data.email))
-            if self.users.get_by_email_global(email, user.id) is not None or (platform_emails and platform_emails.email_exists(email)):
-                raise EmailAlreadyExistsError
-            user.email = email
-        if data.phone is not None:
-            user.phone = data.phone
-        if "preferred_locale" in data.model_fields_set:
-            user.preferred_locale = data.preferred_locale
-        changes = {field: {"before": before[field], "after": getattr(user, field)} for field in before if before[field] != getattr(user, field)}
-        if changes:
-            log_tenant_audit(self.db, user.organization_id, USER_UPDATED, "user", user.id, actor.id if actor else None, actor.full_name if actor else None, actor.email if actor else None, user.full_name, changes)
-        try:
-            self.db.commit()
-        except IntegrityError as exc:
-            self.db.rollback()
-            raise EmailAlreadyExistsError from exc
-        self.db.refresh(user)
-        return user
+        # Personal information belongs to the account owner, including when an administrator
+        # targets their own account. Self-service uses update_my_profile instead.
+        raise ValueError("Personal details can only be changed through the account owner's profile.")
 
     def update_user_for_tenant(
         self,
@@ -615,7 +618,7 @@ class FoundationService:
         user.token_version += 1
         revoke_account_sessions(self.db, "tenant", user.id, reason="account_inactive")
         actor = self.get_user_by_id_in_organization(actor_user_id, organization_id)
-        log_tenant_audit(self.db, organization_id, USER_DEACTIVATED, "user", user.id, actor_user_id, actor.full_name if actor else None, actor.email if actor else None, user.full_name, {"status": {"before": "active", "after": "inactive"}})
+        log_tenant_audit(self.db, organization_id, USER_DEACTIVATED, "user", user.id, actor_user_id, actor.full_name if actor else None, actor.email if actor else None, user.full_name, {"reason": user.account_change_reason, "status": {"before": "active", "after": "inactive"}})
         self.db.commit(); self.db.refresh(user)
         return user
 
@@ -647,6 +650,8 @@ class FoundationService:
         if user.id == actor_user_id:
             raise ValueError("You cannot change your own status.")
         previous = user.status.value
+        if user.archived_at is not None:
+            raise ValueError("Archived accounts cannot be reactivated. Restore the archive first.")
         validate_user_transition(user.status, target)
         user.status = target
         if target in {UserStatus.LOCKED, UserStatus.INACTIVE}:
@@ -654,13 +659,14 @@ class FoundationService:
             revoke_account_sessions(self.db, "tenant", user.id, reason=f"account_{target.value}")
         actor = self.get_user_by_id_in_organization(actor_user_id, organization_id)
         action = USER_LOCKED if target == UserStatus.LOCKED else USER_UNLOCKED if previous == UserStatus.LOCKED.value else USER_ACTIVATED
-        log_tenant_audit(self.db, organization_id, action, "user", user.id, actor_user_id, actor.full_name if actor else None, actor.email if actor else None, user.full_name, {"status": {"before": previous, "after": target.value}})
+        log_tenant_audit(self.db, organization_id, action, "user", user.id, actor_user_id, actor.full_name if actor else None, actor.email if actor else None, user.full_name, {"reason": user.account_change_reason, "status": {"before": previous, "after": target.value}})
         if target == UserStatus.LOCKED:
             log_tenant_security(self.db, organization_id, TENANT_ACCOUNT_LOCKED, user.id, user.email,
                                 details={"performed_by": str(actor_user_id)})
         elif previous == UserStatus.LOCKED.value:
             log_tenant_security(self.db, organization_id, TENANT_ACCOUNT_UNLOCKED, user.id, user.email,
                                 details={"performed_by": str(actor_user_id)})
+            notices.account_unlocked(self.db, organization_id, user.id, actor_user_id)
         self.db.commit(); self.db.refresh(user)
         return user
 
@@ -741,6 +747,7 @@ class FoundationService:
         user_role = UserRole(user_id=user_id, role_id=role_id, assigned_by=current_user.id, assigned_at=utc_now())
         self.user_roles.add(user_role)
         log_tenant_audit(self.db, organization_id, ROLE_ASSIGNED, "role_assignment", user.id, current_user.id, current_user.full_name, current_user.email, user.full_name, {"user_name": user.full_name, "role_code": role.code, "role_name": role.name})
+        notices.role_assigned(self.db, organization_id, user.id, role, current_user.id)
         self.db.commit()
         self.db.refresh(user_role)
         return user_role
@@ -762,6 +769,7 @@ class FoundationService:
         self.db.add(RoleAssignmentRemoval(user_id=user.id, role_id=role.id, removed_by=current_user.id, removed_at=utc_now()))
         self.db.delete(user_role)
         log_tenant_audit(self.db, organization_id, ROLE_REMOVED, "role_assignment", user.id, current_user.id, current_user.full_name, current_user.email, user.full_name, {"user_name": user.full_name, "role_code": role.code, "role_name": role.name})
+        notices.role_removed(self.db, organization_id, user.id, role, current_user.id)
         self.db.commit()
 
     def list_user_role_assignments(self, organization_id: UUID, user_id: UUID) -> list[UserRole]:
@@ -924,6 +932,7 @@ class FoundationService:
         rp = RolePermission(role_id=role_id, permission_id=permission.id, scope=scope)
         self.role_permissions.add(rp)
         log_tenant_audit(self.db, organization_id, ROLE_PERMISSIONS_UPDATED, "role", role.id, actor.id if actor else None, actor.full_name if actor else None, actor.email if actor else None, role.name, {"permission": permission.code, "operation": "added", "scope": scope})
+        notices.role_permissions_changed(self.db, organization_id, role, actor.id if actor else None)
         self.db.commit()
         self.db.refresh(rp)
         return rp
@@ -954,6 +963,7 @@ class FoundationService:
         previous_scope = rp.scope
         rp.scope = scope
         log_tenant_audit(self.db, organization_id, ROLE_PERMISSIONS_UPDATED, "role", role.id, actor.id if actor else None, actor.full_name if actor else None, actor.email if actor else None, role.name, {"permission": permission.code, "operation": "scope_changed", "scope": {"before": previous_scope, "after": scope}})
+        notices.role_permissions_changed(self.db, organization_id, role, actor.id if actor else None)
         self.db.commit()
         self.db.refresh(rp)
         return rp
@@ -988,6 +998,7 @@ class FoundationService:
             raise LookupError("Role does not have this permission.")
         self.db.delete(rp)
         log_tenant_audit(self.db, organization_id, ROLE_PERMISSIONS_UPDATED, "role", role.id, actor.id if actor else None, actor.full_name if actor else None, actor.email if actor else None, role.name, {"permission": permission.code, "operation": "removed"})
+        notices.role_permissions_changed(self.db, organization_id, role, actor.id if actor else None)
         self.db.commit()
 
     def get_role_permissions(self, role_id: UUID) -> list[Permission]:

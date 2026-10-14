@@ -1,4 +1,5 @@
 "use client";
+import {useUnitLabel} from "@/components/UnitLabel";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -10,6 +11,7 @@ import s from "./demands.module.css";
 // "Allocate to an existing production order": the server lists the open orders (draft, released, in progress, on hold)
 // this demand item may join; the screen never decides by status itself.
 export function ExistingOrderDialog({ item, quantity, onClose }: { item: Item; quantity: string; onClose: () => void }) {
+  const unitText = useUnitLabel();
   const t = useTranslations("production.allocation");
   const d = useTranslations("production.demands");
   const enums = useTranslations();
@@ -42,7 +44,7 @@ export function ExistingOrderDialog({ item, quantity, onClose }: { item: Item; q
           <td>{order.production_order_number}</td>
           <td>{enums(`enums.productionOrder.status.${order.status}`)}</td>
           <td>{order.work_center_name ?? "—"}</td>
-          <td>{order.planned_quantity} {order.unit}</td>
+          <td>{order.planned_quantity} {unitText(order.unit)}</td>
           <td>{order.planned_start_date} → {order.planned_end_date}</td>
           <td><button type="button" className={`${s.button} ${s.primary}`} disabled={busy} onClick={() => choose(order)}>{t("addToThisOrder")}</button></td>
         </tr>)}</tbody>

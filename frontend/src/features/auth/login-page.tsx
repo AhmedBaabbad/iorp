@@ -98,14 +98,18 @@ export function LoginPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSubmitting) return;  // SEC-001: one sign-in at a time (a second click while the first is on its way does nothing)
     setError(null);
     setRemainingAttempts(null);
     setIsSubmitting(true);
+    let navigating = false;
 
     try {
       await login({ email: email.trim().toLowerCase(), password });
       // A full navigation guarantees that the authenticated layout is rebuilt
-      // with the stored token and the user's effective locale.
+      // with the stored token and the user's effective locale. The button stays on "signing in…" until the next page
+      // has loaded (it can take a few seconds), so nobody signs in twice thinking the first click failed.
+      navigating = true;
       window.location.replace("/dashboard");
     } catch (caughtError) {
       const data = caughtError instanceof ApiClientError && caughtError.details && typeof caughtError.details === "object"
@@ -146,7 +150,7 @@ export function LoginPage() {
         ? t("login.errorInvalidCredentials") : t("login.errorGeneric");
       setError(message);
     } finally {
-      setIsSubmitting(false);
+      if (!navigating) setIsSubmitting(false);
     }
   }
 

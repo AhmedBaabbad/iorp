@@ -236,7 +236,7 @@ export function CommercialOrderForm({ order }: { order?: CommercialOrderData }) 
                   <UnitSelect className="" value={line.unit} disabled={busy} ariaLabel={t("items.fields.unit")} onChange={(unit) => setLine(index, { unit })} />
                 </label>
                 <label className={s.field}>{t("items.fields.unitPriceOptional")}
-                  <input type="number" step="0.01" min="0" value={line.unit_price} disabled={busy}
+                  <input type="number" step="0.0001" min="0" value={line.unit_price} disabled={busy}
                     onChange={(e) => setLine(index, { unit_price: e.target.value })} />
                 </label>
                 <div className={s.field}>{t("items.fields.lineTotal")}

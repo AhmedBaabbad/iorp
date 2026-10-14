@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { sharedStyles } from "@/styles/shared-styles";
+import { validPercent } from "../discount";
 
 // The unit dropdown is the shared one (all screens use the same catalogue and labels).
 export { UnitSelect } from "@/components/forms/UnitSelect";
@@ -28,6 +30,39 @@ export function LineDescriptionFields({ arabic, english, onChange, disabled }: {
       </label>
     </div>
     </details>
+  );
+}
+
+/** A percentage put on every line at once; each line's own field can then be changed (or cleared) alone. */
+export function DiscountAllField({ onApply, disabled }: { onApply: (percent: string) => void; disabled?: boolean }) {
+  const t = useTranslations("commercial.quotes.discount");
+  const [value, setValue] = useState("");
+  const valid = value !== "" && validPercent(value);
+  return (
+    <div style={sharedStyles.field}>
+      <span style={sharedStyles.label}>{t("allLines")}</span>
+      <div style={{ display: "flex", gap: "8px" }}>
+        <input style={sharedStyles.input} type="number" min="0" max="100" step="0.01" value={value} disabled={disabled}
+          aria-label={t("allLines")} placeholder="10" onChange={(event) => setValue(event.target.value)} />
+        <button type="button" style={sharedStyles.secondaryButton} disabled={disabled || !valid} onClick={() => onApply(value)}>{t("apply")}</button>
+      </div>
+      <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "13px" }}>{t("allLinesHint")}</p>
+    </div>
+  );
+}
+
+/** One line's discount percentage and what it takes off the line. */
+export function LineDiscountField({ value, amount, onChange, disabled }: {
+  value: string; amount: number; onChange: (value: string) => void; disabled?: boolean;
+}) {
+  const t = useTranslations("commercial.quotes.discount");
+  return (
+    <label style={sharedStyles.field}>
+      <span style={sharedStyles.label}>{t("line")}</span>
+      <input style={sharedStyles.input} type="number" min="0" max="100" step="0.01" value={value} disabled={disabled}
+        placeholder="0" onChange={(event) => onChange(event.target.value)} />
+      {amount > 0 ? <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>{t("lineAmount", { amount: amount.toFixed(2) })}</span> : null}
+    </label>
   );
 }
 

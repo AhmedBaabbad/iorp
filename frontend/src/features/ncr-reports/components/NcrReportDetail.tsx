@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useTranslations, useLocale } from "next-intl";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { UnitSelect } from "@/components/forms/UnitSelect";
 import { PageFrame } from "@/components/layout/page-frame";
@@ -24,6 +24,9 @@ import {
 import { refreshCapaAlerts } from "../use-capa-alerts";
 import { NcrSeverityBadge, NcrStatusBadge } from "./NcrBadges";
 
+import { joinList } from "@/lib/utils";
+import { FilePicker } from "@/components/forms/FilePicker";
+import { Signatures } from "@/components/Signatures";
 function Item({ label, children }: { label: string; children: ReactNode }) {
   return <div><dt className={s.muted}>{label}</dt><dd style={{ margin: "4px 0 0", overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>{children}</dd></div>;
 }
@@ -48,6 +51,7 @@ export function NcrReportDetail({ ncrReportId }: { ncrReportId: string }) {
   const messages = useTranslations("messages");
   const fmt = useFormatter();
   const units = useTranslations("common.units.units");
+  const tDelegation = useTranslations("administration.delegations");
   const unit = (code: string | null) => (code ? (units.has(code) ? units(code) : code) : "");
   const canFiles = useHasAnyPermission([Q.NCR_CREATE, Q.NCR_UPDATE]);
   const canUpdate = usePermission(Q.NCR_UPDATE);
@@ -57,7 +61,6 @@ export function NcrReportDetail({ ncrReportId }: { ncrReportId: string }) {
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const picker = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     try { setX(await getNcrReport(ncrReportId)); } catch (e) { setError(ncrErrorMessage(e, errors)); } finally { setLoading(false); }
@@ -118,6 +121,7 @@ export function NcrReportDetail({ ncrReportId }: { ncrReportId: string }) {
         </> : x.customer_name && <Item label={t("fields.customer_name")}>{x.customer_name}</Item>}
         {x.order_number && <Item label={t("fields.production_order")}><Link href={`/production-orders/${x.production_order_id}`}><bdi>{x.order_number}</bdi></Link></Item>}
         {x.return_no && <Item label={t("fields.return")}><Link href={`/shipment-returns/${x.return_id}`}><bdi>{x.return_no}</bdi></Link></Item>}
+        {x.complaint_number && <Item label={t("fields.complaint")}><Link href={`/complaints/${x.complaint_id}`}><bdi>{x.complaint_number}</bdi></Link></Item>}
         {x.inspection_code && <Item label={t("fields.inspection")}><Link href={`/quality-checks/${x.quality_check_id}`}><bdi>{x.inspection_code}</bdi></Link></Item>}
         {x.rejection_code && <Item label={t("fields.rejection")}><Link href={`/quality-rejections/${x.quality_rejection_id}`}><bdi>{x.rejection_code}</bdi></Link></Item>}
       </dl>
@@ -180,7 +184,7 @@ export function NcrReportDetail({ ncrReportId }: { ncrReportId: string }) {
       <h2 style={{ marginTop: 0 }}>{t("sections.verification")}</h2>
       {x.status === "closed" && <p className={`${s.badge} ${s.green}`}>{t("effective")}</p>}
       {x.verification_notes && <p style={{ whiteSpace: "pre-wrap" }}>{x.verification_notes}</p>}
-      <p className={s.muted} style={{ marginBottom: 0 }}>{x.verified_by_name} · {fmt.dateTime(x.verified_at)}
+      <p className={s.muted} style={{ marginBottom: 0 }}>{x.verified_by_name}{x.verification_signature?.delegated ? ` (${tDelegation("onBehalfOf", { name: x.verification_signature.authority_name })})` : ""} · {fmt.dateTime(x.verified_at)}
         {x.verification_attempts > 1 && ` · ${t("attempts", { count: String(x.verification_attempts) })}`}</p>
       {x.effectiveness_result ? <div style={{ marginTop: 12 }}>
         <p className={`${s.badge} ${x.effectiveness_result === "effective" ? s.green : s.urgent}`}>{t(`review.results.${x.effectiveness_result}`)}</p>
@@ -217,13 +221,9 @@ export function NcrReportDetail({ ncrReportId }: { ncrReportId: string }) {
         </li>)}
       </ul>}
       {open && canFiles && <div className={s.toolbar} style={{ marginBottom: 0 }}>
-        <input ref={picker} type="file" hidden accept="image/png,image/jpeg,image/webp,application/pdf" aria-label={t("upload")} onChange={e => {
-          const file = e.target.files?.[0];
-          if (picker.current) picker.current.value = "";
-          if (file) void run("upload", async () => { const files = await uploadNcrAttachment(x.id, file); setX(old => (old ? { ...old, attachments: files } : old)); });
-        }} />
-        <button type="button" className={s.button} disabled={busy !== null} onClick={() => picker.current?.click()}>{busy === "upload" ? t("uploading") : t("upload")}</button>
-        <span className={s.muted}>{t("filesHint")}</span>
+        <FilePicker kind="attachment" label={t("upload")} busyLabel={t("uploading")} busy={busy === "upload"} disabled={busy !== null}
+          className={s.button} hintClassName={s.muted}
+          onFile={file => run("upload", async () => { const files = await uploadNcrAttachment(x.id, file); setX(old => (old ? { ...old, attachments: files } : old)); })} />
       </div>}
     </section>
 
@@ -255,7 +255,8 @@ export function NcrReportDetail({ ncrReportId }: { ncrReportId: string }) {
       onConfirm={reason => void run("cancelAction", () => cancelNcrAction(x.id, dialog.action.id, reason))} />}
     {(dialog?.kind === "item" || dialog?.kind === "editItem") && <ItemDialog item={dialog.kind === "editItem" ? dialog.item : null} busy={busy !== null}
       onClose={() => setDialog(null)} onConfirm={body => void run("item", () => dialog.kind === "editItem" ? updateNcrItem(x.id, dialog.item.id, body) : addNcrItem(x.id, body))} />}
-  </PageFrame>;
+      <Signatures resourceType="ncr" id={x.id} version={x.status} />
+</PageFrame>;
 }
 
 // Corrective actions: kind, what, who, by when, status and the evidence; finished ones stay as the record.
@@ -302,6 +303,7 @@ export function TextDialog({ title, text, label, confirm, busy, onClose, onConfi
 // The earlier reports this one repeats, and those that came after it was closed (QUAL-CAPA-001).
 function RecurrenceSection({ value, closed }: { value: Recurrence; closed: boolean }) {
   const t = useTranslations("ncr");
+  const locale = useLocale();
   const fmt = useFormatter();
   return <section className={s.panel} aria-label={t("recurrence.title")}>
     <div className={s.actions} style={{ justifyContent: "space-between" }}>
@@ -319,7 +321,7 @@ function RecurrenceSection({ value, closed }: { value: Recurrence; closed: boole
         <td>{fmt.date(r.report_date)}</td>
         <td>{r.title}</td>
         <td><NcrStatusBadge status={r.status} /></td>
-        <td>{r.matched_on.map(k => t(`recurrence.keys.${k}`)).join("، ")}</td>
+        <td>{joinList(r.matched_on.map(k => t(`recurrence.keys.${k}`)), locale)}</td>
       </tr>)}</tbody>
     </table></div>
   </section>;

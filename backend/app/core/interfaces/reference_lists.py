@@ -30,6 +30,7 @@ class ListItemInfo:
 
 
 class ReferenceLists(Protocol):
+    def active_text(self, db: Session, organization_id: UUID, list_name: str, text: str) -> bool: ...
     def defined(self, db: Session, organization_id: UUID, list_name: str) -> bool: ...
     def items(self, db: Session, organization_id: UUID, list_name: str, keys: Iterable[str]) -> dict[str, ListItemInfo]: ...
 
@@ -62,6 +63,18 @@ def unknown_list_values(db: Session, organization_id: UUID, list_name: str, valu
     wanted = {v for v in values if v and v not in kept}
     found = list_items(db, organization_id, list_name, wanted)
     return sorted(v for v in wanted if not (v in found and found[v].active))
+
+
+def assert_reference_text(db, organization_id, list_name, value, previous=None):
+    """Operational text is a snapshot: selecting a catalog value never renames historical records.
+
+    Existing/unconfigured text remains valid. Once configured, new text must match an active value.
+    No legacy mass rewrite is registered for these operational lists.
+    """
+    if not value or value==previous or _provider is None or not _provider.defined(db,organization_id,list_name):return
+    if not _provider.active_text(db,organization_id,list_name,value):
+        from fastapi import HTTPException
+        raise HTTPException(422,'REFERENCE_VALUE_UNAVAILABLE')
 
 
 @dataclass(frozen=True)
@@ -97,3 +110,19 @@ def holder_for(module: str, list_name: str, columns) -> ReferenceHolder:
     def rename(db, organization_id, old, new):
         return sum(replace_value(db, model, column, scope(organization_id), old, new) for model, column, scope in columns)
     return ReferenceHolder(module, list_name, usage, rename)
+
+
+# MD-003: a new organization starts with every list's usual values (editable afterwards). Master data registers the
+# seeder at the composition root; foundation calls it when it provisions an organization, never importing master data.
+_seeder = None
+
+
+def register_list_seeder(seeder) -> None:
+    global _seeder
+    _seeder = seeder
+
+
+def seed_organization_lists(db: Session, organization_id: UUID) -> None:
+    """Adds the usual values of every reference list to a new organization (in the caller's transaction)."""
+    if _seeder is not None:
+        _seeder(db, organization_id)

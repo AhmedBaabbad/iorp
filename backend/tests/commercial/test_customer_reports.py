@@ -1,3 +1,4 @@
+from tests.route_inventory import discover_routes
 from dataclasses import replace
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
@@ -168,7 +169,7 @@ def test_architecture():
 def test_customer_shortcut_route_declares_policy():
     from app.main import app
     from tests.production.test_production_rbac import _policies
-    route=next(r for r in app.routes if getattr(r,'path','')=='/api/v1/customers/{customer_id}/report.pdf')
+    route=next(r for r in discover_routes(app) if getattr(r,'path','')=='/api/v1/customers/{customer_id}/report.pdf')
     assert list(_policies(route.dependant))
 
 

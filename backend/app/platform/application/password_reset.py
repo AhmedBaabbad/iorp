@@ -7,8 +7,8 @@ from app.core.config import get_settings
 from app.core.email.service import EmailService
 from app.core.email.templates import build_platform_reset_email
 from app.core.password_policy import validate_password
-from app.core.security import hash_password, normalize_email, revoke_account_sessions
-from app.core.token_utils import generate_reset_token, get_reset_expiry_time, hash_token, is_token_expired
+from app.core.security import has_usable_password, hash_password, normalize_email, revoke_account_sessions
+from app.core.token_utils import generate_reset_token, get_reset_expiry_time, hash_token, is_token_expired, link_lifetime_minutes
 from app.core.utils import utc_now
 from app.platform.application.security_log import log_platform_security
 from app.platform.domain.enums import PlatformAccountStatus
@@ -27,20 +27,27 @@ class PlatformPasswordResetService:
     def __init__(self, email_service: EmailService | None = None) -> None:
         self.email_service = email_service or EmailService()
 
-    def request_reset(self, db: Session, email: str) -> None:
+    def request_reset(self, db: Session, email: str, locale: str | None = None) -> bool:
+        """E-mails a reset link; True when it went out (the public form never tells; SEC-002 tells the administrator)."""
         account = db.scalar(select(PlatformAccount).where(PlatformAccount.email == normalize_email(email), PlatformAccount.status != PlatformAccountStatus.INACTIVE).with_for_update())
         if account is None:
             logger.info("Platform password reset requested for an unknown email")
-            return
+            return False
         db.execute(update(PlatformPasswordResetToken).where(PlatformPasswordResetToken.account_id == account.id, PlatformPasswordResetToken.used_at.is_(None)).values(used_at=utc_now()))
+        invitation = not has_usable_password(account.password_hash)  # SEC-003: a new account is activated the same way
+        lifetime = link_lifetime_minutes(invitation)
         raw, token_hash = generate_reset_token()
-        db.add(PlatformPasswordResetToken(account_id=account.id, token_hash=token_hash, expires_at=get_reset_expiry_time()))
+        db.add(PlatformPasswordResetToken(account_id=account.id, token_hash=token_hash, expires_at=get_reset_expiry_time(lifetime)))
         db.flush()
         settings = get_settings()
-        reset_url = f"{settings.platform_frontend_url.rstrip('/')}/platform/reset-password?token={raw}"
-        subject, html, text = build_platform_reset_email("ar", reset_url, account.full_name, settings.password_reset_expiry_minutes)
+        reset_url = f"{settings.platform_frontend_url.rstrip('/')}/platform/reset-password?token={raw}" + ("&invite=1" if invitation else "")
+        subject, html, text = build_platform_reset_email(locale or "ar", reset_url, account.full_name, lifetime, invitation)
         db.commit()
-        self.email_service.send_email(account.email, subject, html, text)
+        if not self.email_service.send_email(account.email, subject, html, text):
+            db.execute(update(PlatformPasswordResetToken).where(PlatformPasswordResetToken.token_hash == token_hash).values(used_at=utc_now()))
+            db.commit()
+            return False
+        return True
 
     def execute_reset(self, db: Session, raw_token: str, new_password: str) -> None:
         record = db.scalar(select(PlatformPasswordResetToken).where(PlatformPasswordResetToken.token_hash == hash_token(raw_token), PlatformPasswordResetToken.used_at.is_(None)))

@@ -10,6 +10,8 @@ import { ApiClientError } from "@/lib/api-client";
 import { TIMEZONES, timezoneLabel } from "@/lib/timezones";
 import { sharedStyles } from "@/styles/shared-styles";
 import { getBootstrapStatus, initializeSystem, type SetupPayload } from "./setup-api";
+import { FileLimits, useFileProblemText } from "@/components/forms/FilePicker";
+import { fileProblem, useFilePolicy } from "@/lib/files";
 
 const ORG_CODE_PATTERN = /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/;
 const STEP_KEYS = ["platformOwner", "organization", "orgAdmin", "review"] as const;
@@ -64,10 +66,14 @@ export function SetupWizard() {
     value: string,
   ) => setData((current) => ({ ...current, [section]: { ...current[section], [key]: value } }));
 
+  const logoPolicy = useFilePolicy("logo");
+  const problemText = useFileProblemText();
+
   function handleLogoSelect(file?: File) {
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      setError(t("errors.logoTooLarge"));
+    const problem = fileProblem(file, logoPolicy);
+    if (problem) {
+      setError(problemText(problem, logoPolicy));
       return;
     }
     const reader = new FileReader();
@@ -236,7 +242,7 @@ export function SetupWizard() {
                   accept="image/png,image/jpeg,image/webp"
                   onChange={(e) => handleLogoSelect(e.target.files?.[0])}
                 />
-                <small>{t("fields.acceptedFormats")}</small>
+                <small><FileLimits kind="logo" /></small>
                 {logoPreview && <img src={logoPreview} alt="" style={styles.logoPreview} />}
               </label>
             </>

@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 
 from app.commercial.application.quote_settings_service import QuoteSettingsService
+from app.commercial.application.quote_terms import document_terms
 from app.commercial.domain.units import unit_label
 from app.core.units import spec_text
 from app.commercial.infrastructure.models import Customer, Quote
@@ -62,6 +63,21 @@ def describe(item, ar: bool, product: ProductInfo | None = None) -> str:
     return f"{name} — {spec}" if spec else name
 
 
+def percent(value) -> str:
+    value = Decimal(value or 0)
+    return f"{value.normalize():f}%" if value != value.to_integral_value() else f"{value:.0f}%"
+
+
+def discount_label(items, tr) -> str:
+    """"Discount (10%)" when every line has the same percentage, else the lines it applies to: "Discount on line 1 (10%)"."""
+    rates = {Decimal(i.discount_percent) for i in items}
+    if len(rates) == 1:
+        return tr("الخصم", "Discount") + f" ({percent(next(iter(rates)))})"
+    lines = [i for i in items if i.discount_amount]
+    on = tr("، ", ", ").join(f"{i.line_no} ({percent(i.discount_percent)})" for i in lines)
+    return tr("الخصم على البند " if len(lines) == 1 else "الخصم على البنود ", "Discount on line " if len(lines) == 1 else "Discount on lines ") + on
+
+
 def vat_rate(quote) -> Decimal | None:
     if quote.tax_rate is not None:
         return Decimal(quote.tax_rate).normalize()
@@ -90,21 +106,34 @@ def build(db, tenant, p, selected) -> ReportData:
     rate = vat_rate(quote)
     items = sorted(quote.items, key=lambda i: i.line_no)
     known = catalog_products(db, tenant.organization_id, {i.product_type for i in items})
-    totals = [(tr("المجموع قبل الضريبة", "Subtotal before VAT"), amount(quote.subtotal_amount), "subtotal")]
-    if quote.discount_amount:
-        totals.append((tr("الخصم", "Discount"), "- " + amount(quote.discount_amount), "discount"))
+    # Discount first (a percentage of the lines), then VAT on what remains (domain/pricing.py).
+    discounted = any(i.discount_amount for i in items)
+    if discounted:
+        totals = [(tr("المجموع قبل الخصم", "Subtotal before discount"), amount(quote.subtotal_amount), "subtotal"),
+                  (discount_label(items, tr), "- " + amount(quote.discount_amount), "discount"),
+                  (tr("المجموع بعد الخصم", "Subtotal after discount"), amount(Decimal(quote.subtotal_amount) - Decimal(quote.discount_amount)), "subtotal")]
+    elif quote.discount_amount:  # a quotation from before line discounts, printed as it was saved
+        totals = [(tr("المجموع قبل الضريبة", "Subtotal before VAT"), amount(quote.subtotal_amount), "subtotal"),
+                  (tr("الخصم", "Discount"), "- " + amount(quote.discount_amount), "discount")]
+    else:
+        totals = [(tr("المجموع قبل الضريبة", "Subtotal before VAT"), amount(quote.subtotal_amount), "subtotal")]
     vat_label = tr("ضريبة القيمة المضافة", "VAT") + (f" ({rate}%)" if rate is not None else "")
     totals.append((vat_label, amount(quote.tax_amount), "tax"))
     totals.append((tr("الإجمالي شامل الضريبة", "Total including VAT"), amount(quote.total_amount), "total"))
     # Only what is written in the document's language: a term without it is not printed (no mixing of languages).
-    terms = [dict(title=title, body=body) for t in QuoteSettingsService(db, tenant.organization_id).terms(active_only=True)
-             for title, body in [(t.title_ar, t.body_ar) if ar else (t.title_en, t.body_en)] if title and body]
+    terms = [dict(title=title, body=body) for t in document_terms(db, quote)
+             for title, body in [(t['title_ar'], t['body_ar']) if ar else (t['title_en'], t['body_en'])] if title and body]
+    from app.commercial.application.quote_terms import terms_source
     document = dict(
+        terms_source=terms_source(db,quote),
         number=quote.quote_number, date=day(quote.issue_date), valid_until=day(quote.valid_until),
         customer=customer.name, attention=quote.attention or "", subject=quote.subject or "",
         currency=currency,
         items=[dict(no=i.line_no, description=describe(i, ar, known.get(i.product_type)), quantity=quantity(i.quantity), unit=unit_label(i.unit, p.lang),
-                    unit_price=amount(i.unit_price), total=amount(i.line_total)) for i in items],
+                    unit_price=amount(i.unit_price), total=amount(i.line_total),
+                    discount=(f"{percent(i.discount_percent)} = {amount(i.discount_amount)}" if i.discount_amount else "—"),
+                    net=amount(i.net_total)) for i in items],
+        discounted=discounted,
         totals=totals, notes=quote.notes or "", terms=terms,
         signature_title=settings["signature_title_ar"] if ar else settings["signature_title_en"], preparer=preparer or "",
     )

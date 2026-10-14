@@ -8,7 +8,7 @@ import { getDefectsByCheck } from "@/features/quality-defects/api/quality-defect
 import { DefectCategoryBadge } from "@/features/quality-defects/components/DefectCategoryBadge";
 import { DefectSeverityBadge } from "@/features/quality-defects/components/DefectSeverityBadge";
 import type { QualityDefectListItem } from "@/features/quality-defects/types";
-import { getEnumLabel } from "@/i18n/enum-helpers";
+import { useClassificationName } from "@/features/masterdata";
 
 export type PickedDefect = { quality_defect_id: string; affected_quantity: string };
 
@@ -18,7 +18,7 @@ export function RejectionDefectsPicker({ checkId, value, onChange, unit, disable
   checkId: string; value: PickedDefect[]; onChange: (value: PickedDefect[]) => void; unit: string; disabled?: boolean;
 }) {
   const t = useTranslations("quality.qualityRejections.defects");
-  const all = useTranslations();
+  const category = useClassificationName("defect_category", "qualityDefect", "defectCategory");
   const [defects, setDefects] = useState<QualityDefectListItem[] | null>(null);
   const [search, setSearch] = useState("");
   useEffect(() => {
@@ -28,7 +28,7 @@ export function RejectionDefectsPicker({ checkId, value, onChange, unit, disable
   }, [checkId]);
   if (defects === null) return null;
   const byId = new Map(defects.map(d => [d.id, d]));
-  const name = (d: QualityDefectListItem) => getEnumLabel("qualityDefect", "defectCategory", d.defect_category, all);
+  const name = (d: QualityDefectListItem) => category(d.defect_category);
   const query = search.trim().toLowerCase();
   const options = defects.filter(d => !value.some(v => v.quality_defect_id === d.id)
     && (!query || `${name(d)} ${d.description}`.toLowerCase().includes(query)));

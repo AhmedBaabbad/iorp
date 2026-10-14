@@ -1,0 +1,211 @@
+{
+  "title": "الإشعارات",
+  "subtitle": "كل ما يخصّك: صلاحياتك، حسابك، التفويضات، الأعمال التي تنتظرك، ورسائل الإدارة.",
+  "bell": "الإشعارات",
+  "unreadCount": "{count, plural, =0 {لا إشعارات غير مقروءة} one {إشعار واحد غير مقروء} two {إشعاران غير مقروءين} few {# إشعارات غير مقروءة} many {# إشعارًا غير مقروء} other {# إشعار غير مقروء}}",
+  "markAllRead": "تعليم الكل كمقروء",
+  "viewAll": "عرض كل الإشعارات",
+  "empty": "لا شيء هنا بعد.",
+  "emptyUnread": "اطّلعت على كل شيء.",
+  "loading": "جارٍ التحميل…",
+  "error": "تعذّر تحميل الإشعارات.",
+  "new": "جديد",
+  "done": "تمت معالجته",
+  "system": "النظام",
+  "by": "بواسطة {name}",
+  "open": "فتح",
+  "markRead": "تعليم كمقروء",
+  "filters": {
+    "all": "الكل",
+    "unread": "غير المقروءة",
+    "important": "المهمة",
+    "access": "الصلاحيات",
+    "security": "الأمان",
+    "delegation": "التفويضات",
+    "work": "العمل",
+    "announcement": "الإعلانات"
+  },
+  "categories": {
+    "access": "الصلاحيات والأدوار",
+    "security": "أمان الحساب",
+    "delegation": "التفويضات",
+    "work": "العمل",
+    "announcement": "إعلان"
+  },
+  "severity": {
+    "info": "عادي",
+    "important": "مهم",
+    "urgent": "عاجل"
+  },
+  "ack": {
+    "title": "يرجى الاطلاع والتأكيد",
+    "subtitle": "{count, plural, one {إعلان يتطلب} two {إعلانان يتطلبان} few {# إعلانات تتطلب} many {# إعلانًا يتطلب} other {# إعلان يتطلب}} تأكيد اطلاعك.",
+    "from": "من {name}",
+    "confirm": "اطّلعت عليه",
+    "confirmed": "تم تسجيل تأكيد اطلاعك."
+  },
+  "supplierStatus": {
+    "pending": "بانتظار الاعتماد",
+    "approved": "معتمد",
+    "conditional": "معتمد بشروط",
+    "blocked": "موقوف"
+  },
+  "events": {
+    "foundation": {
+      "role": {
+        "assigned": "منحك {actor} دور «{role}».",
+        "removed": "سحب {actor} منك دور «{role}».",
+        "permissions_changed": "عدّل {actor} صلاحيات دورك «{role}»."
+      },
+      "user": {
+        "password_reset": "أعاد {actor} تعيين كلمة مرورك. إن لم تطلب ذلك فأبلغ مسؤول النظام.",
+        "unlocked": "فكّ {actor} قفل حسابك.",
+        "new_device": "دخول جديد إلى حسابك من {device} ({ip}). راجع صفحة جلساتي.",
+        "session_limit": "انتهت {count} من جلساتك السابقة لأن الحد المسموح {limit} جلسة.",
+        "sessions_ended": "أنهى {actor} جلساتك المفتوحة. سجّل الدخول من جديد."
+      },
+      "delegation": {
+        "awaiting_manager": "يطلب {actor} تفويض «{permission}» من {delegator} إلى {delegate}، من {start} إلى {end}، وهو بانتظار موافقتك.",
+        "awaiting_holder": "يقترح {actor} أن يوقّع {delegate} «{permission}» نيابةً عنك، من {start} إلى {end}، وهو بانتظار موافقتك.",
+        "approved": "وافق {actor} على تفويض «{permission}» إلى {delegate}.",
+        "rejected": "رفض {actor} تفويض «{permission}» إلى {delegate}.",
+        "granted": "أصبح بإمكانك توقيع «{permission}» نيابةً عن {delegator}، من {start} إلى {end}.",
+        "revoked": "ألغى {actor} تفويض «{permission}» من {delegator} إلى {delegate}."
+      },
+      "activity_archive": {
+        "ready": "سجل نشاطات شهر {month} ({rows} سطرًا) انتهت مدة حفظه. نزّل أرشيفه ثم احذفه؛ سيُحذف تلقائيًا في {delete_on}.",
+        "reminder": "تذكير: سيُحذف سجل نشاطات شهر {month} تلقائيًا في {delete_on}. نزّل أرشيفه قبل ذلك إن كنت تحتاجه.",
+        "deleted": "حُذف سجل نشاطات شهر {month} ({rows} سطرًا) تلقائيًا بعد انتهاء مهلة الأرشفة."
+      }
+    },
+    "commercial": {
+      "complaint": {
+        "assigned": "أسند إليك {actor} الشكوى {number}، وموعدها {due}.",
+        "close_requested": "الشكوى {number} بانتظار موافقتك على إغلاقها (طلبه {actor}).",
+        "closed": "اعتمد {actor} إغلاق الشكوى {number}.",
+        "reopened": "أعاد {actor} فتح الشكوى {number}.",
+        "returned": "أعاد {actor} الشكوى {number} لاستكمال المعالجة بدل إغلاقها."
+      },
+      "follow_up": {
+        "assigned": "أسند إليك {actor} متابعة: {reason} (موعدها {due})."
+      }
+    },
+    "procurement": {
+      "purchase_order": {
+        "awaiting_approval": "أمر الشراء {number} ({supplier}) بانتظار اعتمادك. أعدّه {actor}.",
+        "approved": "اعتمد {actor} أمر الشراء {number}.",
+        "cancelled": "ألغى {actor} أمر الشراء {number}."
+      },
+      "supplier": {
+        "awaiting_approval": "المورد الجديد {name} ({code}) بانتظار الاعتماد. أضافه {actor}.",
+        "status_changed": "جعل {actor} حالة المورد {name}: {status}."
+      }
+    },
+    "quality": {
+      "ncr": {
+        "assigned": "جعلك {actor} مسؤولًا عن تقرير عدم المطابقة {number}: {title}.",
+        "awaiting_verification": "تقرير عدم المطابقة {number} بانتظار التحقق من إجراءاته. أرسله {actor}.",
+        "closed": "تحقّق {actor} من تقرير عدم المطابقة {number} وأغلقه.",
+        "not_effective": "وجد {actor} أن إجراءات التقرير {number} غير فعّالة، فعاد إلى الإجراءات التصحيحية."
+      },
+      "ncr_action": {
+        "assigned": "أسند إليك {actor} إجراءً تصحيحيًا في التقرير {number}: {action} (موعده {due})."
+      },
+      "rejection": {
+        "awaiting_decision": "حالة الرفض {number} ({quantity} {unit}) بانتظار قرارك. سجّلها {actor}.",
+        "awaiting_execution": "اتخذ {actor} قرار حالة الرفض {number}، وهي بانتظار التنفيذ."
+      }
+    },
+    "shipping": {
+      "return": {
+        "awaiting_approval": "مرتجع العميل {number} ({customer}) بانتظار اعتمادك. سجّله {actor}.",
+        "awaiting_receipt": "اعتمد {actor} مرتجع العميل {number} ({customer})؛ استعدّ لاستلام البضاعة.",
+        "approved": "اعتمد {actor} مرتجع العميل {number}.",
+        "rejected": "رفض {actor} مرتجع العميل {number}."
+      }
+    },
+    "production": {
+      "order": {
+        "awaiting_release": "أمر الإنتاج {number} بانتظار الاعتماد والإطلاق. أنشأه {actor}.",
+        "awaiting_close": "اكتمل أمر الإنتاج {number} وهو بانتظار الإغلاق."
+      }
+    },
+    "notifications": {
+      "announcement": {
+        "published": "{title}"
+      }
+    }
+  },
+  "announcements": {
+    "title": "الإعلانات والرسائل",
+    "subtitle": "رسائل إلى مستخدمين محددين أو أصحاب دور أو كل المنظمة، ومتابعة من اطّلع عليها وأكّد اطلاعه.",
+    "new": "إعلان جديد",
+    "newSubtitle": "اكتب رسالة واضحة، واختر من تصله، وهل يجب أن يؤكد قارئها اطلاعه.",
+    "backToList": "العودة إلى القائمة",
+    "search": "بحث",
+    "searchPlaceholder": "ابحث في العنوان أو النص…",
+    "empty": "لا إعلانات بعد.",
+    "loading": "جارٍ التحميل…",
+    "fields": {
+      "title": "العنوان",
+      "body": "الرسالة",
+      "severity": "الأهمية",
+      "audience": "إرسال إلى",
+      "users": "المستخدمون",
+      "role": "الدور",
+      "requiresAck": "يجب أن يؤكد القارئ اطلاعه",
+      "expiresAt": "يظهر حتى (اختياري)"
+    },
+    "audience": {
+      "users": "مستخدمون محددون",
+      "role": "أصحاب دور معيّن",
+      "everyone": "كل المنظمة"
+    },
+    "choose": "اختر",
+    "send": "إرسال الإعلان",
+    "cancel": "رجوع",
+    "columns": {
+      "title": "العنوان",
+      "audience": "أُرسل إلى",
+      "severity": "الأهمية",
+      "sent": "تاريخ الإرسال",
+      "read": "اطّلع",
+      "ack": "أكّد",
+      "state": "الحالة"
+    },
+    "state": {
+      "live": "معروض",
+      "expired": "منتهٍ",
+      "withdrawn": "مسحوب"
+    },
+    "everyone": "الجميع",
+    "usersCount": "{count, plural, one {مستخدم واحد} two {مستخدمان} few {# مستخدمين} many {# مستخدمًا} other {# مستخدم}}",
+    "readOf": "{done} من {total}",
+    "author": "أرسله {name} في {date}",
+    "withdrawnBy": "سحبه {name} في {date}",
+    "receipts": "المستلمون",
+    "receiptColumns": {
+      "name": "المستخدم",
+      "read": "اطّلع",
+      "ack": "أكّد الاطلاع"
+    },
+    "notYet": "لم يحدث بعد",
+    "withdraw": "سحب الإعلان",
+    "confirmWithdraw": "هل تريد سحب هذا الإعلان؟ لن يراه أحد بعد ذلك.",
+    "sent": "تم إرسال الإعلان إلى {count, plural, one {شخص واحد} two {شخصين} few {# أشخاص} many {# شخصًا} other {# شخص}}.",
+    "withdrawn": "تم سحب الإعلان.",
+    "errors": {
+      "generic": "تعذّر إرسال الإعلان. تحقّق من الحقول.",
+      "ANNOUNCEMENT_NO_AUDIENCE": "اختر من يصله الإعلان.",
+      "ANNOUNCEMENT_NO_RECIPIENTS": "لا يوجد مستخدم نشط سيصله الإعلان.",
+      "ANNOUNCEMENT_EMPTY": "اكتب العنوان والرسالة.",
+      "ANNOUNCEMENT_EXPIRY_PAST": "يجب أن يكون تاريخ الانتهاء في المستقبل.",
+      "ANNOUNCEMENT_FORBIDDEN": "لا يمكنك سحب هذا الإعلان."
+    },
+    "allStates": "كل الحالات"
+  },
+  "hide": "إخفاء",
+  "hideRead": "إخفاء كل المقروء",
+  "hidden": "تم الإخفاء.",
+  "needsAck": "أكّد اطلاعك على هذا الإعلان أولًا."
+}

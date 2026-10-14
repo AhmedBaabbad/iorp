@@ -14,6 +14,7 @@ import { useFormatter } from "@/hooks/useFormatter";
 import { downloadCertificate, getCertificate, issueCertificate, replaceCertificate, revokeCertificate, updateCertificate } from "../api";
 import type { Certificate, CertificateUpdate, FrozenMeasurement } from "../types";
 import { CertificateStatusBadge } from "./CertificateStatusBadge";
+import { Signatures } from "@/components/Signatures";
 
 function Item({ label, children }: { label: string; children: ReactNode }) {
   return <div><dt className={s.muted}>{label}</dt><dd style={{ margin: "4px 0 0", overflowWrap: "anywhere" }}>{children}</dd></div>;
@@ -129,7 +130,8 @@ export function CertificateDetail({ certificateId }: { certificateId: string }) 
     </div>}
     {dialog === "revoke" && <ReasonDialog title={t("revokeDialog.title")} description={t("revokeDialog.text")} confirmLabel={t("actions.revoke")}
       busy={busy !== null} danger onClose={() => setDialog(null)} onConfirm={reason => void run("revoke", () => revokeCertificate(c.id, reason))} />}
-  </PageFrame>;
+      <Signatures resourceType="quality_certificate" id={c.id} version={c.status} />
+</PageFrame>;
 }
 
 // The fields completed before issue; the results themselves are frozen.

@@ -23,10 +23,11 @@ def auth_headers(client, db, test_org, test_user):
 
 
 @pytest.fixture
-def s(client, auth_headers, test_user):
+def s(client, auth_headers, test_user, approver_headers):
     class Session:
         def post(self, path, body=None):
-            return client.post(path, json=body, headers=auth_headers)
+            # Another manager confirms what was prepared here (separation of duties, PROJECT-GOV-004).
+            return client.post(path, json=body, headers=approver_headers if path.endswith("/confirm") else auth_headers)
 
         def patch(self, path, body):
             return client.patch(path, json=body, headers=auth_headers)
@@ -63,9 +64,9 @@ def accepted_quote(s):
 def confirmed_order(s):
     q = accepted_quote(s)
     order = s.post(f"{API}/quotes/{q['id']}/sales-order").json()
-    r = s.post(f"{API}/orders/{order['id']}/confirm")
+    r = s.post(f"{API}/orders/{order['id']}/confirm")  # by another manager
     assert r.status_code == 200, r.text
-    return r.json()
+    return s.get(f"{API}/orders/{order['id']}").json()  # as the one who prepared it sees it
 
 
 def test_quote_is_edited_only_as_a_draft_and_every_step_is_recorded(s):
@@ -203,3 +204,16 @@ def test_a_catalogue_product_line_follows_its_specification_template(s):
     assert s.post(f"{API}/customers/{s.customer}/orders", body).json()["detail"] == "ORDER_SPEC_INVALID:width_mm"
     body["items"][0]["requested_spec_json"] = {"width_mm": 19}
     assert s.post(f"{API}/customers/{s.customer}/orders", body).status_code == 201
+
+
+def test_order_from_a_discounted_quotation_agrees_the_net_price(s):
+    from decimal import Decimal
+    q = quote(s, items=[{"line_no": 1, "product_type": "pp_strap", "quantity": "7", "unit": "kg", "unit_price": "12.35", "discount_percent": "7"},
+                        {"line_no": 2, "product_type": "pp_strap", "quantity": "500", "unit": "kg", "unit_price": "2.40"}])
+    assert Decimal(q["items"][0]["net_total"]) == Decimal("80.40")  # 86.45 less 6.05
+    assert s.post(f"{API}/quotes/{q['id']}/issue").status_code == 200
+    s.post(f"{API}/quotes/{q['id']}/accept")
+    order = s.post(f"{API}/quotes/{q['id']}/sales-order").json()
+    first, second = order["items"]
+    assert Decimal(first["agreed_unit_price"]) == Decimal("11.4855") and Decimal(first["line_total"]) == Decimal("80.40")
+    assert Decimal(second["agreed_unit_price"]) == Decimal("2.40") and Decimal(second["line_total"]) == Decimal("1200.00")

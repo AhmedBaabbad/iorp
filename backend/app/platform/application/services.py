@@ -16,19 +16,24 @@ from app.core.interfaces.organization_queries import (
     ProvisionedOrganization,
     ProvisionedUser,
 )
-from app.core.security import hash_password, issue_token_pair, normalize_email, revoke_account_sessions, revoke_organization_sessions, verify_password
-from app.core.password_policy import validate_password
+from app.core.security import hash_password, issue_token_pair, unusable_password_hash, normalize_email, revoke_account_sessions, revoke_organization_sessions, verify_password
 from app.core.login_protection import LoginProtectionError, clear_expired_lock, ensure_not_auto_locked, record_failed_login, record_successful_login
 from app.core.interfaces.user_credentials import UserCredentialInterface
 from app.platform.api.schemas import (
     BootstrapInitializeRequest,
     OrganizationAdminInput,
+    OrganizationRootInvite,
     OrganizationInput,
 )
 from app.platform.domain.enums import PlatformAccountRole, PlatformAccountStatus
 from app.platform.domain.policies import validate_transition
 from app.platform.infrastructure.models import BootstrapState, PlatformAccount
 
+
+
+
+class PasswordResetLinkNotSentError(RuntimeError):
+    """SEC-002: the reset e-mail could not be sent (mail settings, or a wrong address)."""
 
 class AlreadyInitializedError(RuntimeError):
     pass
@@ -77,12 +82,12 @@ def _organization_data(data: OrganizationInput) -> OrganizationData:
     )
 
 
-def _administrator_data(data: OrganizationAdminInput) -> OrganizationAdminData:
+def _administrator_data(data: OrganizationAdminInput | OrganizationRootInvite) -> OrganizationAdminData:
     return OrganizationAdminData(
         full_name=data.full_name,
         email=normalize_email(str(data.email)),
         phone=data.phone,
-        password=data.password,
+        password=getattr(data, "password", None),  # SEC-003: only the first installation types one
     )
 
 
@@ -191,7 +196,7 @@ class PlatformOrganizationService:
     def create_organization(
         self,
         organization_input: OrganizationInput,
-        admin_input: OrganizationAdminInput,
+        admin_input: OrganizationRootInvite,
     ) -> tuple[ProvisionedOrganization, ProvisionedUser]:
         provisioned_logo: str | None = None
         try:
@@ -232,12 +237,8 @@ class PlatformOrganizationService:
         self.db.commit()
         return organization
 
-    def reset_root_password(
-        self,
-        organization_id: UUID,
-        new_password: str,
-        confirmation: str,
-    ) -> str:
+    def reset_root_password(self, organization_id: UUID) -> str:
+        """SEC-002: e-mails the organization's root a reset link; the platform never sets a customer's password."""
         if self.organizations.get_organization(organization_id) is None:
             raise OrganizationNotFoundError
         if self.user_credentials is None:
@@ -245,10 +246,15 @@ class PlatformOrganizationService:
         root = self.user_credentials.get_organization_root(organization_id)
         if root is None:
             raise OrganizationRootNotFoundError
-        validate_password(new_password, confirmation, root.email, 12)
-        self.user_credentials.reset_user_password(root.user_id, hash_password(new_password))
-        self.db.commit()
+        if not self.user_credentials.send_password_reset_link(root.user_id):
+            raise PasswordResetLinkNotSentError
         return root.email
+
+    def send_root_activation_link(self, root_user_id: UUID) -> bool:
+        """SEC-003: a new organization's root receives an activation link; True when it went out."""
+        if self.user_credentials is None:
+            raise RuntimeError("User credential provider is required")
+        return self.user_credentials.send_password_reset_link(root_user_id)
 
 
 class PlatformAuthService:
@@ -328,11 +334,11 @@ class PlatformAccountService:
         if active_roots <= 1:
             raise LastPlatformRootError
 
-    def create_account(self, full_name: str, email: str, password: str, confirmation: str, role: PlatformAccountRole) -> PlatformAccount:
+    def create_account(self, full_name: str, email: str, role: PlatformAccountRole) -> PlatformAccount:
+        """SEC-003: no password — the administrator activates the account through the e-mailed link."""
         normalized = self._email_available(email)
-        validate_password(password, confirmation, normalized, 12)
         account = PlatformAccount(
-            full_name=full_name.strip(), email=normalized, password_hash=hash_password(password),
+            full_name=full_name.strip(), email=normalized, password_hash=unusable_password_hash(),
             status=PlatformAccountStatus.ACTIVE, role=role, is_root=role is PlatformAccountRole.ROOT,
             token_version=0,
         )
@@ -385,13 +391,15 @@ class PlatformAccountService:
             self.db.refresh(account)
         return account
 
-    def reset_password(self, account_id: UUID, password: str, confirmation: str) -> PlatformAccount:
+    def reset_password(self, account_id: UUID) -> PlatformAccount:
+        """SEC-002: e-mails the platform administrator a reset link; no administrator sets another one's password."""
+        from app.platform.application.password_reset import PlatformPasswordResetService
         account = self.get_account(account_id)
-        validate_password(password, confirmation, account.email, 12)
-        account.password_hash = hash_password(password)
-        account.password_changed_at = datetime.now(timezone.utc)
-        account.token_version += 1
-        revoke_account_sessions(self.db, "platform", account.id, reason="password_reset")
-        self.db.commit()
-        self.db.refresh(account)
+        if not PlatformPasswordResetService().request_reset(self.db, account.email):
+            raise PasswordResetLinkNotSentError
         return account
+
+    def send_activation_link(self, account: PlatformAccount) -> bool:
+        """SEC-003: e-mails a new administrator their activation link; True when it went out."""
+        from app.platform.application.password_reset import PlatformPasswordResetService
+        return PlatformPasswordResetService().request_reset(self.db, account.email)

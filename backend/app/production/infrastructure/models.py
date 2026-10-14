@@ -459,6 +459,14 @@ class ProductionDemandCounter(Base):
     last_value: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
+class ProductionOrderCounter(Base):
+    """PO-YYYY-NNNNNN: one sequence per organization and year for every production order, manual or from planning."""
+    __tablename__ = "production_order_counters"
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), primary_key=True)
+    year: Mapped[int] = mapped_column(Integer, primary_key=True)
+    last_value: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
 class ProductionDemand(Base):
     __tablename__ = "production_demands"
     __table_args__ = (

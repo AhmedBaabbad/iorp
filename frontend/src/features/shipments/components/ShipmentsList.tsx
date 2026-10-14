@@ -1,5 +1,6 @@
 "use client";
 
+import { DriverAffiliation } from "@/features/reference-directory/DirectorySelect";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -75,7 +76,7 @@ export function ShipmentsList() {
           <td>{fmt.date(r.shipment_date)}</td>
           <td>{r.customer_name}{r.customer_reference && <div className={s.muted}><bdi>{r.customer_reference}</bdi></div>}</td>
           <td>{t(`methods.${r.delivery_method}`)}</td>
-          <td><bdi>{r.delivery_method === "carrier" ? (r.carrier_name ?? "—") : [r.driver_name, r.vehicle_plate].filter(Boolean).join(" — ") || "—"}</bdi></td>
+          <td><bdi>{r.delivery_method === "carrier" ? (r.carrier_name ?? "—") : [r.driver_name, r.vehicle_plate].filter(Boolean).join(" — ") || "—"}</bdi>{r.delivery_method!=="carrier"&&r.driver_name&&<div><DriverAffiliation value={r.driver_affiliation}/></div>}</td>
           <td><bdi>{r.quantities.map(q => fmt.quantity(q.quantity, unit(q.unit))).join(" · ") || "—"}</bdi>
             {r.weight_total_kg && <div className={s.muted}><bdi>{fmt.quantity(r.weight_total_kg, unit("kg"))}</bdi></div>}</td>
           <td><ShipmentStatusBadge status={r.status} />

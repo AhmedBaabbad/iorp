@@ -1,5 +1,6 @@
 {
   "customers": {
+    "complaints": "شكاوى هذا العميل",
     "listTitle": "العملاء",
     "createTitle": "إنشاء عميل جديد",
     "editTitle": "تعديل العميل",
@@ -423,9 +424,7 @@
       "sectionTitle": "ملخص العرض",
       "totalLabel": "الإجمالي الكلي"
     },
-    "placeholders": {
-      "discountAmount": "مثال: 5.50"
-    },
+    "placeholders": {},
     "validation": {
       "invalidValue": "قيمة JSON غير صحيحة"
     },
@@ -503,7 +502,19 @@
       "reviseTitle": "إعادة عرض السعر إلى مسودة",
       "reviseText": "يعود العرض مسودة بمراجعة جديدة، ويبقى ما سبق في سجل الحالة."
     },
-    "searchHint": "رقم العرض أو اسم العميل أو رمزه"
+    "searchHint": "رقم العرض أو اسم العميل أو رمزه",
+    "discount": {
+      "allLines": "خصم على كل البنود (%)",
+      "apply": "تطبيق على كل البنود",
+      "allLinesHint": "يضع هذه النسبة على كل البنود؛ ثم عدّل خصم أي بند أو امسحه وحده.",
+      "line": "خصم البند (%)",
+      "lineAmount": "يخصم {amount} من هذا البند",
+      "column": "الخصم",
+      "net": "الصافي",
+      "subtotalBefore": "المجموع قبل الخصم",
+      "total": "الخصم",
+      "subtotalAfter": "المجموع بعد الخصم"
+    }
   },
   "commercialOrders": {
     "listTitle": "أوامر البيع",
@@ -666,6 +677,278 @@
     "ORDER_DUPLICATE_LINE": "رقم بند مكرر.",
     "ORDER_UNIT_INVALID": "اختر الوحدة من القائمة.",
     "ORDER_SPEC_INVALID": "قيمة غير صحيحة في المواصفات: {value}",
-    "INTERACTION_HAS_FOLLOW_UPS": "فُتحت متابعة من هذا التفاعل، فلا يُحذف."
+    "INTERACTION_HAS_FOLLOW_UPS": "فُتحت متابعة من هذا التفاعل، فلا يُحذف.",
+    "QUOTE_HAS_ISSUED_HISTORY": "لا يمكن حذف عرض له إصدار محفوظ. احتفظ به للمراجعة."
+  },
+  "complaints": {
+    "title": "شكاوى العملاء",
+    "subtitle": "سجل واحد لكل بلاغ: التحقيق والمعالجة والتواصل مع العميل.",
+    "register": "تسجيل شكوى",
+    "registerTitle": "تسجيل شكوى عميل",
+    "registerHint": "سجّل البلاغ كما ورد من العميل، وتُسجَّل نتائج التحقق لاحقًا في التحقيق.",
+    "back": "الشكاوى",
+    "loading": "جارٍ التحميل…",
+    "loadFailed": "تعذّر تحميل الشكاوى.",
+    "detailFailed": "الشكوى غير متاحة أو لا تملك صلاحية الاطلاع عليها.",
+    "empty": "لا توجد شكوى تطابق البحث.",
+    "search": "بحث",
+    "searchPlaceholder": "الرقم أو الموضوع",
+    "allStatuses": "جميع الحالات",
+    "allDepartments": "جميع الأقسام",
+    "overdueOnly": "المتأخرة فقط",
+    "overdue": "متأخرة",
+    "unassigned": "لم يُسنَد بعد",
+    "pdf": "تقرير الشكوى (PDF)",
+    "columns": {
+      "number": "الرقم",
+      "customerSubject": "العميل والموضوع",
+      "status": "الحالة",
+      "priority": "الأولوية",
+      "owner": "المسؤول",
+      "due": "موعد الحل"
+    },
+    "summary": {
+      "active": "الشكاوى النشطة",
+      "overdue": "متأخرة في الحل",
+      "response_overdue": "متأخرة في الرد",
+      "pending_closure": "بانتظار اعتماد الإغلاق",
+      "closed": "مغلقة"
+    },
+    "fields": {
+      "customer": "العميل",
+      "subject": "الموضوع",
+      "contact": "الشخص المتواصل",
+      "receivedDate": "تاريخ الاستلام",
+      "category": "نوع الشكوى",
+      "priority": "الأولوية",
+      "channel": "قناة الاستلام",
+      "status": "الحالة",
+      "department": "القسم المعالج",
+      "responseDue": "موعد الرد",
+      "resolutionDue": "موعد الحل",
+      "externalReference": "مرجع العميل أو أمر الشراء",
+      "statement": "بلاغ العميل كما ورد",
+      "statementTitle": "بلاغ العميل",
+      "owner": "المسؤول"
+    },
+    "statuses": {
+      "new": "جديدة",
+      "assessment": "قيد التقييم",
+      "processing": "قيد المعالجة",
+      "pending_closure": "بانتظار اعتماد الإغلاق",
+      "closed": "مغلقة",
+      "cancelled": "ملغاة"
+    },
+    "categories": {
+      "quality": "الجودة",
+      "delivery": "التسليم",
+      "quantity": "الكمية",
+      "packaging": "التغليف",
+      "commercial": "الشروط التجارية",
+      "service": "الخدمة",
+      "other": "أخرى"
+    },
+    "departments": {
+      "commercial": "المبيعات وخدمة العملاء",
+      "quality": "الجودة",
+      "shipping": "الشحن والتسليم",
+      "production": "الإنتاج"
+    },
+    "priorities": {
+      "low": "منخفضة",
+      "medium": "متوسطة",
+      "high": "عالية",
+      "critical": "حرجة"
+    },
+    "channels": {
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف",
+      "visit": "زيارة",
+      "message": "رسالة",
+      "other": "أخرى"
+    },
+    "findings": {
+      "pending": "لم يكتمل التحقق",
+      "verified": "مثبتة",
+      "not_verified": "غير مثبتة",
+      "inconclusive": "غير حاسمة"
+    },
+    "kinds": {
+      "order": "أمر بيع",
+      "sample": "عينة",
+      "shipment": "شحنة",
+      "return": "مرتجع",
+      "ncr": "تقرير عدم مطابقة"
+    },
+    "operations": {
+      "assign": "إسناد المسؤولية",
+      "investigate": "تحديث التحقيق",
+      "resolve": "تسجيل الحل",
+      "items": "تعديل بنود المنتجات",
+      "link": "ربط سجل",
+      "attach": "إرفاق دليل",
+      "refer_quality": "إحالة إلى الجودة",
+      "request_close": "طلب الإغلاق",
+      "approve_close": "اعتماد الإغلاق",
+      "return": "إعادة للمعالجة",
+      "reopen": "إعادة الفتح",
+      "cancel": "إلغاء الشكوى",
+      "communicate": "تسجيل تواصل"
+    },
+    "events": {
+      "created": "تسجيل الشكوى",
+      "assign": "إسناد المسؤولية",
+      "investigate": "تحديث التحقيق",
+      "resolve": "تسجيل الحل",
+      "items_updated": "تعديل بنود المنتجات",
+      "note": "متابعة داخلية",
+      "response": "تواصل مع العميل",
+      "linked": "ربط سجل",
+      "attachment": "إرفاق دليل",
+      "refer_quality": "إحالة إلى الجودة",
+      "assess": "بدء التقييم",
+      "start": "بدء المعالجة",
+      "request_close": "طلب الإغلاق",
+      "approve_close": "اعتماد الإغلاق",
+      "return": "إعادة للمعالجة",
+      "reopen": "إعادة الفتح",
+      "cancel": "إلغاء الشكوى"
+    },
+    "history": {
+      "title": "سجل المتابعة والقرارات",
+      "by": "بواسطة {name}",
+      "fromTo": "من «{from}» إلى «{to}»",
+      "owner": "المسؤول: {name}",
+      "previousOwner": "المسؤول السابق: {name}",
+      "department": "القسم المعالج: {name}",
+      "due": "موعد الحل: {date}",
+      "created": "نوع الشكوى: {category} · الأولوية: {priority} · قناة الاستلام: {channel}",
+      "finding": "نتيجة التحقق: {value}",
+      "field": "{field}: {value}",
+      "previous": "القيمة السابقة لـ«{field}»: {value}",
+      "measured": "{product}: القياسات {values}",
+      "confirmed": "{product}: الكمية المثبت تأثرها {quantity}",
+      "reference": "{kind}: {label}",
+      "ncr": "فُتح تقرير عدم المطابقة رقم {number}",
+      "file": "الملف: {name}",
+      "lines": "عدد بنود المنتجات: {count}",
+      "reasons": {
+        "assign": "سبب الإسناد",
+        "note": "المتابعة",
+        "response": "ما أُرسل للعميل",
+        "refer_quality": "ملاحظة الإحالة",
+        "other": "السبب"
+      }
+    },
+    "items": {
+      "title": "المنتجات والمواصفات",
+      "hint": "اختياري عند التسجيل. خذ القيم المتفق عليها من بند أمر بيع أو عينة لهذا العميل، أو اكتبها يدويًا.",
+      "add": "إضافة منتج",
+      "remove": "إزالة البند",
+      "product": "المنتج",
+      "chooseProduct": "اختر المنتج",
+      "unit": "الوحدة",
+      "delivered": "الكمية المسلّمة",
+      "reported": "الكمية التي أبلغ العميل بتأثرها",
+      "confirmed": "الكمية المثبت تأثرها",
+      "batch": "مرجع الدفعة",
+      "source": "مصدر المواصفة المتفق عليها",
+      "manual": "إدخال يدوي",
+      "chooseSource": "اختر بند أمر بيع أو عينة",
+      "fromSource": "القيم المتفق عليها مأخوذة من {source}",
+      "property": "الخاصية",
+      "expected": "المتفق عليه",
+      "reportedValue": "بلاغ العميل",
+      "measured": "القياس الفعلي",
+      "quantities": "المسلّم {delivered} · المبلَّغ عنه {reported} · المثبت تأثره {confirmed}",
+      "save": "حفظ بنود المنتجات"
+    },
+    "form": {
+      "assignee": "المستخدم المسؤول",
+      "assignReason": "سبب الإسناد",
+      "investigation": "النتائج والأدلة",
+      "containment": "الاحتواء الفوري",
+      "measurements": "القياسات لكل بند",
+      "resolution": "الحل المعتمد ومبرراته",
+      "evidence": "دليل تنفيذ الحل",
+      "customerResponse": "موقف العميل وتاريخ التواصل",
+      "notes": "ما قيل أو ما تم",
+      "referenceKind": "نوع السجل",
+      "reference": "سجل تابع لهذا العميل",
+      "file": "صورة أو ملف PDF حتى 10 ميجابايت",
+      "reason": "سبب القرار",
+      "confirm": "تأكيد وحفظ",
+      "cancel": "رجوع",
+      "saving": "جارٍ الحفظ…",
+      "toCustomer": "أُرسل هذا للعميل (يُحتسب ردًا عليه)",
+      "referral": "ما المطلوب من الجودة تحديده",
+      "chooseFile": "اختر ملفًا"
+    },
+    "investigation": {
+      "title": "التحقيق والمعالجة",
+      "finding": "نتيجة التحقق",
+      "investigation": "التحقيق",
+      "containment": "الاحتواء",
+      "waiting_reason": "الانتظار",
+      "resolution": "الحل",
+      "implementation_evidence": "دليل التنفيذ",
+      "customer_response": "موقف العميل"
+    },
+    "references": {
+      "title": "السجلات والأدلة",
+      "none": "لا توجد سجلات أو مرفقات متاحة لك."
+    },
+    "picker": {
+      "search": "بحث: {title}",
+      "placeholder": "اكتب للبحث",
+      "choose": "اختر",
+      "unavailable": "تعذّر تحميل الخيارات أو لا تملك صلاحية الاطلاع عليها."
+    },
+    "errors": {
+      "save": "تعذّر الحفظ. تحقّق من الحقول والكميات وصلاحياتك.",
+      "action": "تعذّر تنفيذ الإجراء. تحقّق من الحقول وصلاحياتك.",
+      "download": "تعذّر تنزيل المرفق.",
+      "products": "تعذّر تحميل المنتجات.",
+      "COMPLAINT_CHANGED": "عدّل شخص آخر هذه الشكوى في الأثناء. حدّث الصفحة ثم أعد المحاولة.",
+      "COMPLAINT_LOCKED": "لا يمكن تعديل الشكوى في هذه المرحلة.",
+      "ASSIGNEE_NOT_ELIGIBLE": "لا يملك هذا المستخدم الصلاحيات اللازمة أو الوصول إلى هذا العميل.",
+      "CLOSURE_EVIDENCE_REQUIRED": "قبل الإغلاق أكمل نتيجة التحقق والتحقيق والحل ودليل تنفيذه وموقف العميل.",
+      "QUALITY_NCR_REQUIRED": "الشكوى الفنية المثبتة تحتاج إلى تقرير عدم مطابقة مرتبط قبل إغلاقها.",
+      "QUALITY_REVIEW_PENDING": "لم تُغلق الجودة التقرير المرتبط أو لم تراجع فعالية المعالجة بعد.",
+      "INDEPENDENT_APPROVAL_REQUIRED": "الشكوى الحرجة يعتمد إغلاقها شخص غير من طلب الإغلاق.",
+      "REFERENCE_NOT_FOUND": "السجل غير موجود أو لا يتبع هذا العميل.",
+      "REFERENCE_PERMISSION_REQUIRED": "لا تملك صلاحية الاطلاع على هذا السجل.",
+      "REFERENCE_ALREADY_LINKED": "هذا السجل مرتبط مسبقًا.",
+      "SOURCE_NOT_FOUND": "بند أمر البيع أو العينة غير موجود أو لا يتبع هذا العميل.",
+      "SOURCE_PRODUCT_MISMATCH": "بند أمر البيع أو العينة المختارة لمنتج آخر.",
+      "CONFIRMED_EXCEEDS_DELIVERED": "لا يمكن أن تتجاوز الكمية المثبتة الكمية المسلّمة.",
+      "ITEM_NOT_FOUND": "هذا البند لم يعد موجودًا. حدّث الصفحة.",
+      "PROPERTY_INVALID": "إحدى الخصائص لا تتبع المنتج.",
+      "PRODUCT_NOT_AVAILABLE": "المنتج غير موجود في الدليل أو لم يعد نشطًا.",
+      "UNIT_INVALID": "اختر وحدة من القائمة.",
+      "DUE_BEFORE_RECEIPT": "لا يمكن أن يسبق موعد الاستحقاق تاريخ استلام الشكوى.",
+      "ACTION_FORBIDDEN": "لا تملك صلاحية هذا القرار.",
+      "TRANSITION_NOT_ALLOWED": "هذا القرار غير متاح في المرحلة الحالية للشكوى.",
+      "FILE_TOO_LARGE": "الملف أكبر من الحد المسموح.",
+      "FILE_UNSUPPORTED_TYPE": "يُقبل فقط الصور (PNG وJPEG وWebP) وملفات PDF.",
+      "FILE_QUOTA_EXCEEDED": "مساحة تخزين المنظمة ممتلئة: لم يُرفع الملف.",
+      "FILE_INVALID_IMAGE": "تعذّرت قراءة الصورة.",
+      "FILE_INVALID_PDF": "ملف PDF غير مكتمل أو تالف.",
+      "FILE_EMPTY": "الملف فارغ."
+    },
+    "next": {
+      "title": "الخطوة التالية",
+      "assign": "حدّد المسؤول والقسم المعالج وموعد الحل؛ وبهذا تبدأ المعالجة.",
+      "investigate": "أثبت ما حدث: نتيجة التحقق والأدلة والقياسات والاحتواء. وأحِل العيب الفني إلى الجودة.",
+      "resolve": "سجّل الحل ودليل تنفيذه وموقف العميل.",
+      "request_close": "اكتمل التسجيل: اطلب الإغلاق ليعتمده المدير.",
+      "approve_close": "راجع الأدلة وموقف العميل، ثم اعتمد الإغلاق أو أعِد الشكوى للمعالجة."
+    },
+    "sections": {
+      "statement": "ما أبلغ به العميل",
+      "investigation": "ما ثبت بالفحص",
+      "resolution": "الحل والإغلاق"
+    },
+    "moreDetails": "تفاصيل إضافية (الشخص المتواصل، موعد الرد، مرجع العميل)"
   }
 }

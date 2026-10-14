@@ -33,6 +33,7 @@ class OrganizationProfileService:
             has_logo=bool(organization.logo_path),
             logo_url="/api/v1/organization/logo" if organization.logo_path else None,
             created_at=organization.created_at, updated_at=organization.updated_at,
+            max_sessions_per_user=organization.max_sessions_per_user or 2,
         )
 
     def update(self, organization_id: UUID, data: OrganizationProfileUpdate, actor: User | None = None) -> Organization:

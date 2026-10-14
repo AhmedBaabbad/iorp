@@ -1,6 +1,8 @@
 "use client";
 
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+
+import { getEnumLabel } from "@/i18n/enum-helpers";
 import { useEffect, useState } from "react";
 
 import { getBusinessSettings, getListItems, getProducts } from "./api";
@@ -49,14 +51,15 @@ export function useListItems(list: ListName): ListItem[] | null {
   return value;
 }
 
-/** A stored list value as people read it: the item's name in the screen's language, else the stored text. */
-export function useListName(list: ListName): (key: string | null | undefined) => string {
+/** A stored list value as people read it: the item's name in the screen's language, else `fallback` (e.g. the value's
+ * usual words, MD-003), else the stored text. */
+export function useListName(list: ListName, fallback?: (key: string) => string | undefined): (key: string | null | undefined) => string {
   const locale = useLocale();
   const all = useListItems(list);
   return (key) => {
     if (!key) return "—";
     const found = all?.find(i => i.key === key);
-    return found ? (locale === "ar" ? found.name_ar : found.name_en) : key;
+    return found ? (locale === "ar" ? found.name_ar : found.name_en) : fallback?.(key) ?? key;
   };
 }
 
@@ -83,4 +86,36 @@ export function useProductName(): (key: string | null | undefined) => string {
     const found = all?.find(p => p.key === key);
     return found ? (locale === "ar" ? found.name_ar : found.name_en) : key;
   };
+}
+
+/** MD-003: the choices of a classification list — its active items, in the screen's language, and the value a record
+ * already holds even when deactivated — or `fallback` keys while the organization's list is empty or loading. */
+export function useListChoices(list: ListName, fallback: readonly string[], fallbackLabel: (key: string) => string,
+                               current?: string | null): { key: string; label: string }[] {
+  const locale = useLocale();
+  const all = useListItems(list);
+  const named = (i: ListItem) => (locale === "ar" ? i.name_ar : i.name_en);
+  if (!all || all.length === 0) {
+    const keys = current && !fallback.includes(current) ? [...fallback, current] : [...fallback];
+    return keys.map(key => ({ key, label: fallbackLabel(key) }));
+  }
+  const choices = all.filter(i => i.active).map(i => ({ key: i.key, label: named(i) }));
+  if (current && !choices.some(c => c.key === current)) {
+    const held = all.find(i => i.key === current);
+    choices.push({ key: current, label: held ? named(held) : fallbackLabel(current) });
+  }
+  return choices;
+}
+
+/** MD-003: a classification that used to be fixed (enums.<entity>.<field>): its name from the organization's list, else
+ * its usual words. */
+export function useClassificationName(list: ListName, entity: string, field: string) {
+  const t = useTranslations();
+  return useListName(list, (key) => getEnumLabel(entity, field, key, t));
+}
+
+/** MD-003: its choices from the organization's list (the usual keys while the list is empty), with their names. */
+export function useClassificationChoices(list: ListName, usual: readonly string[], entity: string, field: string, current?: string | null) {
+  const t = useTranslations();
+  return useListChoices(list, usual, (key) => getEnumLabel(entity, field, key, t), current);
 }

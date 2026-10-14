@@ -11,6 +11,7 @@ from decimal import Decimal
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
+from app.core.interfaces import approvals
 from app.core.interfaces.product_catalog import business_settings
 from app.core.utils import utc_now
 from app.procurement.domain import permissions as P
@@ -19,6 +20,7 @@ from app.procurement.domain import rules
 from app.procurement.domain.rules import ProcurementError
 from app.procurement.infrastructure.models import GoodsReceipt, GoodsReceiptLine, Material, PurchaseOrder, PurchaseOrderLine, Supplier
 from .support import history, log_activity, next_po_number, record, settings, user_names
+from . import notices
 
 HEADER = ("order_date", "required_date", "attention", "supplier_quote_ref", "subject", "currency", "payment_terms", "payment_terms_note", "incoterm",
           "delivery_place", "notes")
@@ -73,6 +75,7 @@ class PurchaseOrderService:
         received = received_by_line(self.db, [line.id for o in orders for line in o.lines])
         names = user_names(self.db, self.org, [u for o in orders for u in (o.created_by_user_id, o.approved_by_user_id, o.sent_by_user_id)])
         statuses = dict(self.db.execute(select(Supplier.id, Supplier.status).where(Supplier.id.in_({o.supplier_id for o in orders}))).all()) if orders else {}
+        signed = approvals.signatures(self.db, self.org, "purchase_order", [o.id for o in orders])
         out = []
         for o in orders:
             got = {line.id: received.get(line.id, Decimal(0)) for line in o.lines}
@@ -80,6 +83,7 @@ class PurchaseOrderService:
             ordered = sum((line.quantity for line in o.lines), Decimal(0))
             view = dict(supplier_status=statuses.get(o.supplier_id), created_by_name=names.get(o.created_by_user_id),
                         approved_by_name=names.get(o.approved_by_user_id), sent_by_name=names.get(o.sent_by_user_id),
+                        approval=approvals.latest(signed.get(o.id, []), "approve"),
                         line_count=len(o.lines), received_pct=(min(Decimal(100), sum(min(got[l.id], l.quantity) for l in o.lines) * 100 / ordered)
                                                                .quantize(Decimal("0.1")) if ordered else Decimal(0)),
                         actions=PO.actions(o.status, lambda a: can(P.PO_ACTIONS[a]), any_received))
@@ -110,6 +114,16 @@ class PurchaseOrderService:
         return supplier
 
     def _apply(self, order, values, lines=None):
+        from app.procurement.infrastructure.contact_models import SupplierContact
+        selected=values.get('supplier_contact_id',order.supplier_contact_id)
+        if selected:
+            contact=self.db.scalar(select(SupplierContact).where(SupplierContact.id==selected,
+                SupplierContact.organization_id==self.org,SupplierContact.supplier_id==order.supplier_id))
+            if not contact or (selected!=order.supplier_contact_id and not contact.active):
+                raise ProcurementError('SUPPLIER_CONTACT_UNAVAILABLE',422)
+            values['attention']=contact.name if selected!=order.supplier_contact_id else order.attention
+        if 'supplier_contact_id' in values:
+            order.supplier_contact_id=selected
         kept_rate = order.tax_rate
         for field in HEADER:
             if field in values and not (field in REQUIRED and values[field] is None):
@@ -162,6 +176,7 @@ class PurchaseOrderService:
         if values.get("currency") is None:
             values.pop("currency")
         self._apply(order, values, data.lines)
+        notices.order_awaits_approval(self.db, self.tenant, order)
         return self._commit(order, "create")
 
     def update(self, order_id, data) -> PurchaseOrder:
@@ -170,6 +185,9 @@ class PurchaseOrderService:
         values = data.model_dump(exclude_unset=True, exclude={"lines"})
         if values.get("supplier_id"):
             supplier = self._supplier(values["supplier_id"])
+            if supplier.id != order.supplier_id:
+                order.supplier_contact_id=None
+                order.attention=supplier.contact_name
             order.supplier_id, order.supplier_name = supplier.id, supplier.name
         self._apply(order, values, data.lines)
         return self._commit(order, "update", order.status)
@@ -178,7 +196,16 @@ class PurchaseOrderService:
         order = self._get(order_id, lock=True)
         supplier = self.db.get(Supplier, order.supplier_id)
         PO.assert_can_approve(order.status, len(order.lines), order.total_amount, supplier.status if supplier else None)
+        # Separation of duties: who prepared the order does not approve it (the organization's root excepted: a one-person company).
+        if order.created_by_user_id == self.tenant.user_id and not self.tenant.is_organization_root:
+            raise ProcurementError("APPROVER_IS_PREPARER", 409)
         order.status, order.approved_at, order.approved_by_user_id = PO.APPROVED, utc_now(), self.tenant.user_id
+        try:  # whose authority and who signed, fixed now (directly, or under a delegation in force)
+            approvals.record(self.db, self.tenant, "purchase_order", order.id, "approve", P.PO_APPROVE)
+        except PermissionError as exc:
+            self.db.rollback()
+            raise ProcurementError("APPROVAL_AUTHORITY_REQUIRED", 403) from exc
+        notices.order_approved(self.db, self.tenant, order)
         return self._commit(order, "approve", PO.DRAFT)
 
     def send(self, order_id) -> PurchaseOrder:
@@ -202,6 +229,7 @@ class PurchaseOrderService:
         PO.assert_can_cancel(order.status, any(q > 0 for q in received.values()) or bool(pending), reason)
         before = order.status
         order.status, order.cancel_reason = PO.CANCELLED, reason.strip()
+        notices.order_cancelled(self.db, self.tenant, order)
         return self._commit(order, "cancel", before, order.cancel_reason)
 
     def refresh_received(self, order_id) -> None:

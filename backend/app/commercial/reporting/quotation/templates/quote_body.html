@@ -24,20 +24,28 @@
         <th>{{ 'الكمية' if ar else 'Quantity' }}</th><th>{{ 'الوحدة' if ar else 'Unit' }}</th>
         <th>{{ 'سعر الوحدة' if ar else 'Unit price' }} <span class="q-currency">({{ d.currency }})</span></th>
         <th>{{ 'الإجمالي' if ar else 'Amount' }} <span class="q-currency">({{ d.currency }})</span></th>
+        {% if d.discounted %}<th>{{ 'الخصم' if ar else 'Discount' }}</th>
+        <th>{{ 'الصافي' if ar else 'Net' }} <span class="q-currency">({{ d.currency }})</span></th>{% endif %}
       </tr></thead>
       <tbody>{% for i in d['items'] %}<tr>
         <td class="n">{{ i.no }}</td><td><bdi>{{ i.description }}</bdi></td>
         <td class="num">{{ i.quantity }}</td><td>{{ i.unit }}</td>
         <td class="num">{{ i.unit_price }}</td><td class="num">{{ i.total }}</td>
+        {% if d.discounted %}<td class="num">{{ i.discount }}</td><td class="num">{{ i.net }}</td>{% endif %}
       </tr>{% endfor %}</tbody>
       <tfoot>{% for label, value, kind in d.totals %}<tr class="{{ kind }}">
-        <td colspan="5" class="lbl">{{ label }}</td><td class="num">{{ value }}</td>
+        <td colspan="{{ 7 if d.discounted else 5 }}" class="lbl">{{ label }}</td><td class="num">{{ value }}</td>
       </tr>{% endfor %}</tfoot>
     </table>
   </section>
 
   {% if d.notes %}<section class="q-block"><h2>{{ 'ملاحظات' if ar else 'Notes' }}</h2><p class="q-notes">{{ d.notes }}</p></section>{% endif %}
 
+  {% if d.terms_source == 'legacy_baseline' %}
+  <p class="q-notes">{{ 'تنبيه: شروط هذا العرض القديم حُفظت من الإعدادات عند الترقية؛ لم تكن النسخة الأصلية مؤرشفة.' if ar else 'Notice: these legacy terms were captured from settings during migration; the original terms were not archived.' }}</p>
+  {% elif d.terms_source == 'missing' %}
+  <p class="q-notes">{{ 'شروط الإصدار الأصلي غير متوفرة؛ لم تُستبدل بالشروط الحالية.' if ar else 'Original issued terms are unavailable; current settings have not been substituted.' }}</p>
+  {% endif %}
   {% if d.terms %}
   <section class="q-block" style="break-inside:auto">
     <h2>{{ 'الشروط والأحكام' if ar else 'Terms and conditions' }}</h2>

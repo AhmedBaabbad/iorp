@@ -1,1 +1,23 @@
-{"title":"Security Events","subtitle":"Login and security events for organization users","events":{"tenant.login_success":"Successful login","tenant.login_failed":"Failed login attempt","tenant.token_refreshed":"Session refreshed","tenant.password_changed":"Password changed","tenant.account_locked":"Account manually locked","tenant.account_unlocked":"Account unlocked","tenant.auto_locked":"Automatically locked","tenant.auto_lock_expired":"Automatic lock expired"},"filters":{"searchPlaceholder":"Filter by event type...","dateFrom":"From date","dateTo":"To date","apply":"Apply"},"loading":"Loading...","empty":"No security events","error":"Unable to load events.","accessDenied":"You do not have permission to view this log.","system":"System","noDetails":"No details","previous":"Previous","next":"Next","page":"Page {page} of {pages}"}
+{
+  "title": "Security log",
+  "subtitle": "Who signed in, when and from where; failed attempts, locked accounts and password changes.",
+  "events": {
+    "tenant.login_success": "Signed in",
+    "tenant.login_failed": "Failed sign-in attempt",
+    "tenant.password_changed": "Password changed",
+    "tenant.password_reset_via_email": "Password reset by email link",
+    "tenant.account_locked": "Account locked by an administrator",
+    "tenant.account_unlocked": "Account unlocked",
+    "tenant.auto_locked": "Locked automatically after failed attempts",
+    "tenant.auto_lock_expired": "Automatic lock ended",
+    "tenant.refresh_token_reuse_detected": "An ended session was reused (possible theft)",
+    "tenant.session_revoked": "Session ended",
+    "tenant.all_sessions_revoked": "All sessions ended",
+    "tenant.token_validation_failed": "Invalid session rejected",
+    "tenant.sessions_ended": "Sessions ended"
+  },
+  "loading": "Loading…",
+  "empty": "No security events",
+  "error": "The events could not be loaded.",
+  "accessDenied": "You may not view this log."
+}

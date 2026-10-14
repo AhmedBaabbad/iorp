@@ -5,6 +5,8 @@ required.  Each test function receives a fresh database (function-scoped
 engine + create_all), giving complete isolation between tests.
 """
 
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -17,6 +19,7 @@ import app.foundation.infrastructure.models  # noqa: F401
 import app.production.infrastructure.models  # noqa: F401
 import app.quality.infrastructure.models  # noqa: F401
 import app.platform.infrastructure.models  # noqa: F401
+import app.notifications.infrastructure.models  # noqa: F401
 from app.core.db import Base
 from app.core.rate_limit import _attempts as _rate_limit_attempts
 from app.core.security import hash_password
@@ -44,6 +47,36 @@ def _reset_rate_limits():
     attempts can't exhaust another test's quota."""
     _rate_limit_attempts.clear()
     yield
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "real_email: the test exercises EmailService.send_email itself (SMTP mocked by the test)")
+
+
+@pytest.fixture(autouse=True)
+def mailbox(monkeypatch, request):
+    """No test sends real e-mail: every message lands here as {address: the link token in it (or None)}.
+    A test may still replace send_email itself (e.g. to make delivery fail)."""
+    box: dict[str, str | None] = {}
+    if request.node.get_closest_marker("real_email"):
+        return box
+
+    def send(self, to_email, subject, html_body, text_body=None):
+        found = re.search(r"token=([A-Za-z0-9_\-]+)", text_body or html_body)
+        box[to_email] = found.group(1) if found else None
+        return True
+    monkeypatch.setattr("app.core.email.service.EmailService.send_email", send)
+    return box
+
+
+@pytest.fixture
+def activate(client, mailbox):
+    """SEC-003: completes a new account's activation link, as its owner would, choosing `password`."""
+    def _activate(email: str, password: str, platform: bool = False):
+        path = "/api/v1/platform/auth/reset-password" if platform else "/api/v1/auth/reset-password"
+        r = client.post(path, json={"token": mailbox[email], "new_password": password, "new_password_confirmation": password})
+        assert r.status_code in (200, 204), r.text
+    return _activate
 
 
 @pytest.fixture

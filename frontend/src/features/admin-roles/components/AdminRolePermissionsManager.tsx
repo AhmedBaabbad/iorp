@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { usePermission } from "@/features/auth";
@@ -16,6 +16,8 @@ import {
 } from "../api/admin-roles-api";
 import type { AccessScope, AdminRoleDetail } from "../types";
 
+import styles from "./roles.module.css";
+
 const SCOPE_OPTIONS: AccessScope[] = ["own", "team", "organization"];
 
 export function AdminRolePermissionsManager({ roleId, readOnly = false }: { roleId: string; readOnly?: boolean }) {
@@ -23,12 +25,10 @@ export function AdminRolePermissionsManager({ roleId, readOnly = false }: { role
   const tp = useTranslations("administration.permissions");
   const ts = useTranslations("administration.scope");
   const messages = useTranslations("messages");
-  const moduleLabels: Record<string, string> = {
-    foundation: tp("modules.foundation"),
-    commercial: tp("modules.commercial"),
-    production: tp("modules.production"),
-    quality: tp("modules.quality"),
-  };
+  const locale = useLocale();
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [busy, setBusy] = useState(false);
   const canWrite = usePermission("foundation:role_permissions:write");
   const [role, setRole] = useState<AdminRoleDetail | null>(null);
   const [groups, setGroups] = useState<CatalogPermissionGroup[]>([]);
@@ -56,78 +56,46 @@ export function AdminRolePermissionsManager({ roleId, readOnly = false }: { role
     [role],
   );
 
-  const editable = canWrite && !readOnly;
+  const editable = canWrite && !readOnly && Boolean(role?.is_editable) && !busy;
 
-  async function togglePermission(code: string, checked: boolean) {
+  async function mutate(action: () => Promise<unknown>) {
     if (!editable) return;
-    if (checked) {
-      await assignAdminPermissionToRole(roleId, { permission_code: code });
-    } else {
-      await removeAdminPermissionFromRole(roleId, code);
-    }
-    await load();
+    setBusy(true);
+    setError(null);
+    try { await action(); await load(); }
+    catch (caughtError) { setError(getApiErrorMessage(caughtError, messages)); }
+    finally { setBusy(false); }
   }
-
-  async function changeScope(code: string, scope: AccessScope) {
-    if (!editable) return;
-    await updateAdminRolePermissionScope(roleId, code, scope);
-    await load();
-  }
-
+  const filtered = groups.map(group => ({...group, permissions: group.permissions.filter(p => {
+    const matches = [p.code, p.name_ar, p.name_en, p.description_ar, p.description_en].join(" ").toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());
+    return matches && (filter === "all" || assignedScope.has(p.code) === (filter === "assigned"));
+  })})).filter(group => group.permissions.length);
   return (
-    <section style={{ background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "8px", padding: "20px" }}>
-      <h2 style={{ margin: "0 0 16px", fontSize: "16px" }}>{t("permissionsTitle")}</h2>
-      {error ? <div style={sharedStyles.error}>{error}</div> : null}
-      <div style={{ display: "grid", gap: "18px" }}>
-        {groups.map((group) => (
-          <div key={group.module}>
-            <h3 style={{ margin: "0 0 8px", fontSize: "14px" }}>
-              {moduleLabels[group.module] ?? group.module} ({group.permissions.filter((p) => assignedScope.has(p.code)).length}/{group.permissions.length})
-            </h3>
-            <div style={{ display: "grid", gap: "8px" }}>
-              {group.permissions.map((permission) => {
-                const isAssigned = assignedScope.has(permission.code);
-                const currentScope = assignedScope.get(permission.code) ?? "organization";
-                return (
-                  <div key={permission.code} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <label style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                      <input
-                        type="checkbox"
-                        checked={isAssigned}
-                        disabled={!editable}
-                        onChange={(event) => void togglePermission(permission.code, event.target.checked)}
-                      />
-                      <span>{permission.code} - {permission.name}</span>
-                    </label>
-                    {isAssigned ? (
-                      permission.scopable ? (
-                        <div style={{ marginInlineStart: "26px", display: "flex", alignItems: "center", gap: "8px" }}>
-                          <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{ts("scopeLabel")}:</span>
-                          <select
-                            value={currentScope}
-                            disabled={!editable}
-                            onChange={(event) => void changeScope(permission.code, event.target.value as AccessScope)}
-                            style={{ fontSize: "12px", padding: "3px 6px" }}
-                          >
-                            {SCOPE_OPTIONS.map((option) => (
-                              <option key={option} value={option} disabled={option === "team"}>
-                                {ts(option)}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      ) : (
-                        <span style={{ marginInlineStart: "26px", fontSize: "12px", color: "var(--text-subtle)" }}>
-                          {ts("notSupported")}
-                        </span>
-                      )
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+    <section className={styles.panel} aria-busy={busy} dir={locale === "ar" ? "rtl" : "ltr"}>
+      <div className={styles.heading}><div><h2>{t("permissionsTitle")}</h2><p>{t("permissionsSubtitle")}</p></div><span className={styles.badge}>{t("explorer.granted", {count: assignedScope.size})}</span></div>
+      <div className={styles.toolbar}>
+        <input className={styles.input} aria-label={tp("searchPlaceholder")} placeholder={tp("searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} />
+        <select className={styles.input} aria-label={t("explorer.filter")} value={filter} onChange={e => setFilter(e.target.value)}>
+          {["all", "assigned", "unassigned"].map(value => <option key={value} value={value}>{t(`explorer.${value}`)}</option>)}
+        </select>
+      </div>
+      {error ? <div role="alert" style={sharedStyles.error}>{error}</div> : null}
+      {!role && !error ? <p role="status">{tp("loading")}</p> : null}
+      {role && !filtered.length ? <p role="status">{t("explorer.noMatches")}</p> : null}
+      <div className={styles.groups}>
+        {filtered.map(group => <details key={group.module} className={styles.group} open={search.trim() ? true : undefined}>
+          <summary><strong>{locale === "ar" ? group.module_name_ar : group.module_name_en}</strong><span className={styles.badge}>{group.permissions.filter(p => assignedScope.has(p.code)).length} / {group.permissions.length}</span></summary>
+          <div className={styles.permissionGrid}>{group.permissions.map(permission => {
+            const assigned = assignedScope.has(permission.code);
+            const name = locale === "ar" ? permission.name_ar : permission.name_en;
+            return <article className={styles.permission} data-assigned={assigned} key={permission.code}>
+              <label className={styles.permissionLabel}><input type="checkbox" checked={assigned} disabled={!editable} onChange={e => { const checked = e.target.checked; void mutate(() => checked ? assignAdminPermissionToRole(roleId, {permission_code: permission.code}) : removeAdminPermissionFromRole(roleId, permission.code)); }} /><strong>{name}</strong></label>
+              <p>{locale === "ar" ? permission.description_ar : permission.description_en}</p>
+              <details className={styles.technical}><summary>{tp("permissionCode")}</summary><code dir="ltr">{permission.code}</code></details>
+              {assigned && permission.scopable ? <label className={styles.scope}>{ts("scopeLabel")}<select aria-label={`${ts("scopeLabel")}: ${name}`} disabled={!editable} value={assignedScope.get(permission.code) ?? "organization"} onChange={e => { const scope = e.target.value as AccessScope; void mutate(() => updateAdminRolePermissionScope(roleId, permission.code, scope)); }}>{SCOPE_OPTIONS.map(option => <option key={option} value={option} disabled={option === "team"}>{ts(option)}</option>)}</select></label> : null}
+            </article>;
+          })}</div>
+        </details>)}
       </div>
     </section>
   );

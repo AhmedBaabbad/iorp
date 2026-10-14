@@ -1,3 +1,4 @@
+from tests.route_inventory import discover_routes
 """PROC-001: procurement — suppliers on the approved list, materials, goods receipts, the document, NCRs naming a registered
 supplier, permissions and module boundaries."""
 import ast
@@ -47,7 +48,7 @@ def proc(client, db, test_org, test_user):
 
     def receipt(sup, mat, **over):
         data = dict(supplier_id=sup["id"], receipt_date="2026-10-05", supplier_delivery_no="DN-GP-4471", supplier_invoice_no="INV-9912",
-                    purchase_reference="PO-778", vehicle_plate="ABC 123", driver_name="Ali",
+                    purchase_reference="PO-778", vehicle_plate="ABC 123", driver_affiliation="external", driver_name="Ali",
                     lines=[dict(material_id=mat["id"], supplier_lot="SUP-7781", quantity="20000", unit="kg", package_count=800, weight="20.2",
                                 weight_unit="ton")])
         data.update(over)
@@ -55,7 +56,20 @@ def proc(client, db, test_org, test_user):
         assert r.status_code == 201, r.text
         return r.json()
 
-    yield SimpleNamespace(client=client, db=db, org=test_org, user=test_user, grant=grant, supplier=supplier, material=material, receipt=receipt)
+    # Another person approves what this user prepared (separation of duties, PROJECT-GOV-004).
+    from app.core.security import hash_password
+    from app.foundation.domain.enums import UserStatus
+    from app.foundation.infrastructure.models import User
+    approver = User(organization_id=test_org.id, full_name="Approving Manager", email="approver-proc@example.com",
+                    password_hash=hash_password("Approver123!"), status=UserStatus.ACTIVE)
+    db.add(approver); db.commit()
+
+    def as_user(user):
+        ctx.user.id, ctx.user.full_name = user.id, user.full_name
+        ctx.tenant = TenantContext(user.id, test_org.id, permissions=ctx.tenant.permissions)
+
+    yield SimpleNamespace(client=client, db=db, org=test_org, user=test_user, approver=approver, as_user=as_user, grant=grant,
+                          supplier=supplier, material=material, receipt=receipt)
     app.dependency_overrides.pop(get_current_user, None)
 
 
@@ -175,7 +189,7 @@ def test_every_route_declares_a_permission_and_the_module_imports_no_other():
             if policy:
                 yield policy
             yield from policies(dep)
-    routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path.startswith("/api/v1/procurement")]
+    routes = [r for r in discover_routes(app) if isinstance(r, APIRoute) and r.path.startswith("/api/v1/procurement")]
     assert len(routes) >= 14 and [r.path for r in routes if not list(policies(r.dependant))] == []
     for route in routes:
         for _kind, codes in policies(route.dependant):

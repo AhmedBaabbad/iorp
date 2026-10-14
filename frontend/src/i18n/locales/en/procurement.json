@@ -218,7 +218,13 @@
     "INCOTERM_UNKNOWN": "Unknown delivery terms.",
     "PAYMENT_TERMS_UNKNOWN": "Unknown payment terms.",
     "UNIT_PRICE_INVALID": "Line {line} needs a unit price.",
-    "TOTAL_REQUIRED": "The order's total must be above zero."
+    "TOTAL_REQUIRED": "The order's total must be above zero.",
+    "APPROVER_IS_PREPARER": "Who prepared the order does not approve it: another person approves.",
+    "APPROVAL_AUTHORITY_REQUIRED": "You hold no authority to approve, directly or by a delegation in force.",
+    "DRIVER_AFFILIATION_REQUIRED": "Choose whether the driver is an internal employee or external.",
+    "TRANSPORT_RECORD_UNAVAILABLE": "The selected driver, vehicle or carrier is unavailable.",
+    "CUSTOMER_DELIVERY_RECORD_UNAVAILABLE": "The selected delivery site or contact is unavailable for this customer.",
+    "SUPPLIER_CONTACT_UNAVAILABLE": "The selected contact is unavailable for this supplier."
   },
   "lotStatuses": {
     "not_required": "Not inspected",

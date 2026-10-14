@@ -1,4 +1,6 @@
 "use client";
+import { ReferenceTextSelect } from "@/features/reference-directory/ReferenceTextSelect";
+
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -329,13 +331,7 @@ export function WorkforceMemberForm({ mode }: { mode: Mode }) {
 
               <label style={sharedStyles.field}>
                 <span style={sharedStyles.label}>{t("fields.primarySkill")}</span>
-                <input
-                  style={sharedStyles.input}
-                  value={values.primary_skill}
-                  onChange={(event) => updateField("primary_skill", event.target.value)}
-                  maxLength={255}
-                  disabled={isSubmitting}
-                />
+                <ReferenceTextSelect list="workforce_skill" value={values.primary_skill} onChange={v=>updateField("primary_skill",v)} disabled={isSubmitting}/>
               </label>
             </div>
 

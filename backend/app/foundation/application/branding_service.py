@@ -1,9 +1,7 @@
 import base64
-from io import BytesIO
-import warnings
 
-from PIL import Image, UnidentifiedImageError
 from sqlalchemy import select
+from app.core import files
 from app.core.storage import LocalFileStorage, InvalidLogoError
 from app.foundation.api.branding_schemas import BrandingUpdate
 from app.foundation.infrastructure.branding_models import BankAccount, OrganizationBranding, StoredAsset
@@ -48,8 +46,8 @@ class BrandingService:
         asset = self.db.scalar(select(StoredAsset).where(StoredAsset.id == asset_id, StoredAsset.organization_id == org_id)) if asset_id else None
         key = asset.storage_key if asset else legacy_path
         if key and self.storage.exists(key):
-            content = self.storage.resolve(key).read_bytes()
-            _, media = self.storage.validate_logo_content(content)
+            content = self.storage.read(key)
+            media = self.storage.media_type(content)
         elif placeholder:
             content = PLACEHOLDER_LOGO.read_bytes()
             media = 'image/png'
@@ -84,23 +82,19 @@ class BrandingService:
         return self.get_branding(org_id)
 
     def upload(self, org_id, content, actor_id, secondary=False):
-        self.storage.validate_logo_content(content)
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter('error', Image.DecompressionBombWarning)
-                with Image.open(BytesIO(content)) as im:
-                    if im.width * im.height > 16_000_000:
-                        raise InvalidLogoError('Image dimensions too large')
-                    im.load()
-        except (UnidentifiedImageError, OSError, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
-            raise InvalidLogoError('Invalid image') from exc
+        """The logo through the one file policy (core/files.py): at most 400 px and 50 KB, within the quota."""
         org, row = self._row(org_id)
         old_id = row.secondary_logo_asset_id if secondary else row.logo_asset_id
         old_path = org.logo_path if not secondary else None
-        key = self.storage.save_logo_content(content, org_id)
+        old = self.db.scalar(select(StoredAsset.size_bytes).where(StoredAsset.id == old_id)) if old_id else 0
         try:
-            _, media = self.storage.validate_logo_content(content)
-            asset = StoredAsset(organization_id=org_id, storage_key=key, media_type=media)
+            key, prepared = files.store(self.db, self.storage, org_id, 'organization', content, 'logo', replacing=old or 0)
+        except files.FileRejected as exc:
+            self.db.rollback()
+            raise InvalidLogoError(exc.code) from exc
+        try:
+            asset = StoredAsset(organization_id=org_id, storage_key=key, media_type=prepared.media_type,
+                                size_bytes=prepared.size, checksum=prepared.checksum)
             self.db.add(asset); self.db.flush()
             setattr(row, 'secondary_logo_asset_id' if secondary else 'logo_asset_id', asset.id)
             row.updated_by_user_id = actor_id

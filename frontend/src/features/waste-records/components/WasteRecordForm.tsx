@@ -1,5 +1,7 @@
 "use client";
 
+import { UnitLabel } from "@/components/UnitLabel";
+import { ReferenceTextSelect } from "@/features/reference-directory/ReferenceTextSelect";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -137,7 +139,7 @@ export function WasteRecordForm({ recordId }: { recordId?: string }) {
           <UnitSelect className="unit-select" value={values.unit} disabled={busy || locked} onChange={value => set("unit", value)} ariaLabel={t("fields.unit")} />
           {existing?.unit_needs_review && <small role="status" className={s.error}>{t("hints.unitReview", { unit: existing.legacy_unit_text ?? existing.unit })}</small>}
         </label>
-        <label className={s.field}>{t("fields.reasonCode")}<input maxLength={255} value={values.reason} disabled={busy || locked} onChange={e => set("reason", e.target.value)} /></label>
+        <label className={s.field}>{t("fields.reasonCode")}<ReferenceTextSelect list="waste_reason" value={values.reason} disabled={busy || locked} onChange={v => set("reason", v)} /></label>
       </div>
       <fieldset className={s.panel} disabled={busy || locked} style={{ margin: "16px 0" }}>
         <legend>{t("fields.wasteCategories")}</legend>
@@ -151,7 +153,7 @@ export function WasteRecordForm({ recordId }: { recordId?: string }) {
           <thead><tr><th>{t("fields.wasteCategory")}</th><th>{t("fields.share")}</th></tr></thead>
           <tbody>{values.shares.map(x => <tr key={x.category}><td>{categories(x.category)}</td>
             <td><input type="number" min="0.001" step="0.001" inputMode="decimal" aria-label={`${t("fields.share")} ${categories(x.category)}`} value={x.quantity}
-              onChange={e => share(x.category, e.target.value)} /> {values.unit}</td></tr>)}</tbody>
+              onChange={e => share(x.category, e.target.value)} /> <UnitLabel value={values.unit}/></td></tr>)}</tbody>
         </table></div>}
         {values.shares.length > 1 && <p role="status" className={split.ok ? s.muted : s.error}>
           {t("hints.sharesTotal", { total: split.total, quantity: values.quantity || "0", remaining: split.remaining })}</p>}

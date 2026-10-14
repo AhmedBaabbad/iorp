@@ -24,4 +24,6 @@ export const S = {
   RETURNS_CANCEL: code("returns", "cancel"),
   RETURNS_REJECT: code("returns", "reject"),
   SETTINGS_UPDATE: code("settings", "update"),
+  DIRECTORY_READ: code("directory", "read"),    // the transport directory: drivers, vehicles, carriers
+  DIRECTORY_WRITE: code("directory", "write"),
 } as const;

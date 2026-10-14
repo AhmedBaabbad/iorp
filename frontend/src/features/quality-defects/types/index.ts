@@ -1,15 +1,6 @@
-export type DefectCategory =
-  | "dimension"
-  | "thickness"
-  | "surface"
-  | "color"
-  | "strength"
-  | "winding"
-  | "weight"
-  | "packaging"
-  | "labeling"
-  | "finish"
-  | "other";
+/** MD-003: a key of the organization's defect categories (master data); DEFECT_CATEGORIES are their usual values. */
+export type DefectCategory = string;
+export const DEFECT_CATEGORIES = ["dimension", "thickness", "surface", "color", "strength", "winding", "weight", "packaging", "labeling", "finish", "other"] as const;
 
 export type DefectSeverity = "minor" | "major" | "critical";
 

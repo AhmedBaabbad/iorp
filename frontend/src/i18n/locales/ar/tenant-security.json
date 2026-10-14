@@ -1,1 +1,23 @@
-{"title":"سجل الأحداث الأمنية","subtitle":"عرض أحداث تسجيل الدخول والأمان لمستخدمي المنظمة","events":{"tenant.login_success":"تسجيل دخول ناجح","tenant.login_failed":"محاولة دخول فاشلة","tenant.token_refreshed":"تجديد الجلسة","tenant.password_changed":"تغيير كلمة المرور","tenant.account_locked":"قفل الحساب يدويًا","tenant.account_unlocked":"فتح الحساب","tenant.auto_locked":"قفل تلقائي بعد محاولات فاشلة","tenant.auto_lock_expired":"انتهاء فترة القفل التلقائي"},"filters":{"searchPlaceholder":"تصفية حسب نوع الحدث...","dateFrom":"من تاريخ","dateTo":"إلى تاريخ","apply":"تطبيق"},"loading":"جاري التحميل...","empty":"لا توجد أحداث أمنية","error":"تعذر تحميل الأحداث.","accessDenied":"ليس لديك صلاحية لعرض هذا السجل.","system":"النظام","noDetails":"لا توجد تفاصيل","previous":"السابق","next":"التالي","page":"الصفحة {page} من {pages}"}
+{
+  "title": "السجل الأمني",
+  "subtitle": "من دخل النظام ومتى ومن أي جهاز، ومحاولات الدخول الفاشلة، وقفل الحسابات، وتغيير كلمات المرور.",
+  "events": {
+    "tenant.login_success": "تسجيل دخول ناجح",
+    "tenant.login_failed": "محاولة دخول فاشلة",
+    "tenant.password_changed": "تغيير كلمة المرور",
+    "tenant.password_reset_via_email": "إعادة تعيين كلمة المرور عبر البريد",
+    "tenant.account_locked": "قفل الحساب بواسطة المسؤول",
+    "tenant.account_unlocked": "فتح الحساب",
+    "tenant.auto_locked": "قفل تلقائي بعد محاولات فاشلة",
+    "tenant.auto_lock_expired": "انتهاء القفل التلقائي",
+    "tenant.refresh_token_reuse_detected": "محاولة استخدام جلسة منتهية (احتمال سرقة)",
+    "tenant.session_revoked": "إنهاء جلسة",
+    "tenant.all_sessions_revoked": "إنهاء كل الجلسات",
+    "tenant.token_validation_failed": "رفض جلسة غير صالحة",
+    "tenant.sessions_ended": "إنهاء جلسات"
+  },
+  "loading": "جارٍ التحميل…",
+  "empty": "لا توجد أحداث أمنية",
+  "error": "تعذّر تحميل الأحداث.",
+  "accessDenied": "ليست لديك صلاحية لعرض هذا السجل."
+}

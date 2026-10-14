@@ -2,6 +2,7 @@ from dataclasses import asdict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -29,6 +30,7 @@ from app.platform.api.schemas import (
     ResetOrganizationRootPasswordResponse,
 )
 from app.platform.application.services import (
+    PasswordResetLinkNotSentError,
     ArchiveReasonRequiredError,
     OrganizationNotFoundError,
     OrganizationRootNotFoundError,
@@ -38,6 +40,10 @@ from app.platform.domain.policies import InvalidStateTransitionError, VALID_TRAN
 from app.platform.infrastructure.models import PlatformAccount
 
 router = APIRouter(prefix="/platform/organizations", tags=["platform-organizations"])
+
+
+class StorageQuotaUpdate(BaseModel):
+    quota_bytes: int | None = Field(default=None, ge=1024 * 1024)  # at least 1 MB; empty = the platform default
 
 
 def _service(
@@ -99,6 +105,33 @@ def get_organization(
         )
 
 
+@router.get("/{organization_id}/storage")
+def get_organization_storage(
+    organization_id: UUID,
+    account: PlatformAccount = Depends(require_platform_permission(PlatformPermission.ORGANIZATIONS_READ)),
+    organizations: OrganizationProvisioningInterface = Depends(get_organization_queries),
+):
+    """What the organization's files occupy against its quota (PROJECT-FILES-003)."""
+    found = organizations.storage(organization_id)
+    if found is None:
+        raise HTTPException(status_code=404, detail="Organization not found.")
+    return found
+
+
+@router.put("/{organization_id}/storage")
+def set_organization_storage(
+    organization_id: UUID,
+    payload: StorageQuotaUpdate,
+    account: PlatformAccount = Depends(require_platform_permission(PlatformPermission.ORGANIZATIONS_UPDATE)),
+    organizations: OrganizationProvisioningInterface = Depends(get_organization_queries),
+):
+    """The organization's file quota, set by the platform only (empty = the default)."""
+    found = organizations.set_storage_quota(organization_id, payload.quota_bytes)
+    if found is None:
+        raise HTTPException(status_code=404, detail="Organization not found.")
+    return found
+
+
 @router.get("/{organization_id}/logo")
 def get_organization_logo(
     organization_id: UUID,
@@ -122,6 +155,7 @@ def create_organization(
     account: PlatformAccount = Depends(require_platform_permission(PlatformPermission.ORGANIZATIONS_CREATE)),
     db: Session = Depends(get_db),
     organizations: OrganizationProvisioningInterface = Depends(get_organization_queries),
+    credentials: UserCredentialInterface = Depends(get_user_credentials),
 ) -> CreatePlatformOrganizationResponse:
     try:
         organization, admin = _service(db, organizations).create_organization(
@@ -136,8 +170,10 @@ def create_organization(
     summary = _service(db, organizations).get_organization(organization.id)
     PlatformAuditService(db).record(event_type="organization_created", category="organization", actor=AuditActor("platform", account.id, account.email, account.full_name), target_type="organization", target_id=organization.id, target_display=organization.name, organization_id=organization.id, changes={"status": {"before": None, "after": summary.status}, "code": {"before": None, "after": organization.code}}, request=audit_request_context(request))
     db.commit()
+    sent = _service(db, organizations, credentials).send_root_activation_link(admin.id)  # SEC-003
     return CreatePlatformOrganizationResponse(
         message="Organization created successfully.",
+        invitation_sent=sent,
         organization={
             "id": organization.id, "name": organization.name, "code": organization.code,
             "status": summary.status, "default_locale": summary.default_locale,
@@ -224,20 +260,17 @@ def reset_root_password(
     user_credentials: UserCredentialInterface = Depends(get_user_credentials),
 ) -> ResetOrganizationRootPasswordResponse:
     try:
-        email = _service(db, organizations, user_credentials).reset_root_password(
-            organization_id,
-            payload.new_password,
-            payload.new_password_confirmation,
-        )
+        email = _service(db, organizations, user_credentials).reset_root_password(organization_id)
     except (OrganizationNotFoundError, OrganizationRootNotFoundError) as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization Root not found.") from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    PlatformAuditService(db).record(event_type="organization_root_password_reset", category="organization", severity="warning", actor=AuditActor("platform", account.id, account.email, account.full_name), target_type="organization_root", target_id=organization_id, target_display=email, organization_id=organization_id, changes={"password_changed": True, "sessions_invalidated": True}, request=audit_request_context(request))
+    except PasswordResetLinkNotSentError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": "RESET_EMAIL_NOT_SENT",
+                            "message": "The reset e-mail could not be sent: check the address or the mail settings."}) from exc
+    PlatformAuditService(db).record(event_type="organization_root_password_reset", category="organization", severity="warning", actor=AuditActor("platform", account.id, account.email, account.full_name), target_type="organization_root", target_id=organization_id, target_display=email, organization_id=organization_id, changes={"reset_link_sent": True}, request=audit_request_context(request))
     db.commit()
     return ResetOrganizationRootPasswordResponse(
-        message="Organization Root password reset successfully",
+        message="A reset link was sent to the Organization Root",
         organization_id=organization_id,
         root_user_email=email,
-        sessions_invalidated=True,
+        sessions_invalidated=False,
     )

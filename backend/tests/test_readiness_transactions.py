@@ -6,14 +6,14 @@ import pytest
 def test_governance_change_rolls_back_when_mandatory_audit_fails(db, test_org, test_user):
     from app.foundation.application.services import FoundationService
     from app.foundation.api.schemas import RoleCreateRequest
-    from app.foundation.infrastructure.models import Role, TenantActivityLog
+    from app.foundation.infrastructure.models import Role, TenantAuditEntry
     def fail(*args): raise RuntimeError('simulated audit outage')
-    event.listen(TenantActivityLog, 'before_insert', fail)
+    event.listen(TenantAuditEntry, 'before_insert', fail)
     try:
         with pytest.raises(RuntimeError, match='audit outage'):
             FoundationService(db).create_role_for_tenant(test_org.id, RoleCreateRequest(name='Must rollback', code='must_rollback'), test_user)
     finally:
-        event.remove(TenantActivityLog, 'before_insert', fail)
+        event.remove(TenantAuditEntry, 'before_insert', fail)
     assert db.scalar(select(func.count()).select_from(Role).where(Role.code == 'must_rollback')) == 0
 
 
@@ -33,7 +33,7 @@ def test_file_compensation_preserves_committed_file_and_removes_uncommitted(db, 
         raise RuntimeError('lost connection during commit')
     monkeypatch.setattr(db, 'commit', fail)
     with pytest.raises(RuntimeError):
-        service.add_to_shipment(row.id, 'document', 'test.pdf', b'%PDF-synthetic-test')
+        service.add_to_shipment(row.id, 'document', 'test.pdf', b'%PDF-synthetic-test\n%%EOF')
     assert len(list(tmp_path.rglob('*.pdf'))) == int(commit_succeeded)
     assert db.scalar(select(func.count()).select_from(ShippingAttachment)) == int(commit_succeeded)
 

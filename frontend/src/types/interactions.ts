@@ -1,4 +1,5 @@
-export type InteractionType = "call" | "visit" | "whatsapp" | "email" | "meeting";
+/** MD-003: a key of the organization's interaction types (master data); call, visit, whatsapp, email and meeting are the usual ones. */
+export type InteractionType = string;
 
 export type CustomerInteraction = {
   id: string;

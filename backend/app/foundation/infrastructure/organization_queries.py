@@ -3,6 +3,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.interfaces.reference_lists import seed_organization_lists
 from app.core.exceptions import EmailAlreadyExistsError, OrganizationCodeTakenError
 from app.core.interfaces.organization_queries import (
     LogoStorageInterface,
@@ -16,7 +17,7 @@ from app.core.interfaces.organization_queries import (
     ProvisionedUser,
 )
 from app.foundation.domain.permission_catalog import ALL_TENANT_PERMISSIONS
-from app.core.security import hash_password, normalize_email
+from app.core.security import has_usable_password, hash_password, normalize_email, unusable_password_hash
 from app.core.utils import utc_now
 from app.foundation.domain.enums import OrganizationStatus, UserStatus
 from app.foundation.domain.system_roles import SYSTEM_ROLES, permission_matches, scope_for
@@ -28,6 +29,21 @@ from app.foundation.infrastructure.models import (
     User,
     UserRole,
 )
+
+from app.core import files
+from app.core.storage import InvalidLogoError
+
+
+def _prepared_logo(encoded: str):
+    """A logo sent as base64 (setup, platform): the same policy as an uploaded one (core/files.py)."""
+    import base64
+    import binascii
+    try:
+        content = base64.b64decode(encoded.split(",", 1)[-1], validate=True)
+        return files.prepare(content, "logo")
+    except (binascii.Error, ValueError) as exc:
+        raise InvalidLogoError(getattr(exc, "code", "INVALID_IMAGE")) from exc
+
 
 class FoundationOrganizationQueries:
     """Foundation-owned implementation of the cross-module organization contract."""
@@ -46,8 +62,7 @@ class FoundationOrganizationQueries:
         normalized_email = normalize_email(administrator.email)
         if self.db.scalar(select(User.id).where(User.email == normalized_email).limit(1)):
             raise EmailAlreadyExistsError
-        if organization.logo_base64:
-            self.storage.validate_logo(organization.logo_base64)
+        logo = _prepared_logo(organization.logo_base64) if organization.logo_base64 else None
 
         model = Organization(
             name=organization.name,
@@ -61,8 +76,9 @@ class FoundationOrganizationQueries:
         self.db.flush()
         stored_logo: str | None = None
         try:
-            if organization.logo_base64:
-                stored_logo = self.storage.save_logo(organization.logo_base64, model.id)
+            if logo is not None:
+                stored_logo = files.new_key(model.id, "organization", logo.extension)
+                self.storage.put(stored_logo, logo.content)
                 model.logo_path = stored_logo
             permissions = self._get_or_create_permissions(model.id)
             roles = self._seed_roles(model, permissions)
@@ -71,13 +87,14 @@ class FoundationOrganizationQueries:
                 full_name=administrator.full_name,
                 email=normalized_email,
                 phone=administrator.phone,
-                password_hash=hash_password(administrator.password),
+                password_hash=hash_password(administrator.password) if administrator.password else unusable_password_hash(),
                 status=UserStatus.ACTIVE,
                 is_organization_root=True,
             )
             self.db.add(admin)
             self.db.flush()
             self.db.add(UserRole(user_id=admin.id, role_id=roles["organization_admin"].id))
+            seed_organization_lists(self.db, model.id)  # MD-003: the usual reference values, editable afterwards
         except Exception:
             if stored_logo:
                 self.storage.delete(stored_logo)
@@ -127,6 +144,7 @@ class FoundationOrganizationQueries:
                 OrganizationRootSummary(
                     id=root.id, full_name=root.full_name, email=root.email,
                     status=root.status.value, last_login_at=root.last_login_at,
+                    activation_pending=not has_usable_password(root.password_hash),
                 ) if root else None
             ),
             roles=[OrganizationRoleSummary(id=role.id, code=role.code, user_count=count) for role, count in roles],
@@ -135,6 +153,22 @@ class FoundationOrganizationQueries:
     def get_logo_path(self, organization_id: UUID) -> str | None:
         organization = self.db.get(Organization, organization_id)
         return organization.logo_path if organization else None
+
+    def storage(self, organization_id: UUID) -> dict | None:
+        """What the organization's files occupy against its quota (core/files.py)."""
+        if self.db.get(Organization, organization_id) is None:
+            return None
+        used, quota = files.usage(self.db, organization_id), files.quota(self.db, organization_id)
+        return dict(used_bytes=used, quota_bytes=quota, percent=round(used * 100 / quota, 1) if quota else 0.0,
+                    custom=self.db.get(Organization, organization_id).storage_quota_bytes is not None)
+
+    def set_storage_quota(self, organization_id: UUID, quota_bytes: int | None) -> dict | None:
+        organization = self.db.get(Organization, organization_id)
+        if organization is None:
+            return None
+        organization.storage_quota_bytes = quota_bytes
+        self.db.commit()
+        return self.storage(organization_id)
 
     def set_organization_status(
         self, organization_id: UUID, status: str, changed_by: UUID, reason: str | None

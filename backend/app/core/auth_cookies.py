@@ -4,7 +4,9 @@ from app.core.config import settings
 
 
 def request_metadata(request: Request) -> tuple[str | None, str | None]:
-    ip = request.client.host if request.client else None
+    """The device's address (the forwarded one when the request came through a trusted proxy, SEC-001) and browser."""
+    from app.core.rate_limit import get_client_ip
+    ip = get_client_ip(request) if request.client else None
     return ip, request.headers.get("user-agent")
 
 

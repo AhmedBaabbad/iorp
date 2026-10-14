@@ -15,6 +15,7 @@ import { DECIMAL, shippingErrorMessage } from "../shipping-errors";
 import { QUALITY_REASONS, type ShipmentReturn } from "../types";
 import { Attachments } from "./Attachments";
 import { ReturnStatusBadge } from "./ShipmentStatusBadge";
+import { Signatures } from "@/components/Signatures";
 
 function Item({ label, children }: { label: string; children: ReactNode }) {
   return <div><dt className={s.muted}>{label}</dt><dd style={{ margin: "4px 0 0", overflowWrap: "anywhere" }}>{children}</dd></div>;
@@ -128,7 +129,8 @@ export function ReturnDetail({ returnId }: { returnId: string }) {
       busy={busy !== null} onClose={() => setDialog(null)} onConfirm={reason => void run("cancel", () => cancelReturn(x.id, reason))} />}
     {dialog === "receive" && <ReceiveDialog value={x} busy={busy !== null} onClose={() => setDialog(null)}
       onConfirm={body => void run("receive", () => receiveReturn(x.id, body))} />}
-  </PageFrame>;
+      <Signatures resourceType="shipment_return" id={x.id} version={x.status} />
+</PageFrame>;
 }
 
 function ReceiveDialog({ value, busy, onClose, onConfirm }: { value: ShipmentReturn; busy: boolean; onClose: () => void; onConfirm: (body: ReceiveBody) => void }) {

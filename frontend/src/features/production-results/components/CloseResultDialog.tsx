@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useId, useState, type FormEvent } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import s from "@/features/production-demands/demands.module.css";
 import { getOrderResult } from "../api";
 import type { OrderResult } from "../types";
 import { resultErrorMessage } from "./result-errors";
 import { SummaryCards } from "./OrderResultSection";
 
+import { joinList } from "@/lib/utils";
 // Confirmation before closing: the final result and its variance, or an explicit zero-output close with a reason.
 // The server's close guard decides; this dialog only shows what it will check.
 // canReadResult=false: the user may close but not read the result; the dialog then skips the summary
@@ -17,6 +18,7 @@ export function CloseResultDialog({ orderId, orderNumber, busy, error, onConfirm
   onConfirm: (options: { reason?: string; zeroOutput: boolean }) => void; onClose: () => void;
 }) {
   const t = useTranslations("production.results");
+  const locale = useLocale();
   const id = useId();
   const [view, setView] = useState<OrderResult | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -46,7 +48,7 @@ export function CloseResultDialog({ orderId, orderNumber, busy, error, onConfirm
       {loadError && <p role="alert" className={s.error}>{loadError}</p>}
       {view && !zeroOutput && view.totals.map(total => <SummaryCards key={total.unit} summary={total} unit={total.unit} showUnit={view.totals.length > 1} />)}
       {check && !check.has_entries && <p role="status" className={s.error} style={{ margin: 0 }}>{t("close.noEntries")}</p>}
-      {missing.length > 0 && <p role="status" className={s.error} style={{ margin: 0 }}>{t("close.missingItems", { lines: missing.join("، ") })}</p>}
+      {missing.length > 0 && <p role="status" className={s.error} style={{ margin: 0 }}>{t("close.missingItems", { lines: joinList(missing, locale) })}</p>}
       {canZero && <label><input type="checkbox" checked={zeroOutput} disabled={busy} onChange={e => setZeroOutput(e.target.checked)} /> {t("close.zeroOutput")}</label>}
       {(zeroOutput || check?.ready || !canReadResult) && <label className={s.field}>{zeroOutput ? t("close.zeroReason") : t("close.reasonOptional")}
         <textarea maxLength={500} required={zeroOutput} value={reason} disabled={busy} onChange={e => setReason(e.target.value)} />

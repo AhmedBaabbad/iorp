@@ -37,6 +37,8 @@ class SpecificationService:
         return parameter
 
     def create_parameter(self, data) -> QualityTestParameter:
+        from app.core.interfaces.reference_lists import assert_reference_text
+        assert_reference_text(self.db,self.org,'test_method',data.method)
         code = data.code.strip().upper()
         if self.db.scalar(select(QualityTestParameter.id).where(QualityTestParameter.organization_id == self.org, QualityTestParameter.code == code)):
             raise QualityError("PARAMETER_CODE_TAKEN", parameter_code=code)
@@ -50,6 +52,8 @@ class SpecificationService:
     def update_parameter(self, parameter_id, data) -> QualityTestParameter:
         parameter = self._parameter(parameter_id)
         values = data.model_dump(exclude_unset=True)
+        from app.core.interfaces.reference_lists import assert_reference_text
+        assert_reference_text(self.db,self.org,'test_method',values.get('method'),parameter.method)
         # The kind decides how a parameter is measured; specifications and inspections already rely on it.
         for field in ("name_ar", "name_en", "unit", "method", "is_active", "sort_order"):
             if field in values:
@@ -62,6 +66,8 @@ class SpecificationService:
         existing = set(self.db.scalars(select(QualityTestParameter.code).where(QualityTestParameter.organization_id == self.org)))
         for order, (code, name_ar, name_en, kind, unit, method) in enumerate(rules.STANDARD_PARAMETERS, 1):
             if code not in existing:
+                from app.core.interfaces.reference_lists import assert_reference_text
+                assert_reference_text(self.db,self.org,'test_method',method)
                 self.db.add(QualityTestParameter(organization_id=self.org, code=code, name_ar=name_ar, name_en=name_en, kind=kind,
                                                  unit=unit, method=method, sort_order=order * 10, is_active=True))
         self.db.commit()
@@ -111,6 +117,10 @@ class SpecificationService:
         return view
 
     def _write_lines(self, spec, lines):
+        from app.core.interfaces.reference_lists import assert_reference_text
+        previous={line.parameter_id:line.method for line,_ in self.lines(spec.id)}
+        for line in lines:
+            assert_reference_text(self.db,self.org,'test_method',line.method,previous.get(line.parameter_id))
         parameters = {p.id: p for p in self.parameters()}
         seen = set()
         self.db.query(QualitySpecificationLine).filter(QualitySpecificationLine.specification_id == spec.id).delete()

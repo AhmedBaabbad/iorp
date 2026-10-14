@@ -1,4 +1,5 @@
 "use client";
+import {useUnitLabel} from "@/components/UnitLabel";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { usePermission } from "@/features/auth/permission-hooks";
@@ -16,6 +17,7 @@ const QUANTITY = /^\d+(\.\d{1,3})?$/;
 
 // Order lines grouped by specification; an open order's allocations (draft, released, in progress, on hold) can be changed here.
 export function OrderLines({ order, onChanged }: { order: ProductionOrderData; onChanged?: () => void }) {
+  const unitText = useUnitLabel();
   const t = useTranslations("production.allocation");
   const d = useTranslations("production.demands");
   const canAllocate = usePermission(P.PLANNING_ALLOCATE);
@@ -55,7 +57,7 @@ export function OrderLines({ order, onChanged }: { order: ProductionOrderData; o
     return () => { active = false; clearTimeout(timer); };
   }, [editing, order.id, order.allocations, search]);
   const options = candidates.map(item => ({ id: item.production_demand_item_id, remaining: item.remaining_quantity,
-    label: `${item.customer_name ?? "—"} · ${item.demand_number} · ${d("lineNo")} ${item.line_no} — ${t("remaining")}: ${item.remaining_quantity} ${item.unit}` }));
+    label: `${item.customer_name ?? "—"} · ${item.demand_number} · ${d("lineNo")} ${item.line_no} — ${t("remaining")}: ${item.remaining_quantity} ${unitText(item.unit)}` }));
   const chosen = useMemo(() => options.find(o => o.id === addItem), [options, addItem]);
 
   async function run(action: () => Promise<unknown>) {
@@ -76,7 +78,7 @@ export function OrderLines({ order, onChanged }: { order: ProductionOrderData; o
     <p className={s.muted}>{hint}</p>
     {error && <p role="alert" className={s.error}>{t(`errors.${t.has(`errors.${error}`) ? error : "request_failed"}`)}</p>}
     <ArrangementTable lines={lines} caption={t("orderLines")}
-      quantityCell={editing ? (a, line) => a.status === "released" ? `${a.allocated_quantity} ${line.unit}` : (() => {
+      quantityCell={editing ? (a, line) => a.status === "released" ? `${a.allocated_quantity} ${unitText(line.unit)}` : (() => {
         const value = drafts[a.key] ?? a.allocated_quantity;
         const changed = value !== a.allocated_quantity;
         return <span className={s.actions}>

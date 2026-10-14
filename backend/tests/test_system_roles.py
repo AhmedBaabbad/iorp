@@ -10,9 +10,10 @@ def granted(role):
 
 def test_the_approved_roles_and_their_sizes():
     sizes = {code: len(granted(code)) for code in SYSTEM_ROLE_BY_CODE}
-    assert sizes == {"organization_admin": len(ALL_PERMISSION_CODES), "commercial_manager": 71, "sales_rep": 40, "production_manager": 74,
-                     "production_supervisor": 32, "quality_manager": 55, "quality_inspector": 25, "procurement_manager": 31,
-                     "shipping_manager": 32, "factory_manager": 56, "viewer": 45}
+    assert sizes == {"organization_admin": len(ALL_PERMISSION_CODES), "commercial_manager": 81, "sales_rep": 43, "production_manager": 74,
+                     "production_supervisor": 32, "quality_manager": 58, "quality_inspector": 25, "procurement_manager": 31,
+                     "shipping_manager": 34, "factory_manager": 57, "viewer": 47}  # complaints (COMPLAINTS-001): +10, +3, +3, +1;
+    # transport directory: shipping manager reads and manages it (+2), the factory manager and the viewer read it (+1 each)
     assert not set(RETIRED_SYSTEM_ROLES) & set(SYSTEM_ROLE_BY_CODE)
 
 

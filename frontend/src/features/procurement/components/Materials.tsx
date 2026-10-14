@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { UnitSelect } from "@/components/forms/UnitSelect";
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth/permission-hooks";
-import { ProductSelect, useProductName } from "@/features/masterdata";
+import { ProductSelect, useListChoices, useListName, useProductName } from "@/features/masterdata";
 import s from "@/features/production-demands/demands.module.css";
 import { PR } from "@/lib/procurement-permissions";
 import { createMaterial, getMaterials, updateMaterial } from "../api";
@@ -16,6 +16,7 @@ import { MATERIAL_CATEGORIES, type Material, type MaterialInput } from "../types
 // "المواد": what is bought, its default unit, and whether each lot is inspected on arrival.
 export function MaterialsList() {
   const t = useTranslations("procurement");
+  const materialCategory = useListName("material_category", (k) => (t.has(`materialCategories.${k}`) ? t(`materialCategories.${k}`) : undefined));
   const errors = useTranslations("procurement.errors");
   const messages = useTranslations("messages");
   const units = useTranslations("common.units.units");
@@ -45,7 +46,7 @@ export function MaterialsList() {
       <tbody>{rows.map(m => <tr key={m.id} style={m.active ? undefined : { opacity: 0.6 }}>
         <td><bdi>{m.material_code}</bdi></td>
         <td>{m.name}{!m.active && <div className={s.muted}>{t("materials.inactive")}</div>}</td>
-        <td>{t(`materialCategories.${m.category}`)}</td>
+        <td>{materialCategory(m.category)}</td>
         <td>{units.has(m.unit) ? units(m.unit) : m.unit}</td>
         <td>{m.inspection_required ? t("yes") : t("no")}</td>
         <td>{m.spec_product_type ? productName(m.spec_product_type) : "—"}</td>
@@ -58,10 +59,12 @@ export function MaterialsList() {
 
 function MaterialDialog({ value, onClose, onSaved }: { value: Material | null; onClose: () => void; onSaved: () => void }) {
   const t = useTranslations("procurement");
+  const materialCategory = useListName("material_category", (k) => (t.has(`materialCategories.${k}`) ? t(`materialCategories.${k}`) : undefined));
   const errors = useTranslations("procurement.errors");
   const [v, setV] = useState<MaterialInput>(value ? { name: value.name, category: value.category, unit: value.unit, inspection_required: value.inspection_required,
     spec_product_type: value.spec_product_type, active: value.active, notes: value.notes }
     : { name: "", category: "resin", unit: "kg", inspection_required: true, spec_product_type: null, active: true, notes: null });
+  const categoryChoices = useListChoices("material_category", MATERIAL_CATEGORIES, materialCategory, v.category);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const title = value ? t("materials.editTitle") : t("materials.createTitle");
@@ -79,8 +82,8 @@ function MaterialDialog({ value, onClose, onSaved }: { value: Material | null; o
       <div className={s.grid}>
         <label className={s.field}>{t("fields.name")}<input required autoFocus maxLength={255} value={v.name} disabled={busy} onChange={e => setV({ ...v, name: e.target.value })} /></label>
         <label className={s.field}>{t("fields.category")}
-          <select value={v.category} disabled={busy} onChange={e => setV({ ...v, category: e.target.value as MaterialInput["category"] })}>
-            {MATERIAL_CATEGORIES.map(c => <option key={c} value={c}>{t(`materialCategories.${c}`)}</option>)}</select></label>
+          <select value={v.category} disabled={busy} onChange={e => setV({ ...v, category: e.target.value })}>
+            {categoryChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></label>
         <label className={s.field}>{t("fields.unit")}<UnitSelect value={v.unit} onChange={u => setV({ ...v, unit: u })} ariaLabel={t("fields.unit")} /></label>
         <label className={s.field}>{t("fields.spec_product_type")}<ProductSelect ariaLabel={t("fields.spec_product_type")} kind="material" required={false}
           value={v.spec_product_type ?? ""} disabled={busy} onChange={key => setV({ ...v, spec_product_type: key })} /></label>

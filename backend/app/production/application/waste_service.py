@@ -101,6 +101,8 @@ class WasteService:
     # ---- writes -------------------------------------------------------------------------
 
     def create(self, data):
+        from app.core.interfaces.reference_lists import assert_reference_text
+        assert_reference_text(self.db,self.org_id,'waste_reason',data.reason_code)
         try:
             order = self._locked_order(data.production_order_id)
             rules.assert_writable(order.status)
@@ -131,6 +133,8 @@ class WasteService:
             record = self._record(record_id, lock=True)
             changes = data.model_dump(exclude_unset=True)
             values = {f: getattr(record, f) for f in EDITABLE} | changes
+            from app.core.interfaces.reference_lists import assert_reference_text
+            assert_reference_text(self.db,self.org_id,'waste_reason',values.get('reason_code'),record.reason_code)
             run = self._run(order, values["production_run_id"])
             # A new run decides the work center unless one is given with it.
             requested = changes.get("work_center_id") if ("production_run_id" in changes or "work_center_id" in changes) else (None if run else record.work_center_id)

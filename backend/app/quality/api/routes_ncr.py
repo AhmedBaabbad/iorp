@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.core import files
 from app.core.pagination import Page, PageParams, page_of, page_params
 from app.core.reporting.routes import generate_response
 from app.core.tenancy import TenantContext
@@ -21,7 +22,6 @@ from app.quality.domain.rules import QualityError
 router = APIRouter(tags=["non-conformance-reports"])
 PATH = "/non-conformance-reports"
 STATUSES = "^(open|investigation|action|verification|closed|cancelled)$"
-UPLOAD_LIMIT = 10 * 1024 * 1024 + 1
 
 
 def _error(exc: QualityError):
@@ -209,7 +209,7 @@ def all_actions(status_filter: str | None = Query(default=None, alias="status", 
 async def upload_attachment(report_id: UUID, file: UploadFile = File(...), tenant: TenantContext = Depends(get_current_tenant),
                             db: Session = Depends(get_db)):
     """A photo or a document (an image or a PDF, 10 MB at most)."""
-    content = await file.read(UPLOAD_LIMIT)
+    content = await file.read(files.read_limit('attachment'))
     return _attempt(db, lambda: NCRService(db, tenant).add_attachment(report_id, file.filename, content))
 
 

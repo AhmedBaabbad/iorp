@@ -25,6 +25,12 @@ def order(proc, sup, mat, **over):
 
 
 def step(proc, o, name, **payload):
+    if name == "approve":  # approved by another person than the one who prepared it (separation of duties)
+        proc.as_user(proc.approver)
+        try:
+            return proc.client.post(f"{ORDERS}/{o['id']}/{name}", json=payload or None)
+        finally:
+            proc.as_user(proc.user)
     return proc.client.post(f"{ORDERS}/{o['id']}/{name}", json=payload or None)
 
 
@@ -70,7 +76,8 @@ def test_the_stages_and_receiving_against_the_order(proc):
     empty = order(proc, sup, mat, lines=[])
     assert code(step(proc, empty, "approve")) == "LINES_REQUIRED"
     o = step(proc, o, "approve").json()
-    assert o["status"] == "approved" and o["approved_by_name"] == "Test User" and "receive" in o["actions"]
+    assert o["status"] == "approved" and o["approved_by_name"] == "Approving Manager" and "receive" in o["actions"]
+    assert o["approval"]["signer_name"] == "Approving Manager" and o["approval"]["delegated"] is False
     assert code(proc.client.patch(f"{ORDERS}/{o['id']}", json=dict(subject="x"))) == "ORDER_NOT_DRAFT"
     o = step(proc, o, "send").json()
     assert o["status"] == "sent" and o["sent_by_name"] == "Test User"
@@ -185,3 +192,10 @@ def test_write_purchase_order_samples(proc):
             doc = proc.client.get(f"{ORDERS}/{oid}/document.pdf", params=dict(lang=lang))
             assert doc.status_code == 200, doc.text
             (out / f"{name}-{lang}.pdf").write_bytes(doc.content)
+
+
+def test_who_prepared_an_order_does_not_approve_it(proc):
+    sup, mat = proc.supplier(), proc.material()
+    o = order(proc, sup, mat)
+    r = proc.client.post(f"{ORDERS}/{o['id']}/approve")
+    assert r.status_code == 409 and code(r) == "APPROVER_IS_PREPARER"

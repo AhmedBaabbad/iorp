@@ -11,7 +11,7 @@ ROOT_PASSWORD = "PlatformRoot123!"
 
 
 @pytest.fixture
-def console(client, db, monkeypatch):
+def console(client, db, monkeypatch, activate):
     monkeypatch.setattr(settings, "bootstrap_token", "console-token")
     initialized = client.post("/api/v1/system/bootstrap/initialize", json={
         "bootstrap_token": "console-token",
@@ -29,6 +29,7 @@ def console(client, db, monkeypatch):
         "password": "ConsoleAdmin123!", "password_confirmation": "ConsoleAdmin123!",
     })
     assert admin_created.status_code == 201
+    activate("console-admin@example.com", "ConsoleAdmin123!", platform=True)  # SEC-003: the owner chooses the password
     admin_login = client.post("/api/v1/platform/login", json={"email": "console-admin@example.com", "password": "ConsoleAdmin123!"})
     admin = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
     organization = db.query(Organization).filter_by(code="CONSOLE-BASE").one()

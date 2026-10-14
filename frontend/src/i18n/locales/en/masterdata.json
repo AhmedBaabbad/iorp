@@ -123,22 +123,47 @@
     "ITEM_KEY_TAKEN": "Another item has the key {key}.",
     "PARENT_REQUIRED": "Choose the country.",
     "PARENT_NOT_ALLOWED": "Only a city has a country.",
-    "TOO_MANY_ITEMS": "At most {limit} items."
+    "TOO_MANY_ITEMS": "At most {limit} items.",
+    "ITEM_IN_USE": "The item is used by records; deactivate it instead of deleting it.",
+    "ITEM_PROTECTED": "The system uses this item itself; it cannot be deleted.",
+    "ITEM_HAS_CHILDREN": "This country has cities; delete them or deactivate the country."
   },
   "lists": {
     "title": "Reference lists",
-    "subtitle": "Sectors, opportunity sources, countries and cities chosen on customers, suppliers and shipments.",
+    "subtitle": "Every value the departments choose: customers, procurement, production, quality, shipping. Added and edited here; an unused item is deleted, one in use deactivated.",
     "names": {
       "sector": "Sectors",
       "opportunity_source": "Opportunity sources",
       "country": "Countries",
-      "city": "Cities"
+      "city": "Cities",
+      "downtime_reason": "Downtime reasons",
+      "waste_reason": "Scrap reasons",
+      "workforce_skill": "Workforce skills",
+      "test_method": "Test methods",
+      "supplier_category": "Supplier categories",
+      "material_category": "Material categories",
+      "defect_category": "Defect categories",
+      "rejection_reason": "Rejection reasons",
+      "complaint_category": "Complaint categories",
+      "interaction_type": "Customer interaction types",
+      "vehicle_type": "Vehicle types"
     },
     "hints": {
       "sector": "A customer's line of business; customer reports group by it.",
       "opportunity_source": "Where a customer came from.",
       "country": "Countries of customers and suppliers.",
-      "city": "Each city belongs to a country; customers, suppliers and deliveries name it."
+      "city": "Each city belongs to a country; customers, suppliers and deliveries name it.",
+      "downtime_reason": "Define values once and select them when needed. Saved operational text remains unchanged when this list changes.",
+      "waste_reason": "Define values once and select them when needed. Saved operational text remains unchanged when this list changes.",
+      "workforce_skill": "Define values once and select them when needed. Saved operational text remains unchanged when this list changes.",
+      "test_method": "Define values once and select them when needed. Saved operational text remains unchanged when this list changes.",
+      "supplier_category": "Chosen when a supplier is registered.",
+      "material_category": "Chosen when a material is registered.",
+      "defect_category": "Chosen when a defect is recorded in a quality check; defect reports group by it.",
+      "rejection_reason": "Chosen when a rejection is recorded. Failed quality check, Out of specification and Other are used by the system itself and cannot be deleted.",
+      "complaint_category": "Chosen when a complaint is registered. Quality complaints go to quality, so that category cannot be deleted.",
+      "interaction_type": "Chosen when a customer interaction is recorded.",
+      "vehicle_type": "Chosen when a vehicle is added to the transport directory."
     },
     "addStandard": "Add the usual values",
     "standardAdded": "{count} values added.",
@@ -154,7 +179,8 @@
       "name_ar": "Name (Arabic)",
       "name_en": "Name (English)",
       "key": "Key",
-      "active": "Active"
+      "active": "Active",
+      "uses": "Used in"
     },
     "legacyTitle": "Values written before the list",
     "legacyHint": "These were typed freely on records. Map each one to an item: every module then stores that item's key on its own records.",
@@ -162,6 +188,18 @@
       "commercial": "Customers",
       "procurement": "Suppliers",
       "shipping": "Shipments"
-    }
+    },
+    "groups": {
+      "commercial": "Sales and customers",
+      "procurement": "Procurement",
+      "production": "Production",
+      "quality": "Quality",
+      "shipping": "Shipping"
+    },
+    "delete": "Delete",
+    "deleted": "The item was deleted.",
+    "confirmDelete": "“{name}” will be deleted for good. Are you sure?",
+    "inUse": "Used in {count, plural, one {# record} other {# records}} — it can only be deactivated",
+    "protectedHint": "Used by the system itself — only its name can change"
   }
 }

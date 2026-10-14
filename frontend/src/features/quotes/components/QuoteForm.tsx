@@ -20,6 +20,8 @@ import { LineDescriptionFields, QuoteHeadingFields, UnitSelect } from "./QuoteLi
 import { SpecEditor } from "@/components/forms/SpecEditor";
 import { ProductSelect, useBusinessSettings, useProducts } from "@/features/masterdata";
 import { QuoteTotals } from "./QuoteTotals";
+import { DiscountAllField, LineDiscountField } from "./QuoteLineFields";
+import { lineAmounts, quoteAmounts } from "../discount";
 
 type QuoteFormValues = {
   customer_id: string;
@@ -27,7 +29,6 @@ type QuoteFormValues = {
   issue_date: string;
   valid_until: string;
   currency: string;
-  discount_amount: string;
   include_tax: boolean;
   attention: string;
   subject: string;
@@ -40,6 +41,7 @@ type QuoteItemFormValues = {
   quantity: string;
   unit: string;
   unit_price: string;
+  discount_percent: string;
   requested_spec_json: string;
   description_ar: string;
   description_en: string;
@@ -171,14 +173,8 @@ export function QuoteForm() {
     return values.items.map((item, index) => toPreviewItem(item, index));
   }, [values.items]);
 
-  const subtotal = useMemo(() => {
-    return previewItems.reduce((sum, item) => sum + Number(item.line_total), 0);
-  }, [previewItems]);
-
-  const discountAmount = Number(values.discount_amount || 0);
-  const taxableAmount = Math.max(0, subtotal - discountAmount);
-  const taxAmount = values.include_tax ? taxableAmount * vatRate / 100 : 0;  // preview; the server computes it
-  const totalAmount = taxableAmount + taxAmount;
+  // Preview of the server's arithmetic: each line's discount first, then VAT on what remains.
+  const { amounts, subtotal, discount: discountAmount, tax: taxAmount, total: totalAmount } = quoteAmounts(values.items, vatRate, values.include_tax);
 
   function updateField<TField extends keyof QuoteFormValues>(
     field: TField,
@@ -343,19 +339,8 @@ export function QuoteForm() {
               </select>
             </label>
 
-            <label style={sharedStyles.field}>
-              <span style={sharedStyles.label}>{t("fields.discount")}</span>
-              <input
-                style={sharedStyles.input}
-                type="number"
-                min="0"
-                step="0.01"
-                value={values.discount_amount}
-                onChange={(event) => updateField("discount_amount", event.target.value)}
-                disabled={isSubmitting}
-                placeholder={t("placeholders.discountAmount")}
-              />
-            </label>
+            <DiscountAllField disabled={isSubmitting}
+              onApply={(percent) => updateField("items", values.items.map((item) => ({ ...item, discount_percent: percent })))} />
 
             <div style={sharedStyles.field}>
               <span style={sharedStyles.label}>{t("fields.tax")}</span>
@@ -473,11 +458,14 @@ export function QuoteForm() {
                     />
                   </label>
 
+                  <LineDiscountField value={item.discount_percent} amount={amounts[index].discount} disabled={isSubmitting}
+                    onChange={(value) => updateItemField(index, "discount_percent", value)} />
+
                   <label style={sharedStyles.field}>
                     <span style={sharedStyles.label}>{t("items.fields.lineTotal")}</span>
                     <input
                       style={sharedStyles.input}
-                      value={fmt.decimal(calculateLineTotal(item))}
+                      value={fmt.decimal(amounts[index].net)}
                       disabled
                       readOnly
                     />
@@ -538,7 +526,6 @@ function createDefaultValues(): QuoteFormValues {
     issue_date: toDatetimeLocalValue(now),
     valid_until: toDatetimeLocalValue(validUntil),
     currency: "SAR",
-    discount_amount: "",
     include_tax: true,
     attention: "",
     subject: "",
@@ -553,6 +540,7 @@ function createDefaultItem(): QuoteItemFormValues {
     quantity: "",
     unit: "",
     unit_price: "",
+    discount_percent: "",
     requested_spec_json: "",
     description_ar: "",
     description_en: "",
@@ -571,7 +559,6 @@ function toCreateRequest(
     issue_date: new Date(values.issue_date).toISOString(),
     valid_until: new Date(values.valid_until).toISOString(),
     currency: values.currency,
-    discount_amount: Number(values.discount_amount || 0),
     tax_rate: values.include_tax ? vatRate : 0,
     tax_amount: taxAmount,
     attention: optionalText(values.attention) ?? null,
@@ -584,6 +571,7 @@ function toCreateRequest(
       quantity: Number(item.quantity),
       unit: item.unit,
       unit_price: Number(item.unit_price),
+      discount_percent: Number(item.discount_percent || 0),
       description_ar: optionalText(item.description_ar) ?? null,
       description_en: optionalText(item.description_en) ?? null,
     })),
@@ -598,12 +586,11 @@ function toPreviewItem(item: QuoteItemFormValues, index: number): QuoteItem {
     quantity: item.quantity || "0",
     unit: item.unit,
     unit_price: item.unit_price || "0",
-    line_total: String(calculateLineTotal(item)),
+    line_total: String(lineAmounts(item.quantity, item.unit_price, item.discount_percent).total),
+    discount_percent: item.discount_percent || "0",
+    discount_amount: String(lineAmounts(item.quantity, item.unit_price, item.discount_percent).discount),
+    net_total: String(lineAmounts(item.quantity, item.unit_price, item.discount_percent).net),
   };
-}
-
-function calculateLineTotal(item: QuoteItemFormValues) {
-  return Number(item.quantity || 0) * Number(item.unit_price || 0);
 }
 
 function parseRequestedSpec(value: string, t: (key: string) => string) {

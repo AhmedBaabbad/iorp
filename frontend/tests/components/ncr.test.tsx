@@ -142,7 +142,7 @@ describe("corrective action follow-up", () => {
     const section = await screen.findByRole("region", { name: "Recurrence" });
     expect(within(section).getByText("Recurring")).toBeTruthy();
     expect(within(section).getByRole("link", { name: "NCR-2026-0000" }).getAttribute("href")).toBe("/non-conformance-reports/n0");
-    expect(within(section).getAllByText("supplier، affected item").length).toBe(2);
+    expect(within(section).getAllByText("supplier, affected item").length).toBe(2);
     fireEvent.click(screen.getByRole("button", { name: "Record root cause" }));
     const dialog = screen.getByRole("dialog", { name: "Root cause" });
     expect(within(dialog).getByRole("status").textContent).toContain("not an isolated case");

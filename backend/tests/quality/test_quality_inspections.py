@@ -1,3 +1,4 @@
+from tests.route_inventory import discover_routes
 """QUAL-001: quality checks and rejections aligned with production orders, permissions and the close gate."""
 import re
 from decimal import Decimal
@@ -21,6 +22,9 @@ NOW = "2026-10-03T08:00:00+00:00"
 def q(result_env):
     e = result_env
     e.ctx.auth_user.permissions = set(PRODUCTION) | set(Q.ALL)
+    # The session carries the same permissions (as a real one does): a signed decision checks them (PROJECT-GOV-004).
+    from app.core.tenancy import TenantContext
+    e.ctx.tenant = TenantContext(e.ctx.tenant.user_id, e.ctx.tenant.organization_id, permissions=frozenset(e.ctx.auth_user.permissions))
 
     def check(po=None, line=0, check_type="in_process_inspection", **extra):
         body = dict(check_type=check_type, check_datetime=NOW, **extra)
@@ -193,7 +197,7 @@ def test_every_quality_route_declares_a_permission():
             if getattr(dep.call, "permission_policy", None):
                 yield dep.call.permission_policy
             yield from policies(dep)
-    routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path.startswith("/api/v1/quality")]
+    routes = [r for r in discover_routes(app) if isinstance(r, APIRoute) and r.path.startswith("/api/v1/quality")]
     assert len(routes) >= 25
     assert [r.path for r in routes if not list(policies(r.dependant))] == []
 

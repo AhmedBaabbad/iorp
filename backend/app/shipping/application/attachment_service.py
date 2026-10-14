@@ -1,13 +1,16 @@
 """Files kept with a shipment or a return (SHIP-004): the signed delivery note as proof of delivery, photos of damage.
 
-Images (PNG, JPEG, WebP) and PDFs only, recognised by their content; 10 MB at most. Stored under the organization's
-folder by the core storage; nothing generated is ever stored here.
+Images (PNG, JPEG, WebP) and PDFs only, recognised by their content, under the one file policy (core/files.py: photos
+made small, PDFs kept as sent, the organization's quota). Nothing generated is ever stored here. A file of a finished
+shipment or return is archived, never deleted.
 """
 from __future__ import annotations
 
 from sqlalchemy import select
 
-from app.core.storage import InvalidAttachmentError, LocalFileStorage, save_attachment, compensate_new_file
+from app.core import files
+from app.core.storage import InvalidAttachmentError, LocalFileStorage, compensate_new_file
+from app.core.utils import utc_now
 from app.shipping.domain import returns as R
 from app.shipping.domain import rules
 from app.shipping.domain.rules import ShippingError
@@ -42,14 +45,15 @@ class AttachmentService:
         if count >= MAX_FILES:
             raise ShippingError("TOO_MANY_FILES", 400, limit=MAX_FILES)
         try:
-            path, content_type = save_attachment(content, self.org, "shipping", self.storage)
+            path, prepared = files.store(self.db, self.storage, self.org, "shipping", content, "attachment")
         except InvalidAttachmentError as exc:
-            raise ShippingError(f"FILE_{exc}", 400) from exc
+            self.db.rollback()
+            raise ShippingError(f"FILE_{exc.code}", 400, **({"limit": exc.limit} if exc.limit else {})) from exc
         with compensate_new_file(self.db, self.storage, path, lambda: self.db.scalar(select(ShippingAttachment.id).where(
                 ShippingAttachment.organization_id == self.org, ShippingAttachment.storage_path == path)) is not None):
             self.db.add(ShippingAttachment(organization_id=self.org, shipment_id=shipment_id, return_id=return_id, kind=kind,
-                                       file_name=(file_name or "file")[-255:], content_type=content_type, size_bytes=len(content),
-                                       storage_path=path, uploaded_by_user_id=self.tenant.user_id))
+                                       file_name=(file_name or "file")[-255:], content_type=prepared.media_type, size_bytes=prepared.size,
+                                       checksum=prepared.checksum, storage_path=path, uploaded_by_user_id=self.tenant.user_id))
             self.db.commit()
         return attachments(self.db, self.org, shipment_id=shipment_id, return_id=return_id)
 
@@ -78,6 +82,12 @@ class AttachmentService:
             raise ShippingError("ATTACHMENT_NOT_FOUND", 404)
         return row
 
+    def _finished(self, row) -> bool:
+        """A delivered or closed shipment, a decided return: its files are the record of what happened."""
+        if row.return_id:
+            return self._return(row.return_id).status not in R.OPEN
+        return self._shipment(row.shipment_id).status in rules.FINAL
+
     def file(self, attachment_id, shipment_id=None, return_id=None):
         """(path on disk, content type, file name) to send back."""
         row = self._row(attachment_id, shipment_id, return_id)
@@ -91,6 +101,11 @@ class AttachmentService:
 
     def remove(self, attachment_id, shipment_id=None, return_id=None) -> list[dict]:
         row = self._row(attachment_id, shipment_id, return_id)
+        if self._finished(row):
+            if row.archived_at is None:
+                row.archived_at, row.archived_by_user_id = utc_now(), self.tenant.user_id
+                self.db.commit()
+            return attachments(self.db, self.org, shipment_id=shipment_id, return_id=return_id)
         path = row.storage_path
         self.db.delete(row)
         self.db.commit()

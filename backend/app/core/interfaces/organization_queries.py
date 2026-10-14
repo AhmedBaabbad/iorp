@@ -19,7 +19,8 @@ class OrganizationAdminData:
     full_name: str
     email: str
     phone: str | None
-    password: str
+    password: str | None = None  # SEC-003: None — the root activates the account through an e-mailed link (only the
+    # first installation sets one, typed by the installer for their own account)
 
 
 @dataclass(frozen=True)
@@ -38,9 +39,8 @@ class ProvisionedUser:
 
 
 class LogoStorageInterface(Protocol):
-    def validate_logo(self, encoded: str) -> None: ...
-
-    def save_logo(self, encoded: str, organization_id: UUID) -> str: ...
+    """The file storage (core/storage.py FileStorage); the logo itself is prepared by core/files.py."""
+    def put(self, key: str, content: bytes) -> None: ...
 
     def delete(self, relative_path: str) -> None: ...
 
@@ -72,6 +72,7 @@ class OrganizationRootSummary:
     email: str
     status: str
     last_login_at: datetime | None
+    activation_pending: bool = False  # SEC-003
 
 
 @dataclass(frozen=True)
@@ -104,6 +105,10 @@ class OrganizationProvisioningInterface(Protocol):
     def get_organization_detail(self, organization_id: UUID) -> OrganizationDetail | None: ...
 
     def get_logo_path(self, organization_id: UUID) -> str | None: ...
+
+    def storage(self, organization_id: UUID) -> dict | None: ...
+
+    def set_storage_quota(self, organization_id: UUID, quota_bytes: int | None) -> dict | None: ...
 
     def set_organization_status(
         self, organization_id: UUID, status: str, changed_by: UUID, reason: str | None

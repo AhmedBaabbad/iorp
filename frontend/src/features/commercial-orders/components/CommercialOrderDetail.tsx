@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
-import { Money } from "@/components/money/Money";
+import { Money, pricePlaces } from "@/components/money/Money";
 import { getCustomer } from "@/features/customers";
 import { useProductName } from "@/features/masterdata";
 import { ReasonDialog } from "@/features/production-demands/reason-dialog";
@@ -24,6 +24,7 @@ import {
 import type { CommercialOrderData } from "../types";
 import { CommercialOrderStatusBadge } from "./CommercialOrderStatusBadge";
 import { SpecList, StatusHistory, salesErrorMessage } from "./sales-lifecycle";
+import { Signatures } from "@/components/Signatures";
 
 /**
  * One sales order (SALES-001): its source (an accepted quotation or the customer's reference), the lines with what was
@@ -161,7 +162,7 @@ export function CommercialOrderDetail() {
                       <td><bdi>{fmt.quantity(String(taken), unit(item.unit))}</bdi></td>
                       <td className={left > 0 ? undefined : s.muted}><bdi>{fmt.quantity(String(left), unit(item.unit))}</bdi></td>
                     </>}
-                    <td>{item.agreed_unit_price != null && currency ? <Money amount={item.agreed_unit_price} currency={currency} /> : "—"}</td>
+                    <td>{item.agreed_unit_price != null && currency ? <Money amount={item.agreed_unit_price} currency={currency} places={pricePlaces(item.agreed_unit_price)} /> : "—"}</td>
                     <td>{item.line_total != null && currency ? <Money amount={item.line_total} currency={currency} /> : "—"}</td>
                   </tr>
                 );
@@ -198,7 +199,8 @@ export function CommercialOrderDetail() {
           </div>
         </div>
       )}
-    </PageFrame>
+          <Signatures resourceType="sales_order" id={order.id} version={order.status} />
+</PageFrame>
   );
 }
 

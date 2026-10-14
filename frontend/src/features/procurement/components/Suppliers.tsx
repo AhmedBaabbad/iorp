@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 
+import { DirectoryPanel } from "@/features/reference-directory/DirectoryPanel";
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth/permission-hooks";
 import s from "@/features/production-demands/demands.module.css";
@@ -14,8 +15,10 @@ import { Q } from "@/lib/quality-permissions";
 import { createSupplier, getSupplier, getSuppliers, setSupplierStatus, updateSupplier, type SupplierFilters } from "../api";
 import { procurementErrorMessage } from "../procurement-errors";
 import { SUPPLIER_CATEGORIES, SUPPLIER_STATUSES, type Evaluation, type Supplier, type SupplierInput, type SupplierStatus } from "../types";
-import { ListSelect, useListName } from "@/features/masterdata";
+import { ListSelect, useListChoices, useListName } from "@/features/masterdata";
 
+import { joinList } from "@/lib/utils";
+import { Signatures } from "@/components/Signatures";
 const STATUS_CLASS: Record<SupplierStatus, string> = { pending: s.high, approved: s.green, conditional: s.overdue, blocked: s.cancelled };
 
 const GRADE_CLASS: Record<string, string> = { A: s.green, B: s.blue, C: s.overdue, D: s.cancelled };
@@ -38,11 +41,13 @@ function Item({ label, children }: { label: string; children: ReactNode }) {
 // "الموردون": the approved supplier list — who supplies what, its standing, and how it performs.
 export function SuppliersList() {
   const t = useTranslations("procurement");
+  const supplierCategory = useListName("supplier_category", (k) => (t.has(`supplierCategories.${k}`) ? t(`supplierCategories.${k}`) : undefined));
   const errors = useTranslations("procurement.errors");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
   const canCreate = usePermission(PR.SUPPLIERS_CREATE);
   const [filters, setFilters] = useState<Required<SupplierFilters>>({ status: "", category: "", search: "" });
+  const categoryChoices = useListChoices("supplier_category", SUPPLIER_CATEGORIES, supplierCategory, filters.category);
   const [rows, setRows] = useState<Supplier[] | null>(null);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
@@ -62,7 +67,7 @@ export function SuppliersList() {
           <option value="">{t("all")}</option>{SUPPLIER_STATUSES.map(v => <option key={v} value={v}>{t(`supplierStatuses.${v}`)}</option>)}</select></label>
       <label className={s.field}>{t("fields.category")}
         <select value={filters.category} onChange={e => set("category", e.target.value)}>
-          <option value="">{t("all")}</option>{SUPPLIER_CATEGORIES.map(v => <option key={v} value={v}>{t(`supplierCategories.${v}`)}</option>)}</select></label>
+          <option value="">{t("all")}</option>{categoryChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></label>
     </section>
     {error && <p role="alert" className={s.error}>{error}</p>}
     {rows === null && !error && <p className={s.muted}>{messages("loading.default")}</p>}
@@ -72,7 +77,7 @@ export function SuppliersList() {
       <tbody>{rows.map(r => <tr key={r.id}>
         <td><Link href={`/suppliers/${r.id}`}><bdi>{r.supplier_code}</bdi></Link></td>
         <td>{r.name}{r.contact_name && <div className={s.muted}>{r.contact_name}</div>}</td>
-        <td>{t(`supplierCategories.${r.category}`)}</td>
+        <td>{supplierCategory(r.category)}</td>
         <td>{r.supplies ?? "—"}</td>
         <td>{r.receipts_count}{r.last_receipt_date && <div className={s.muted}>{fmt.date(r.last_receipt_date)}</div>}</td>
         <td className={r.open_ncr_count ? s.error : undefined}>{r.ncr_count}{r.open_ncr_count > 0 && <div>{t("openNcr", { count: String(r.open_ncr_count) })}</div>}</td>
@@ -89,11 +94,13 @@ const EMPTY: Text = { name: "", supplies: "", contact_name: "", phone: "", email
 // A supplier: register one (pending evaluation), or edit its details.
 export function SupplierForm({ supplierId }: { supplierId?: string }) {
   const t = useTranslations("procurement");
+  const supplierCategory = useListName("supplier_category", (k) => (t.has(`supplierCategories.${k}`) ? t(`supplierCategories.${k}`) : undefined));
   const errors = useTranslations("procurement.errors");
   const messages = useTranslations("messages");
   const router = useRouter();
   const [v, setV] = useState<Text>(EMPTY);
   const [category, setCategory] = useState<SupplierInput["category"]>("raw_material");
+  const categoryChoices = useListChoices("supplier_category", SUPPLIER_CATEGORIES, supplierCategory, category);
   const [loading, setLoading] = useState(Boolean(supplierId));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -128,8 +135,8 @@ export function SupplierForm({ supplierId }: { supplierId?: string }) {
         <section className={s.panel}><div className={s.grid}>
           {input("name", { required: true, maxLength: 255 })}
           <label className={s.field}>{t("fields.category")}
-            <select value={category} onChange={e => setCategory(e.target.value as SupplierInput["category"])}>
-              {SUPPLIER_CATEGORIES.map(c => <option key={c} value={c}>{t(`supplierCategories.${c}`)}</option>)}</select></label>
+            <select value={category} onChange={e => setCategory(e.target.value)}>
+              {categoryChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></label>
           {input("supplies", { maxLength: 500, placeholder: t("suppliers.suppliesPlaceholder") })}
           {input("contact_name", { maxLength: 200 })}
           {input("phone", { maxLength: 30, dir: "ltr", inputMode: "tel", placeholder: "05xxxxxxxx" })}
@@ -157,9 +164,11 @@ export function SupplierForm({ supplierId }: { supplierId?: string }) {
 // One supplier: details, standing on the approved list, receipts and the non-conformance reports raised about it.
 export function SupplierDetail({ supplierId }: { supplierId: string }) {
   const t = useTranslations("procurement");
+  const supplierCategory = useListName("supplier_category", (k) => (t.has(`supplierCategories.${k}`) ? t(`supplierCategories.${k}`) : undefined));
   const ncr = useTranslations("ncr.statuses");
   const errors = useTranslations("procurement.errors");
   const messages = useTranslations("messages");
+  const locale = useLocale();
   const cityName = useListName("city");  // MD-002: names, not keys
   const countryName = useListName("country");
   const fmt = useFormatter();
@@ -178,7 +187,8 @@ export function SupplierDetail({ supplierId }: { supplierId: string }) {
   if (loading) return <PageFrame title={t("suppliers.detailTitle")} action={back}><p className={s.muted}>{messages("loading.default")}</p></PageFrame>;
   if (!x) return <PageFrame title={t("suppliers.detailTitle")} action={back}><p role="alert" className={s.error}>{error || t("suppliers.notFound")}</p></PageFrame>;
 
-  return <PageFrame title={x.name} subtitle={`${x.supplier_code} — ${t(`supplierCategories.${x.category}`)}`} action={back}>
+  return <PageFrame title={x.name} subtitle={`${x.supplier_code} — ${supplierCategory(x.category)}`} action={back}>
+    <DirectoryPanel kind="contacts" path={`/procurement/suppliers/${x.id}/contacts`} writePermission="procurement:suppliers:update"/>
     {error && <p role="alert" className={s.error}>{error}</p>}
     {x.status === "blocked" && <p role="status" className={s.error}>{t("suppliers.blockedHint", { reason: x.status_reason ?? "" })}</p>}
     <section className={s.panel}>
@@ -197,7 +207,7 @@ export function SupplierDetail({ supplierId }: { supplierId: string }) {
         <Item label={t("fields.contact_name")}>{x.contact_name ?? "—"}</Item>
         <Item label={t("fields.phone")}><bdi dir="ltr">{x.phone ?? "—"}</bdi></Item>
         <Item label={t("fields.email")}><bdi dir="ltr">{x.email ?? "—"}</bdi></Item>
-        <Item label={t("fields.city")}>{[x.city ? cityName(x.city) : null, x.country ? countryName(x.country) : null].filter(Boolean).join("، ") || "—"}</Item>
+        <Item label={t("fields.city")}>{joinList([x.city ? cityName(x.city) : null, x.country ? countryName(x.country) : null], locale) || "—"}</Item>
         <Item label={t("fields.vat_number")}><bdi dir="ltr">{x.vat_number ?? "—"}</bdi></Item>
         <Item label={t("fields.cr_number")}><bdi dir="ltr">{x.cr_number ?? "—"}</bdi></Item>
         {x.status_changed_at && <Item label={t("suppliers.standing")}>{x.status_changed_by_name} · {fmt.dateTime(x.status_changed_at)}
@@ -226,6 +236,7 @@ export function SupplierDetail({ supplierId }: { supplierId: string }) {
         <Link href={`/non-conformance-reports/${n.id}`}><bdi>{n.report_number}</bdi></Link> · {n.title} · {ncr.has(n.status) ? ncr(n.status) : n.status}</li>)}</ul>
     </section>}
     {x.notes && <section className={s.panel}><p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{x.notes}</p></section>}
+    <Signatures resourceType="supplier" id={x.id} version={x.status} />
     <section className={s.panel} aria-label={t("historyTitle")}>
       <h2 style={{ marginTop: 0 }}>{t("historyTitle")}</h2>
       <ol className={s.timeline}>{x.history.map((e, i) => <li key={`${e.at}-${i}`}>

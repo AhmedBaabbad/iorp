@@ -72,11 +72,13 @@ export type CapaAlerts = {
 export const REVIEW_DAYS = [0, 30, 60, 90, 180] as const;
 export type NcrReport = NcrListItem & NcrHeader & {
   quality_check_id: string | null; quality_rejection_id: string | null; production_order_id: string | null; return_id: string | null;
-  inspection_code: string | null; rejection_code: string | null; order_number: string | null; return_no: string | null; detected_by_name: string | null;
+  inspection_code: string | null; rejection_code: string | null; order_number: string | null; return_no: string | null;
+  complaint_id?: string | null; complaint_number?: string | null; detected_by_name: string | null;
   containment: string | null; contained_at: string | null; contained_by_name: string | null;
   root_cause_category: string | null; root_cause_method: string | null; root_cause: string | null; action_required: boolean | null;
   no_action_justification: string | null; investigated_at: string | null; investigated_by_name: string | null;
   verification_attempts: number; verification_notes: string | null; verified_at: string | null; verified_by_name: string | null;
+  verification_signature?: { signer_name: string; authority_name: string; delegated: boolean } | null;
   closed_at: string | null; cancel_reason: string | null;
   effectiveness_due_date: string | null; effectiveness_result: "effective" | "not_effective" | null; effectiveness_notes: string | null;
   effectiveness_reviewed_at: string | null; effectiveness_reviewed_by_name: string | null; recurrence: Recurrence | null;

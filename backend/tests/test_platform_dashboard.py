@@ -10,7 +10,7 @@ TENANT_PASSWORD = "TenantDash123!"
 
 
 @pytest.fixture
-def dashboard_env(client, db, monkeypatch):
+def dashboard_env(client, db, monkeypatch, activate):
     monkeypatch.setattr(settings, "bootstrap_token", "dash-token")
     initialized = client.post("/api/v1/system/bootstrap/initialize", json={
         "bootstrap_token": "dash-token",
@@ -28,6 +28,7 @@ def dashboard_env(client, db, monkeypatch):
         "password": "DashAdmin123!", "password_confirmation": "DashAdmin123!",
     })
     assert admin_created.status_code == 201
+    activate("dash-admin@example.com", "DashAdmin123!", platform=True)  # SEC-003: the owner chooses the password
     admin_login = client.post("/api/v1/platform/login", json={"email": "dash-admin@example.com", "password": "DashAdmin123!"})
     admin = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
     return {"client": client, "root": root, "admin": admin, "tenant": tenant}

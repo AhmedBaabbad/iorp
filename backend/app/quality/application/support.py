@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from app.core.db import Base
 from app.core.interfaces.activity_log import get_registered_activity_logger
-from app.core.utils import utc_now
+from app.core import numbering
 from app.quality.domain.rules import ORDER_STATUSES, QualityError
 from app.quality.infrastructure.models import QualityCodeCounter, QualityStatusHistory
 
@@ -163,6 +163,14 @@ class CommercialReads:
         return [dict(id=r.id, code=r.sample_code, product_type=r.product_type, unit=r.unit, customer=r.name)
                 for r in self.db.execute(query.order_by(samples.c.created_at.desc()).limit(limit)).all()]
 
+    def complaint_of(self, report_id):
+        """The customer complaint a report was opened for (COMPLAINTS-001), from Commercial's link table."""
+        links, complaints = _t("commercial_complaint_links"), _t("commercial_complaints")
+        row = self.db.execute(select(complaints.c.id, complaints.c.number).join(links, links.c.complaint_id == complaints.c.id).where(
+            links.c.organization_id == self.org, complaints.c.organization_id == self.org, links.c.kind == "ncr",
+            links.c.record_id == report_id)).first()
+        return dict(complaint_id=row.id, complaint_number=row.number) if row else {}
+
 
 class ShippingReads:
     """Returned goods as quality needs them (QUAL-RET-001), read through the shared tables: the shipping returns received
@@ -297,15 +305,8 @@ def user_names(db, organization_id, user_ids) -> dict:
 
 def next_code(db, organization_id, kind: str) -> str:
     """QI-YYYY-NNNN / QR-YYYY-NNNN from a locked per-organization counter: never repeated under concurrency."""
-    year = utc_now().year
-    counter = db.get(QualityCodeCounter, (organization_id, kind, year), with_for_update=True)
-    if counter is None:
-        counter = QualityCodeCounter(organization_id=organization_id, kind=kind, year=year, value=0)
-        db.add(counter)
-        db.flush()
-        counter = db.get(QualityCodeCounter, (organization_id, kind, year), with_for_update=True)
-    counter.value += 1
-    return f"{kind}-{year}-{counter.value:04d}"
+    year = numbering.organization_year(db, organization_id)  # the organization's year (core/numbering.py)
+    return numbering.reference(kind, year, numbering.take(db, QualityCodeCounter, organization_id=organization_id, kind=kind, year=year))
 
 
 def record(db, organization_id, entity_type, entity_id, action, from_status, to_status, actor_id, reason=None, detail=None):

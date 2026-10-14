@@ -83,13 +83,19 @@
     "commercialDashboard": "لوحة العملاء والمبيعات",
     "qualityDashboard": "لوحة الجودة",
     "shippingDashboard": "لوحة الشحن والتسليم",
-    "procurementDashboard": "لوحة المشتريات"
+    "procurementDashboard": "لوحة المشتريات",
+    "complaints": "شكاوى العملاء",
+    "delegations": "تفويضات الاعتماد",
+    "announcements": "الإعلانات والرسائل",
+    "notifications": "الإشعارات",
+    "transportDirectory": "دليل النقل"
   },
   "userMenu": {
     "changePassword": "تغيير كلمة المرور",
     "profile": "الملف الشخصي",
     "logout": "تسجيل الخروج",
-    "label": "قائمة المستخدم"
+    "label": "قائمة المستخدم",
+    "sessions": "جلساتي"
   },
   "topBar": {
     "notifications": "الإشعارات",

@@ -6,7 +6,6 @@ import type { FormEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { PasswordInput } from "@/components/PasswordInput";
 import { ApiClientError } from "@/lib/api-client";
 import type { PlatformAdministrator, PlatformAdministratorCreate } from "@/types/platform";
 import {
@@ -21,7 +20,7 @@ import { PlatformProtectedRoute } from "./platform-protected-route";
 import { platformStyles as styles } from "./platform-styles";
 
 const emptyForm: PlatformAdministratorCreate = {
-  full_name: "", email: "", role: "admin", password: "", password_confirmation: "",
+  full_name: "", email: "", role: "admin",
 };
 
 function PlatformAdministratorsContent() {
@@ -34,8 +33,6 @@ function PlatformAdministratorsContent() {
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
   const [resetTarget, setResetTarget] = useState<PlatformAdministrator | null>(null);
-  const [password, setPassword] = useState("");
-  const [confirmation, setConfirmation] = useState("");
 
   const load = useCallback(() => {
     listPlatformAdministrators(token).then(setItems).catch(() => setError(t("loadError")));
@@ -44,11 +41,13 @@ function PlatformAdministratorsContent() {
 
   async function submitCreate(event: FormEvent) {
     event.preventDefault();
-    if (form.password !== form.password_confirmation) return setError(t("errors.passwordMismatch"));
     setBusy(true); setError("");
     try {
-      await createPlatformAdministrator(form, token);
-      setForm(emptyForm); setShowCreate(false); setSuccess(t("created")); load();
+      const created = await createPlatformAdministrator(form, token);
+      setForm(emptyForm); setShowCreate(false); load();
+      // SEC-003: the new administrator chooses their own password through the e-mailed activation link
+      if (created.invitation_sent) setSuccess(t("invitation.sent", { email: created.email }));
+      else setError(t("invitation.notSent"));
     } catch (caught) {
       setError(caught instanceof ApiClientError ? caught.message : t("errors.generic"));
     } finally { setBusy(false); }
@@ -74,11 +73,10 @@ function PlatformAdministratorsContent() {
   async function submitReset(event: FormEvent) {
     event.preventDefault();
     if (!resetTarget) return;
-    if (password !== confirmation) return setError(t("errors.passwordMismatch"));
     setBusy(true); setError("");
     try {
-      await resetPlatformAdministratorPassword(resetTarget.id, { new_password: password, new_password_confirmation: confirmation }, token);
-      setResetTarget(null); setPassword(""); setConfirmation(""); setSuccess(t("passwordReset"));
+      const sent = await resetPlatformAdministratorPassword(resetTarget.id, token);
+      setResetTarget(null); setSuccess(t("resetLinkSent", { email: sent.email }));
     } catch (caught) { setError(caught instanceof ApiClientError ? caught.message : t("errors.generic")); }
     finally { setBusy(false); }
   }
@@ -99,8 +97,7 @@ function PlatformAdministratorsContent() {
           <label style={styles.field}><span style={styles.label}>{t("fields.fullName")}</span><input style={styles.input} value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required /></label>
           <label style={styles.field}><span style={styles.label}>{t("fields.email")}</span><input style={styles.input} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></label>
           <label style={styles.field}><span style={styles.label}>{t("fields.role")}</span><select style={styles.input} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as "root" | "admin" })}><option value="admin">{t("roles.admin")}</option><option value="root">{t("roles.root")}</option></select></label>
-          <label style={styles.field}><span style={styles.label}>{t("fields.password")}</span><PasswordInput inputStyle={styles.input} minLength={12} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required /></label>
-          <label style={styles.field}><span style={styles.label}>{t("fields.confirmPassword")}</span><PasswordInput inputStyle={styles.input} minLength={12} value={form.password_confirmation} onChange={(e) => setForm({ ...form, password_confirmation: e.target.value })} required /></label>
+          <p style={{ margin: 0, color: "var(--text-muted)" }}>{t("invitation.note")}</p>
           <button style={styles.button} disabled={busy}>{busy ? t("saving") : t("create")}</button>
         </form>}
         <div style={{ ...styles.panel, padding: 0, overflowX: "auto", marginTop: 16 }}>
@@ -111,15 +108,15 @@ function PlatformAdministratorsContent() {
                 <td style={{ padding: 12 }}>{item.full_name}{item.is_bootstrap_root ? <div style={{ color: "var(--accent-strong)", fontSize: 12 }}>{t("bootstrapProtected")}</div> : null}</td>
                 <td style={{ padding: 12 }}>{item.email}</td>
                 <td style={{ padding: 12 }}><span style={{ ...(item.role === "root" ? styles.badgeRoot : styles.badgeAdmin) }}>{t(`roles.${item.role}`)}</span></td>
-                <td style={{ padding: 12 }}><span style={item.status === "active" ? styles.badgeActive : styles.badgeInactive}>{t(`statuses.${item.status}`)}</span></td>
+                <td style={{ padding: 12 }}><span style={item.status === "active" ? styles.badgeActive : styles.badgeInactive}>{t(`statuses.${item.status}`)}</span>{item.activation_pending ? <div style={{ color: "var(--accent-strong)", fontSize: 12, marginTop: 4 }}>{t("invitation.pending")}</div> : null}</td>
                 <td style={{ padding: 12 }}>{item.last_login_at ? new Date(item.last_login_at).toLocaleString() : t("notAvailable")}</td>
-                <td style={{ padding: 12 }}><div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}><button style={styles.secondaryButton} disabled={busy || item.is_bootstrap_root} onClick={() => void toggleRole(item)}>{item.role === "root" ? t("actions.demote") : t("actions.promote")}</button><button style={styles.secondaryButton} disabled={busy} onClick={() => setResetTarget(item)}>{t("actions.resetPassword")}</button><button style={styles.dangerButton} disabled={busy || item.status === "inactive" || item.is_bootstrap_root} onClick={() => void deactivate(item)}>{t("actions.deactivate")}</button></div></td>
+                <td style={{ padding: 12 }}><div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}><button style={styles.secondaryButton} disabled={busy || item.is_bootstrap_root} onClick={() => void toggleRole(item)}>{item.role === "root" ? t("actions.demote") : t("actions.promote")}</button><button style={styles.secondaryButton} disabled={busy} onClick={() => setResetTarget(item)}>{item.activation_pending ? t("invitation.resend") : t("actions.resetPassword")}</button><button style={styles.dangerButton} disabled={busy || item.status === "inactive" || item.is_bootstrap_root} onClick={() => void deactivate(item)}>{t("actions.deactivate")}</button></div></td>
               </tr>)}</tbody>
             </table>
           )}
         </div>
       </section>
-      {resetTarget && <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", background: "var(--overlay)", padding: 20 }}><form onSubmit={submitReset} style={{ ...styles.panel, width: "min(460px, 100%)", padding: 24 }}><h2>{t("resetTitle", { name: resetTarget.full_name })}</h2><label style={styles.field}><span style={styles.label}>{t("fields.password")}</span><PasswordInput inputStyle={styles.input} minLength={12} value={password} onChange={(e) => setPassword(e.target.value)} required /></label><label style={styles.field}><span style={styles.label}>{t("fields.confirmPassword")}</span><PasswordInput inputStyle={styles.input} minLength={12} value={confirmation} onChange={(e) => setConfirmation(e.target.value)} required /></label><div style={{ display: "flex", gap: 8, marginTop: 16 }}><button style={styles.dangerButton} disabled={busy}>{t("actions.resetPassword")}</button><button type="button" style={styles.secondaryButton} onClick={() => setResetTarget(null)}>{t("cancel")}</button></div></form></div>}
+      {resetTarget && <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", background: "var(--overlay)", padding: 20 }}><form onSubmit={submitReset} style={{ ...styles.panel, width: "min(460px, 100%)", padding: 24 }}><h2>{t("resetTitle", { name: resetTarget.full_name })}</h2><p>{t("resetLinkHint", { email: resetTarget.email })}</p><div style={{ display: "flex", gap: 8, marginTop: 16 }}><button style={styles.dangerButton} disabled={busy}>{t("sendResetLink")}</button><button type="button" style={styles.secondaryButton} onClick={() => setResetTarget(null)}>{t("cancel")}</button></div></form></div>}
     </main>
   );
 }

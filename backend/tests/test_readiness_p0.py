@@ -16,7 +16,8 @@ from app.core.email.service import EmailService
 
 def production_settings(**overrides):
     return Settings(_env_file=None, app_env='production', secret_key='test-only-runtime-secret-value-123456',
-                    refresh_cookie_secure=True, **{'debug': False, 'email_mode': 'smtp', 'smtp_tls': True, **overrides})
+                    refresh_cookie_secure=True, **{'debug': False, 'email_mode': 'smtp', 'smtp_tls': True,
+                    'frontend_url':'https://app.example.test', 'platform_frontend_url':'https://app.example.test', **overrides})
 
 
 @pytest.mark.parametrize('override', [{'debug': True}, {'email_mode': 'console'}, {'smtp_tls': False}])
@@ -28,6 +29,7 @@ def test_valid_production_configuration():
     assert production_settings().app_env == 'production'
 
 
+@pytest.mark.real_email
 def test_console_and_failed_smtp_never_log_email_secrets(caplog, monkeypatch):
     service = EmailService()
     service.settings = Settings(_env_file=None, email_mode='console')

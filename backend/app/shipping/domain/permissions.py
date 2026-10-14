@@ -22,6 +22,7 @@ MODULE = "shipping"
 
 # resource -> actions, in the order the roles screen shows them.
 RESOURCES: dict[str, tuple[str, ...]] = {
+    "directory": ("read", "write"),
     "shipments": ("read", "create", "update", "dispatch", "deliver", "cancel", "ready", "reopen", "reschedule", "fail", "close"),
     "returns": ("read", "create", "approve", "receive", "cancel", "reject"),
     "settings": ("update",),

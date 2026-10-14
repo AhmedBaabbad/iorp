@@ -87,7 +87,8 @@ def update_settings(payload: SettingsInput, tenant: TenantContext = Depends(get_
 def list_items(list_name: ListName | None = Query(default=None, alias="list"), active_only: bool = False,
                tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
     """Sectors, opportunity sources, countries and cities (one list, or all of them)."""
-    return ListService(db, tenant).items(list_name, active_only)
+    service = ListService(db, tenant)
+    return service.with_uses(service.items(list_name, active_only))
 
 
 @router.post("/lists/{list_name}", response_model=ListItemRead, status_code=status.HTTP_201_CREATED,
@@ -106,6 +107,12 @@ def add_standard_items(list_name: ListName, tenant: TenantContext = Depends(get_
 @router.patch("/lists/items/{item_id}", response_model=ListItemRead, dependencies=[Depends(require_permission(M.LISTS_UPDATE))])
 def update_list_item(item_id: UUID, payload: ListItemUpdate, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
     return _attempt(db, lambda: ListService(db, tenant).update(item_id, payload))
+
+
+@router.delete("/lists/items/{item_id}", dependencies=[Depends(require_permission(M.LISTS_UPDATE))])
+def delete_list_item(item_id: UUID, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
+    """An item no record uses; one in use answers ITEM_IN_USE with how many records (deactivate it instead)."""
+    return _attempt(db, lambda: ListService(db, tenant).delete(item_id))
 
 
 @router.get("/lists/{list_name}/legacy", response_model=list[LegacyValue], dependencies=[Depends(require_permission(M.LISTS_MAP_LEGACY))])

@@ -49,6 +49,8 @@ def build(db, tenant, params, selected) -> ReportData:
             (say("فاتورة المورد", "Supplier's invoice"), v(r.supplier_invoice_no)),
             (say("أمر الشراء", "Purchase order"), v(r.purchase_reference)),
             (say("المركبة / السائق", "Vehicle / driver"), " — ".join(x for x in (r.vehicle_plate, r.driver_name) if x) or "—")]
+    if r.driver_name:
+        refs.append((say("صفة السائق", "Driver affiliation"), say("داخلي", "Internal") if r.driver_affiliation=="internal" else say("خارجي", "External") if r.driver_affiliation=="external" else say("غير محدد — سجل قديم", "Unclassified — legacy record")))
     lines = [dict(no=line.line_no, description=line.description, lot=line.supplier_lot or "—", quantity=_num(line.quantity), unit=unit(line.unit),
                   packages=str(line.package_count) if line.package_count is not None else "—",
                   weight=f"{_num(line.weight)} {unit(line.weight_unit)}" if line.weight is not None else "—",

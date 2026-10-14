@@ -12,6 +12,10 @@ export type QuoteItem = {
   unit: string;
   unit_price: string;
   line_total: string;
+  /** The line's discount: a percentage before VAT, its amount and the line after it. */
+  discount_percent?: string;
+  discount_amount?: string;
+  net_total?: string | null;
   description_ar?: string | null;
   description_en?: string | null;
 };
@@ -77,6 +81,7 @@ export type CreateQuoteItemRequest = {
   quantity: number;
   unit: string;
   unit_price: number;
+  discount_percent: number;
   description_ar?: string | null;
   description_en?: string | null;
 };
@@ -87,7 +92,6 @@ export type CreateQuoteRequest = {
   issue_date: string;
   valid_until: string;
   currency: string;
-  discount_amount: number;
   // The server computes the VAT amount from the rate.
   tax_rate: number;
   tax_amount: number;
@@ -102,7 +106,6 @@ export type UpdateQuoteRequest = {
   issue_date?: string;
   valid_until?: string;
   currency?: string;
-  discount_amount?: number;
   tax_rate?: number;
   tax_amount?: number;
   attention?: string | null;

@@ -229,3 +229,54 @@ export function IconChevronUp({ size = 16 }: IconProps) {
     </svg>
   );
 }
+
+/** A delegation: an authority passed from one person to another, for a time. */
+export function IconDelegation({ size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <circle cx="7" cy="7" r="3" />
+      <circle cx="17" cy="17" r="3" />
+      <path d="M10 7h6a3 3 0 0 1 3 3v2" />
+      <path d="m17 10 2 2 2-2" />
+      <path d="M14 17H8a3 3 0 0 1-3-3v-2" />
+      <path d="m7 14-2-2-2 2" />
+    </svg>
+  );
+}
+
+export function IconBell({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <path d="M6 16V11a6 6 0 0 1 12 0v5l1.6 2.2a.5.5 0 0 1-.4.8H4.8a.5.5 0 0 1-.4-.8Z" />
+      <path d="M10 21a2.2 2.2 0 0 0 4 0" />
+    </svg>
+  );
+}
+
+export function IconMegaphone({ size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <path d="M3 10.5v3a1.5 1.5 0 0 0 1.5 1.5H7l7 4V5L7 9H4.5A1.5 1.5 0 0 0 3 10.5Z" />
+      <path d="M17.5 9a4 4 0 0 1 0 6" />
+      <path d="M7 15l1.4 4.4a1 1 0 0 0 1 .6h1.1" />
+    </svg>
+  );
+}
+
+export function IconLock({ size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <rect x="4.5" y="10.5" width="15" height="10" rx="2" />
+      <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+
+export function IconInbox({ size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <path d="M3 13h5l1.5 2.5h5L16 13h5" />
+      <path d="M5.5 5h13L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Z" />
+    </svg>
+  );
+}

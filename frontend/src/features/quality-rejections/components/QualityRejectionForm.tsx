@@ -14,6 +14,7 @@ import { useFormatter } from "@/hooks/useFormatter";
 import { createQualityRejection, getQualityRejectionById, updateQualityRejection } from "../api/quality-rejections-api";
 import { REJECTION_REASONS, type QualityRejectionData, type RejectionReason } from "../types";
 import { RejectionDefectsPicker, type PickedDefect } from "./RejectionDefectsPicker";
+import { useClassificationChoices, useClassificationName } from "@/features/masterdata";
 
 type Values = { order: string; item: string; date: string; reason: RejectionReason; quantity: string; notes: string };
 
@@ -22,7 +23,7 @@ type Values = { order: string; item: string; date: string; reason: RejectionReas
 export function QualityRejectionForm({ rejectionId }: { rejectionId?: string }) {
   const t = useTranslations("quality.qualityRejections");
   const errors = useTranslations("quality.errors");
-  const reasons = useTranslations("enums.qualityRejection.rejectionReason");
+
   const orderStatus = useTranslations("enums.productionOrder.status");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
@@ -31,6 +32,7 @@ export function QualityRejectionForm({ rejectionId }: { rejectionId?: string }) 
   const checkId = params.get("check") ?? "";
   const editing = Boolean(rejectionId);
   const [values, setValues] = useState<Values>({ order: params.get("order") ?? "", item: "", date: todayIso(), reason: "failed_quality_check", quantity: "", notes: "" });
+  const reasonChoices = useClassificationChoices("rejection_reason", REJECTION_REASONS, "qualityRejection", "rejectionReason", values.reason);
   const [existing, setExisting] = useState<QualityRejectionData | null>(null);
   const [check, setCheck] = useState<QualityCheckData | null>(null);
   const [orders, setOrders] = useState<InspectableOrder[]>([]);
@@ -106,8 +108,8 @@ export function QualityRejectionForm({ rejectionId }: { rejectionId?: string }) 
         </>}
         <label className={s.field}>{t("fields.rejectionDate")}<input type="date" required value={values.date} disabled={busy || locked} onChange={e => set("date", e.target.value)} /></label>
         <label className={s.field}>{t("fields.rejectionReason")}
-          <select required value={values.reason} disabled={busy || locked} onChange={e => set("reason", e.target.value as RejectionReason)}>
-            {REJECTION_REASONS.map(v => <option key={v} value={v}>{reasons(v)}</option>)}
+          <select required value={values.reason} disabled={busy || locked} onChange={e => set("reason", e.target.value)}>
+            {reasonChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
           </select>
         </label>
         <label className={s.field}>{unit ? t("fields.quantityRejectedUnit", { unit }) : t("fields.quantityRejected")}

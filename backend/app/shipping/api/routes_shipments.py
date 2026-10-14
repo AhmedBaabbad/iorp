@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.core import files
 from app.core.reporting.routes import generate_response
 from app.core.tenancy import TenantContext
 from app.dependencies import (get_current_tenant, get_current_user, get_db, permission_check, require_any_permission,
@@ -21,7 +22,6 @@ from app.shipping.domain.rules import ShippingError
 router = APIRouter(tags=["shipping"])
 PATH = "/shipments"
 STATUSES = "^(draft|ready|dispatched|delivered|partially_delivered|returned|not_delivered|cancelled)$"
-UPLOAD_LIMIT = 10 * 1024 * 1024 + 1
 
 
 def _error(exc: ShippingError):
@@ -164,7 +164,7 @@ def delivery_note(shipment_id: UUID, lang: str = Query("ar", pattern="^(ar|en)$"
 async def upload_shipment_attachment(shipment_id: UUID, kind: str = Form("proof_of_delivery"), file: UploadFile = File(...),
                                      tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
     """The signed delivery note (proof of delivery) or another document: an image or a PDF, 10 MB at most."""
-    content = await file.read(UPLOAD_LIMIT)
+    content = await file.read(files.read_limit('attachment'))
     return attempt(db, lambda: AttachmentService(db, tenant).add_to_shipment(shipment_id, kind, file.filename, content))
 
 

@@ -19,6 +19,7 @@ from app.commercial.api.routes_orders import router as orders_router
 from app.commercial.api.routes_quotes import router as quotes_router
 from app.commercial.api.routes_quote_settings import router as quote_settings_router
 from app.commercial.api.routes_sample_evaluations import router as sample_evaluations_router
+from app.commercial.api.routes_complaints import router as complaints_router
 from app.commercial.api.routes_samples import router as samples_router
 from app.dashboard.api.routes_dashboard import router as dashboard_router
 from app.foundation.api.routes_auth import router as auth_router
@@ -52,6 +53,7 @@ from app.quality.api.routes_quality_defects import router as quality_defects_rou
 from app.quality.api.routes_quality_rejections import router as quality_rejections_router
 from app.workforce.api.routes_workforce import router as workforce_router
 from app.platform.api.routes_bootstrap import router as bootstrap_router
+from app.platform.api.routes_system import router as system_router
 from app.platform.api.routes_platform_auth import router as platform_router
 from app.platform.api.routes_password_reset import router as platform_password_reset_router
 from app.platform.api.routes_platform_admin import router as platform_organizations_router
@@ -62,6 +64,8 @@ from app.platform.api.routes_logs import activity_router as platform_activity_ro
 
 configure_logging()
 from app.foundation.api.routes_branding import router as branding_router
+from app.foundation.api.routes_delegations import router as delegations_router
+from app.foundation.api.routes_approvals import router as approvals_router
 from app.core.reporting.routes import router as reporting_router
 from app.production.reporting.routes import router as report_shortcuts_router
 from app.production.reporting.definitions import register_reports
@@ -78,6 +82,8 @@ customer_report_providers.commercial_factory = CommercialReportQueries
 customer_report_providers.production_factory = ProductionReportQueries
 customer_report_providers.identity_factory = ReportIdentityQueries
 register_customer_reports()
+from app.commercial.reporting.complaints import register as register_complaint_reports
+register_complaint_reports()
 from app.commercial.reporting.quotation.definitions import register_quotation
 register_quotation()
 # The quality report center (QUAL-REPORT-001).
@@ -100,13 +106,17 @@ register_close_guard(quality_close_blockers)
 # Master data (MD-001): modules ask the catalogue through core, and declare the product types they store, at this root.
 from app.core.interfaces.product_catalog import register_product_catalog
 from app.core.interfaces.product_types import register_product_type_holder
-from app.core.interfaces.reference_lists import register_reference_holder, register_reference_lists
+from app.core.interfaces.reference_lists import register_list_seeder, register_reference_holder, register_reference_lists
+from app.masterdata.application.list_service import seed_standard_lists
 from app.masterdata.application.catalog_provider import MasterDataCatalog, MasterDataLists
 from app.commercial.application.product_types import HOLDER as commercial_product_types
 from app.production.application.product_types import HOLDER as production_product_types
 from app.quality.application.product_types import HOLDER as quality_product_types
 from app.procurement.application.product_types import HOLDER as procurement_product_types
 register_product_catalog(MasterDataCatalog())
+from app.core.interfaces.complaint_quality import register_complaint_quality
+from app.quality.application.complaint_adapter import refer_complaint
+register_complaint_quality(refer_complaint)
 from app.core.interfaces.sales_order_source import register_sales_integration
 from app.commercial.application.sales_order_source import CommercialSalesOrderSource
 from app.production.application.sales_demand_usage import ProductionSalesDemandUsage
@@ -118,14 +128,73 @@ for _holder in (commercial_product_types, production_product_types, quality_prod
 from app.commercial.application.reference_values import HOLDERS as commercial_reference_values
 from app.procurement.application.reference_values import HOLDERS as procurement_reference_values
 from app.shipping.application.reference_values import HOLDERS as shipping_reference_values
+from app.quality.application.reference_values import HOLDERS as quality_reference_values
+from app.production.application.reference_values import HOLDERS as production_reference_values
+from app.workforce.application.reference_values import HOLDERS as workforce_reference_values
 register_reference_lists(MasterDataLists())
-for _holder in (*commercial_reference_values, *procurement_reference_values, *shipping_reference_values):
+register_list_seeder(seed_standard_lists)
+for _holder in (*commercial_reference_values, *procurement_reference_values, *shipping_reference_values, *quality_reference_values,
+                *production_reference_values, *workforce_reference_values):
     register_reference_holder(_holder)
 # Composition root: reporting reads the organization identity through this seam, never by importing foundation.
 reporting_providers.branding_provider = lambda db, organization_id: BrandingService(db).get_branding(organization_id)
 from app.core.interfaces.activity_log import register_activity_logger
 from app.foundation.application.activity_log import TenantActivityLogger
 register_activity_logger(TenantActivityLogger())
+from app.core.interfaces.approvals import register_approvals  # noqa: E402
+from app.foundation.application.delegation_service import FoundationApprovals  # noqa: E402
+from app.foundation.infrastructure import delegation_models  # noqa: E402,F401  (tables in the metadata)
+register_approvals(FoundationApprovals())
+# PROJECT-NOTIFY-001: foundation tells who is who; the notifications module keeps every notification.
+from app.core.interfaces.notifications import register_notifications  # noqa: E402
+from app.core.interfaces.user_directory import register_user_directory  # noqa: E402
+from app.foundation.application.user_directory import FoundationUserDirectory  # noqa: E402
+from app.notifications.application.service import NotificationProvider  # noqa: E402
+from app.notifications.api.routes import announcements as announcements_router, router as notifications_router  # noqa: E402
+register_user_directory(FoundationUserDirectory())
+register_notifications(NotificationProvider())
+from app.core.interfaces.audit_trail import register_audit_trail  # noqa: E402
+from app.foundation.application.audit import FoundationAuditTrail  # noqa: E402
+register_audit_trail(FoundationAuditTrail())
+from app.core.interfaces.approvals import in_organization, register_visibility  # noqa: E402
+
+
+def _quote_visible(db, tenant, quote_id):
+    from app.commercial.application.quote_service import QuoteService
+    from app.commercial.application.visibility import QUOTES_READ, visible_owner
+    return QuoteService(db, visible_owner(db, tenant, QUOTES_READ)).get_quote(tenant, quote_id) is not None
+
+
+def _order_visible(db, tenant, order_id):
+    from app.commercial.application.order_service import OrderService
+    from app.commercial.application.visibility import ORDERS_READ, visible_owner
+    return OrderService(db, visible_owner(db, tenant, ORDERS_READ)).get_order(tenant, order_id) is not None
+
+
+def _complaint_visible(db, tenant, complaint_id):
+    from fastapi import HTTPException
+    from app.commercial.application.complaint_service import ComplaintService
+    try:
+        ComplaintService(db, tenant).get(complaint_id)
+        return True
+    except HTTPException:
+        return False
+
+
+# Documents whose approvals are signed (PROJECT-GOV-004): sales documents follow the sales representative's own
+# customers; the others are read across the organization.
+register_visibility("quote", "commercial:quotes:read", _quote_visible)
+register_visibility("sales_order", "commercial:orders:read", _order_visible)
+register_visibility("complaint", "commercial:complaints:read", _complaint_visible)
+register_visibility("purchase_order", "procurement:purchase_orders:read", in_organization("procurement_purchase_orders"))
+register_visibility("supplier", "procurement:suppliers:read", in_organization("procurement_suppliers"))
+from app.production.domain.permissions import ORDERS_READ as _PRODUCTION_ORDERS_READ  # noqa: E402
+register_visibility("production_order", _PRODUCTION_ORDERS_READ, in_organization("production_orders"))
+register_visibility("quality_check", "quality:quality_checks:read", in_organization("quality_checks"))
+register_visibility("quality_rejection", "quality:rejections:read", in_organization("quality_rejections"))
+register_visibility("ncr", "quality:ncr_reports:read", in_organization("non_conformance_reports"))
+register_visibility("quality_certificate", "quality:certificates:read", in_organization("quality_certificates"))
+register_visibility("shipment_return", "shipping:returns:read", in_organization("shipping_returns"))
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -149,6 +218,10 @@ app = FastAPI(
 
 register_middleware(app)
 app.include_router(branding_router, prefix=settings.api_prefix)
+app.include_router(delegations_router, prefix=settings.api_prefix)
+app.include_router(approvals_router, prefix=settings.api_prefix)
+app.include_router(notifications_router, prefix=settings.api_prefix)
+app.include_router(announcements_router, prefix=settings.api_prefix)
 app.include_router(reporting_router, prefix=settings.api_prefix)
 app.include_router(customer_reports_router, prefix=settings.api_prefix)
 app.include_router(report_shortcuts_router, prefix=settings.api_prefix)
@@ -168,6 +241,15 @@ def organization_access_error_handler(
     )
 
 
+from app.core.interfaces.approvals import ApprovalAuthorityError  # noqa: E402
+
+
+@app.exception_handler(ApprovalAuthorityError)
+def approval_authority_error_handler(_request: Request, exc: ApprovalAuthorityError) -> JSONResponse:
+    """A signature without authority (no role, no delegation in force): PROJECT-GOV-004."""
+    return JSONResponse(status_code=403, content={"detail": "APPROVAL_AUTHORITY_REQUIRED"})
+
+
 @app.exception_handler(AccountAccessError)
 def account_access_error_handler(_request: Request, exc: AccountAccessError) -> JSONResponse:
     return JSONResponse(status_code=403, content={"code": exc.code, "message": exc.message})
@@ -183,6 +265,7 @@ app.include_router(customers_router, prefix=f"{settings.api_prefix}/commercial")
 app.include_router(interactions_router, prefix=f"{settings.api_prefix}/commercial")
 app.include_router(followups_router, prefix=f"{settings.api_prefix}/commercial")
 app.include_router(followups_global_router, prefix=f"{settings.api_prefix}/commercial")
+app.include_router(complaints_router, prefix=f"{settings.api_prefix}/commercial")
 app.include_router(samples_router, prefix=f"{settings.api_prefix}/commercial")
 app.include_router(sample_evaluations_router, prefix=f"{settings.api_prefix}/commercial")
 app.include_router(quotes_router, prefix=f"{settings.api_prefix}/commercial")
@@ -221,6 +304,7 @@ app.include_router(commercial_dashboard_router, prefix=f"{settings.api_prefix}/c
 from app.procurement.api.routes_dashboard import router as procurement_dashboard_router
 app.include_router(procurement_dashboard_router, prefix=f"{settings.api_prefix}/procurement")
 app.include_router(bootstrap_router, prefix=settings.api_prefix)
+app.include_router(system_router, prefix=settings.api_prefix)
 app.include_router(platform_router, prefix=settings.api_prefix)
 app.include_router(platform_organizations_router, prefix=settings.api_prefix)
 app.include_router(platform_administrators_router, prefix=settings.api_prefix)
@@ -253,3 +337,18 @@ def readiness_check():
 
 from app.production.api.routes_execution import router as execution_router
 app.include_router(execution_router, prefix=f"{settings.api_prefix}/production")
+
+# Reusable transport directory, owned by Shipping.
+from app.shipping.api.routes_directory import router as transport_directory_router
+from app.shipping.application.directory_service import TransportProvider
+from app.core.interfaces.transport_directory import register_transport_directory
+register_transport_directory(TransportProvider())
+app.include_router(transport_directory_router, prefix=settings.api_prefix)
+
+from app.commercial.api.routes_contacts import router as customer_contacts_router
+from app.procurement.api.routes_contacts import router as supplier_contacts_router
+from app.commercial.application.customer_delivery import CustomerDeliveryProvider
+from app.core.interfaces.customer_delivery import register_customer_delivery
+register_customer_delivery(CustomerDeliveryProvider())
+app.include_router(customer_contacts_router, prefix=settings.api_prefix)
+app.include_router(supplier_contacts_router, prefix=settings.api_prefix)

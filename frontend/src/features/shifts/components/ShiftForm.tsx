@@ -14,6 +14,7 @@ import { sharedStyles } from "@/styles/shared-styles";
 import { createShift } from "../api/shifts-api";
 import type { CreateShiftRequest, ShiftStatus, ShiftType } from "../types";
 
+import { formatShiftType } from "./shift-utils";
 type ShiftFormValues = {
   code: string;
   name: string;
@@ -79,6 +80,7 @@ const defaultValues: ShiftFormValues = {
 
 export function ShiftForm() {
   const t = useTranslations("production.shifts");
+  const tEnums = useTranslations();
   const common = useTranslations("common");
   const messages = useTranslations("messages");
   const router = useRouter();
@@ -183,10 +185,9 @@ export function ShiftForm() {
                 disabled={isSubmitting}
                 required
               >
-                <option value="morning">Morning</option>
-                <option value="evening">Evening</option>
-                <option value="night">Night</option>
-                <option value="custom">Custom</option>
+                {(["morning", "evening", "night", "custom"] as ShiftType[]).map((type) => (
+                  <option key={type} value={type}>{formatShiftType(type, tEnums)}</option>
+                ))}
               </select>
             </label>
 

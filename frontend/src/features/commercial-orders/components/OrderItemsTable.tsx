@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useTranslations } from "next-intl";
+import { pricePlaces } from "@/components/money/Money";
 
 import { useFormatter } from "@/hooks/useFormatter";
 import { displayValue } from "@/lib/utils";
@@ -97,8 +98,8 @@ export function OrderItemsTable({ items, currency = "" }: OrderItemsTableProps) 
                   ) : null}
                 </td>
                 <td style={{ ...styles.td, textAlign: "center" }}>{fmt.number(item.quantity)}</td>
-                <td style={{ ...styles.td, textAlign: "start" }}>{displayValue(item.unit)}</td>
-                <td style={{ ...styles.td, textAlign: "end" }}>{fmt.decimal(item.agreed_unit_price)}</td>
+                <td style={{ ...styles.td, textAlign: "start" }}>{displayValue(fmt.unit(item.unit))}</td>
+                <td style={{ ...styles.td, textAlign: "end" }}>{fmt.decimal(item.agreed_unit_price, pricePlaces(item.agreed_unit_price))}</td>
                 <td style={{ ...styles.td, textAlign: "end" }}>{fmt.decimal(item.line_total)}</td>
               </tr>
             ))}

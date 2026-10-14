@@ -3,8 +3,9 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from app.core import files
 from app.core.storage import InvalidLogoError, LocalFileStorage
-from app.dependencies import CurrentUserContext, get_db, require_permission, require_any_permission
+from app.dependencies import CurrentUserContext, get_current_user, get_db, require_permission, require_any_permission
 from app.foundation.api.schemas import OrganizationLogoResponse, OrganizationProfileResponse, OrganizationProfileUpdate
 from app.foundation.application.organization_profile import InvalidTimezoneError, OrganizationProfileService
 
@@ -39,7 +40,7 @@ async def update_profile(request: Request, current: CurrentUserContext = Depends
 
 @router.post("/logo", response_model=OrganizationLogoResponse)
 async def upload_logo(file: UploadFile = File(...), current: CurrentUserContext = Depends(require_any_permission(["foundation:organization:branding", "organization:branding:update"])), db: Session = Depends(get_db)):
-    content = await file.read(2 * 1024 * 1024 + 1)
+    content = await file.read(files.read_limit('logo'))
     try:
         _service(db).replace_logo(current.tenant.organization_id, content, current.user)
     except InvalidLogoError as exc:
@@ -55,8 +56,20 @@ def remove_logo(current: CurrentUserContext = Depends(require_any_permission(["f
     return OrganizationLogoResponse(message="Logo removed successfully", has_logo=False)
 
 
+@router.get("/storage")
+def storage(current: CurrentUserContext = Depends(get_current_user), db: Session = Depends(get_db)):
+    """What each kind of upload accepts (the one policy, core/files.py) and what the organization's files occupy against
+    its quota. Any user of the organization reads it (the upload screens show the limits); only its own organization."""
+    organization_id = current.tenant.organization_id
+    used, quota = files.usage(db, organization_id), files.quota(db, organization_id)
+    return dict(policy=files.policy(), used_bytes=used, quota_bytes=quota, percent=round(used * 100 / quota, 1) if quota else 0.0)
+
+
 @router.get("/logo")
-def serve_logo(current: CurrentUserContext = Depends(require_any_permission(["foundation:organization:read", "organization:branding:read"])), db: Session = Depends(get_db)):
+def serve_logo(current: CurrentUserContext = Depends(get_current_user), db: Session = Depends(get_db)):
+    """The organization's logo for every one of its users (the sidebar shows it): reading it needs no permission, only a
+    session of this organization, and the organization is the session's own, so no other organization's logo is reachable.
+    Changing it stays with foundation:organization:branding / organization:branding:update."""
     organization = _service(db).get(current.tenant.organization_id)
     if not organization.logo_path:
         raise HTTPException(status_code=404, detail="Logo not found.")

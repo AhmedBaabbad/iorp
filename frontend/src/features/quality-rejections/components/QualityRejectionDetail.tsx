@@ -16,6 +16,8 @@ import { DispositionBadge } from "./DispositionBadge";
 import { DispositionStatusBadge } from "./DispositionStatusBadge";
 import { DefectCategoryBadge } from "@/features/quality-defects/components/DefectCategoryBadge";
 import { DefectSeverityBadge } from "@/features/quality-defects/components/DefectSeverityBadge";
+import { Signatures } from "@/components/Signatures";
+import { useClassificationChoices, useClassificationName } from "@/features/masterdata";
 
 function Item({ label, children }: { label: string; children: ReactNode }) {
   return <div><dt className={s.muted}>{label}</dt><dd style={{ margin: "4px 0 0", overflowWrap: "anywhere" }}>{children}</dd></div>;
@@ -25,6 +27,7 @@ export function QualityRejectionDetail({ qualityRejectionId }: { qualityRejectio
   const t = useTranslations("quality.qualityRejections");
   const errors = useTranslations("quality.errors");
   const enums = useTranslations("enums.qualityRejection");
+  const reasonName = useClassificationName("rejection_reason", "qualityRejection", "rejectionReason");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
   const [rejection, setRejection] = useState<QualityRejectionData | null>(null);
@@ -52,7 +55,7 @@ export function QualityRejectionDetail({ qualityRejectionId }: { qualityRejectio
   if (!rejection) return <PageFrame title={t("detailTitle")} action={back}><p role="alert" className={s.error}>{error || t("notFound")}</p></PageFrame>;
   const r = rejection;
 
-  return <PageFrame title={r.rejection_code} subtitle={enums(`rejectionReason.${r.rejection_reason}`)} action={back}>
+  return <PageFrame title={r.rejection_code} subtitle={reasonName(r.rejection_reason)} action={back}>
     {r.disposition_status === "executed" && <p role="status" className={s.muted}>{t("executedMessage")}</p>}
     {r.unresolved && <p role="status" className={s.error}>{r.disposition === "hold" ? t("hints.holdBlocks") : t("hints.pendingBlocks")}</p>}
     {error && <p role="alert" className={s.error}>{error}</p>}
@@ -105,7 +108,8 @@ export function QualityRejectionDetail({ qualityRejectionId }: { qualityRejectio
     {dialog === "execute" && <ReasonDialog title={t("executeDialog.title")} description={t("executeDialog.text", { disposition: r.disposition ? enums(`disposition.${r.disposition}`) : "" })}
       confirmLabel={t("actions.markAsExecuted")} busy={busy} reasonRequired={false} onClose={() => setDialog(null)}
       onConfirm={notes => void act(() => executeQualityRejection(r.id, notes))} />}
-  </PageFrame>;
+      <Signatures resourceType="quality_rejection" id={rejection.id} version={rejection.disposition_status} />
+</PageFrame>;
 }
 
 // The disposition; "use as is" needs who approved the concession and why.

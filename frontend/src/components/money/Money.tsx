@@ -20,6 +20,12 @@ export function CurrencySign({ currency }: { currency: string }) {
 }
 
 // An amount with its currency sign: the riyal sign, or $ for dollars.
+/** Places a unit price needs: two, or four for a price after a percentage discount (11.4855). */
+export const pricePlaces = (value: string | number | null | undefined) => {
+  const n = Number(value ?? 0);
+  return Math.abs(n * 100 - Math.round(n * 100)) > 1e-9 ? 4 : 2;
+};
+
 export function Money({ amount, currency, places = 2 }: { amount: string | number | null | undefined; currency: string; places?: number }) {
   const fmt = useFormatter();
   return <bdi dir="ltr" style={{ whiteSpace: "nowrap" }}><CurrencySign currency={currency} /> {fmt.decimal(amount, places)}</bdi>;

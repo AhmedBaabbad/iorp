@@ -12,7 +12,8 @@ import s from "@/features/production-demands/demands.module.css";
 import { useFormatter } from "@/hooks/useFormatter";
 import { Q } from "@/lib/quality-permissions";
 import { DefectChips } from "@/features/quality-defects/components/DefectChips";
-import type { DefectCategory } from "@/features/quality-defects/types";
+import { DEFECT_CATEGORIES } from "@/features/quality-defects/types";
+import { useClassificationChoices } from "@/features/masterdata";
 import { getQualityChecks } from "../api/quality-checks-api";
 import { CHECK_RESULTS, CHECK_STATUSES, CHECK_TYPES, type QualityCheckListFilters, type QualityCheckListItem } from "../types";
 import { QualityCheckResultBadge } from "./QualityCheckResultBadge";
@@ -21,14 +22,14 @@ import { qualityErrorMessage } from "./quality-errors";
 
 type Filters = Required<{ [K in keyof QualityCheckListFilters]: string }>;
 const EMPTY: Filters = { production_order_id: "", check_type: "", status: "", result: "", date_from: "", date_to: "", search: "", defect_category: "" };
-const DEFECT_CATEGORIES: DefectCategory[] = ["dimension", "thickness", "surface", "color", "strength", "winding", "weight", "packaging", "labeling", "finish", "other"];
+
 
 // "فحوصات الجودة": inspections of production lots and samples, newest first.
 export function QualityChecksList() {
   const t = useTranslations("quality.qualityChecks");
   const errors = useTranslations("quality.errors");
   const enums = useTranslations("enums.qualityCheck");
-  const defectEnums = useTranslations("enums.qualityDefect.defectCategory");
+  const defectChoices = useClassificationChoices("defect_category", DEFECT_CATEGORIES, "qualityDefect", "defectCategory");
   const common = useTranslations("common");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
@@ -84,7 +85,7 @@ export function QualityChecksList() {
       <label className={s.field}>{t("filters.defectType")}
         <select value={filters.defect_category} onChange={e => set("defect_category", e.target.value)}>
           <option value="">{t("filters.allDefectTypes")}</option>
-          {DEFECT_CATEGORIES.map(v => <option key={v} value={v}>{defectEnums(v)}</option>)}
+          {defectChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
         </select>
       </label>
       <label className={s.field}>{t("filters.dateFrom")}<input type="date" value={filters.date_from} onChange={e => set("date_from", e.target.value)} /></label>

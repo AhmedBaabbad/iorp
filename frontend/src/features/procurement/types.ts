@@ -9,7 +9,8 @@ export const RECEIPT_STATUSES: ReceiptStatus[] = ["draft", "received", "cancelle
 export type HistoryEntry = { action: string; from_status: string | null; to_status: string | null; reason: string | null; actor_name: string | null; at: string };
 
 export type SupplierInput = {
-  name: string; category: (typeof SUPPLIER_CATEGORIES)[number]; supplies: string | null; contact_name: string | null; phone: string | null;
+  name: string; category: string;  // MD-003: a key of the organization's supplier categories
+  supplies: string | null; contact_name: string | null; phone: string | null;
   email: string | null; address: string | null; city: string | null; country: string | null; vat_number: string | null; cr_number: string | null;
   notes: string | null;
 };
@@ -34,7 +35,8 @@ export type Supplier = SupplierInput & {
 export type SupplierOption = { id: string; supplier_code: string; name: string; status: SupplierStatus };
 
 export type MaterialInput = {
-  name: string; category: (typeof MATERIAL_CATEGORIES)[number]; unit: string; inspection_required: boolean; spec_product_type: string | null;
+  name: string; category: string;  // MD-003: a key of the organization's material categories
+  unit: string; inspection_required: boolean; spec_product_type: string | null;
   active: boolean; notes: string | null;
 };
 export type Material = MaterialInput & { id: string; material_code: string };
@@ -45,6 +47,7 @@ export type ReceiptLineInput = {
 };
 export type ReceiptLine = ReceiptLineInput & { id: string; line_no: number; description: string; inspection_required: boolean };
 export type ReceiptInput = {
+  driver_id?: string|null; vehicle_id?: string|null; driver_affiliation?: string|null;
   supplier_id: string; receipt_date: string; supplier_delivery_no: string | null; supplier_invoice_no: string | null; purchase_reference: string | null;
   vehicle_plate: string | null; driver_name: string | null; notes: string | null; purchase_order_id?: string | null; lines: ReceiptLineInput[];
 };
@@ -75,6 +78,7 @@ export type OrderAction = "edit" | "approve" | "send" | "receive" | "close" | "c
 export type OrderLineInput = { material_id: string | null; description: string | null; notes: string | null; quantity: string; unit: string; unit_price: string };
 export type OrderLine = OrderLineInput & { id: string; line_no: number; description: string; line_total: string };
 export type OrderInput = {
+  supplier_contact_id?: string|null;
   supplier_id: string; order_date: string; required_date: string | null; attention: string | null; supplier_quote_ref: string | null;
   subject: string | null; currency: Currency; tax_rate: number; discount_amount: string | null; payment_terms: (typeof PAYMENT_TERMS)[number] | null;
   payment_terms_note: string | null; incoterm: (typeof INCOTERMS)[number] | null; delivery_place: string | null; notes: string | null;
@@ -87,6 +91,7 @@ export type OrderListItem = {
 };
 export type Order = OrderListItem & Omit<OrderInput, "lines" | "tax_rate" | "discount_amount" | "supplier_id" | "currency"> & {
   subtotal_amount: string; discount_amount: string; tax_amount: string; approved_at: string | null; approved_by_name: string | null;
+  approval?: { signer_name: string; authority_name: string; delegated: boolean } | null;
   sent_at: string | null; sent_by_name: string | null; closed_at: string | null; close_reason: string | null; cancel_reason: string | null;
   created_by_name: string | null; lines: OrderLine[]; line_received: Record<string, { received: string; remaining: string }>;
   receipts: { id: string; receipt_no: string; receipt_date: string; status: ReceiptStatus }[]; history: HistoryEntry[]; updated_at: string;

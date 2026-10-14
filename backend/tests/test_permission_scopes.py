@@ -433,6 +433,7 @@ def test_t39_every_scopable_permission_owner_field_is_a_real_column():
     from app.commercial.infrastructure.models import CustomerInteraction
 
     from app.commercial.infrastructure.models import CommercialOrder, Quote, Sample
+    from app.commercial.infrastructure.complaint_models import Complaint
 
     model_by_prefix = {
         "commercial:customers:": CustomerModel,
@@ -442,6 +443,8 @@ def test_t39_every_scopable_permission_owner_field_is_a_real_column():
         "commercial:quotes:": Quote,
         "commercial:orders:": CommercialOrder,
         "commercial:samples:": Sample,
+        # COMPLAINTS-001: a complaint is its customer's, like a quotation.
+        "commercial:complaints:": Complaint,
     }
     for code, owner_field in SCOPABLE_PERMISSIONS.items():
         model = next(model for prefix, model in model_by_prefix.items() if code.startswith(prefix))

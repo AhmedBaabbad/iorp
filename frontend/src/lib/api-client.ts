@@ -1,5 +1,6 @@
 import { getStoredAccessToken, removeStoredAccessToken, storeAccessToken } from "./auth";
 import { getStoredPlatformToken, removeStoredPlatformToken, storePlatformToken } from "./platform-auth";
+import { actionOf, pushAction } from "./notify-store";
 
 type ApiClientOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -9,6 +10,8 @@ type ApiClientOptions = {
   skipRefresh?: boolean;
   // Return the Response itself (PDF, HTML) once it succeeds; errors and session refresh work as for JSON.
   raw?: boolean;
+  // false: no automatic message after a successful change (the screen says nothing, or something of its own later).
+  notify?: boolean;
 };
 
 export class ApiClientError extends Error {
@@ -23,7 +26,9 @@ export class ApiClientError extends Error {
   }
 }
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8080";
+// SEC-001: same origin by default — the site forwards /api/v1 to the backend (next.config rewrites, or the reverse proxy in
+// production), so the session cookie is first-party. Set NEXT_PUBLIC_API_BASE_URL only for a deliberately separate API host.
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 const ORGANIZATION_STATUS_BY_CODE = {
   ORGANIZATION_SUSPENDED: "suspended",
@@ -171,6 +176,14 @@ function redirectForInvalidSession(path: string, response: Response, sentToken: 
   return new Promise<never>(() => undefined);
 }
 
+/** Every successful change tells the user what happened (PROJECT-UX-NOTIFY); signing in, previews and downloads do not. */
+function announce(path: string, options: ApiClientOptions) {
+  const method = options.method ?? "GET";
+  if (method === "GET" || options.raw || options.notify === false || options.token === null || typeof window === "undefined") return;
+  const action = actionOf(method, path);
+  if (action) pushAction(action, true);
+}
+
 export async function apiClient<TResponse>(
   path: string,
   options: ApiClientOptions = {},
@@ -228,6 +241,7 @@ export async function apiClient<TResponse>(
   // A previous expired-session redirect must not leak into a newly
   // authenticated session and suppress later session handling.
   sessionRedirectInProgress = false;
+  announce(path, options);
   if (options.raw) return response as unknown as TResponse;
   return data as TResponse;
 }

@@ -28,6 +28,7 @@ import type { ProductionOrderData } from "../types";
 import { ProductionOrderPriorityBadge } from "./ProductionOrderPriorityBadge";
 import { ProductionOrderStatusBadge } from "./ProductionOrderStatusBadge";
 import { useProductName } from "@/features/masterdata";
+import { Signatures } from "@/components/Signatures";
 
 type WorkCenterOption = {
   id: string;
@@ -247,7 +248,8 @@ export function ProductionOrderDetail() {
           <OrderStatusTimeline orderId={order.id} revision={revision} />
         </>
       ) : null}
-    </PageFrame>
+          {order && <Signatures resourceType="production_order" id={order.id} version={order.status} />}
+</PageFrame>
   );
 }
 

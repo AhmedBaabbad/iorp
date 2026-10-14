@@ -12,7 +12,7 @@ PASSWORD = "LifecycleUser123!"
 
 
 @pytest.fixture
-def lifecycle_env(client, db, monkeypatch):
+def lifecycle_env(client, db, monkeypatch, activate):
     monkeypatch.setattr(settings, "bootstrap_token", "user-lifecycle-token")
     initialized = client.post("/api/v1/system/bootstrap/initialize", json={
         "bootstrap_token": "user-lifecycle-token",
@@ -24,6 +24,7 @@ def lifecycle_env(client, db, monkeypatch):
     login = client.post("/api/v1/auth/login", json={"email": "users-root@example.com", "password": "UsersRoot123!"})
     headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
     created = client.post("/api/v1/admin/users", headers=headers, json={"full_name": "Lifecycle User", "email": "lifecycle-user@example.com", "password": PASSWORD, "role_codes": []})
+    activate("lifecycle-user@example.com", PASSWORD)  # SEC-003: the owner chooses the password
     assert created.status_code == 201
     org = db.query(Organization).filter_by(code="USERS-ORG").one()
     root = db.query(User).filter_by(email="users-root@example.com").one()
@@ -33,7 +34,7 @@ def lifecycle_env(client, db, monkeypatch):
 
 def action(env, name, user=None):
     target = user or env["target"]
-    return env["client"].post(f"/api/v1/admin/users/{target.id}/{name}", headers=env["headers"])
+    return env["client"].post(f"/api/v1/admin/users/{target.id}/{name}", headers=env["headers"], json={"reason": "Lifecycle policy test"})
 
 
 def login_target(env):
@@ -59,7 +60,7 @@ def test_user_lifecycle_contract(lifecycle_env, case):
     elif case == "T08":
         assert action(env, "lock", env["root"]).status_code == 403
     elif case in {"T09", "T10", "T11", "T15"}:
-        response = env["client"].delete(f"/api/v1/admin/users/{env['target'].id}", headers=env["headers"])
+        response = env["client"].request("DELETE", f"/api/v1/admin/users/{env['target'].id}", headers=env["headers"], json={"reason": "Lifecycle policy test"})
         assert response.status_code == 200 and response.json()["status"] == "inactive"
         assert env["db"].get(User, env["target"].id) is not None
     elif case in {"T12", "T13", "T14", "T16"}:
@@ -72,7 +73,7 @@ def test_user_lifecycle_contract(lifecycle_env, case):
         foreign = User(organization_id=other.id, full_name="Foreign", email=f"foreign-{case}@example.com", password_hash=hash_password(PASSWORD), status=UserStatus.ACTIVE)
         env["db"].add(foreign); env["db"].commit()
         path = f"/api/v1/admin/users/{foreign.id}/deactivation-impact" if case in {"T17", "T43"} else f"/api/v1/admin/users/{foreign.id}"
-        response = env["client"].get(path, headers=env["headers"]) if case in {"T17", "T43"} else env["client"].delete(path, headers=env["headers"])
+        response = env["client"].get(path, headers=env["headers"]) if case in {"T17", "T43"} else env["client"].request("DELETE", path, headers=env["headers"], json={"reason": "Lifecycle policy test"})
         assert response.status_code == 404
     elif case in {"T18", "T19", "T20", "T21", "T22"}:
         assert env["client"].get(f"/api/v1/admin/users/{env['target'].id}/deactivation-impact", headers=env["headers"]).status_code == 200
@@ -86,14 +87,14 @@ def test_user_lifecycle_contract(lifecycle_env, case):
             rejected = env["client"].get("/api/v1/auth/me", headers={"Authorization": f"Bearer {old_token}"})
             assert rejected.status_code == 403 and rejected.json()["code"] == "ACCOUNT_LOCKED"
         if case == "T29": assert action(env, "lock", env["root"]).status_code == 403
-        if case == "T31": assert env["target"].token_version == 1
+        if case == "T31": assert env["target"].token_version == 2  # 1 from choosing the password (activation link), +1 the lock
     elif case in {"T26", "T27"}:
         assert action(env, "lock").status_code == 200
         assert action(env, "unlock").json()["status"] == "active"
         if case == "T27": assert login_target(env).status_code == 200
     elif case in {"T30", "T33"}:
         before = env["target"].token_version
-        if case == "T30": env["client"].delete(f"/api/v1/admin/users/{env['target'].id}", headers=env["headers"])
+        if case == "T30": env["client"].request("DELETE", f"/api/v1/admin/users/{env['target'].id}", headers=env["headers"], json={"reason": "Lifecycle policy test"})
         else:
             action(env, "lock"); env["db"].refresh(env["target"]); before = env["target"].token_version; action(env, "unlock")
         env["db"].refresh(env["target"])
@@ -110,4 +111,4 @@ def test_user_lifecycle_contract(lifecycle_env, case):
         if endpoint:
             assert env["client"].post(f"/api/v1/admin/users/{env['target'].id}/{endpoint}").status_code == 401
         else:
-            assert env["client"].delete(f"/api/v1/admin/users/{env['target'].id}").status_code == 401
+            assert env["client"].request("DELETE", f"/api/v1/admin/users/{env['target'].id}").status_code == 401

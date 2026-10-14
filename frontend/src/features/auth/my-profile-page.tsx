@@ -10,6 +10,7 @@ import { LOCALE_COOKIE_NAME } from "@/i18n/config";
 import { updateMyProfile } from "./auth-client";
 import { useAuth } from "./auth-context";
 import { EffectiveAccessPanel } from "@/features/admin-users/components/EffectiveAccessPanel";
+import { EmailChangeForm } from "./email-change-form";
 import css from "./my-profile-page.module.css";
 
 function Icon({ children }: { children: ReactNode }) {
@@ -38,6 +39,7 @@ export function MyProfilePage() {
   const { user, refreshCurrentUser } = useAuth();
   const format = useFormatter();
   const [fullName, setFullName] = useState("");
+  const [timezone, setTimezone] = useState("");
   const [phone, setPhone] = useState("");
   const [preferredLocale, setPreferredLocale] = useState<"" | "ar" | "en">("");
   const [saving, setSaving] = useState(false);
@@ -47,6 +49,7 @@ export function MyProfilePage() {
   useEffect(() => {
     if (!user) return;
     setFullName(user.full_name);
+    setTimezone(user.timezone ?? "");
     setPhone(user.phone ?? "");
     setPreferredLocale(user.preferred_locale ?? "");
   }, [user]);
@@ -58,6 +61,7 @@ export function MyProfilePage() {
       const updated = await updateMyProfile({
         full_name: user?.is_organization_root ? undefined : fullName,
         phone: phone || null,
+        timezone: timezone || null,
         preferred_locale: preferredLocale || null,
       });
       setSuccess(true);
@@ -108,6 +112,7 @@ export function MyProfilePage() {
                 <div className={css.formGrid}>
                   <label><span>{t("fields.fullName")}</span><input value={fullName} onChange={(event) => setFullName(event.target.value)} disabled={user.is_organization_root} required />{user.is_organization_root ? <small>{t("rootNameLocked")}</small> : null}</label>
                   <label><span>{t("fields.email")}</span><input value={user.email} disabled /><small>{t("emailReadOnly")}</small></label>
+                  <label><span>{t("timezone")}</span><input value={timezone} onChange={event => setTimezone(event.target.value)} placeholder="Asia/Riyadh" maxLength={64}/></label>
                   <label><span>{t("fields.phone")}</span><input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder={t("phonePlaceholder")} /></label>
                   <label><span>{t("fields.preferredLocale")}</span><select value={preferredLocale} onChange={(event) => setPreferredLocale(event.target.value as "" | "ar" | "en")}><option value="">{t("localeOptions.default")}</option><option value="ar">{t("localeOptions.ar")}</option><option value="en">{t("localeOptions.en")}</option></select><small>{t("localeChangeNote")}</small></label>
                 </div>
@@ -116,6 +121,7 @@ export function MyProfilePage() {
                 <div className={css.formFooter}><p>{t("saveHint")}</p><button disabled={saving}>{saving ? <span className={css.spinner} /> : null}{t(saving ? "saving" : "saveButton")}</button></div>
               </form>
             </section>
+            {!user.is_organization_root ? <EmailChangeForm/> : <section className={css.card}><h2>{t("emailChange.title")}</h2><p role="note">{t("emailChange.rootProtected")}</p></section>}
           </div>
 
           <aside className={css.sideColumn}>

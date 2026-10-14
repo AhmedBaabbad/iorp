@@ -14,8 +14,14 @@ def hash_token(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 
-def get_reset_expiry_time() -> datetime:
-    return datetime.now(timezone.utc) + timedelta(minutes=get_settings().password_reset_expiry_minutes)
+def get_reset_expiry_time(minutes: int | None = None) -> datetime:
+    return datetime.now(timezone.utc) + timedelta(minutes=minutes or get_settings().password_reset_expiry_minutes)
+
+
+def link_lifetime_minutes(invitation: bool) -> int:
+    """SEC-003: an activation link lasts ACCOUNT_INVITATION_EXPIRY_HOURS; a reset link PASSWORD_RESET_EXPIRY_MINUTES."""
+    settings = get_settings()
+    return settings.account_invitation_expiry_hours * 60 if invitation else settings.password_reset_expiry_minutes
 
 
 def is_token_expired(expires_at: datetime) -> bool:

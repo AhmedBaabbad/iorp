@@ -1,4 +1,5 @@
 // Idle sign-out: warning after 4 minutes, automatic sign-out at 5, without any click.
+// These timings use a 5-minute policy (the organization may configure it); the default is 15 minutes (SEC-001).
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,6 +12,7 @@ vi.mock("@/features/auth/auth-client", () => ({ logoutSession: calls.logout }));
 import { SessionGuard } from "@/features/auth/session-guard";
 import { ACCESS_TOKEN_KEY } from "@/lib/auth";
 import { ApiClientError } from "@/lib/api-client";
+vi.hoisted(() => { process.env.NEXT_PUBLIC_IDLE_TIMEOUT_MINUTES = "5"; });
 
 const MIN = 60_000;
 const jwt = (expiresInMs: number) => `h.${btoa(JSON.stringify({ exp: Math.floor((Date.now() + expiresInMs) / 1000) }))}.s`;

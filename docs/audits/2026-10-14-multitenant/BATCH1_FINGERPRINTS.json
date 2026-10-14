@@ -1,0 +1,62 @@
+﻿[
+    {
+        "path":  "backend/tests/test_tenant_isolation.py",
+        "sha256":  "5DF6065F22C4D3929022F12E4EC3639945F1A873C81111216548DF091B614EE0"
+    },
+    {
+        "path":  "backend/tests/test_batch1_isolation.py",
+        "sha256":  "DFCE6CA06B9FDCF5D205242C5E9F97BD3173F08D2E6DB3F255AEA2FBFED67946"
+    },
+    {
+        "path":  "backend/tests/test_platform_isolation.py",
+        "sha256":  "B89D17C46E882A3A120EBE9E8FA47B4F08B9B5B89A59AFAAE21E237475CB7EED"
+    },
+    {
+        "path":  "backend/tests/test_jwt_token_architecture.py",
+        "sha256":  "674F8D34CAF407B9BB18AB5AFB26D283D5532388C5CBFCA7150DDFBF9E6A238D"
+    },
+    {
+        "path":  "backend/tests/test_readiness_transactions.py",
+        "sha256":  "1BE1A0FDA03E50AD88F8FAFDF6B530B9424D0CC144A0CBBB4997F48236EB0187"
+    },
+    {
+        "path":  "backend/tests/test_recovery_drill.py",
+        "sha256":  "A93B420EA368A31F1D3DF5F412DEF8DEA98E29E164639B4F7A4303B47E8FBE9B"
+    },
+    {
+        "path":  "backend/tests/test_file_policy.py",
+        "sha256":  "A472FEF53FA73BE6D364818355EA8DBF50CDB04605874B1A3A9F3C54A77EB9DF"
+    },
+    {
+        "path":  "backend/tests/test_delegations.py",
+        "sha256":  "ABF347751114A1C2A42BC5B74E63026662208DA57646963F0EC3BEB38452E18F"
+    },
+    {
+        "path":  "backend/tests/test_notifications.py",
+        "sha256":  "A2ECE79B4F889FF41B28E631639D8C70E11136CA084EBB720A16C5659E17F853"
+    },
+    {
+        "path":  "backend/scripts/recovery_drill.py",
+        "sha256":  "1414906EEA124347873A98487E7515B0D3EA20C5D533D601F993C0BDCEFE98F0"
+    },
+    {
+        "path":  "backend/scripts/run_batch1_baseline.py",
+        "sha256":  "7A1665D6172E502D6C1FDDC9870581FC3EEBD67F088F492416268EC2522C0827"
+    },
+    {
+        "path":  "backend/app/dependencies.py",
+        "sha256":  "6D47109324C3C548D88539A1F50A27785B8E457C3ED5AFB06E27B52319FA993D"
+    },
+    {
+        "path":  "backend/app/core/security.py",
+        "sha256":  "E4A1EA3A8956F2BB316B1969BAE7B26B7F0CF76C4434FA86F984F2949B6780F6"
+    },
+    {
+        "path":  "backend/app/platform/application/services.py",
+        "sha256":  "F38A2B476A63362FB009400F544ABE6206DD88BAE99557D40A1872BB062AC992"
+    },
+    {
+        "path":  "backend/app/platform/api/routes_platform_admin.py",
+        "sha256":  "2ED64129E56CD5E05C589596E38B386678304FFC8382C85FEC10D98DF7634CE4"
+    }
+]

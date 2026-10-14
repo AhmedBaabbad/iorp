@@ -1,4 +1,5 @@
 "use client";
+import {useUnitLabel} from "@/components/UnitLabel";
 import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { sharedStyles } from '@/styles/shared-styles';
@@ -7,6 +8,7 @@ import type { RequestedSpec, SampleProductDefinition } from '../types';
 
 /** Render historical nested values without exposing raw JSON or enabling edits to unknown fields. */
 function ReadableValue({ value }: { value: unknown }) {
+  const unitText = useUnitLabel();
   const t = useTranslations('commercial.samples.properties');
   if (value === null || value === undefined || value === '') return <>—</>;
   if (typeof value === 'boolean') return <>{t(value ? 'yes' : 'no')}</>;
@@ -17,6 +19,7 @@ function ReadableValue({ value }: { value: unknown }) {
 
 export function SamplePropertyValues({ values, definition }: { values: RequestedSpec | null; definition?: SampleProductDefinition | null }) {
   const ar = useLocale() === 'ar';
+  const unitText = useUnitLabel();
   const t = useTranslations('commercial.samples.properties');
   const props = definition?.properties ?? [];
   const keys = [...props.map(p => p.key).filter(k => values && k in values), ...Object.keys(values ?? {}).filter(k => !props.some(p => p.key === k))];
@@ -26,7 +29,7 @@ export function SamplePropertyValues({ values, definition }: { values: Requested
       const prop = props.find(p => p.key === key);
       const choice = prop?.options?.find(o => o.value === values?.[key]);
       const label = prop ? (ar ? prop.name_ar : prop.name_en) : key;
-      return <div key={key}><dt style={{ fontWeight: 600 }}>{label}{prop?.unit ? ` (${prop.unit})` : ''}</dt>
+      return <div key={key}><dt style={{ fontWeight: 600 }}>{label}{prop?.unit ? ` (${unitText(prop.unit)})` : ''}</dt>
         <dd style={{ margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}><ReadableValue value={choice ? (ar ? choice.label_ar : choice.label_en) : values?.[key]} /></dd></div>;
     })}
   </dl>;
@@ -38,6 +41,7 @@ export function SampleProductFields({ productKey, values, original, unchanged = 
   onChange: (key: string, values: RequestedSpec, unit?: string | null) => void; onReady: (ready: boolean) => void;
 }) {
   const ar = useLocale() === 'ar';
+  const unitText = useUnitLabel();
   const t = useTranslations('commercial.samples.properties');
   const [products, setProducts] = useState<SampleProductDefinition[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +84,7 @@ export function SampleProductFields({ productKey, values, original, unchanged = 
           const label = ar ? p.name_ar : p.name_en;
           const raw = values[p.key];
           const value = typeof raw === 'string' || typeof raw === 'number' ? String(raw) : '';
-          return <label key={p.key} style={sharedStyles.field}><span>{label}{p.unit ? ` (${p.unit})` : ''}{p.required ? ' *' : ''}</span>
+          return <label key={p.key} style={sharedStyles.field}><span>{label}{p.unit ? ` (${unitText(p.unit)})` : ''}{p.required ? ' *' : ''}</span>
             {p.kind === 'choice' ? <select aria-label={label} style={sharedStyles.input} value={value} required={p.required && !unchanged}
               onChange={e => changeProperty(p.key, e.target.value)}>
               <option value="">—</option>{p.options?.map(o => <option key={o.value} value={o.value}>{ar ? o.label_ar : o.label_en}</option>)}

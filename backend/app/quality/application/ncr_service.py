@@ -15,14 +15,17 @@ from datetime import timedelta
 from sqlalchemy import func, or_, select
 
 from app.core.pagination import paginate
-from app.core.storage import InvalidAttachmentError, LocalFileStorage, save_attachment, compensate_new_file
+from app.core import files
+from app.core.interfaces import approvals
+from app.core.storage import InvalidAttachmentError, LocalFileStorage, compensate_new_file
 from app.core.utils import utc_now
 from app.quality.domain import ncr as N
 from app.quality.domain.permissions import NCR_ACTIONS, NCR_ACTIONS_COMPLETE, NCR_VERIFY
 from app.quality.domain.rules import QualityError
 from app.quality.infrastructure.models import NCRAction, NCRAttachment, NonConformanceItem, NonConformanceReport, QualityCheck, QualityRejection
 from . import capa_notices
-from .support import ProcurementReads, ProductionReads, ShippingReads, _t, history, log_activity, next_code, record, user_names
+from . import notices
+from .support import CommercialReads, ProcurementReads, ProductionReads, ShippingReads, _t, history, log_activity, next_code, record, user_names
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +105,7 @@ class NCRService:
         rejections = dict(self.db.execute(select(QualityRejection.id, QualityRejection.rejection_code).where(
             QualityRejection.organization_id == self.org, QualityRejection.id.in_([r.quality_rejection_id for r in reports if r.quality_rejection_id]))).all())
         today = utc_now().date()
+        signed = approvals.signatures(self.db, self.org, "ncr", ids)
         out = []
         for r in reports:
             mine = actions[r.id]
@@ -116,10 +120,13 @@ class NCRService:
             if detail:
                 view.update(contained_by_name=names.get(r.contained_by_user_id), investigated_by_name=names.get(r.investigated_by_user_id),
                             verified_by_name=names.get(r.verified_by_user_id), items=self.items(r.id),
+                            verification_signature=approvals.latest(signed.get(r.id, []), "verify"),
                             effectiveness_reviewed_by_name=names.get(r.effectiveness_reviewed_by_user_id), recurrence=self.recurrence(r),
                             corrective_actions=[self.action_view(a, names, today) for a in mine],
                             attachments=self.attachments(r.id), history=history(self.db, self.org, "ncr", r.id),
                             can_complete_actions=can_complete(can) and r.status not in N.FINAL)
+                if can("commercial:complaints:read"):
+                    view.update(CommercialReads(self.db, self.org).complaint_of(r.id))
             out.append(view)
         return out
 
@@ -132,7 +139,7 @@ class NCRService:
                                     .order_by(NCRAttachment.uploaded_at)))
         names = user_names(self.db, self.org, [r.uploaded_by_user_id for r in rows])
         return [dict(id=r.id, file_name=r.file_name, content_type=r.content_type, size_bytes=r.size_bytes,
-                     uploaded_by_name=names.get(r.uploaded_by_user_id), uploaded_at=r.uploaded_at) for r in rows]
+                     uploaded_by_name=names.get(r.uploaded_by_user_id), uploaded_at=r.uploaded_at, archived_at=r.archived_at) for r in rows]
 
     def all_actions(self, params, *, status=None, owner_user_id=None, overdue=False, search=None) -> tuple[list[dict], int]:
         """One page of corrective actions across reports (the CAPA list), earliest due first, and the total."""
@@ -272,6 +279,7 @@ class NCRService:
         values = data.model_dump(exclude={"items"})
         self._validate(values)
         report = self.open_report(**values, items=[item.model_dump() for item in data.items])
+        notices.report_owner(self.db, self.tenant, report)
         self.db.commit()
         log_activity(self.db, self.org, self.tenant.user_id, "ncr_report.created", "ncr_report", report.id, report.report_number)
         return self._get(report.id)
@@ -281,6 +289,9 @@ class NCRService:
         N.assert_editable(report.status)
         values = data.model_dump(exclude_unset=True)
         self._validate(values)
+        if values.get("owner_user_id") and values["owner_user_id"] != report.owner_user_id:
+            report.owner_user_id = values["owner_user_id"]
+            notices.report_owner(self.db, self.tenant, report)
         for field in HEADER:
             if field in values and not (field in ("source_type", "report_type", "severity", "title", "description", "report_date",
                                                   "supplier_action", "claim_status") and values[field] is None):
@@ -344,6 +355,7 @@ class NCRService:
         report = self._get(report_id, lock=True)
         N.assert_can_submit(report.status, [a.status for a in self._actions_of([report.id])[report.id]])
         report.status = N.VERIFICATION
+        notices.report_awaits_verification(self.db, self.tenant, report)
         return self._commit(report, "submit", N.ACTION)
 
     def verify(self, report_id, effective, notes, review_days=0) -> NonConformanceReport:
@@ -353,10 +365,16 @@ class NCRService:
         report.verification_attempts += 1
         report.verification_notes, report.verified_at, report.verified_by_user_id = (notes or "").strip() or None, utc_now(), self.tenant.user_id
         report.status = N.CLOSED if effective else N.ACTION
+        try:  # whose authority and who signed, fixed now (directly, or under a delegation in force)
+            approvals.record(self.db, self.tenant, "ncr", report.id, "verify", NCR_VERIFY, report.verification_notes)
+        except PermissionError as exc:
+            self.db.rollback()
+            raise QualityError("APPROVAL_AUTHORITY_REQUIRED", 403) from exc
         if effective:
             report.closed_at = utc_now()
             report.effectiveness_due_date = report.closed_at.date() + timedelta(days=review_days) if review_days else None
             report.effectiveness_result = report.effectiveness_notes = report.effectiveness_reviewed_at = report.effectiveness_reviewed_by_user_id = None
+        notices.report_verified(self.db, self.tenant, report, effective)
         return self._commit(report, "verify", N.VERIFICATION, reason=report.verification_notes,
                             detail=dict(effective=str(bool(effective)), review_days=str(review_days if effective else 0)))
 
@@ -368,6 +386,11 @@ class NCRService:
         report.effectiveness_result = N.EFFECTIVE if effective else N.NOT_EFFECTIVE
         report.effectiveness_notes = (notes or "").strip() or None
         report.effectiveness_reviewed_at, report.effectiveness_reviewed_by_user_id = utc_now(), self.tenant.user_id
+        try:  # signed now, directly or under a delegation in force (PROJECT-GOV-004)
+            approvals.record(self.db, self.tenant, "ncr", report.id, "effectiveness_review", NCR_VERIFY, report.effectiveness_notes)
+        except PermissionError as exc:
+            self.db.rollback()
+            raise QualityError("APPROVAL_AUTHORITY_REQUIRED", 403) from exc
         if not effective:
             report.status, report.closed_at = N.ACTION, None
         return self._commit(report, "effectiveness_review", N.CLOSED, reason=report.effectiveness_notes, detail=dict(effective=str(bool(effective))))
@@ -377,6 +400,7 @@ class NCRService:
         N.assert_can_cancel(report.status, reason)
         before = report.status
         report.status, report.cancel_reason = N.CANCELLED, reason.strip()
+        notices.report_cancelled(self.db, self.tenant, report)
         return self._commit(report, "cancel", before, reason=report.cancel_reason)
 
     # corrective actions
@@ -399,6 +423,8 @@ class NCRService:
                            owner_user_id=data.owner_user_id, owner_name=(data.owner_name or "").strip() or None, due_date=data.due_date,
                            status=N.ACTION_OPEN, created_by_user_id=self.tenant.user_id)
         self.db.add(action)
+        self.db.flush()
+        notices.action_assigned(self.db, self.tenant, action, report)
         result = self._commit(report, "action_added", report.status, detail=dict(kind=data.kind))
         self._notify(action, result)
         return result
@@ -424,6 +450,9 @@ class NCRService:
         for field in ("kind", "description", "owner_user_id", "owner_name", "due_date"):
             if field in values and not (field in ("kind", "description") and values[field] is None):
                 setattr(action, field, values[field])
+        if reassigned:
+            notices.action_finished(self.db, self.tenant, action)
+            notices.action_assigned(self.db, self.tenant, action, report)
         result = self._commit(report, "action_updated", report.status)
         if reassigned:
             self._notify(action, result)
@@ -434,6 +463,7 @@ class NCRService:
         action = self._action(report, action_id)
         N.assert_can_complete(report.status, action.status, evidence)
         action.status, action.evidence, action.completed_at, action.completed_by_user_id = N.ACTION_DONE, evidence.strip(), utc_now(), self.tenant.user_id
+        notices.action_finished(self.db, self.tenant, action)
         return self._commit(report, "action_done", report.status, reason=action.evidence)
 
     def cancel_action(self, report_id, action_id, reason) -> NonConformanceReport:
@@ -443,6 +473,7 @@ class NCRService:
         if not (reason or "").strip():
             raise QualityError("REASON_REQUIRED", 400)
         action.status, action.cancel_reason = N.ACTION_CANCELLED, reason.strip()
+        notices.action_finished(self.db, self.tenant, action)
         return self._commit(report, "action_cancelled", report.status, reason=action.cancel_reason)
 
     # files
@@ -456,13 +487,14 @@ class NCRService:
         if count >= MAX_FILES:
             raise QualityError("TOO_MANY_FILES", 400, limit=MAX_FILES)
         try:
-            path, content_type = save_attachment(content, self.org, "quality", self._storage())
+            path, prepared = files.store(self.db, self._storage(), self.org, "quality", content, "attachment")
         except InvalidAttachmentError as exc:
-            raise QualityError(f"FILE_{exc}", 400) from exc
+            self.db.rollback()
+            raise QualityError(f"FILE_{exc.code}", 400, **({"limit": exc.limit} if exc.limit else {})) from exc
         with compensate_new_file(self.db, self._storage(), path, lambda: self.db.scalar(select(NCRAttachment.id).where(
                 NCRAttachment.organization_id == self.org, NCRAttachment.storage_path == path)) is not None):
-            self.db.add(NCRAttachment(organization_id=self.org, ncr_id=report.id, file_name=(file_name or "file")[-255:], content_type=content_type,
-                                  size_bytes=len(content), storage_path=path, uploaded_by_user_id=self.tenant.user_id))
+            self.db.add(NCRAttachment(organization_id=self.org, ncr_id=report.id, file_name=(file_name or "file")[-255:], content_type=prepared.media_type,
+                                  size_bytes=prepared.size, checksum=prepared.checksum, storage_path=path, uploaded_by_user_id=self.tenant.user_id))
             self.db.commit()
         return self.attachments(report.id)
 
@@ -484,9 +516,16 @@ class NCRService:
         return path, row.content_type, row.file_name
 
     def remove_attachment(self, report_id, attachment_id) -> list[dict]:
+        """While the report is open the file is deleted (and its space freed); once it is closed or cancelled, the file
+        is part of the record: it is archived, never deleted."""
         report = self._get(report_id)
-        N.assert_editable(report.status)
         row = self._attachment(report.id, attachment_id)
+        if report.status in N.FINAL:
+            if row.archived_at is None:
+                row.archived_at, row.archived_by_user_id = utc_now(), self.tenant.user_id
+                self.db.commit()
+            return self.attachments(report.id)
+        N.assert_editable(report.status)
         path = row.storage_path
         self.db.delete(row)
         self.db.commit()

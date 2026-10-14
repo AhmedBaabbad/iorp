@@ -10,6 +10,7 @@ from app.core.db import Base
 import app.commercial.infrastructure.models  # noqa: F401
 import app.foundation.infrastructure.models  # noqa: F401
 import app.foundation.infrastructure.branding_models  # noqa: F401
+import app.foundation.infrastructure.delegation_models  # noqa: F401
 import app.production.infrastructure.models  # noqa: F401
 import app.quality.infrastructure.models  # noqa: F401
 import app.shipping.infrastructure.models  # noqa: F401
@@ -18,6 +19,7 @@ import app.platform.infrastructure.models  # noqa: F401
 import app.core.security_models  # noqa: F401
 import app.workforce.infrastructure.models  # noqa: F401
 import app.masterdata.infrastructure.models  # noqa: F401
+import app.notifications.infrastructure.models  # noqa: F401
 
 config = context.config
 

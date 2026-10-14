@@ -45,6 +45,9 @@ class MasterDataCatalog:
 
 class MasterDataLists:
     """Master data's answer to core/interfaces/reference_lists.py (MD-002)."""
+    def active_text(self,db,organization_id,list_name,text):
+        return db.scalar(select(ListItem.id).where(ListItem.organization_id==organization_id,ListItem.list==list_name,
+            ListItem.active.is_(True),ListItem.name_en==text).limit(1)) is not None
     def defined(self, db, organization_id, list_name) -> bool:
         return db.scalar(select(ListItem.id).where(ListItem.organization_id == organization_id, ListItem.list == list_name).limit(1)) is not None
 

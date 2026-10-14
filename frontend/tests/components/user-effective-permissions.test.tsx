@@ -1,0 +1,21 @@
+import {cleanup,render,screen,fireEvent} from '@testing-library/react';
+import {afterEach,expect,it,vi} from 'vitest';
+import {NextIntlClientProvider} from 'next-intl';
+import en from '@/i18n/locales/en/effective-access.json';
+import ar from '@/i18n/locales/ar/effective-access.json';
+import adminEn from '@/i18n/locales/en/administration.json';
+import adminAr from '@/i18n/locales/ar/administration.json';
+const mocks=vi.hoisted(()=>({get:vi.fn()}));
+vi.mock('@/features/admin-users/api/admin-users-api',()=>({getAdminUserEffectiveAccess:mocks.get}));
+vi.mock('@/features/auth/auth-client',()=>({getMyEffectiveAccess:mocks.get}));
+import {EffectiveAccessPanel} from '@/features/admin-users/components/EffectiveAccessPanel';
+afterEach(()=>{cleanup();vi.clearAllMocks();});
+it.each(['en','ar'])('requests localized effective access and renders readable cards in %s',async locale=>{
+const name=locale==='ar'?'قراءة المنتجات':'Read products';
+mocks.get.mockResolvedValue({user_id:'u1',user_full_name:'User',generated_at:'2026-10-14T08:00:00Z',total_roles:1,total_permissions:1,missing_permissions_count:0,roles:[],missing_permissions:[],permissions_by_module:{masterdata:[{code:'masterdata:products:read',name,description:'Description',scopable:true,effective_scope:'own',scope_label:'Own',granted_by_roles:[{role_id:'r1',role_name:'Operator',scope:'own'}]}]}});
+render(<NextIntlClientProvider locale={locale} messages={{effectiveAccess:locale==='ar'?ar:en,administration:locale==='ar'?adminAr:adminEn}}><EffectiveAccessPanel userId="u1"/></NextIntlClientProvider>);
+expect(await screen.findByText(name)).toBeTruthy();expect(mocks.get).toHaveBeenCalledWith('u1',locale);
+expect(screen.getAllByText(locale==='ar'?'البيانات الأساسية':'Master data').length).toBeGreaterThan(0);
+expect(screen.getByText(/Operator/)).toBeTruthy();
+fireEvent.change(screen.getByRole('textbox'),{target:{value:'no-match'}});expect(screen.queryByText(name)).toBeNull();
+});

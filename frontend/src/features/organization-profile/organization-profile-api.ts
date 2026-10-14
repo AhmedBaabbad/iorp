@@ -5,10 +5,11 @@ export type OrganizationProfile = {
   id: string; name: string; code: string; status: OrganizationLifecycleStatus;
   industry_type: string | null; timezone: string; default_locale: "ar" | "en";
   has_logo: boolean; logo_url: string | null; created_at: string; updated_at: string;
+  max_sessions_per_user?: number;  // SEC-001
 };
 
 export const getOrganizationProfile = (token?: string | null) => apiClient<OrganizationProfile>("/organization/profile", { token });
-export const updateOrganizationProfile = (body: Pick<OrganizationProfile, "name" | "industry_type" | "timezone" | "default_locale">, token?: string | null) => apiClient<OrganizationProfile>("/organization/profile", { method: "PATCH", body, token });
+export const updateOrganizationProfile = (body: Pick<OrganizationProfile, "name" | "industry_type" | "timezone" | "default_locale" | "max_sessions_per_user">, token?: string | null) => apiClient<OrganizationProfile>("/organization/profile", { method: "PATCH", body, token });
 export const removeOrganizationLogo = (token?: string | null) => apiClient<{ message: string; has_logo: boolean }>("/organization/logo", { method: "DELETE", token });
 
 export async function uploadOrganizationLogo(file: File, token?: string | null) {

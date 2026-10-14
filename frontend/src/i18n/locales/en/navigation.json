@@ -83,13 +83,19 @@
     "commercialDashboard": "Dashboard · Customers & sales",
     "qualityDashboard": "Dashboard · Quality",
     "shippingDashboard": "Dashboard · Shipping & delivery",
-    "procurementDashboard": "Dashboard · Procurement"
+    "procurementDashboard": "Dashboard · Procurement",
+    "complaints": "Customer complaints",
+    "delegations": "Approval delegations",
+    "announcements": "Announcements",
+    "notifications": "Notifications",
+    "transportDirectory": "Transport directory"
   },
   "userMenu": {
     "changePassword": "Change Password",
     "profile": "Profile",
     "logout": "Sign out",
-    "label": "User menu"
+    "label": "User menu",
+    "sessions": "My sessions"
   },
   "topBar": {
     "notifications": "Notifications",

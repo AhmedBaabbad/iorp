@@ -1,13 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import s from "@/features/production-demands/demands.module.css";
 import { useFormatter } from "@/hooks/useFormatter";
 import { openAttachment, removeAttachment, uploadAttachment, type AttachmentOwner } from "../api";
 import { shippingErrorMessage } from "../shipping-errors";
 import type { Attachment } from "../types";
+import { FilePicker } from "@/components/forms/FilePicker";
 
 // Files kept with a shipment (the signed note as proof of delivery) or a return (photos): list, open, upload, remove.
 export function Attachments({ owner, files, kinds, canChange, onChange }: {
@@ -16,7 +17,6 @@ export function Attachments({ owner, files, kinds, canChange, onChange }: {
   const t = useTranslations("shipping.attachments");
   const errors = useTranslations("shipping.errors");
   const fmt = useFormatter();
-  const picker = useRef<HTMLInputElement>(null);
   const [kind, setKind] = useState(kinds[0]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -27,7 +27,6 @@ export function Attachments({ owner, files, kinds, canChange, onChange }: {
     catch (e) { setError(shippingErrorMessage(e, errors)); } finally { setBusy(false); }
   }
   async function upload(file: File | undefined) {
-    if (picker.current) picker.current.value = "";
     if (file) await run(() => uploadAttachment(owner, file, kind));
   }
 
@@ -47,10 +46,8 @@ export function Attachments({ owner, files, kinds, canChange, onChange }: {
       {kinds.length > 1 && <label className={s.field}>{t("kind")}
         <select value={kind} disabled={busy} onChange={e => setKind(e.target.value)}>{kinds.map(k => <option key={k} value={k}>{t(`kinds.${k}`)}</option>)}</select>
       </label>}
-      <input ref={picker} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" hidden aria-label={t("upload")}
-        onChange={e => void upload(e.target.files?.[0])} />
-      <button type="button" className={s.button} disabled={busy} onClick={() => picker.current?.click()}>{busy ? t("uploading") : t("upload")}</button>
-      <span className={s.muted}>{t("hint")}</span>
+      <FilePicker kind="attachment" label={t("upload")} busyLabel={t("uploading")} busy={busy} className={s.button} hintClassName={s.muted}
+        onFile={file => upload(file)} onError={setError} />
     </div>}
     {error && <p role="alert" className={s.error}>{error}</p>}
   </div>;

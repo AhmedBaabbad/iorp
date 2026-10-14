@@ -9,7 +9,7 @@ from sqlalchemy import case, func, select
 
 from app.core.db import Base
 from app.core.interfaces.activity_log import get_registered_activity_logger
-from app.core.utils import utc_now
+from app.core import numbering
 from app.procurement.domain import rules
 from app.procurement.infrastructure.models import ProcurementCounter, ProcurementEvent, ProcurementSettings
 
@@ -34,13 +34,7 @@ def settings(db, organization_id) -> ProcurementSettings:
 
 
 def _next(db, organization_id, kind, year) -> int:
-    counter = db.get(ProcurementCounter, (organization_id, kind, year), with_for_update=True)
-    if counter is None:
-        counter = ProcurementCounter(organization_id=organization_id, kind=kind, year=year, value=0)
-        db.add(counter)
-    counter.value += 1
-    db.flush()
-    return counter.value
+    return numbering.take(db, ProcurementCounter, organization_id=organization_id, kind=kind, year=year)
 
 
 def next_code(db, organization_id, kind) -> str:
@@ -49,13 +43,13 @@ def next_code(db, organization_id, kind) -> str:
 
 
 def next_receipt_number(db, organization_id) -> str:
-    year = utc_now().year
+    year = numbering.organization_year(db, organization_id)
     return rules.number(settings(db, organization_id).receipt_prefix, year, _next(db, organization_id, "GRN", year))
 
 
 def next_po_number(db, organization_id) -> str:
     """PO-YYYY-NNNN (prefix in the settings), never repeated under concurrency."""
-    year = utc_now().year
+    year = numbering.organization_year(db, organization_id)
     return rules.number(settings(db, organization_id).po_prefix or "PO-", year, _next(db, organization_id, "PO", year))
 
 

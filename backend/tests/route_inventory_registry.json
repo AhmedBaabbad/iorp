@@ -1,0 +1,1942 @@
+{
+  "DELETE /api/v1/admin/roles/{role_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/admin/roles/{role_id}/permissions/{permission_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/admin/users/{user_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/admin/users/{user_id}/roles/{role_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/commercial/customers/{customer_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/commercial/customers/{customer_id}/interactions/{interaction_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/commercial/follow-ups/{follow_up_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/commercial/orders/{order_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/commercial/quotes/{quote_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/commercial/sample-evaluations/{evaluation_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/commercial/samples/{sample_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/masterdata/lists/items/{item_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/organization/branding/logo": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/organization/logo": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/platform/administrators/{account_id}": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/platform/organizations/{organization_id}": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/production/demands/{demand_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/production/demands/{demand_id}/items/{item_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/production/downtime-events/{downtime_event_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/production/production-orders/{production_order_id}/items/{item_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/production/production-orders/{production_order_id}/result/entries/{entry_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/production/runs/{run_id}/members/{member_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/production/shift-definitions/{shift_definition_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/production/shift-rosters/{roster_id}/members/{member_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/production/waste-records/{waste_record_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/production/work-centers/{work_center_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/quality/non-conformance-reports/{report_id}/attachments/{attachment_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/quality/non-conformance-reports/{report_id}/items/{item_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/shipping/returns/{return_id}/attachments/{attachment_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/shipping/shipments/{shipment_id}/attachments/{attachment_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/workforce-members/{member_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "DELETE /api/v1/workforce-members/{member_id}/link-user": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/activity-log": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/activity-log/actors": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/activity-log/archive": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/activity-log/archive/{month}/download": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/activity-log/kinds": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/activity-log/{entry_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/audit-log": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/audit-log/export": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/audit-log/{entry_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/permissions": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/roles": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/roles/{role_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/roles/{role_id}/deletion-impact": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/security-log": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/security-log/kinds": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/security-log/{entry_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/users": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/users/{user_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/users/{user_id}/assignable-roles": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/users/{user_id}/deactivation-impact": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/users/{user_id}/effective-access": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/users/{user_id}/roles": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/admin/users/{user_id}/sessions": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/announcements": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/announcements/options": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/announcements/{announcement_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/approvals/{resource_type}/{resource_id}": {
+    "category": "dynamic_resource_policy",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/auth/me": {
+    "category": "authenticated_self",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/auth/me/effective-access": {
+    "category": "authenticated_self",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/auth/me/profile": {
+    "category": "authenticated_self",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/auth/sessions": {
+    "category": "authenticated_self",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/complaints": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/complaints/customers": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/complaints/products": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/complaints/sources": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/complaints/summary": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/complaints/{cid}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/complaints/{cid}/assignees": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/complaints/{cid}/attachments/{attachment_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/complaints/{cid}/references": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/customers": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/customers/eligible-sales-owners": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/customers/lookup": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/customers/{customer_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/customers/{customer_id}/deletion-impact": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/customers/{customer_id}/directory/{kind}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/customers/{customer_id}/follow-ups": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/customers/{customer_id}/interactions": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/customers/{customer_id}/orders": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/customers/{customer_id}/quotes": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/customers/{customer_id}/samples": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/dashboard": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/follow-ups": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/follow-ups/eligible-assignees": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/follow-ups/{follow_up_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/orders": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/orders/{order_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/orders/{order_id}/deletion-impact": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/quote-settings": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/quotes": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/quotes/{quote_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/quotes/{quote_id}/deletion-impact": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/quotes/{quote_id}/document.pdf": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/sample-evaluations/{evaluation_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/samples": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/samples/product-options": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/samples/{sample_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/samples/{sample_id}/deletion-impact": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/commercial/samples/{sample_id}/evaluations": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/customers/{customer_id}/report.pdf": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/dashboard/summary": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/delegations": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/delegations/options": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/delegations/waiting": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/masterdata/lists": {
+    "category": "tenant_reference_read",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/masterdata/lists/{list_name}/legacy": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/masterdata/products": {
+    "category": "tenant_reference_read",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/masterdata/products/legacy": {
+    "category": "tenant_reference_read",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/masterdata/products/{product_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/masterdata/settings": {
+    "category": "tenant_reference_read",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/notifications": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/notifications/summary": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/organization/branding": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/organization/branding/logo": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/organization/logo": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/organization/profile": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/organization/storage": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/platform/activity-log": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/platform/activity-log/{entry_id}": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/platform/administrators": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/platform/administrators/{account_id}": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/platform/audit-logs": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/platform/audit-logs/export.csv": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/platform/audit-logs/{event_id}": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/platform/me": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/platform/organizations": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/platform/organizations/{organization_id}": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/platform/organizations/{organization_id}/logo": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/platform/organizations/{organization_id}/storage": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/platform/security-log": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/platform/security-log/{entry_id}": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/procurement/dashboard": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/procurement/materials": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/procurement/purchase-orders": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/procurement/purchase-orders/open-for-receipt": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/procurement/purchase-orders/{order_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/procurement/purchase-orders/{order_id}/document.pdf": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/procurement/receipts": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/procurement/receipts/{receipt_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/procurement/receipts/{receipt_id}/document.pdf": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/procurement/settings": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/procurement/suppliers": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/procurement/suppliers/lookup": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/procurement/suppliers/{supplier_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/procurement/suppliers/{supplier_id}/contacts": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/procurement/suppliers/{supplier_id}/evaluation": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/dashboard": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/demand-lookups/customers": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/demand-lookups/quotes": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/demand-lookups/quotes/{quote_id}/items": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/demand-lookups/sales-orders": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/demands": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/demands/export.xlsx": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/demands/{demand_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/downtime-events": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/downtime-events/summary": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/downtime-events/{downtime_event_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/orders/{order_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/orders/{order_id}/eligible-demand-items": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/planning/demands": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/planning/demands/export.xlsx": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/planning/eligible-orders": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/production-orders": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/production-orders/lookup": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/production-orders/{order_id}/report.pdf": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/production-orders/{production_order_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/production-orders/{production_order_id}/items": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/production-orders/{production_order_id}/items/{item_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/production-orders/{production_order_id}/result": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/production-orders/{production_order_id}/status-history": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/production-results": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/runs": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/runs/{run_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/shift-definitions": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/shift-definitions/{shift_definition_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/shift-definitions/{shift_definition_id}/deletion-impact": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/shift-rosters": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/shift-rosters/active": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/shift-rosters/{roster_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/waste-records": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/waste-records/summary": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/waste-records/{waste_record_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/work-centers": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/work-centers/{work_center_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/production/work-centers/{work_center_id}/delete-summary": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/dashboard": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/incoming/awaiting": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/ncr-actions": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/ncr-actions/alerts": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/non-conformance-reports": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/non-conformance-reports/lookups/suppliers": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/non-conformance-reports/lookups/users": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/non-conformance-reports/{report_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/non-conformance-reports/{report_id}/attachments/{attachment_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/non-conformance-reports/{report_id}/document.pdf": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-certificates": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-certificates/sources": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-certificates/{certificate_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-certificates/{certificate_id}/document.pdf": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-checks": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-checks/lookups/orders": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-checks/lookups/samples": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-checks/{check_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-checks/{check_id}/batch-shipments": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-checks/{check_id}/defects": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-checks/{check_id}/specifications": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-defects": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-defects/{defect_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-rejections": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-rejections/{rejection_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-settings": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-specifications": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-specifications/{spec_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/quality-test-parameters": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/quality/returns/awaiting": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/reports/customers/lookups/{kind}": {
+    "category": "dynamic_resource_policy",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/reports/definitions": {
+    "category": "dynamic_resource_policy",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/reports/production/lookups/{kind}": {
+    "category": "dynamic_resource_policy",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/reports/quality/lookups/{kind}": {
+    "category": "dynamic_resource_policy",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/shipping/dashboard": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/shipping/directory/customers/{customer_id}/{kind}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/shipping/directory/workers": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/shipping/directory/{kind}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/shipping/directory/{kind}/options": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/shipping/returns": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/shipping/returns/{return_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/shipping/returns/{return_id}/attachments/{attachment_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/shipping/returns/{return_id}/document.pdf": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/shipping/settings": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/shipping/shipments": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/shipping/shipments/lookups/customers": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/shipping/shipments/lookups/production-orders": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/shipping/shipments/{shipment_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/shipping/shipments/{shipment_id}/attachments/{attachment_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/shipping/shipments/{shipment_id}/document.pdf": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/system/bootstrap/status": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/system/file-policy": {
+    "category": "public_or_system",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/workforce-members": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/workforce-members/{member_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/workforce-members/{member_id}/deletion-impact": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /health": {
+    "category": "public_or_system",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /health/ready": {
+    "category": "public_or_system",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/admin/roles/{role_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/admin/roles/{role_id}/permissions/{permission_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/admin/users/{user_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/auth/me": {
+    "category": "authenticated_self",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/commercial/customers/{customer_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/commercial/customers/{customer_id}/interactions/{interaction_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/commercial/follow-ups/{follow_up_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/commercial/orders/{order_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/commercial/quotes/{quote_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/commercial/sample-evaluations/{evaluation_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/commercial/samples/{sample_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/masterdata/lists/items/{item_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/masterdata/products/{product_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/masterdata/settings": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/organization/profile": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/platform/administrators/{account_id}": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/procurement/materials/{material_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/procurement/purchase-orders/{order_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/procurement/receipts/{receipt_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/procurement/settings": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/procurement/suppliers/{supplier_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/production/allocations/{allocation_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/production/demands/{demand_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/production/demands/{demand_id}/items/{item_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/production/downtime-events/{downtime_event_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/production/production-orders/{production_order_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/production/production-orders/{production_order_id}/items/{item_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/production/production-orders/{production_order_id}/result/entries/{entry_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/production/runs/{run_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/production/shift-definitions/{shift_definition_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/production/waste-records/{waste_record_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/production/work-centers/{work_center_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/quality/non-conformance-reports/{report_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/quality/non-conformance-reports/{report_id}/actions/{action_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/quality/non-conformance-reports/{report_id}/items/{item_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/quality/quality-certificates/{certificate_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/quality/quality-checks/{check_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/quality/quality-defects/{defect_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/quality/quality-rejections/{rejection_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/quality/quality-settings": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/quality/quality-specifications/{spec_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/quality/quality-test-parameters/{parameter_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/shipping/settings": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/shipping/shipments/{shipment_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PATCH /api/v1/workforce-members/{member_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/admin/activity-log/archive/{month}/delete": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/admin/roles": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/admin/roles/{role_id}/permissions": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/admin/users": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/admin/users/{user_id}/activate": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/admin/users/{user_id}/archive": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/admin/users/{user_id}/deactivate": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/admin/users/{user_id}/lock": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/admin/users/{user_id}/reset-password": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/admin/users/{user_id}/restore": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/admin/users/{user_id}/roles": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/admin/users/{user_id}/sessions/end": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/admin/users/{user_id}/unlock": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/announcements": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/announcements/{announcement_id}/withdraw": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/auth/change-password": {
+    "category": "authenticated_self",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/auth/forgot-password": {
+    "category": "public_or_system",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/auth/login": {
+    "category": "public_or_system",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/auth/logout": {
+    "category": "authenticated_self",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/auth/me/email-change": {
+    "category": "authenticated_self",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/auth/me/email-change/confirm": {
+    "category": "authenticated_self",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/auth/refresh": {
+    "category": "public_or_system",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/auth/reset-password": {
+    "category": "public_or_system",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/auth/sessions/end": {
+    "category": "authenticated_self",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/complaints": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/complaints/{cid}/assign": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/complaints/{cid}/attachments": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/complaints/{cid}/communications": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/complaints/{cid}/investigate": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/complaints/{cid}/links": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/complaints/{cid}/refer-quality": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/complaints/{cid}/resolve": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/complaints/{cid}/transitions": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/customers": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/customers/reassign-by-owner": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/customers/{customer_id}/directory/{kind}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/customers/{customer_id}/follow-ups": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/customers/{customer_id}/interactions": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/customers/{customer_id}/orders": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/customers/{customer_id}/quotes": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/customers/{customer_id}/samples": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/follow-ups/reassign-by-user": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/follow-ups/{follow_up_id}/cancel": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/follow-ups/{follow_up_id}/complete": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/follow-ups/{follow_up_id}/reopen": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/orders/{order_id}/cancel": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/orders/{order_id}/confirm": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/orders/{order_id}/revise": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/quotes/{quote_id}/accept": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/quotes/{quote_id}/expire": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/quotes/{quote_id}/issue": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/quotes/{quote_id}/reject": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/quotes/{quote_id}/revise": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/quotes/{quote_id}/sales-order": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/commercial/samples/{sample_id}/evaluations": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/delegations": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/delegations/{delegation_id}/approve": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/delegations/{delegation_id}/reject": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/delegations/{delegation_id}/revoke": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/masterdata/lists/{list_name}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/masterdata/lists/{list_name}/legacy/map": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/masterdata/lists/{list_name}/standard": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/masterdata/products": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/masterdata/products/legacy/map": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/notifications/hide-read": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/notifications/read-all": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/notifications/{item_id}/acknowledge": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/notifications/{item_id}/hide": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/notifications/{item_id}/read": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/organization/branding/logo": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/organization/logo": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/platform/account/change-password": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/platform/administrators": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/platform/administrators/{account_id}/reset-password": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/platform/auth/forgot-password": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/platform/auth/reset-password": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/platform/change-password": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/platform/login": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/platform/logout": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/platform/organizations": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/platform/organizations/{organization_id}/activate": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/platform/organizations/{organization_id}/archive": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/platform/organizations/{organization_id}/deactivate": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/platform/organizations/{organization_id}/reset-root-password": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/platform/organizations/{organization_id}/suspend": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/platform/refresh": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/procurement/materials": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/procurement/purchase-orders": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/procurement/purchase-orders/{order_id}/approve": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/procurement/purchase-orders/{order_id}/cancel": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/procurement/purchase-orders/{order_id}/close": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/procurement/purchase-orders/{order_id}/send": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/procurement/receipts": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/procurement/receipts/{receipt_id}/cancel": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/procurement/receipts/{receipt_id}/receive": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/procurement/suppliers": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/procurement/suppliers/{supplier_id}/contacts": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/procurement/suppliers/{supplier_id}/status": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/allocations/{allocation_id}/release": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/demands": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/demands/from-sales-order": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/demands/{demand_id}/import-quote-items": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/demands/{demand_id}/items": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/demands/{demand_id}/status": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/downtime-events": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/downtime-events/{downtime_event_id}/close": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/orders/{order_id}/allocations": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/planning/create-production-order": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/planning/demands/{demand_id}/reorder": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/planning/preview-production-order": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/production-orders": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/production-orders/{production_order_id}/cancel": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/production-orders/{production_order_id}/items": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/production-orders/{production_order_id}/result/entries": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/production-orders/{production_order_id}/result/entries/{entry_id}/corrections": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/production-orders/{production_order_id}/transitions": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/runs": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/runs/{run_id}/cancel": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/runs/{run_id}/complete": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/runs/{run_id}/load-roster-members": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/runs/{run_id}/members": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/runs/{run_id}/pause": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/runs/{run_id}/start": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/shift-definitions": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/shift-rosters": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/shift-rosters/{roster_id}/close": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/shift-rosters/{roster_id}/members": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/shift-rosters/{roster_id}/replace": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/waste-records": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/production/work-centers": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/incoming/lines/{line_id}/inspection": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/non-conformance-reports": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/non-conformance-reports/{report_id}/actions": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/non-conformance-reports/{report_id}/actions/{action_id}/cancel": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/non-conformance-reports/{report_id}/actions/{action_id}/complete": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/non-conformance-reports/{report_id}/attachments": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/non-conformance-reports/{report_id}/cancel": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/non-conformance-reports/{report_id}/contain": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/non-conformance-reports/{report_id}/investigate": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/non-conformance-reports/{report_id}/items": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/non-conformance-reports/{report_id}/review-effectiveness": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/non-conformance-reports/{report_id}/submit": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/non-conformance-reports/{report_id}/verify": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-certificates": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-certificates/{certificate_id}/issue": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-certificates/{certificate_id}/replace": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-certificates/{certificate_id}/revoke": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-checks": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-checks/{check_id}/cancel": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-checks/{check_id}/close": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-checks/{check_id}/defects": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-checks/{check_id}/defects/batch": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-checks/{check_id}/lot-decision": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-checks/{check_id}/plan": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-checks/{check_id}/return-decision": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-checks/{check_id}/start": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-rejections": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-rejections/{rejection_id}/decide": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-rejections/{rejection_id}/execute": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-specifications": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-specifications/{spec_id}/activate": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-specifications/{spec_id}/revise": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-test-parameters": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/quality-test-parameters/standard": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/quality/returns/lines/{line_id}/inspection": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/reports/{report_key}/pdf": {
+    "category": "dynamic_resource_policy",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/reports/{report_key}/preview": {
+    "category": "dynamic_resource_policy",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/directory/{kind}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/returns": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/returns/{return_id}/approve": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/returns/{return_id}/attachments": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/returns/{return_id}/cancel": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/returns/{return_id}/receive": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/returns/{return_id}/reject": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/shipments": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/shipments/{shipment_id}/attachments": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/shipments/{shipment_id}/cancel": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/shipments/{shipment_id}/close": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/shipments/{shipment_id}/deliver": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/shipments/{shipment_id}/dispatch": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/shipments/{shipment_id}/fail": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/shipments/{shipment_id}/ready": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/shipments/{shipment_id}/reopen": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/shipping/shipments/{shipment_id}/reschedule": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/system/bootstrap/initialize": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/workforce-members": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/workforce-members/{member_id}/link-user": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PUT /api/v1/commercial/complaints/{cid}/items": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PUT /api/v1/commercial/customers/{customer_id}/directory/{kind}/{record_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PUT /api/v1/commercial/quote-settings": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PUT /api/v1/organization/branding": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PUT /api/v1/platform/organizations/{organization_id}/storage": {
+    "category": "platform_administration",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PUT /api/v1/procurement/suppliers/{supplier_id}/contacts/{record_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PUT /api/v1/production/runs/{run_id}/members/{member_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PUT /api/v1/quality/quality-checks/{check_id}/measurements/{measurement_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "PUT /api/v1/shipping/directory/{kind}/{record_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  }
+}

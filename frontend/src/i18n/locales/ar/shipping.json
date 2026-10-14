@@ -235,11 +235,18 @@
     "RETURN_IS_FINAL": "المرتجع نهائي.",
     "TOO_MANY_FILES": "بحد أقصى {limit} ملفاً.",
     "FILE_EMPTY": "الملف فارغ.",
-    "FILE_TOO_LARGE": "الملف أكبر من 10 ميجابايت.",
-    "FILE_UNSUPPORTED_TYPE": "الصور (PNG وJPEG وWebP) وملفات PDF فقط.",
+    "FILE_TOO_LARGE": "الملف أكبر من الحد المسموح.",
+    "FILE_UNSUPPORTED_TYPE": "يُقبل فقط الصور (PNG وJPEG وWebP) وملفات PDF.",
     "FILE_INVALID_PATH": "تعذّر حفظ الملف.",
     "ATTACHMENT_KIND_UNKNOWN": "اختر نوع الملف من القائمة.",
-    "ATTACHMENT_NOT_FOUND": "الملف غير موجود."
+    "ATTACHMENT_NOT_FOUND": "الملف غير موجود.",
+    "FILE_QUOTA_EXCEEDED": "مساحة تخزين المنظمة ممتلئة: لم يُرفع الملف.",
+    "FILE_INVALID_IMAGE": "تعذّرت قراءة الصورة.",
+    "FILE_INVALID_PDF": "ملف PDF غير مكتمل أو تالف.",
+    "DRIVER_AFFILIATION_REQUIRED": "حدد صفة السائق: داخلي يعمل لدينا أو خارجي.",
+    "TRANSPORT_RECORD_UNAVAILABLE": "السائق أو المركبة أو شركة النقل غير متاحة للاختيار.",
+    "CUSTOMER_DELIVERY_RECORD_UNAVAILABLE": "موقع التسليم أو جهة الاتصال غير متاح لهذا العميل.",
+    "SUPPLIER_CONTACT_UNAVAILABLE": "جهة الاتصال غير متاحة لهذا المورد."
   },
   "productionOrder": {
     "none": "غير مرتبط",

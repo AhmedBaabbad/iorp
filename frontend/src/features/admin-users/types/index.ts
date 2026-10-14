@@ -7,6 +7,9 @@ export type AdminUserRoleRef = {
 };
 
 export type AdminUserListItem = {
+  archived_at?: string | null;
+  account_change_reason?: string | null;
+  timezone?: string | null;
   id: string;
   full_name: string;
   email: string;
@@ -16,6 +19,8 @@ export type AdminUserListItem = {
   is_organization_root: boolean;
   roles: AdminUserRoleRef[];
   created_at: string;
+  /** SEC-003: the activation link not used yet — the user has not chosen a password. */
+  activation_pending?: boolean;
 };
 
 export type AdminUserDetail = AdminUserListItem & {
@@ -26,13 +31,14 @@ export type AdminUserDetail = AdminUserListItem & {
   last_failed_login_at: string | null;
   permissions: string[];
   updated_at: string;
+  /** On creation only: whether the activation e-mail went out. */
+  invitation_sent?: boolean | null;
 };
 
 export type AdminUserCreateRequest = {
   full_name: string;
   email: string;
   phone?: string | null;
-  password: string;
   status?: UserStatus;
   role_codes?: string[];
   preferred_locale?: "ar" | "en" | null;

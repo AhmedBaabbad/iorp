@@ -99,6 +99,9 @@ class GoodsReceipt(Base):
     # PROC-003: the purchase order it delivers against (same supplier); its lines name the order's lines.
     purchase_order_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("procurement_purchase_orders.id"), nullable=True, index=True)
     vehicle_plate: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    driver_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    vehicle_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    driver_affiliation: Mapped[str | None] = mapped_column(String(16), nullable=True)
     driver_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     received_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
@@ -147,6 +150,7 @@ class PurchaseOrder(Base):
     supplier_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("procurement_suppliers.id"), nullable=False, index=True)
     supplier_name: Mapped[str] = mapped_column(String(255), nullable=False)  # as printed
     attention: Mapped[str | None] = mapped_column(String(200), nullable=True)  # the supplier's contact
+    supplier_contact_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     supplier_quote_ref: Mapped[str | None] = mapped_column(String(80), nullable=True)  # the supplier's quotation it accepts
     subject: Mapped[str | None] = mapped_column(String(255), nullable=True)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="SAR")
@@ -204,3 +208,5 @@ class ProcurementEvent(Base):
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id", ondelete="SET NULL"), nullable=True)
     occurred_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False, default=utc_now)
+
+from .contact_models import SupplierContact  # noqa: E402,F401

@@ -7,9 +7,11 @@ from uuid import UUID
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.interfaces import approvals
 from app.commercial.application import status_history
 from app.commercial.application.product_rules import assert_known_products, assert_vat_rate
 from app.commercial.domain import lifecycle as L
+from app.commercial.domain import pricing
 from app.commercial.api.schemas import QuoteCreate, QuoteDeletionImpact, QuoteItemCreate, QuoteUpdate
 from app.commercial.domain.enums import QuoteStatus
 from app.commercial.infrastructure.models import Quote, QuoteItem
@@ -21,7 +23,7 @@ from app.commercial.infrastructure.repositories import (
     SampleRepository,
 )
 from app.core.tenancy import TenantContext
-from app.core.utils import utc_now
+from app.core import numbering
 
 
 def _all(_action) -> bool:
@@ -51,7 +53,9 @@ class QuoteService:
                 quantity=item.quantity,
                 unit=item.unit,
                 unit_price=item.unit_price,
-                line_total=item.quantity * item.unit_price,
+                line_total=pricing.line_total(item.quantity, item.unit_price),
+                discount_percent=item.discount_percent,
+                discount_amount=pricing.line_discount(pricing.line_total(item.quantity, item.unit_price), item.discount_percent),
                 description_ar=item.description_ar,
                 description_en=item.description_en,
             )
@@ -59,25 +63,22 @@ class QuoteService:
         ]
 
     @staticmethod
-    def _tax_from_rate(items: list[QuoteItem], discount_amount: Decimal, tax_rate: Decimal) -> Decimal:
-        """VAT on the discounted subtotal, rounded to halalas (0.01)."""
-        subtotal_amount = sum((item.line_total for item in items), Decimal("0"))
-        return (max(subtotal_amount - discount_amount, Decimal("0")) * tax_rate / 100).quantize(Decimal("0.01"))
+    def _tax_from_rate(items: list[QuoteItem], tax_rate: Decimal) -> Decimal:
+        """VAT on the total after the lines' discounts, rounded to halalas (0.01)."""
+        return pricing.vat(sum((item.line_total - item.discount_amount for item in items), Decimal("0")), tax_rate)
 
     @staticmethod
-    def _calculate_quote_total(
-        items: list[QuoteItem],
-        discount_amount: Decimal,
-        tax_amount: Decimal,
-    ) -> tuple[Decimal, Decimal]:
+    def _calculate_quote_total(items: list[QuoteItem], tax_amount: Decimal) -> tuple[Decimal, Decimal, Decimal]:
+        """(subtotal before discount, discount, total including VAT)."""
         subtotal_amount = sum((item.line_total for item in items), Decimal("0"))
+        discount_amount = sum((item.discount_amount for item in items), Decimal("0"))
         total_amount = subtotal_amount - discount_amount + tax_amount
         if total_amount < 0:
             raise ValueError("Quote total cannot be negative.")
-        return subtotal_amount, total_amount
+        return subtotal_amount, discount_amount, total_amount
 
     def _generate_quote_number(self, tenant: TenantContext) -> str:
-        year = utc_now().year
+        year = numbering.organization_year(self.db, tenant.organization_id)
         highest_sequence = self.quotes.get_highest_quote_number_sequence(
             tenant.organization_id,
             year,
@@ -111,12 +112,8 @@ class QuoteService:
         assert_vat_rate(self.db, tenant.organization_id, data.tax_rate)
         items = self._build_quote_items(data.items)
         if data.tax_rate is not None:
-            data = data.model_copy(update={"tax_amount": self._tax_from_rate(items, data.discount_amount, data.tax_rate)})
-        subtotal_amount, total_amount = self._calculate_quote_total(
-            items,
-            data.discount_amount,
-            data.tax_amount,
-        )
+            data = data.model_copy(update={"tax_amount": self._tax_from_rate(items, data.tax_rate)})
+        subtotal_amount, discount_amount, total_amount = self._calculate_quote_total(items, data.tax_amount)
 
         quote = Quote(
             organization_id=tenant.organization_id,
@@ -125,6 +122,7 @@ class QuoteService:
             created_by_user_id=tenant.user_id,
             status=QuoteStatus.DRAFT,
             subtotal_amount=subtotal_amount,
+            discount_amount=discount_amount,
             total_amount=total_amount,
             items=items,
             **data.model_dump(exclude={"items"}),
@@ -182,13 +180,21 @@ class QuoteService:
             return None
         new = {"issue": L.ISSUED, "accept": L.ACCEPTED, "reject": L.REJECTED, "expire": L.EXPIRED, "revise": L.DRAFT}[action]
         L.assert_quote_transition(quote.status, new, reason)
-        before = quote.status
-        if action == "revise":
-            quote.revision += 1
-        quote.status = QuoteStatus(new)
-        status_history.record(self.db, tenant.organization_id, status_history.QUOTE, quote.id, action, before, new,
-                              quote.revision, tenant.user_id, reason)
-        self.db.commit()
+        try:
+            before = quote.status
+            if action == "revise":
+                quote.revision += 1
+            quote.status = QuoteStatus(new)
+            if action == "issue":  # signed: directly or under a delegation in force (PROJECT-GOV-004)
+                from app.commercial.application.quote_terms import freeze
+                freeze(self.db, quote, tenant.user_id)
+                approvals.sign(self.db, tenant, "quote", quote.id, "issue", "commercial:quotes:issue")
+            status_history.record(self.db, tenant.organization_id, status_history.QUOTE, quote.id, action, before, new,
+                                  quote.revision, tenant.user_id, reason)
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
         return self.get_quote(tenant, quote.id)
 
     def get_deletion_impact(
@@ -201,14 +207,18 @@ class QuoteService:
             return None
 
         orders = self.orders.count_by_quote(quote.id)
+        from app.commercial.infrastructure.quote_terms_models import QuoteTermsSnapshot
+        from sqlalchemy import select
+        issued_history=self.db.scalar(select(QuoteTermsSnapshot.id).where(QuoteTermsSnapshot.organization_id==tenant.organization_id,
+            QuoteTermsSnapshot.quote_id==quote.id).limit(1)) is not None
         return QuoteDeletionImpact(
             items=len(quote.items),
             orders=orders,
-            is_blocked=orders > 0 or quote.status == QuoteStatus.ACCEPTED,
+            is_blocked=orders > 0 or quote.status == QuoteStatus.ACCEPTED or issued_history,
         )
 
     def delete_quote(self, tenant: TenantContext, quote_id: UUID) -> bool:
-        quote = self.quotes.get_by_id(tenant.organization_id, quote_id)
+        quote = self.quotes.get_by_id(tenant.organization_id, quote_id, lock=True)
         if quote is None:
             return False
 
@@ -218,6 +228,12 @@ class QuoteService:
             )
         if quote.status == QuoteStatus.ACCEPTED:
             raise ValueError("QUOTE_ACCEPTED")
+
+        from app.commercial.infrastructure.quote_terms_models import QuoteTermsSnapshot
+        from sqlalchemy import select
+        if self.db.scalar(select(QuoteTermsSnapshot.id).where(QuoteTermsSnapshot.organization_id==tenant.organization_id,
+            QuoteTermsSnapshot.quote_id==quote.id).limit(1)):
+            raise ValueError("QUOTE_HAS_ISSUED_HISTORY")
 
         status_history.forget(self.db, tenant.organization_id, status_history.QUOTE, quote.id)
         self.quotes.delete(quote)
@@ -255,15 +271,9 @@ class QuoteService:
                 [QuoteItemCreate(**item) for item in items_payload]
             )
         if quote.tax_rate is not None:
-            quote.tax_amount = self._tax_from_rate(quote.items, quote.discount_amount, quote.tax_rate)
+            quote.tax_amount = self._tax_from_rate(quote.items, quote.tax_rate)
 
-        subtotal_amount, total_amount = self._calculate_quote_total(
-            quote.items,
-            quote.discount_amount,
-            quote.tax_amount,
-        )
-        quote.subtotal_amount = subtotal_amount
-        quote.total_amount = total_amount
+        quote.subtotal_amount, quote.discount_amount, quote.total_amount = self._calculate_quote_total(quote.items, quote.tax_amount)
 
         try:
             self.db.commit()

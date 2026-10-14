@@ -150,6 +150,7 @@ class PlatformOrganizationRootSummary(BaseModel):
     email: EmailStr
     status: str
     last_login_at: datetime | None
+    activation_pending: bool = False  # SEC-003
 
 
 class PlatformOrganizationRoleSummary(BaseModel):
@@ -163,9 +164,16 @@ class PlatformOrganizationDetail(PlatformOrganizationSummary):
     roles: list[PlatformOrganizationRoleSummary]
 
 
+class OrganizationRootInvite(BaseModel):
+    """SEC-003: the organization's root, without a password: they receive an activation link and choose their own."""
+    full_name: str = Field(min_length=1, max_length=255)
+    email: NormalizedEmail
+    phone: str | None = Field(default=None, max_length=50)
+
+
 class CreatePlatformOrganizationRequest(BaseModel):
     organization: OrganizationInput
-    organization_admin: OrganizationAdminInput
+    organization_admin: OrganizationRootInvite
 
 
 class ProvisionedOrganizationResponse(BaseModel):
@@ -192,6 +200,7 @@ class CreatePlatformOrganizationResponse(BaseModel):
     root_user: ProvisionedRootUserResponse
     roles_created: list[str]
     organization_admin_email: EmailStr
+    invitation_sent: bool = False  # SEC-003: whether the root's activation e-mail went out
 
 
 class OrganizationStatusChangeRequest(BaseModel):
@@ -199,8 +208,7 @@ class OrganizationStatusChangeRequest(BaseModel):
 
 
 class ResetOrganizationRootPasswordRequest(BaseModel):
-    new_password: str = Field(min_length=1, max_length=128)
-    new_password_confirmation: str = Field(min_length=1, max_length=128)
+    """SEC-002: nothing to send — the organization's root receives a reset link and chooses their own password."""
 
 
 class ResetOrganizationRootPasswordResponse(BaseModel):
@@ -211,10 +219,9 @@ class ResetOrganizationRootPasswordResponse(BaseModel):
 
 
 class PlatformAccountCreate(BaseModel):
+    """SEC-003: no password — the new administrator receives an activation link and chooses their own."""
     full_name: str = Field(min_length=1, max_length=255)
     email: NormalizedEmail
-    password: str = Field(min_length=12, max_length=128)
-    password_confirmation: str = Field(min_length=1, max_length=128)
     role: PlatformAccountRole
 
 
@@ -237,6 +244,8 @@ class PlatformAccountResponse(BaseModel):
     password_changed_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    activation_pending: bool = False  # SEC-003: the activation link not used yet
+    invitation_sent: bool | None = None  # on creation only
 
 
 class PlatformAccountListItem(BaseModel):
@@ -249,8 +258,8 @@ class PlatformAccountListItem(BaseModel):
     is_bootstrap_root: bool = False
     last_login_at: datetime | None
     created_at: datetime
+    activation_pending: bool = False
 
 
 class PlatformPasswordResetRequest(BaseModel):
-    new_password: str = Field(min_length=1, max_length=128)
-    new_password_confirmation: str = Field(min_length=1, max_length=128)
+    """SEC-002: nothing to send — the administrator receives a reset link and chooses their own password."""

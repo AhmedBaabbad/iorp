@@ -1,4 +1,5 @@
 "use client";
+import { formatUnit } from "@/lib/localized-units";
 
 import { useLocale } from "next-intl";
 
@@ -20,9 +21,10 @@ import {
 export function useFormatter() {
   const locale = useLocale() as Locale;
   const { user } = useAuth();
-  const timeZone = user?.organization_timezone;
+  const timeZone = user?.timezone || user?.organization_timezone;
 
   return {
+    unit: (value: string | null | undefined) => formatUnit(value, locale),
     date: (value: string | Date | null | undefined) => formatDate(value, locale, timeZone),
     time: (value: string | Date | null | undefined) => formatTime(value, locale, timeZone),
     dateTime: (value: string | Date | null | undefined) => formatDateTime(value, locale, timeZone),

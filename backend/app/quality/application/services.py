@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.interfaces.reference_lists import unknown_list_values
 from app.core.pagination import paginate
 from app.core.tenancy import TenantContext
 from app.quality.domain.rules import QualityError
@@ -78,6 +79,10 @@ class QualityDefectService:
     def _assert_new_type(self, tenant: TenantContext, check_id: UUID, categories, excluding: UUID | None = None) -> None:
         """An inspection records each defect type once (more occurrences go in defect_count)."""
         values = [getattr(c, "value", c) for c in categories]
+        current = self.db.scalar(select(QualityDefect.defect_category).where(QualityDefect.id == excluding)) if excluding else None
+        unknown = unknown_list_values(self.db, tenant.organization_id, "defect_category", values, [current] if current else ())
+        if unknown:
+            raise QualityError("LIST_VALUE_UNKNOWN", 400, field="defect_category", value=unknown[0])  # MD-003
         if len(values) != len(set(values)):
             raise QualityError("DEFECT_ALREADY_RECORDED", 409, defect_category=sorted({v for v in values if values.count(v) > 1})[0])
         query = select(QualityDefect.defect_category).where(QualityDefect.organization_id == tenant.organization_id,
@@ -101,7 +106,7 @@ class QualityDefectService:
         tenant: TenantContext,
         params,
         *,
-        defect_category: DefectCategory | None = None,
+        defect_category: str | None = None,
         severity: DefectSeverity | None = None,
         production_order_id: UUID | None = None,
         defect_date: date | None = None,

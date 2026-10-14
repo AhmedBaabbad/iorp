@@ -29,5 +29,17 @@
   "generatedAt": "تم الحساب في",
   "systemRole": "نظامي",
   "customRole": "مخصص",
-  "modules": { "foundation": "الإدارة", "commercial": "التجاري", "production": "الإنتاج", "quality": "الجودة", "workforce": "القوى العاملة" }
+  "modules": {
+    "foundation": "الإدارة",
+    "commercial": "التجاري",
+    "production": "الإنتاج",
+    "quality": "الجودة",
+    "workforce": "القوى العاملة",
+    "organization": "المنظمة",
+    "reports": "التقارير",
+    "shipping": "الشحن والتسليم",
+    "procurement": "المشتريات",
+    "masterdata": "البيانات الأساسية",
+    "notifications": "الإشعارات"
+  }
 }

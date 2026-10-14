@@ -14,7 +14,7 @@ USER_PASSWORD = "ProfileUser123!"
 
 
 @pytest.fixture
-def profile_env(client, db, monkeypatch):
+def profile_env(client, db, monkeypatch, activate):
     monkeypatch.setattr(settings, "bootstrap_token", "profile-token")
     initialized = client.post("/api/v1/system/bootstrap/initialize", json={
         "bootstrap_token": "profile-token",
@@ -29,6 +29,7 @@ def profile_env(client, db, monkeypatch):
         "full_name": "Profile User", "email": "profile-user@example.com", "password": USER_PASSWORD, "role_codes": [],
     })
     assert created.status_code == 201, created.json()
+    activate("profile-user@example.com", USER_PASSWORD, platform=False)  # SEC-003: the owner chooses the password
     user_login = client.post("/api/v1/auth/login", json={"email": "profile-user@example.com", "password": USER_PASSWORD})
     user_headers = {"Authorization": f"Bearer {user_login.json()['access_token']}"}
     return {"client": client, "db": db, "root_headers": root_headers, "user_headers": user_headers, "user_id": UUID(created.json()["id"])}
@@ -86,7 +87,7 @@ def test_t27_t30_admin_and_self_service_are_separate(profile_env):
     assert admin.status_code == own.status_code == 200
     assert "permissions" in admin.json() and "organization" not in admin.json()
     assert "organization" in own.json()
-    assert env["client"].patch(f"/api/v1/admin/users/{env['user_id']}", headers=env["root_headers"], json={"full_name": "Admin Updated"}).status_code == 200
+    assert env["client"].patch(f"/api/v1/admin/users/{env['user_id']}", headers=env["root_headers"], json={"full_name": "Admin Updated"}).status_code == 400
     assert env["client"].patch(f"/api/v1/admin/users/{env['user_id']}", headers=env["user_headers"], json={"full_name": "Denied"}).status_code == 403
 
 

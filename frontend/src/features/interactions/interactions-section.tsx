@@ -23,12 +23,13 @@ import {
   toInteractionCreateRequest,
   type InteractionFormValues,
 } from "./interaction-form";
+import { useClassificationChoices, useClassificationName } from "@/features/masterdata";
 
 type CustomerInteractionsSectionProps = {
   customerId: string;
 };
 
-const interactionTypes: InteractionType[] = ["call", "visit", "whatsapp", "email", "meeting"];
+const interactionTypes: InteractionType[] = ["call", "visit", "whatsapp", "email", "meeting"];  // the usual ones
 
 const styles: Record<string, CSSProperties> = {
   form: {
@@ -49,6 +50,7 @@ const styles: Record<string, CSSProperties> = {
 export function CustomerInteractionsSection({ customerId }: CustomerInteractionsSectionProps) {
   const t = useTranslations("commercial.interactions");
   const tEnums = useTranslations();
+  const typeName = useClassificationName("interaction_type", "interaction", "interactionType");
   const messages = useTranslations("messages");
   const common = useTranslations("common");
   const fmt = useFormatter();
@@ -68,6 +70,7 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
   const [values, setValues] = useState<InteractionFormValues>(
     createDefaultInteractionFormValues,
   );
+  const typeChoices = useClassificationChoices("interaction_type", interactionTypes, "interaction", "interactionType", values.interaction_type);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -211,9 +214,9 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
               }
               disabled={isSubmitting}
             >
-              {interactionTypes.map((type) => (
-                <option key={type} value={type}>
-                  {getEnumLabel("interaction", "interactionType", type, tEnums)}
+              {typeChoices.map((choice) => (
+                <option key={choice.key} value={choice.key}>
+                  {choice.label}
                 </option>
               ))}
             </select>
@@ -316,7 +319,7 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
               <div style={sharedStyles.itemHeader}>
                 <h3 style={sharedStyles.itemTitle}>{interaction.subject}</h3>
                 <p style={sharedStyles.meta}>
-                  {getEnumLabel("interaction", "interactionType", interaction.interaction_type, tEnums)}
+                  {typeName(interaction.interaction_type)}
                   {" - "}
                   {fmt.dateTime(interaction.interaction_date)}
                 </p>

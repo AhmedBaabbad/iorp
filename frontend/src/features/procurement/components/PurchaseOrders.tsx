@@ -1,5 +1,6 @@
 "use client";
 
+import { DirectorySelect } from "@/features/reference-directory/DirectorySelect";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -24,6 +25,7 @@ import {
   type OrderStatus, type ProcurementSettings, type SupplierOption,
 } from "../types";
 import { SupplierStatusBadge } from "./Suppliers";
+import { Signatures } from "@/components/Signatures";
 
 const STATUS_CLASS: Record<OrderStatus, string> = { draft: "", approved: s.blue, sent: s.blue, partially_received: s.overdue, received: s.green,
   closed: s.green, cancelled: s.cancelled };
@@ -123,9 +125,9 @@ function OrderSettings() {
 
 type Line = { material_id: string; description: string; notes: string; quantity: string; unit: string; unit_price: string };
 const EMPTY_LINE: Line = { material_id: "", description: "", notes: "", quantity: "", unit: "kg", unit_price: "" };
-type Header = { [K in "required_date" | "attention" | "supplier_quote_ref" | "subject" | "payment_terms" | "payment_terms_note" | "incoterm"
+type Header = { [K in "supplier_contact_id" | "required_date" | "attention" | "supplier_quote_ref" | "subject" | "payment_terms" | "payment_terms_note" | "incoterm"
   | "delivery_place" | "notes" | "discount_amount"]: string };
-const EMPTY_HEADER: Header = { required_date: "", attention: "", supplier_quote_ref: "", subject: "", payment_terms: "", payment_terms_note: "", incoterm: "",
+const EMPTY_HEADER: Header = { supplier_contact_id:"", required_date: "", attention: "", supplier_quote_ref: "", subject: "", payment_terms: "", payment_terms_note: "", incoterm: "",
   delivery_place: "", notes: "", discount_amount: "" };
 const blank = (v: string) => v.trim() || null;
 const plain = (v: string | null) => (v === null ? "" : String(Number(v)));
@@ -228,10 +230,11 @@ export function OrderForm({ orderId, supplierId }: { orderId?: string; supplierI
           <div className={s.grid}>
             <label className={s.field}>{t("receipts.findSupplier")}<input value={query} placeholder={t("suppliers.searchPlaceholder")} onChange={e => setQuery(e.target.value)} /></label>
             <label className={s.field}>{t("fields.supplier")}
-              <select required value={supplier} onChange={e => setSupplier(e.target.value)}>
+              <select required value={supplier} onChange={e => {setSupplier(e.target.value);setH(old=>({...old,supplier_contact_id:"",attention:""}));}}>
                 <option value="">{t("receipts.chooseSupplier")}</option>
                 {suppliers.map(o => <option key={o.id} value={o.id}>{o.name}{o.supplier_code ? ` — ${o.supplier_code}` : ""}</option>)}</select></label>
-            {input("attention", { maxLength: 200, placeholder: t("orders.attentionPlaceholder") })}
+            {supplier&&<DirectorySelect path={`/procurement/suppliers/${supplier}/contacts`} value={h.supplier_contact_id} label={t("orders.fields.attention")} onChange={(id,row)=>setH(old=>({...old,supplier_contact_id:id,attention:row?.name??old.attention}))}/>}
+            {input("attention", { maxLength: 200, disabled:!!h.supplier_contact_id, placeholder: t("orders.attentionPlaceholder") })}
             {input("supplier_quote_ref", { maxLength: 80, dir: "ltr" })}
           </div>
           {chosen && chosen.status !== "approved" && <p className={s.error} role="status" style={{ marginBottom: 0 }}>
@@ -327,6 +330,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   const currencies = useTranslations("common.currencies");
   const fmt = useFormatter();
   const units = useTranslations("common.units.units");
+  const tDelegation = useTranslations("administration.delegations");
   const unit = (code: string) => (units.has(code) ? units(code) : code);
   const [x, setX] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -379,7 +383,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         <Item label={t("orders.fields.payment_terms")}>{[x.payment_terms ? t(`paymentTerms.${x.payment_terms}`) : null, x.payment_terms_note].filter(Boolean).join(" — ") || "—"}</Item>
         <Item label={t("orders.fields.incoterm")}>{x.incoterm ? `${x.incoterm} — ${t(`incoterms.${x.incoterm}`)}` : "—"}</Item>
         <Item label={t("orders.fields.delivery_place")}>{x.delivery_place ?? "—"}</Item>
-        <Item label={t("orders.approvedBy")}>{x.approved_by_name ? `${x.approved_by_name} — ${fmt.dateTime(x.approved_at!)}` : "—"}</Item>
+        <Item label={t("orders.approvedBy")}>{x.approved_by_name ? `${x.approved_by_name}${x.approval?.delegated ? ` (${tDelegation("onBehalfOf", { name: x.approval.authority_name })})` : ""} — ${fmt.dateTime(x.approved_at!)}` : "—"}</Item>
       </dl>
       {x.subject && <p style={{ marginBottom: 0 }}><strong>{t("orders.fields.subject")}:</strong> {x.subject}</p>}
     </section>
@@ -415,6 +419,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         <Link href={`/goods-receipts/${r.id}`}><bdi>{r.receipt_no}</bdi></Link> · {fmt.date(r.receipt_date)} · {t(`receiptStatuses.${r.status}`)}</li>)}</ul>
     </section>}
     {x.notes && <section className={s.panel}><p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{x.notes}</p></section>}
+    <Signatures resourceType="purchase_order" id={x.id} version={x.status} />
     <section className={s.panel} aria-label={t("historyTitle")}>
       <h2 style={{ marginTop: 0 }}>{t("historyTitle")}</h2>
       <ol className={s.timeline}>{x.history.map((e, i) => <li key={`${e.at}-${i}`}>

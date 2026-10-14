@@ -8,6 +8,7 @@ from app.core.db import Base
 from app.core.utils import utc_now
 from app.core.interfaces import sales_order_source
 from app.core.interfaces.product_catalog import unknown_product_types
+from app.core import numbering
 from app.production.api.demand_schemas import CreateDemandItemRequest
 from app.production.infrastructure.models import ProductionDemand, ProductionDemandItem
 from app.production.infrastructure.demand_repository import ProductionDemandRepository, PLANNABLE
@@ -120,7 +121,7 @@ class ProductionDemandService:
                 raise DemandError("sales_order_line_not_found", 404)
             if wanted.quantity > left[wanted.order_item_id]:
                 raise DemandError("quantity_exceeds_remaining", 409)
-        year = date.today().year
+        year = numbering.organization_year(self.db, self.org_id)
         counter = self.repo.lock_counter(self.org_id, year)
         counter.last_value += 1
         delivery = data.requested_delivery_date or (order.delivery.date() if order.delivery else None)
@@ -172,7 +173,7 @@ class ProductionDemandService:
     def create(self, data):
         self.repo.lock_organization(self.org_id)
         self.validate_references(data.customer_id, data.quote_id)
-        year = date.today().year
+        year = numbering.organization_year(self.db, self.org_id)
         counter = self.repo.lock_counter(self.org_id, year)
         counter.last_value += 1
         row = ProductionDemand(organization_id=self.org_id, demand_number=f"PD-{year}-{counter.last_value:06d}", created_by_user_id=self.tenant.user_id, **data.model_dump(exclude={"items", "request_date"}), request_date=data.request_date or date.today())

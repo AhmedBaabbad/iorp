@@ -877,7 +877,8 @@
       "current": "Current",
       "ended": "Ended"
     },
-    "noMembers": "No members yet"
+    "noMembers": "No members yet",
+    "unnamed": "Unnamed"
   },
   "results": {
     "title": "Final production result",

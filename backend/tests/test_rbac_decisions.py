@@ -1,3 +1,4 @@
+from tests.route_inventory import discover_routes
 """RBAC-002: every decision has its own permission; a sales representative sees and works only their own customers'
 quotations, sales orders and samples; interactions and evaluations can be corrected or removed with their own
 permissions; every permission has a readable Arabic and English name."""
@@ -20,7 +21,7 @@ PASSWORD = "Test1234!"
 
 
 def _route_policy(method, path):
-    for route in app.routes:
+    for route in discover_routes(app):
         if isinstance(route, APIRoute) and route.path == path and method in route.methods:
             def calls(dep):
                 yield dep.call
@@ -31,7 +32,7 @@ def _route_policy(method, path):
 
 
 @pytest.mark.parametrize("method,path,code", [
-    ("DELETE", "/api/v1/admin/users/{user_id}/hard", "foundation:users:delete"),
+    ("DELETE", "/api/v1/admin/users/{user_id}", "foundation:users:deactivate"),
     ("POST", "/api/v1/shipping/shipments/{shipment_id}/fail", "shipping:shipments:fail"),
     ("POST", "/api/v1/shipping/shipments/{shipment_id}/close", "shipping:shipments:close"),
     ("POST", "/api/v1/shipping/returns/{return_id}/reject", "shipping:returns:reject"),

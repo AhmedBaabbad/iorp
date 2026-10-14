@@ -19,6 +19,37 @@ class Mailbox:
     def send_email(self, *args): self.messages.append(args); return True
 
 
+@pytest.mark.parametrize('locale,expected,absent',[
+    ('ar','شركة ريحانة الأفق للصناعة','Rehanah Al-Ofoq Industrial Company'),
+    ('en','Rehanah Al-Ofoq Industrial Company','شركة ريحانة الأفق للصناعة'),
+])
+def test_email_company_name_matches_language(db,locale,expected,absent):
+    from app.foundation.infrastructure.branding_models import OrganizationBranding
+    org,user,_=_seed(db)
+    db.add(OrganizationBranding(organization_id=org.id,legal_name_ar='شركة ريحانة الأفق للصناعة',
+        legal_name_en='Rehanah Al-Ofoq Industrial Company'))
+    db.commit()
+    mailbox=Mailbox()
+    TenantPasswordResetService(mailbox).request_reset(db,user.email,locale)
+    _,subject,html,text=mailbox.messages[0]
+    assert expected in subject and expected in html and expected in text
+    assert absent not in subject and absent not in html and absent not in text
+    if locale=='en':
+        assert subject=='Password Reset — Rehanah Al-Ofoq Industrial Company — IORP'
+
+
+def test_email_branding_missing_language_falls_back_without_other_tenant_name(db):
+    from app.foundation.infrastructure.branding_models import OrganizationBranding
+    org,user,_=_seed(db)
+    other=Organization(name='Other tenant',code='RESET-OTHER')
+    db.add(other);db.flush()
+    db.add(OrganizationBranding(organization_id=other.id,legal_name_en='Other Private Company'))
+    db.commit()
+    mailbox=Mailbox()
+    TenantPasswordResetService(mailbox).request_reset(db,user.email,'en')
+    assert mailbox.messages[0][1]=='Password Reset — Reset Org — IORP'
+
+
 def _seed(db):
     org = Organization(name="Reset Org", code="RESET", status=OrganizationStatus.ACTIVE, default_locale="en", timezone="UTC")
     db.add(org); db.flush()
@@ -61,3 +92,28 @@ def test_expired_and_unknown_email_api_behavior(client, db):
     db.add(TenantPasswordResetToken(user_id=user.id, organization_id=user.organization_id, token_hash=hash_token(expired_raw), expires_at=utc_now() - timedelta(minutes=1))); db.commit()
     response = client.post("/api/v1/auth/reset-password", json={"token": expired_raw, "new_password": "StrongReset123!", "new_password_confirmation": "StrongReset123!"})
     assert response.status_code == 400 and response.json()["code"] == "RESET_TOKEN_EXPIRED"
+
+
+@pytest.mark.parametrize('platform',[False,True])
+def test_requested_locale_used_and_failed_delivery_invalidates_token(db,platform):
+    _,user,account=_seed(db)
+    mailbox=Mailbox()
+    service=PlatformPasswordResetService(mailbox) if platform else TenantPasswordResetService(mailbox)
+    email=account.email if platform else user.email
+    service.request_reset(db,email,'en')
+    assert 'Password Reset' in mailbox.messages[-1][1]
+    mailbox.send_email=lambda *args:False
+    service.request_reset(db,email,'ar')
+    model=PlatformPasswordResetToken if platform else TenantPasswordResetToken
+    assert all(r.used_at is not None for r in db.scalars(select(model)))
+
+
+def test_suspended_organization_cannot_use_old_reset_link(db,monkeypatch):
+    org,user,_=_seed(db)
+    raw='suspended-organization-token-32-characters'
+    monkeypatch.setattr('app.foundation.application.password_reset.generate_reset_token',lambda:(raw,hash_token(raw)))
+    service=TenantPasswordResetService(Mailbox())
+    service.request_reset(db,user.email)
+    org.status=OrganizationStatus.SUSPENDED
+    db.commit()
+    with pytest.raises(TenantInvalidToken):service.execute_reset(db,raw,'StrongReset123!')

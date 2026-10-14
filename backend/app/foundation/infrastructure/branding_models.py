@@ -13,6 +13,8 @@ class StoredAsset(Base):
     organization_id: Mapped[UUID] = mapped_column(ForeignKey('foundation_organizations.id'), index=True)
     storage_key: Mapped[str] = mapped_column(String(500))
     media_type: Mapped[str] = mapped_column(String(50))
+    size_bytes: Mapped[int] = mapped_column(Integer, default=0, server_default='0')  # as stored, after processing
+    checksum: Mapped[str | None] = mapped_column(String(64))  # sha256 of the stored bytes
     created_at: Mapped[datetime] = mapped_column(TZDateTime, default=utc_now)
 
 
@@ -59,3 +61,8 @@ class BankAccount(Base):
     iban: Mapped[str] = mapped_column(String(34))
     swift_code: Mapped[str | None] = mapped_column(String(11))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+from app.core.files import register_file_table  # noqa: E402  (PROJECT-FILES-003: counted in the organization's quota)
+
+register_file_table("foundation_stored_assets")

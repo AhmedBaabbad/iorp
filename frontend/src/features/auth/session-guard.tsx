@@ -7,7 +7,7 @@ import { ACCESS_TOKEN_KEY, getStoredAccessToken, removeStoredAccessToken } from 
 import { IDLE_TIMEOUT_MS, markActivity, nextSessionAction, readLastActivity, tokenExpiry } from "@/lib/session-policy";
 import { logoutSession } from "./auth-client";
 
-const ACTIVITY_EVENTS = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart", "scroll"] as const;
+const ACTIVITY_EVENTS = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart", "scroll", "input"] as const;  // not focus: the warning's own button takes it
 const WRITE_THROTTLE_MS = 5_000;
 
 const goTo = (url: string) => window.location.replace(url);
@@ -46,6 +46,9 @@ export function SessionGuard({ onSignedOut, redirect = goTo }: { onSignedOut?: (
 
   const check = useCallback(() => {
     if (ended.current) return;
+    // Working inside an embedded frame (a report or PDF preview) sends no events to this page: the frame holding the
+    // focus of a visible window counts as activity.
+    if (document.visibilityState === "visible" && document.hasFocus() && document.activeElement?.tagName === "IFRAME") touch();
     const now = Date.now();
     const last = Math.max(lastActivity.current, readLastActivity() ?? 0);
     const action = nextSessionAction(now, last, tokenExpiry(getStoredAccessToken()));
@@ -58,7 +61,7 @@ export function SessionGuard({ onSignedOut, redirect = goTo }: { onSignedOut?: (
         else nextRefreshAt.current = Date.now() + 15_000;
       }).finally(() => { refreshing.current = false; });
     }
-  }, [end]);
+  }, [end, touch]);
 
   useEffect(() => {
     // Reopening the app after the idle limit (closed tab, sleeping laptop) still signs out.

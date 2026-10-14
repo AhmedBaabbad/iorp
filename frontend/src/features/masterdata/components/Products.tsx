@@ -15,6 +15,7 @@ import { refreshCatalog } from "../catalog";
 import { masterdataErrorMessage } from "../masterdata-errors";
 import { PRODUCT_KINDS, PROPERTY_KINDS, type LegacyValue, type Product, type ProductInput, type ProductProperty } from "../types";
 
+import { joinList } from "@/lib/utils";
 const KEY = /^[a-z][a-z0-9_]{1,59}$/;
 const keyFrom = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 60);
 
@@ -53,7 +54,7 @@ export function ProductsList() {
         <td><bdi dir="ltr">{p.key}</bdi></td>
         <td>{t(`kinds.${p.kind}`)}</td>
         <td>{p.default_unit ? (units.has(p.default_unit) ? units(p.default_unit) : p.default_unit) : "—"}</td>
-        <td>{p.properties.length ? p.properties.map(q => (locale === "ar" ? q.name_ar : q.name_en)).join("، ") : "—"}</td>
+        <td>{p.properties.length ? joinList(p.properties.map(q => (locale === "ar" ? q.name_ar : q.name_en)), locale) : "—"}</td>
       </tr>)}</tbody>
     </table></div></section>}
     {canLegacy && rows && <LegacyValues products={rows} onMapped={() => { refreshCatalog(); void load(); }} />}

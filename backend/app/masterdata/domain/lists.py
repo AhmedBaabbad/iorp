@@ -10,12 +10,81 @@ the Kingdom's main cities — which the organization then edits.
 from .rules import KEY, MasterDataError
 
 SECTOR, SOURCE, COUNTRY, CITY = "sector", "opportunity_source", "country", "city"
-LISTS = (SECTOR, SOURCE, COUNTRY, CITY)
+# Operational lists: the record keeps the item's English name as a snapshot (core reference_lists.assert_reference_text).
+DOWNTIME_REASON, WASTE_REASON, WORKFORCE_SKILL, TEST_METHOD = "downtime_reason", "waste_reason", "workforce_skill", "test_method"
+# Classifications a department names (MD-003): the record keeps the item's key, as for sectors.
+SUPPLIER_CATEGORY, MATERIAL_CATEGORY, DEFECT_CATEGORY, REJECTION_REASON = "supplier_category", "material_category", "defect_category", "rejection_reason"
+COMPLAINT_CATEGORY, INTERACTION_TYPE, VEHICLE_TYPE = "complaint_category", "interaction_type", "vehicle_type"
+LISTS = (SECTOR, SOURCE, COUNTRY, CITY, DOWNTIME_REASON, WASTE_REASON, WORKFORCE_SKILL, TEST_METHOD, SUPPLIER_CATEGORY, MATERIAL_CATEGORY,
+         DEFECT_CATEGORY, REJECTION_REASON, COMPLAINT_CATEGORY, INTERACTION_TYPE, VEHICLE_TYPE)
+TEXT_LISTS = (DOWNTIME_REASON, WASTE_REASON, WORKFORCE_SKILL, TEST_METHOD)  # stored as the English name, not the key
+# Items the system itself writes (an automatic rejection's reason): never deleted, whatever their use.
+PROTECTED: dict[str, frozenset[str]] = {
+    REJECTION_REASON: frozenset({"failed_quality_check", "out_of_spec", "other"}),
+    COMPLAINT_CATEGORY: frozenset({"quality"}),  # a quality complaint is referred to quality (commercial complaint rules)
+}
 PARENT = {CITY: COUNTRY}  # a list whose items belong to an item of another list
 MAX_ITEMS = 500
 
 # (key, Arabic, English[, parent key])
 STANDARD: dict[str, tuple[tuple[str, ...], ...]] = {
+    DOWNTIME_REASON: (
+        ("power_outage", "انقطاع الكهرباء", "Power outage"), ("mechanical_breakdown", "عطل ميكانيكي", "Mechanical breakdown"),
+        ("electrical_fault", "عطل كهربائي", "Electrical fault"), ("die_change", "تغيير القالب / المقاس", "Die or size change"),
+        ("material_shortage", "نقص المواد الخام", "Material shortage"), ("planned_maintenance", "صيانة مخططة", "Planned maintenance"),
+        ("cleaning", "تنظيف", "Cleaning"), ("quality_hold", "إيقاف للجودة", "Quality hold"), ("operator_shortage", "نقص المشغلين", "Operator shortage"),
+        ("startup_adjustment", "ضبط عند التشغيل", "Start-up adjustment"), ("other", "أخرى", "Other"),
+    ),
+    WASTE_REASON: (
+        ("startup_scrap", "هالك بداية التشغيل", "Start-up scrap"), ("edge_trim", "قص الحواف", "Edge trim"), ("film_break", "انقطاع الفيلم", "Film break"),
+        ("gauge_variation", "تفاوت السماكة", "Gauge variation"), ("contamination", "تلوث / شوائب", "Contamination"),
+        ("winding_defect", "عيب اللف", "Winding defect"), ("color_change", "تغيير اللون", "Color change"), ("roll_end", "نهاية الرول", "Roll end"),
+        ("handling_damage", "تلف أثناء المناولة", "Handling damage"), ("other", "أخرى", "Other"),
+    ),
+    WORKFORCE_SKILL: (
+        ("extruder_operator", "مشغل خط بثق", "Extruder operator"), ("rewinder_operator", "مشغل خط لف", "Rewinder operator"),
+        ("packer", "عامل تعبئة", "Packer"), ("quality_inspector", "مفتش جودة", "Quality inspector"), ("maintenance_technician", "فني صيانة", "Maintenance technician"),
+        ("electrician", "كهربائي", "Electrician"), ("forklift_driver", "سائق رافعة شوكية", "Forklift driver"), ("storekeeper", "أمين مستودع", "Storekeeper"),
+        ("supervisor", "مشرف وردية", "Shift supervisor"),
+    ),
+    TEST_METHOD: (
+        ("micrometer", "ميكرومتر", "Micrometer"), ("caliper", "قدمة ورنية", "Caliper"), ("measuring_tape", "شريط قياس", "Measuring tape"),
+        ("weighing", "وزن بالميزان", "Weighing"), ("tensile_test", "اختبار الشد", "Tensile test"), ("elongation_test", "اختبار الاستطالة", "Elongation test"),
+        ("visual_inspection", "فحص بصري", "Visual inspection"), ("color_comparison", "مقارنة اللون", "Color comparison"),
+        ("puncture_test", "اختبار الثقب", "Puncture test"), ("cling_test", "اختبار الالتصاق", "Cling test"),
+    ),
+    SUPPLIER_CATEGORY: (
+        ("raw_material", "مواد خام", "Raw materials"), ("packaging", "مواد تغليف", "Packaging"), ("consumables", "مستهلكات", "Consumables"),
+        ("services", "خدمات", "Services"), ("other", "أخرى", "Other"),
+    ),
+    MATERIAL_CATEGORY: (
+        ("resin", "حبيبات (ريزن)", "Resin"), ("masterbatch", "ماستر باتش", "Masterbatch"), ("additive", "إضافات", "Additive"), ("core", "كور", "Core"),
+        ("carton", "كراتين", "Carton"), ("film", "استريتش / أفلام", "Film"), ("accessory", "ملحقات", "Accessory"), ("other", "أخرى", "Other"),
+    ),
+    DEFECT_CATEGORY: (
+        ("dimension", "أبعاد", "Dimension"), ("thickness", "السماكة / القياس", "Thickness / Gauge"), ("surface", "عيب سطحي", "Surface Defect"),
+        ("color", "انحراف اللون", "Color Deviation"), ("strength", "إخفاق في المتانة", "Strength Failure"), ("winding", "عيب اللف", "Winding Defect"),
+        ("weight", "وزن خارج المعيار", "Weight Out of Tolerance"), ("packaging", "عيب التعبئة", "Packaging Defect"),
+        ("labeling", "خطأ في التسمية", "Labeling Error"), ("finish", "نعومة / الملمس", "Finish / Texture"), ("other", "أخرى", "Other"),
+    ),
+    REJECTION_REASON: (
+        ("failed_quality_check", "فشل فحص الجودة", "Failed Quality Check"), ("critical_defect", "عيب حرج", "Critical Defect"),
+        ("out_of_spec", "خارج المواصفات", "Out of Specification"), ("dimension_failure", "فشل الأبعاد", "Dimension Failure"),
+        ("surface_failure", "فشل السطح", "Surface Failure"), ("packaging_failure", "فشل التعبئة", "Packaging Failure"),
+        ("labeling_issue", "مشكلة في التسمية", "Labeling Issue"), ("other", "أخرى", "Other"),
+    ),
+    COMPLAINT_CATEGORY: (
+        ("quality", "الجودة", "Quality"), ("delivery", "التسليم", "Delivery"), ("quantity", "الكمية", "Quantity"), ("packaging", "التغليف", "Packaging"),
+        ("commercial", "الشروط التجارية", "Commercial terms"), ("service", "الخدمة", "Service"), ("other", "أخرى", "Other"),
+    ),
+    INTERACTION_TYPE: (
+        ("call", "مكالمة هاتفية", "Phone Call"), ("visit", "زيارة ميدانية", "Site Visit"), ("whatsapp", "واتساب", "WhatsApp"),
+        ("email", "بريد إلكتروني", "Email"), ("meeting", "اجتماع", "Meeting"),
+    ),
+    VEHICLE_TYPE: (
+        ("pickup", "بيك أب (ونيت)", "Pickup"), ("dyna", "دينا", "Dyna (light truck)"), ("lorry", "لوري", "Lorry"),
+        ("trailer", "تريلا", "Trailer"), ("refrigerated", "شاحنة مبردة", "Refrigerated truck"), ("van", "فان", "Van"),
+    ),
     SECTOR: (
         ("packaging", "التعبئة والتغليف", "Packaging"), ("food_beverage", "الأغذية والمشروبات", "Food and beverages"),
         ("construction", "البناء والمقاولات", "Construction"), ("electrical_cables", "الكهرباء والكابلات", "Electrical and cables"),

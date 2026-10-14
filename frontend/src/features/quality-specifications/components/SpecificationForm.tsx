@@ -1,4 +1,7 @@
 "use client";
+import {useUnitLabel} from "@/components/UnitLabel";
+import { ReferenceTextSelect } from "@/features/reference-directory/ReferenceTextSelect";
+
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -18,6 +21,7 @@ const DECIMAL = /^-?\d+(\.\d{1,4})?$/;
 
 // A new specification (revision 1, draft) or a draft's edit: header and one line per parameter with its acceptance.
 export function SpecificationForm({ specId }: { specId?: string }) {
+  const unitText = useUnitLabel();
   const t = useTranslations("quality.specifications");
   const errors = useTranslations("quality.errors");
   const messages = useTranslations("messages");
@@ -138,8 +142,7 @@ export function SpecificationForm({ specId }: { specId?: string }) {
                 <label className={s.field}>{t("fields.acceptance")}<input maxLength={255} dir="auto" placeholder={t("acceptancePlaceholder")}
                   value={line.acceptance ?? ""} onChange={e => setLine(index, { acceptance: e.target.value })} /></label>
               </>}
-              <label className={s.field}>{t("fields.method")}<input maxLength={255} dir="auto" placeholder={p?.method ?? ""} value={line.method ?? ""}
-                onChange={e => setLine(index, { method: e.target.value })} /></label>
+              <label className={s.field}>{t("fields.method")}<ReferenceTextSelect list="test_method" value={line.method??""} onChange={v=>setLine(index,{method:v})}/></label>
             </div>
             <div className={s.actions} style={{ marginTop: 10 }}>
               <button type="button" className={s.button} disabled={index === 0} onClick={() => move(index, -1)} aria-label={t("moveUp")}>↑</button>
@@ -153,7 +156,7 @@ export function SpecificationForm({ specId }: { specId?: string }) {
           <label className={s.field}>{t("addLine")}
             <select value={adding} disabled={busy} onChange={e => setAdding(e.target.value)}>
               <option value="">—</option>
-              {unused.map(p => <option key={p.id} value={p.id}>{name(p)}{p.unit ? ` (${p.unit})` : ""}</option>)}
+              {unused.map(p => <option key={p.id} value={p.id}>{name(p)}{p.unit ? ` (${unitText(p.unit)})` : ""}</option>)}
             </select>
           </label>
           <button type="button" className={s.button} disabled={!adding || busy} onClick={() => addLine(adding)}>{t("add")}</button>

@@ -2,8 +2,10 @@ from decimal import Decimal
 from types import SimpleNamespace
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError, OperationalError
+from app.production.application import notices
 from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.core.utils import utc_now
+from app.production.application.order_numbers import next_order_number
 from app.production.application.allocation_service import AllocationService, assert_allocation_open, follow_allocations
 from app.production.application.order_lines import ACTIVE, rebuild_lines
 from app.production.domain.arrangement import arrange
@@ -65,12 +67,7 @@ class PlanningOrderService:
             if center is None:
                 raise AllocationError("WORK_CENTER_NOT_FOUND", 404)
             base = rows[0][0]
-            year = utc_now().year
-            # Organization mutex makes number selection atomic across planning/manual creation.
-            numbers = set(db.scalars(select(ProductionOrder.production_order_number).where(ProductionOrder.organization_id == org_id)))
-            sequence = len(numbers) + 1
-            while (number := f"PO-{year}-{sequence:06d}") in numbers:
-                sequence += 1
+            number = next_order_number(db, org_id)
             order = ProductionOrder(organization_id=org_id, production_order_number=number,
                 work_center_id=center.id, product_type=base.product_type, target_spec_json=None,
                 planned_quantity=sum((qty for _, _, qty in rows), Decimal(0)), unit=base.unit, priority=data.priority,
@@ -87,6 +84,7 @@ class PlanningOrderService:
             rebuild_lines(db, order)
             for demand_id in sorted({item.production_demand_id for item, _, _ in rows}, key=str):
                 self.allocations.sync_demand_status(db, org_id, db.get(ProductionDemand, demand_id))
+            notices.order_awaits_release(db, self.tenant, order)
             db.commit()
             db.expire_all()
             return db.get(ProductionOrder, order.id)

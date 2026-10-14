@@ -53,6 +53,8 @@ def build(db, tenant, params, selected) -> ReportData:
     zone = ZoneInfo(db.scalar(select(orgs.timezone).where(orgs.id == tenant.organization_id)) or "UTC")
     moment = lambda v: v.astimezone(zone).strftime("%d / %m / %Y  %H:%M") if v else "—"  # noqa: E731
     names = user_names(db, tenant.organization_id, [r.created_by_user_id, r.decided_by_user_id, r.received_by_user_id])
+    from app.core.interfaces import approvals
+    approved = approvals.latest(approvals.signatures(db, tenant.organization_id, "shipment_return", [r.id])[r.id], "approve")
     unit = lambda code: unit_label(code, params.lang)  # noqa: E731
     weight = lambda value, code: f"{_num(value)} {unit(code)}" if value is not None else "—"  # noqa: E731
     party = [(say("العميل", "Customer"), r.customer_name), (say("إشعار التسليم", "Delivery note"), s.shipment_no),
@@ -78,7 +80,7 @@ def build(db, tenant, params, selected) -> ReportData:
         number=r.return_no, date=moment(r.requested_at).split("  ")[0], kind=tr(KINDS[r.kind]), party=party, cause=cause, lines=lines,
         weight=weight(sum(weights, Decimal("0")).quantize(Decimal("0.001")), "kg") if weights else "—", details=r.details,
         decision_note=r.decision_note, receipt_notes=r.receipt_notes, cancel_reason=r.cancel_reason, status=r.status,
-        prepared_by=names.get(r.created_by_user_id) or "", decided_by=names.get(r.decided_by_user_id) or "",
+        prepared_by=names.get(r.created_by_user_id) or "", decided_by=approvals.signed_name(approved, names.get(r.decided_by_user_id), params.lang) if approved else names.get(r.decided_by_user_id) or "",
         received_by=names.get(r.received_by_user_id) or "", received_at=moment(r.received_at) if received else "")
     return ReportData(sections=[], subject=r.return_no, document=document)
 

@@ -13,6 +13,7 @@ from app.quality.domain import permissions as quality_permissions
 from app.shipping.domain import permissions as shipping_permissions
 from app.procurement.domain import permissions as procurement_permissions
 from app.masterdata.domain import permissions as masterdata_permissions
+from app.notifications.domain import permissions as notification_permissions
 
 
 @dataclass(frozen=True)
@@ -40,9 +41,14 @@ MODULE_NAMES = {
     "procurement": {"en": "Procurement", "ar": "المشتريات"},
     "masterdata": {"en": "Master data", "ar": "البيانات الأساسية"},
     "workforce": {"en": "Workforce", "ar": "القوى العاملة"},
+    "notifications": {"en": "Notifications", "ar": "الإشعارات"},
 }
 
 RESOURCE_NAMES = {
+    "directory": ("Transport directory", "دليل النقل"),
+    "delegations": ("Approval Delegations", "تفويضات الاعتماد"),
+    "announcements": ("Announcements", "الإعلانات"),
+    "complaints": ("Customer complaints", "شكاوى العملاء"),
     "shifts": ("Shifts", "الورديات"),
     "shift_rosters": ("Shift Rosters", "فرق الورديات"),
     "runs": ("Production Runs", "تشغيل الإنتاج"),
@@ -75,6 +81,9 @@ RESOURCE_NAMES = {
 }
 
 ACTION_NAMES = {
+    "manage": ("Manage", "إدارة"),
+    "resolve": ("Resolve", "معالجة"),
+    "report": ("Report", "تقارير"),
     'ready': ('Mark Ready', 'تجهيز للإرسال'),
     'contain': ('Record Containment of', 'تسجيل احتواء'), 'investigate': ('Record Root Cause of', 'تسجيل السبب الجذري لـ'),
     'submit': ('Submit for Verification', 'إرسال للتحقق'), 'fail': ('Record Failed Delivery of', 'تسجيل تعذّر تسليم'),
@@ -111,6 +120,7 @@ ACTION_NAMES = {
     "dispatch": ("Dispatch", "إخراج"),
     "deliver": ("Confirm Delivery of", "تأكيد تسليم"),
     "approve": ("Approve", "اعتماد"),
+    "archive": ("Archive", "أرشفة"),
     "receive": ("Receive", "استلام"),
 }
 
@@ -135,13 +145,17 @@ FOUNDATION_PERMISSIONS = _resource_permissions("foundation", {
     "users": ("read", "write", "activate", "deactivate", "delete", "lock", "reset_password"),
     "roles": ("read", "write"), "permissions": ("read",),
     "user_roles": ("write",), "role_permissions": ("write",), "audit": ("read",),
-    "security_log": ("read",), "activity_log": ("read",),
+    "security_log": ("read",), "activity_log": ("read", "archive"),
+    # PROJECT-GOV-004: read every delegation; approve holders' requests, give and revoke anyone's. A holder delegates
+    # their own approvals without a further permission (a manager then agrees).
+    "delegations": ("read", "manage"),
 })
 
 # Row-level ownership scope (own/team/organization, see AccessScope) is only
 # meaningful for READ permissions on entities with an owner-like column. Every
 # other permission is implicitly organization-wide (scopable=False).
 SCOPABLE_OWNER_FIELDS: dict[str, str] = {
+    "commercial:complaints:read": "customer.sales_owner_user_id",
     "commercial:customers:read": "sales_owner_user_id",
     "commercial:follow_ups:read": "assigned_user_id",
     "commercial:interactions:read": "created_by_user_id",
@@ -162,6 +176,7 @@ def _apply_scope_overrides(permissions: list["PermissionDefinition"]) -> list["P
 
 # RBAC-002: the vague "write" (manage) permissions were removed: create, update and delete say exactly what is allowed.
 COMMERCIAL_PERMISSIONS = _apply_scope_overrides(_resource_permissions("commercial", {
+    "complaints": ("read", "create", "update", "assign", "investigate", "resolve", "close", "reopen", "cancel", "report"),
     "customers": ("read", "create", "update", "delete", "assign_owner"),
     "interactions": ("read", "create", "update", "delete"),
     "follow_ups": ("read", "create", "update", "delete", "assign", "complete"),
@@ -205,6 +220,10 @@ PROCUREMENT_PERMISSIONS = [_labelled(p, procurement_permissions.LABELS)
 MASTERDATA_PERMISSIONS = [_labelled(p, masterdata_permissions.LABELS)
                           for p in _resource_permissions(masterdata_permissions.MODULE, masterdata_permissions.RESOURCES)]
 
+# PROJECT-NOTIFY-001: announcements, from notifications/domain/permissions.py (every user reads their own notifications).
+NOTIFICATION_PERMISSIONS = [_labelled(p, notification_permissions.LABELS)
+                            for p in _resource_permissions(notification_permissions.MODULE, notification_permissions.RESOURCES)]
+
 WORKFORCE_PERMISSIONS = _resource_permissions("workforce", {
     "members": ("read", "create", "update", "delete", "link_user"),
 })
@@ -238,7 +257,8 @@ def _named(permission: PermissionDefinition) -> PermissionDefinition:
 
 ALL_TENANT_PERMISSIONS = [_named(p) for p in (
     FOUNDATION_PERMISSIONS + COMMERCIAL_PERMISSIONS + PRODUCTION_PERMISSIONS
-    + QUALITY_PERMISSIONS + SHIPPING_PERMISSIONS + PROCUREMENT_PERMISSIONS + MASTERDATA_PERMISSIONS + WORKFORCE_PERMISSIONS + REPORTING_PERMISSIONS
+    + QUALITY_PERMISSIONS + SHIPPING_PERMISSIONS + PROCUREMENT_PERMISSIONS + MASTERDATA_PERMISSIONS + WORKFORCE_PERMISSIONS + NOTIFICATION_PERMISSIONS
+    + REPORTING_PERMISSIONS
 )]
 PERMISSION_BY_CODE = {permission.code: permission for permission in ALL_TENANT_PERMISSIONS}
 ALL_PERMISSION_CODES = frozenset(PERMISSION_BY_CODE)

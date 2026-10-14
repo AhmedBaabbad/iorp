@@ -153,7 +153,7 @@ def test_get_order_not_found_returns_404(client, auth_headers):
     assert resp.status_code == 404
 
 
-def test_confirm_order(client, auth_headers, customer_id):
+def test_confirm_order(client, auth_headers, approver_headers, customer_id):
     """The status changes through confirm (SALES-001), never by PATCH; a direct order names the customer's reference."""
     create_resp = client.post(
         f"/api/v1/commercial/customers/{customer_id}/orders",
@@ -164,6 +164,8 @@ def test_confirm_order(client, auth_headers, customer_id):
     order_id = create_resp.json()["id"]
 
     resp = client.post(f"/api/v1/commercial/orders/{order_id}/confirm", headers=auth_headers)
+    assert resp.status_code == 400 and resp.json()["detail"] == "ORDER_CONFIRMER_IS_PREPARER"  # who prepared it does not confirm it
+    resp = client.post(f"/api/v1/commercial/orders/{order_id}/confirm", headers=approver_headers)
     assert resp.status_code == 200
     assert resp.json()["status"] == "confirmed"
 

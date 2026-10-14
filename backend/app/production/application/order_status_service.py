@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from sqlalchemy import select
+from app.production.application import notices
+from app.core.interfaces import approvals
 from app.core.db import Base
 from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.core.utils import utc_now
@@ -119,6 +121,8 @@ class OrderStatusService:
                 raise TransitionError("ACTION_FORBIDDEN", 403, action=action.name, permission=action.permission)
             released = self._preconditions(order, action, reason, zero_output)
             actor = self.tenant.user_id if trigger == Trigger.MANUAL else None
+            if trigger == Trigger.MANUAL and action.name in ("release", "close"):
+                approvals.sign(db, self.tenant, "production_order", order.id, action.name, action.permission, reason)
             previous = _record(db, order, action, trigger=trigger, actor_user_id=actor, reason=reason, now=utc_now())
             details = dict(action=action.name, from_status=previous.value, to_status=action.target.value, trigger=trigger.value, reason=reason or "")
             if released is not None:
@@ -127,6 +131,7 @@ class OrderStatusService:
                 details["zero_output"] = True
             get_registered_activity_logger().log_activity(db, self.org_id, "production_order.status_changed", "production_order", order.id,
                                                           order.production_order_number, actor_id=actor, details={k: str(v) for k, v in details.items()})
+            notices.order_status_changed(db, self.tenant, order, action.name, actor)
             db.commit()
             db.expire_all()
             return db.get(ProductionOrder, order.id)

@@ -16,6 +16,8 @@ import { getQuoteById, listSamplesForQuoteCustomer, updateQuote } from "../api/q
 import type { CreateQuoteItemRequest, QuoteItem, QuoteSampleOption, QuoteStatus, UpdateQuoteRequest } from "../types";
 import { QuoteItemsTable } from "./QuoteItemsTable";
 import { QuoteTotals } from "./QuoteTotals";
+import { DiscountAllField, LineDiscountField } from "./QuoteLineFields";
+import { lineAmounts, quoteAmounts } from "../discount";
 import { useFormatter } from "@/hooks/useFormatter";
 import { LineDescriptionFields, QuoteHeadingFields, UnitSelect } from "./QuoteLineFields";
 import { SpecEditor } from "@/components/forms/SpecEditor";
@@ -27,7 +29,6 @@ type QuoteEditValues = {
   valid_until: string;
   status: QuoteStatus;
   currency: string;
-  discount_amount: string;
   include_tax: boolean;
   attention: string;
   subject: string;
@@ -40,6 +41,7 @@ type QuoteItemFormValues = {
   quantity: string;
   unit: string;
   unit_price: string;
+  discount_percent: string;
   requested_spec_json: string;
   description_ar: string;
   description_en: string;
@@ -127,7 +129,6 @@ export function QuoteEditForm() {
     valid_until: toDatetimeLocalValue(new Date()),
     status: "draft",
     currency: "SAR",
-    discount_amount: "",
     include_tax: false,
     attention: "",
     subject: "",
@@ -156,9 +157,7 @@ export function QuoteEditForm() {
         if (isMounted) {
           setCustomerId(quote.customer_id);
           const taxAmount = Number(quote.tax_amount);
-          const subtotal = Number(quote.subtotal_amount);
-          const discount = Number(quote.discount_amount);
-          const taxableAmount = Math.max(0, subtotal - discount);
+          const taxableAmount = Math.max(0, Number(quote.subtotal_amount) - Number(quote.discount_amount));
           const hasTax = quote.tax_rate != null ? Number(quote.tax_rate) > 0 : taxAmount > 0 && taxableAmount > 0;
           setSavedRate(quote.tax_rate != null && Number(quote.tax_rate) > 0 ? Number(quote.tax_rate) : null);
 
@@ -168,7 +167,6 @@ export function QuoteEditForm() {
             valid_until: toDatetimeLocalValue(new Date(quote.valid_until)),
             status: quote.status,
             currency: quote.currency,
-            discount_amount: discount > 0 ? String(discount) : "",
             include_tax: hasTax,
             attention: quote.attention ?? "",
             subject: quote.subject ?? "",
@@ -178,6 +176,7 @@ export function QuoteEditForm() {
               quantity: item.quantity,
               unit: item.unit,
               unit_price: item.unit_price,
+              discount_percent: Number(item.discount_percent || 0) > 0 ? String(Number(item.discount_percent)) : "",
               requested_spec_json: item.requested_spec_json
                 ? JSON.stringify(item.requested_spec_json, null, 2)
                 : "",
@@ -226,14 +225,8 @@ export function QuoteEditForm() {
     return values.items.map((item, index) => toPreviewItem(item, index));
   }, [values.items]);
 
-  const subtotal = useMemo(() => {
-    return previewItems.reduce((sum, item) => sum + Number(item.line_total), 0);
-  }, [previewItems]);
-
-  const discountAmount = Number(values.discount_amount || 0);
-  const taxableAmount = Math.max(0, subtotal - discountAmount);
-  const taxAmount = values.include_tax ? taxableAmount * vatRate / 100 : 0;  // preview; the server computes it
-  const totalAmount = taxableAmount + taxAmount;
+  // Preview of the server's arithmetic: each line's discount first, then VAT on what remains.
+  const { amounts, subtotal, discount: discountAmount, tax: taxAmount, total: totalAmount } = quoteAmounts(values.items, vatRate, values.include_tax);
 
   function updateField<TField extends keyof QuoteEditValues>(
     field: TField,
@@ -277,7 +270,6 @@ export function QuoteEditForm() {
         issue_date: new Date(values.issue_date).toISOString(),
         valid_until: new Date(values.valid_until).toISOString(),
         currency: values.currency,
-        discount_amount: Number(values.discount_amount || 0),
         tax_rate: values.include_tax ? vatRate : 0,
         tax_amount: taxAmount,
         attention: optionalText(values.attention) ?? null,
@@ -405,19 +397,8 @@ export function QuoteEditForm() {
                 </select>
               </label>
 
-              <label style={sharedStyles.field}>
-                <span style={sharedStyles.label}>{t("fields.discount")}</span>
-                <input
-                  style={sharedStyles.input}
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={values.discount_amount}
-                  onChange={(event) => updateField("discount_amount", event.target.value)}
-                  disabled={isSubmitting}
-                  placeholder={t("placeholders.discountAmount")}
-                />
-              </label>
+              <DiscountAllField disabled={isSubmitting}
+                onApply={(percent) => updateField("items", values.items.map((item) => ({ ...item, discount_percent: percent })))} />
 
               <div style={sharedStyles.field}>
                 <span style={sharedStyles.label}>{t("fields.tax")}</span>
@@ -539,11 +520,14 @@ export function QuoteEditForm() {
                       />
                     </label>
 
+                    <LineDiscountField value={item.discount_percent} amount={amounts[index].discount} disabled={isSubmitting}
+                      onChange={(value) => updateItemField(index, "discount_percent", value)} />
+
                     <label style={sharedStyles.field}>
                       <span style={sharedStyles.label}>{t("items.fields.lineTotal")}</span>
                       <input
                         style={sharedStyles.input}
-                        value={fmt.decimal(Number(item.quantity || 0) * Number(item.unit_price || 0))}
+                        value={fmt.decimal(amounts[index].net)}
                         disabled
                         readOnly
                       />
@@ -592,7 +576,7 @@ export function QuoteEditForm() {
 }
 
 function createDefaultItem(): QuoteItemFormValues {
-  return { product_type: "", quantity: "", unit: "", unit_price: "", requested_spec_json: "", description_ar: "", description_en: "" };
+  return { product_type: "", quantity: "", unit: "", unit_price: "", discount_percent: "", requested_spec_json: "", description_ar: "", description_en: "" };
 }
 
 function toPreviewItem(item: QuoteItemFormValues, index: number): QuoteItem {
@@ -603,7 +587,10 @@ function toPreviewItem(item: QuoteItemFormValues, index: number): QuoteItem {
     quantity: item.quantity || "0",
     unit: item.unit,
     unit_price: item.unit_price || "0",
-    line_total: String(Number(item.quantity || 0) * Number(item.unit_price || 0)),
+    line_total: String(lineAmounts(item.quantity, item.unit_price, item.discount_percent).total),
+    discount_percent: item.discount_percent || "0",
+    discount_amount: String(lineAmounts(item.quantity, item.unit_price, item.discount_percent).discount),
+    net_total: String(lineAmounts(item.quantity, item.unit_price, item.discount_percent).net),
   };
 }
 
@@ -633,6 +620,7 @@ function toItemRequest(
     quantity: Number(item.quantity),
     unit: item.unit,
     unit_price: Number(item.unit_price),
+    discount_percent: Number(item.discount_percent || 0),
     description_ar: optionalText(item.description_ar) ?? null,
     description_en: optionalText(item.description_en) ?? null,
   };

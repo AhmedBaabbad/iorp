@@ -14,7 +14,9 @@ from app.main import app
 from app.quality.domain import permissions as Q
 
 ROOT = "/api/v1/quality/non-conformance-reports"
-PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+from tests.file_samples import png
+
+PNG = png()
 
 
 @pytest.fixture
@@ -172,8 +174,8 @@ def uploads(tmp_path, monkeypatch):
 def test_photos_are_kept_with_the_report(ncr, uploads):
     r = ncr.create()
     [f] = ncr.client.post(f"{ROOT}/{r['id']}/attachments", files=dict(file=("bubbles.png", PNG))).json()
-    assert f["content_type"] == "image/png" and f["uploaded_by_name"] == "Test User"
-    assert ncr.client.get(f"{ROOT}/{r['id']}/attachments/{f['id']}").content == PNG
+    assert f["content_type"] == "image/webp" and f["uploaded_by_name"] == "Test User"  # photos are stored small (WebP)
+    assert ncr.client.get(f"{ROOT}/{r['id']}/attachments/{f['id']}").content.startswith(b"RIFF")
     assert code(ncr.client.post(f"{ROOT}/{r['id']}/attachments", files=dict(file=("x.png", b"MZ")))) == "FILE_UNSUPPORTED_TYPE"
     assert ncr.client.delete(f"{ROOT}/{r['id']}/attachments/{f['id']}").json() == []
 

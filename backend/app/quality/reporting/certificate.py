@@ -56,6 +56,8 @@ def build(db, tenant, params, selected) -> ReportData:
     if c is None:
         raise HTTPException(404, "CERTIFICATE_NOT_FOUND")
     names = user_names(db, tenant.organization_id, [c.prepared_by_user_id, c.issued_by_user_id])
+    from app.core.interfaces import approvals
+    issued = approvals.latest(approvals.signatures(db, tenant.organization_id, "quality_certificate", [c.id])[c.id], "issue")
     supersedes = db.scalar(select(QualityCertificate.certificate_no).where(QualityCertificate.id == c.supersedes_id)) if c.supersedes_id else None
     day = lambda v: v.strftime("%d / %m / %Y") if v else ""  # noqa: E731
     quantity = f"{_num(c.quantity)} {c.unit_label}".strip() + (f" — {c.package_count} " + tr("عبوة", "packages") if c.package_count else "")
@@ -98,7 +100,7 @@ def build(db, tenant, params, selected) -> ReportData:
         else tr("مُفرَج عنه — مطابق مع انحراف معتمد", "RELEASED — CONFORMING WITH APPROVED DEVIATION") if conditional
         else tr("مُفرَج عنه — مطابق", "RELEASED / CONFORMING"),
         deviation=c.deviation_note if conditional else None, remarks=c.remarks,
-        prepared_by=c.inspector_name or names.get(c.prepared_by_user_id) or "", approved_by=names.get(c.issued_by_user_id) or "",
+        prepared_by=c.inspector_name or names.get(c.prepared_by_user_id) or "", approved_by=approvals.signed_name(issued, names.get(c.issued_by_user_id), params.lang),
         approved_on=day(c.issued_at) if c.issued_at else "", status=c.status, revoke_reason=c.revoke_reason)
     return ReportData(sections=[], subject=c.certificate_no or "DRAFT", document=document)
 

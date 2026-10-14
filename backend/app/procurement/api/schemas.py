@@ -1,21 +1,22 @@
 """Procurement API (PROC-001). Create/Update schemas never accept organization scope; errors answer {"code": ...}."""
 from datetime import date
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
 from app.core.types import ISODatetime, NormalizedEmail
 from app.core.units import UNITS, WEIGHT_UNITS
 from app.procurement.domain import purchase_orders as PO
 from app.procurement.domain import rules
 
-SupplierCategory = Literal["raw_material", "packaging", "consumables", "services", "other"]
-MaterialCategory = Literal["resin", "masterbatch", "additive", "core", "carton", "film", "accessory", "other"]
+# MD-003: keys of the organization's supplier and material categories (master data lists; their usual values are the
+# original categories). The service checks the key against the list.
+SupplierCategory = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{1,59}$")]
+MaterialCategory = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{1,59}$")]
 SupplierStatus = Literal["approved", "conditional", "blocked"]
 WeightUnit = Literal["g", "kg", "ton", "lb", "oz"]
-assert set(SupplierCategory.__args__) == set(rules.SUPPLIER_CATEGORIES) and set(MaterialCategory.__args__) == set(rules.MATERIAL_CATEGORIES)
 assert set(WeightUnit.__args__) == set(WEIGHT_UNITS)
 Currency = Literal["SAR", "USD"]
 Incoterm = Literal["EXW", "FCA", "FOB", "CFR", "CIF", "CPT", "CIP", "DAP", "DPU", "DDP"]
@@ -209,6 +210,9 @@ class LineInput(_Input):
 
 
 class _ReceiptHeader(_Input):
+    driver_id: UUID | None = None
+    vehicle_id: UUID | None = None
+    driver_affiliation: Literal['internal','external'] | None = None
     supplier_delivery_no: str | None = Field(default=None, max_length=80)
     supplier_invoice_no: str | None = Field(default=None, max_length=80)
     purchase_reference: str | None = Field(default=None, max_length=80)
@@ -314,6 +318,9 @@ class LotQuality(BaseModel):
 
 
 class ReceiptRead(ReceiptListItem):
+    driver_id: UUID | None = None
+    vehicle_id: UUID | None = None
+    driver_affiliation: str | None = None
     vehicle_plate: str | None
     driver_name: str | None
     notes: str | None
@@ -343,6 +350,7 @@ class OrderLineInput(_Input):
 
 
 class _OrderHeader(_Input):
+    supplier_contact_id: UUID | None = None
     required_date: date | None = None
     attention: str | None = Field(default=None, max_length=200)
     supplier_quote_ref: str | None = Field(default=None, max_length=80)
@@ -418,6 +426,7 @@ class OrderListItem(BaseModel):
 
 
 class OrderRead(OrderListItem):
+    supplier_contact_id: UUID | None = None
     attention: str | None
     subtotal_amount: Decimal
     discount_amount: Decimal
@@ -429,6 +438,8 @@ class OrderRead(OrderListItem):
     notes: str | None
     approved_at: ISODatetime | None
     approved_by_name: str | None = None
+    # PROJECT-GOV-004: who signed the approval and whose authority it was (a delegation shows both)
+    approval: dict | None = None
     sent_at: ISODatetime | None
     sent_by_name: str | None = None
     closed_at: ISODatetime | None

@@ -1,3 +1,4 @@
+from tests.route_inventory import discover_routes
 """PROD-RBAC-001: production permissions are explicit per action, one source, every route guarded."""
 import importlib.util
 import os
@@ -93,7 +94,7 @@ def _policies(dependant):
 
 
 def test_every_production_and_report_route_declares_a_permission():
-    routes = [r for r in app.routes if isinstance(r, APIRoute)
+    routes = [r for r in discover_routes(app) if isinstance(r, APIRoute)
               and (r.path.startswith("/api/v1/production") or r.path.startswith("/api/v1/reports"))]
     assert len(routes) > 60
     unguarded = sorted(f"{sorted(r.methods)} {r.path}" for r in routes if not list(_policies(r.dependant)))
@@ -106,7 +107,7 @@ def test_every_production_and_report_route_declares_a_permission():
 
 
 def test_transition_route_names_every_order_action_permission():
-    route = next(r for r in app.routes if isinstance(r, APIRoute) and r.path.endswith("/production-orders/{production_order_id}/transitions"))
+    route = next(r for r in discover_routes(app) if isinstance(r, APIRoute) and r.path.endswith("/production-orders/{production_order_id}/transitions"))
     declared = {c for kind, codes in _policies(route.dependant) if kind == "in_handler" for c in codes}
     assert declared == set(P.ORDER_TRANSITIONS.values())
 

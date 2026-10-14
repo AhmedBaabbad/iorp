@@ -1,5 +1,6 @@
 "use client";
 
+import {UnitLabel} from "@/components/UnitLabel";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
@@ -57,7 +58,7 @@ export function ResultsList() {
             <span className={`${s.badge} ${row.status === "closed" ? "" : s.blue}`}>{orders(row.status)}</span>
             {row.status === "completed" && <div className={s.muted} style={{ marginTop: 4 }}>{row.ready_to_close ? t("list.readyToClose") : t("list.needsResult")}</div>}
           </td> : null}
-          <td>{total?.unit ?? "—"}</td>
+          <td>{total?.unit ? <UnitLabel value={total.unit}/> : "—"}</td>
           <td><bdi>{total ? fmt.number(total.planned_qty) : "—"}</bdi></td>
           <td><bdi>{total ? fmt.number(total.customer_good) : "—"}</bdi></td>
           <td><bdi>{total ? fmt.number(total.stock_good) : "—"}</bdi></td>

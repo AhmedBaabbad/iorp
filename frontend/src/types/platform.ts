@@ -1,4 +1,4 @@
-import type { OrganizationAdminInput, OrganizationInput } from "./organization-provisioning";
+import type { OrganizationInput } from "./organization-provisioning";
 
 export type PlatformLoginRequest = {
   email: string;
@@ -32,14 +32,16 @@ export type PlatformAdministrator = {
   password_changed_at?: string | null;
   created_at: string;
   updated_at?: string;
+  /** SEC-003: the activation link not used yet. */
+  activation_pending?: boolean;
+  /** On creation only: whether the activation e-mail went out. */
+  invitation_sent?: boolean | null;
 };
 
 export type PlatformAdministratorCreate = {
   full_name: string;
   email: string;
   role: "root" | "admin";
-  password: string;
-  password_confirmation: string;
 };
 
 export type PlatformAuthState = {
@@ -87,13 +89,15 @@ export type PlatformOrganizationDetail = PlatformOrganizationSummary & {
     email: string;
     status: string;
     last_login_at: string | null;
+    activation_pending?: boolean;
   } | null;
   roles: Array<{ id: string; code: string; user_count: number }>;
 };
 
 export type CreateOrganizationRequest = {
   organization: OrganizationInput;
-  organization_admin: OrganizationAdminInput;
+  /** SEC-003: no password — the root receives an activation link and chooses their own. */
+  organization_admin: { full_name: string; email: string; phone?: string | null };
 };
 
 export type CreateOrganizationResponse = {
@@ -105,11 +109,7 @@ export type CreateOrganizationResponse = {
   root_user: { id: string; full_name: string; email: string; is_organization_root: boolean };
   roles_created: string[];
   organization_admin_email: string;
-};
-
-export type ResetOrganizationRootPasswordRequest = {
-  new_password: string;
-  new_password_confirmation: string;
+  invitation_sent?: boolean;
 };
 
 export type ResetOrganizationRootPasswordResponse = {

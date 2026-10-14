@@ -1,7 +1,20 @@
+import re
 from app.core.config import settings
 from app.core.security import decode_access_token, verify_password
 from app.foundation.infrastructure.models import User
 
+
+
+def _mailbox(monkeypatch):
+    """SEC-002: the reset e-mails sent, as {address: reset token}."""
+    box = {}
+
+    def send(self, to, subject, html, text=None):
+        found = re.search(r"token=([A-Za-z0-9_\-]+)", text or html)
+        box[to] = found.group(1) if found else None
+        return True
+    monkeypatch.setattr("app.core.email.service.EmailService.send_email", send)
+    return box
 
 def _payload():
     return {
@@ -94,23 +107,26 @@ def test_t07_t16_self_service_policy_and_authentication(client, db, monkeypatch)
 def test_t17_t25_platform_root_recovery(client, db, monkeypatch):
     tenant_token, platform_token = _setup(client, monkeypatch)
     root = db.query(User).filter_by(email="root@example.com").one()
+    box = _mailbox(monkeypatch)
     response = client.post(
         f"/api/v1/platform/organizations/{root.organization_id}/reset-root-password",
         headers=_headers(platform_token),
-        json={
-            "new_password": "RecoveredRoot123!",
-            "new_password_confirmation": "RecoveredRoot123!",
-        },
+        json={},
     )
     assert response.status_code == 200
     assert response.json()["root_user_email"] == "root@example.com"
     assert "password" not in response.json()
+    # SEC-002: the platform never sets the password: the root receives a link and chooses their own
+    assert client.get("/api/v1/auth/me", headers=_headers(tenant_token)).status_code == 200
+    done = client.post("/api/v1/auth/reset-password", json={"token": box["root@example.com"], "new_password": "RecoveredRoot123!",
+                                                             "new_password_confirmation": "RecoveredRoot123!"})
+    assert done.status_code in (200, 204), done.text
     assert client.get("/api/v1/auth/me", headers=_headers(tenant_token)).status_code == 401
     assert client.post("/api/v1/auth/login", json={
         "email": "root@example.com", "password": "RecoveredRoot123!",
     }).status_code == 200
     db.refresh(root)
-    assert root.token_version == 1 and verify_password("RecoveredRoot123!", root.password_hash)
+    assert verify_password("RecoveredRoot123!", root.password_hash)
 
 
 def test_t19_t21_platform_recovery_rejects_invalid_authority(client, db, monkeypatch):

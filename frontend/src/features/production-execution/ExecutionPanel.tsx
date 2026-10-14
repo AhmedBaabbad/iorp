@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
+import { joinList } from "@/lib/utils";
 import { useCallback, useEffect, useState } from "react";
 import { Pagination } from "@/components/pagination/Pagination";
 import { apiClient } from "@/lib/api-client";
@@ -146,7 +147,7 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
     </div>
     {loading ? <p>{t("loading")}</p> : rows.length === 0 ? <p>{t("empty")}</p> : <div style={{ overflowX: "auto" }}><table style={{ width: "100%", textAlign: "start", borderSpacing: 12 }}>
       <thead><tr>{[t("columns.record"), t("columns.shift"), orderId ? t("columns.workCenter") : t("columns.lead"), t("columns.dateStart"), t("columns.end"), t("columns.status"), t("columns.team")].map(h => <th key={h}>{h}</th>)}</tr></thead>
-      <tbody>{rows.map(row => <tr key={row.id}><td><button style={styles.secondaryButton} onClick={() => { setSelected(row); setCloseDate(""); setMemberDraft(emptyDraft); }}>{row.name || row.id.slice(0, 8)}</button></td><td>{row.shift_name || "—"}</td><td>{orderId ? row.work_center_name : row.members.filter(m => m.is_shift_lead).map(m => m.workforce_name).join(", ") || "—"}</td><td>{row.run_date || row.effective_from}{row.started_at && <div>{formatInstant(row.started_at)}</div>}</td><td>{row.effective_to || (row.ended_at ? formatInstant(row.ended_at) : "—")}</td><td>{statusLabel(row)}</td><td>{orderId ? row.team_count : <TeamList members={row.members} empty={t("noMembers")} lead={t("leadMarker")} />}</td></tr>)}</tbody>
+      <tbody>{rows.map(row => <tr key={row.id}><td><button style={styles.secondaryButton} onClick={() => { setSelected(row); setCloseDate(""); setMemberDraft(emptyDraft); }}>{row.name || t("unnamed")}</button></td><td>{row.shift_name || "—"}</td><td>{orderId ? row.work_center_name : joinList(row.members.filter(m => m.is_shift_lead).map(m => m.workforce_name), locale) || "—"}</td><td>{row.run_date || row.effective_from}{row.started_at && <div>{formatInstant(row.started_at)}</div>}</td><td>{row.effective_to || (row.ended_at ? formatInstant(row.ended_at) : "—")}</td><td>{statusLabel(row)}</td><td>{orderId ? row.team_count : <TeamList members={row.members} empty={t("noMembers")} lead={t("leadMarker")} />}</td></tr>)}</tbody>
     </table></div>}
     {!orderId && paging && <Pagination page={paging.page} pageSize={paging.page_size} total={paging.total} pages={paging.pages} disabled={loading}
       onPage={list.setPage} onPageSize={list.setPageSize} />}

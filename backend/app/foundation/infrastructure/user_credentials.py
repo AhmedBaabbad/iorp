@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.interfaces.user_credentials import OrganizationRootCredential
 from app.foundation.infrastructure.models import User
-from app.core.security import normalize_email, revoke_account_sessions
+from app.core.security import normalize_email
 
 
 class FoundationUserCredentials:
@@ -33,11 +33,10 @@ class FoundationUserCredentials:
             return None
         return OrganizationRootCredential(user.id, user.organization_id, user.email)
 
-    def reset_user_password(self, user_id: UUID, new_password_hash: str) -> None:
+    def send_password_reset_link(self, user_id: UUID) -> bool:
+        """SEC-002: the user receives a reset link and chooses their own password; their sessions end when they do."""
+        from app.foundation.application.password_reset import TenantPasswordResetService
         user = self.db.get(User, user_id)
         if user is None:
             raise LookupError("User not found")
-        user.password_hash = new_password_hash
-        user.token_version += 1
-        revoke_account_sessions(self.db, "tenant", user.id, reason="password_reset")
-        self.db.flush()
+        return TenantPasswordResetService().request_reset(self.db, user.email, user.preferred_locale)

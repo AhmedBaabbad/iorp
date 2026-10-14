@@ -1,5 +1,7 @@
 "use client";
 
+import {useUnitLabel} from "@/components/UnitLabel";
+import { UnitLabel } from "@/components/UnitLabel";
 import { Fragment, useCallback, useEffect, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { usePermission } from "@/features/auth/permission-hooks";
@@ -20,6 +22,7 @@ const pct = (value: string | null) => (value === null ? "—" : `${value}%`);
 export function OrderResultSection({ order, revision = 0, onChanged }: {
   order: { id: string; status: string }; revision?: number; onChanged?: () => void;
 }) {
+  const unitText = useUnitLabel();
   const t = useTranslations("production.results");
   const canRead = usePermission(P.RESULTS_READ);
   const available = order.status === "completed" || order.status === "closed";
@@ -93,6 +96,7 @@ export function OrderResultSection({ order, revision = 0, onChanged }: {
 }
 
 export function SummaryCards({ summary, unit, showUnit }: { summary: ResultSummary; unit: string; showUnit?: boolean }) {
+  const unitText = useUnitLabel();
   const t = useTranslations("production.results");
   const fmt = useFormatter();
   const q = (value: string) => <bdi>{fmt.quantity(value, unit)}</bdi>;
@@ -117,6 +121,7 @@ export function SummaryCards({ summary, unit, showUnit }: { summary: ResultSumma
 }
 
 function EntriesTable({ view, busy, onAction }: { view: OrderResult; busy: boolean; onAction: (kind: "edit" | "delete" | "correct", entry: ResultOriginal) => void }) {
+  const unitText = useUnitLabel();
   const t = useTranslations("production.results");
   const fmt = useFormatter();
   if (!view.entries.length) return <p className={s.muted}>{t("empty")}</p>;
@@ -124,7 +129,7 @@ function EntriesTable({ view, busy, onAction }: { view: OrderResult; busy: boole
     <td>{correction ? <span className={s.muted}>↳ </span> : null}{t(`dispositions.${e.disposition}`)}</td>
     <td>{e.line_no ?? "—"}</td>
     <td><bdi>{correction && Number(e.quantity) > 0 ? "+" : ""}{fmt.number(e.quantity)}</bdi></td>
-    <td>{e.unit}</td>
+    <td><UnitLabel value={e.unit}/></td>
     <td>{e.secondary_quantity !== null ? <bdi>{fmt.quantity(e.secondary_quantity, e.secondary_unit)}</bdi> : "—"}</td>
     <td>{e.counts_as_loss ? t("yes") : t("no")}</td>
     <td>{correction ? e.correction_reason : (e.reason_code ?? "—")}</td>
@@ -145,7 +150,7 @@ function EntriesTable({ view, busy, onAction }: { view: OrderResult; busy: boole
         {e.actions.includes("correct") && <button type="button" className={s.button} disabled={busy} onClick={() => onAction("correct", e)}>{t("actions.correct")}</button>}
       </td></tr>
       {e.corrections.map(c => <tr key={c.id} className={s.muted}>{row(c, true)}<td /></tr>)}
-      {e.corrections.length > 0 && <tr><td /><td colSpan={11} className={s.muted}>{t("effective", { value: e.effective_quantity, unit: e.unit })}</td></tr>}
+      {e.corrections.length > 0 && <tr><td /><td colSpan={11} className={s.muted}>{t("effective", { value: e.effective_quantity, unit: unitText(e.unit) })}</td></tr>}
     </Fragment>)}</tbody>
   </table></div>;
 }

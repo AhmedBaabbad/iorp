@@ -90,7 +90,7 @@ def test_t19_t23_constraint_root_immutability_and_provisioning(identity_env):
     assert "uq_foundation_users_org_email" not in constraints
     root = env["db"].query(User).filter_by(email="tenant@example.com").one()
     response = env["client"].patch(f"/api/v1/admin/users/{root.id}", headers=env["tenant_headers"], json={"email": "changed@example.com"})
-    assert response.status_code == 403
+    assert response.status_code == 400
     env["db"].refresh(root)
     assert root.email == "tenant@example.com"
 

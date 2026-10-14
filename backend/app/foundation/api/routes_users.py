@@ -47,6 +47,10 @@ from app.foundation.application.services import (
 from app.foundation.domain.enums import UserStatus
 from app.foundation.domain.user_lifecycle import InvalidUserStateTransitionError
 
+from app.foundation.application.sessions import SessionService
+from app.foundation.application.services import PasswordResetEmailError
+from app.core.security import has_usable_password
+
 router = APIRouter(tags=["foundation-users"])
 
 
@@ -110,22 +114,19 @@ def reset_user_password(
     payload: AdminPasswordResetRequest,
     current: CurrentUserContext = Depends(require_permission("foundation:users:reset_password")),
     db: Session = Depends(get_db),
-) -> dict[str, str | bool]:
+):
+    """SEC-002: e-mails the user a reset link; the user chooses their own password. The administrator never chooses nor
+    learns it."""
     try:
-        FoundationService(db).reset_user_password_for_tenant(
-            current.tenant.organization_id,
-            user_id,
-            payload.new_password,
-            payload.new_password_confirmation,
-            current.user,
-        )
+        return FoundationService(db).reset_user_password_for_tenant(current.tenant.organization_id, user_id, current.user)
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except OrganizationRootProtectionError as exc:
+        db.rollback()
         return _root_protection_response(exc)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return {"message": "Password reset successfully", "sessions_invalidated": True}
+    except PasswordResetEmailError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail={"code": "RESET_EMAIL_NOT_SENT", "message": "The reset e-mail could not be sent: check the user's e-mail address or the mail settings."}) from exc
 
 
 def _open_follow_ups_conflict(exc: UserHasOpenFollowUpsError) -> JSONResponse:
@@ -162,6 +163,7 @@ def _transition_conflict(exc: InvalidUserStateTransitionError) -> JSONResponse:
 
 def _user_to_list_item(user, roles: list) -> UserListItem:
     return UserListItem(
+        archived_at=user.archived_at,
         id=user.id,
         full_name=user.full_name,
         email=user.email,
@@ -171,12 +173,14 @@ def _user_to_list_item(user, roles: list) -> UserListItem:
         is_organization_root=user.is_organization_root,
         roles=roles,
         created_at=user.created_at,
+        activation_pending=not has_usable_password(user.password_hash),
     )
 
 
 def _user_to_detail(user, roles: list) -> UserDetailResponse:
     service_roles = roles
     return UserDetailResponse(
+        timezone=user.timezone, archived_at=user.archived_at, account_change_reason=user.account_change_reason,
         id=user.id,
         organization_id=user.organization_id,
         full_name=user.full_name,
@@ -193,6 +197,7 @@ def _user_to_detail(user, roles: list) -> UserDetailResponse:
         permissions=[],
         created_at=user.created_at,
         updated_at=user.updated_at,
+        activation_pending=not has_usable_password(user.password_hash),
     )
 
 
@@ -225,9 +230,11 @@ def create_user(
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ValueError as exc:
+        db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    sent = service.send_activation_link(user)  # SEC-003: the user chooses their own password
     roles = service.get_user_roles(user.id, current.tenant.organization_id)
-    return _user_to_detail(user, roles)
+    return _user_to_detail(user, roles).model_copy(update={"invitation_sent": sent})
 
 
 @router.get("/users/{user_id}", response_model=UserDetailResponse)
@@ -279,8 +286,10 @@ async def update_user(
     except UserHasOpenFollowUpsError as exc:
         return _open_follow_ups_conflict(exc)
     except OrganizationRootProtectionError as exc:
+        db.rollback()
         return _root_protection_response(exc)
     except ValueError as exc:
+        db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     roles = service.get_user_roles(user.id, current.tenant.organization_id)
     return _user_to_detail(user, roles)
@@ -312,11 +321,26 @@ def get_user_deactivation_impact(
     )
 
 
-@router.delete("/users/{user_id}/hard", status_code=status.HTTP_200_OK, response_model=UserDetailResponse, include_in_schema=False)
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+
+class AccountActionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: str = Field(min_length=3, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def meaningful_reason(cls, value):
+        if len(value.strip()) < 3:
+            raise ValueError("A reason is required.")
+        return value.strip()
+
+
+@router.post("/users/{user_id}/deactivate", response_model=UserDetailResponse)
 @router.delete("/users/{user_id}", status_code=status.HTTP_200_OK, response_model=UserDetailResponse)
 def delete_user(
     user_id: UUID,
-    current: CurrentUserContext = Depends(require_permission("foundation:users:delete")),
+    payload: AccountActionRequest,
+    current: CurrentUserContext = Depends(require_permission("foundation:users:deactivate")),
     db: Session = Depends(get_db),
     follow_up_queries: FollowUpQueryInterface = Depends(get_follow_up_queries),
     customer_queries: CustomerQueryInterface = Depends(get_customer_queries),
@@ -324,6 +348,10 @@ def delete_user(
 ) -> UserDetailResponse | JSONResponse:
     service = FoundationService(db)
     try:
+        account = service.get_user_by_id_in_organization(user_id, current.tenant.organization_id)
+        if account is None:
+            raise LookupError("User not found.")
+        account.account_change_reason = payload.reason
         user = service.deactivate_user_for_tenant(
             current.tenant.organization_id,
             current.user.id,
@@ -335,54 +363,66 @@ def delete_user(
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except UserHasOpenDependenciesError as exc:
+        db.rollback()
         return _dependencies_conflict(exc)
     except InvalidUserStateTransitionError as exc:
+        db.rollback()
         return _transition_conflict(exc)
     except OrganizationRootProtectionError as exc:
+        db.rollback()
         return _root_protection_response(exc)
     except ValueError as exc:
+        db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return _user_to_detail(user, service.get_user_roles(user.id, current.tenant.organization_id))
 
 
-def _status_action(user_id: UUID, target: UserStatus, current: CurrentUserContext, db: Session, *, clear_auto_lock: bool = False):
+def _status_action(user_id: UUID, target: UserStatus, current: CurrentUserContext, db: Session, payload: AccountActionRequest, *, clear_auto_lock: bool = False):
     service = FoundationService(db)
     try:
         user = service.get_user_by_id_in_organization(user_id, current.tenant.organization_id)
         if user is None:
             raise LookupError("User not found.")
+        if user.is_organization_root or user.id == current.user.id:
+            raise HTTPException(status_code=403, detail="This account is protected from this action.")
+        user.account_change_reason = payload.reason
         if not (clear_auto_lock and user.status == UserStatus.ACTIVE):
             user = service.change_user_status_for_tenant(current.tenant.organization_id, current.user.id, user_id, target)
         if clear_auto_lock:
             user.failed_login_attempts = 0
             user.auto_locked_until = None
             user.last_failed_login_at = None
+            from app.foundation.application.audit import log_tenant_audit
+            log_tenant_audit(db, user.organization_id, "user.auto_lock_cleared", "user", user.id, current.user.id, current.user.full_name, current.user.email, user.full_name, {"reason": payload.reason})
             db.commit()
             db.refresh(user)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except OrganizationRootProtectionError as exc:
+        db.rollback()
         return _root_protection_response(exc)
     except InvalidUserStateTransitionError as exc:
+        db.rollback()
         return _transition_conflict(exc)
     except ValueError as exc:
+        db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _user_to_detail(user, service.get_user_roles(user.id, current.tenant.organization_id))
 
 
 @router.post("/users/{user_id}/lock", response_model=UserDetailResponse)
-def lock_user(user_id: UUID, current: CurrentUserContext = Depends(require_permission("foundation:users:lock")), db: Session = Depends(get_db)):
-    return _status_action(user_id, UserStatus.LOCKED, current, db)
+def lock_user(user_id: UUID, payload: AccountActionRequest, current: CurrentUserContext = Depends(require_permission("foundation:users:lock")), db: Session = Depends(get_db)):
+    return _status_action(user_id, UserStatus.LOCKED, current, db, payload)
 
 
 @router.post("/users/{user_id}/unlock", response_model=UserDetailResponse)
-def unlock_user(user_id: UUID, current: CurrentUserContext = Depends(require_permission("foundation:users:lock")), db: Session = Depends(get_db)):
-    return _status_action(user_id, UserStatus.ACTIVE, current, db, clear_auto_lock=True)
+def unlock_user(user_id: UUID, payload: AccountActionRequest, current: CurrentUserContext = Depends(require_permission("foundation:users:lock")), db: Session = Depends(get_db)):
+    return _status_action(user_id, UserStatus.ACTIVE, current, db, payload, clear_auto_lock=True)
 
 
 @router.post("/users/{user_id}/activate", response_model=UserDetailResponse)
-def activate_user(user_id: UUID, current: CurrentUserContext = Depends(require_permission("foundation:users:activate")), db: Session = Depends(get_db)):
-    return _status_action(user_id, UserStatus.ACTIVE, current, db)
+def activate_user(user_id: UUID, payload: AccountActionRequest, current: CurrentUserContext = Depends(require_permission("foundation:users:activate")), db: Session = Depends(get_db)):
+    return _status_action(user_id, UserStatus.ACTIVE, current, db, payload)
 
 
 def _assignment_error(exc: RoleAssignmentSafetyError) -> JSONResponse:
@@ -467,3 +507,60 @@ def remove_role_from_user(
     except RoleAssignmentSafetyError as exc:
         return _assignment_error(exc)
     return RoleRemovalResponse(message="Role removed successfully", user_id=user_id, role_id=role_id)
+
+
+
+# ── SEC-001: a user's sign-ins, for an administrator ─────────────────────────────────────────────────────────────────────
+@router.get("/users/{user_id}/sessions")
+def user_sessions(user_id: UUID, current: CurrentUserContext = Depends(require_permission("foundation:users:lock")), db: Session = Depends(get_db)):
+    user = FoundationService(db).get_user_by_id_in_organization(user_id, current.tenant.organization_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+    return SessionService(db, current.tenant.organization_id).of_user(user.id)
+
+
+@router.post("/users/{user_id}/sessions/end")
+def end_user_sessions(user_id: UUID, current: CurrentUserContext = Depends(require_permission("foundation:users:lock")), db: Session = Depends(get_db)):
+    """Signs a user out everywhere (a lost device, someone leaving), without touching their password."""
+    user = FoundationService(db).get_user_by_id_in_organization(user_id, current.tenant.organization_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+    if user.id == current.user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "OWN_SESSIONS", "message": "Use my sessions."})
+    return {"ended": SessionService(db, current.tenant.organization_id).end_all_of_user(user, current.user)}
+
+
+@router.post("/users/{user_id}/archive", response_model=UserDetailResponse)
+def archive_user(user_id: UUID, payload: AccountActionRequest, current: CurrentUserContext = Depends(require_permission("foundation:users:deactivate")), db: Session = Depends(get_db)):
+    from sqlalchemy import select
+    from app.foundation.infrastructure.models import User
+    from app.core.utils import utc_now
+    from app.foundation.application.audit import log_tenant_audit
+    user = db.scalar(select(User).where(User.id == user_id, User.organization_id == current.tenant.organization_id).with_for_update())
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found.")
+    if user.is_organization_root or user.id == current.user.id or user.status != UserStatus.INACTIVE or user.archived_at:
+        raise HTTPException(status_code=409, detail="Only an inactive, non-root account can be archived.")
+    user.archived_at = utc_now()
+    user.account_change_reason = payload.reason
+    log_tenant_audit(db, user.organization_id, "user.archived", "user", user.id, current.user.id, current.user.full_name, current.user.email, user.full_name, {"reason": payload.reason})
+    db.commit()
+    service = FoundationService(db)
+    return _user_to_detail(user, service.get_user_roles(user.id, user.organization_id))
+
+@router.post("/users/{user_id}/restore", response_model=UserDetailResponse)
+def restore_user(user_id: UUID, payload: AccountActionRequest, current: CurrentUserContext = Depends(require_permission("foundation:users:activate")), db: Session = Depends(get_db)):
+    from sqlalchemy import select
+    from app.foundation.infrastructure.models import User
+    from app.foundation.application.audit import log_tenant_audit
+    user = db.scalar(select(User).where(User.id == user_id, User.organization_id == current.tenant.organization_id).with_for_update())
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found.")
+    if not user.archived_at:
+        raise HTTPException(status_code=409, detail="Account is not archived.")
+    user.archived_at = None
+    user.account_change_reason = payload.reason
+    log_tenant_audit(db, user.organization_id, "user.archive_restored", "user", user.id, current.user.id, current.user.full_name, current.user.email, user.full_name, {"reason": payload.reason})
+    db.commit()
+    service = FoundationService(db)
+    return _user_to_detail(user, service.get_user_roles(user.id, user.organization_id))

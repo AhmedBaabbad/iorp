@@ -29,5 +29,17 @@
   "generatedAt": "Generated at",
   "systemRole": "System",
   "customRole": "Custom",
-  "modules": { "foundation": "Administration", "commercial": "Commercial", "production": "Production", "quality": "Quality", "workforce": "Workforce" }
+  "modules": {
+    "foundation": "Administration",
+    "commercial": "Commercial",
+    "production": "Production",
+    "quality": "Quality",
+    "workforce": "Workforce",
+    "organization": "Organization",
+    "reports": "Reports",
+    "shipping": "Shipping & delivery",
+    "procurement": "Procurement",
+    "masterdata": "Master data",
+    "notifications": "Notifications"
+  }
 }

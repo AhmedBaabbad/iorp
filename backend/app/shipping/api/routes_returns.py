@@ -12,7 +12,8 @@ from sqlalchemy.orm import Session
 from app.core.reporting.routes import generate_response
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_current_user, get_db, permission_check, require_any_permission, require_permission
-from app.shipping.api.routes_shipments import UPLOAD_LIMIT, attempt, send_file
+from app.core import files
+from app.shipping.api.routes_shipments import attempt, send_file
 from app.shipping.api.schemas import AttachmentRead, NoteInput, ReasonInput, ReceiveInput, ReturnCreate, ReturnListItem, ReturnRead
 from app.shipping.application.attachment_service import AttachmentService
 from app.shipping.application.return_service import ReturnService
@@ -95,7 +96,7 @@ def return_note(return_id: UUID, lang: str = Query("ar", pattern="^(ar|en)$"), c
 async def upload_return_attachment(return_id: UUID, kind: str = Form("photo"), file: UploadFile = File(...),
                                    tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
     """Photos of the returned goods, or the customer's papers: an image or a PDF, 10 MB at most."""
-    content = await file.read(UPLOAD_LIMIT)
+    content = await file.read(files.read_limit('attachment'))
     return attempt(db, lambda: AttachmentService(db, tenant).add_to_return(return_id, kind, file.filename, content))
 
 

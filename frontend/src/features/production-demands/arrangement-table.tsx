@@ -1,4 +1,5 @@
 "use client";
+import {useUnitLabel} from "@/components/UnitLabel";
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import s from "./demands.module.css";
@@ -24,6 +25,7 @@ export function ArrangementTable({ lines, quantityCell, actionsCell, caption }: 
   lines: ArrangedLine[]; caption?: string;
   quantityCell?: (a: ArrangedAllocation, line: ArrangedLine) => ReactNode; actionsCell?: (a: ArrangedAllocation, line: ArrangedLine) => ReactNode;
 }) {
+  const unitText = useUnitLabel();
   const t = useTranslations("production.allocation");
   const p = useTranslations("production.planning");
   const d = useTranslations("production.demands");
@@ -34,14 +36,14 @@ export function ArrangementTable({ lines, quantityCell, actionsCell, caption }: 
       <tr className={s.lineRow}>
         <th scope="row">{line.line_no}</th>
         {SORT_COLUMNS.map(c => <td key={c}>{specValue(line.target_spec_json, c)}</td>)}
-        <td><strong>{line.planned_quantity} {line.unit}</strong></td>{actionsCell && <td />}
+        <td><strong>{line.planned_quantity} {unitText(line.unit)}</strong></td>{actionsCell && <td />}
       </tr>
       {otherSpecs(line.target_spec_json) && <tr><td /><td colSpan={columns - 1} className={s.muted}>{otherSpecs(line.target_spec_json)}</td></tr>}
       {line.allocations.map(a => <tr key={a.key} className={a.status === "released" ? s.releasedRow : undefined}>
         <td />
         <td colSpan={4}>{a.customer_name ?? "—"} · {a.demand_number} · {d("lineNo")} {a.demand_item_line_no}
           {a.addedAfterStart && <> <span className={s.badge} title={t("addedAfterStartHint")}>{t("addedAfterStart")}</span></>}</td>
-        <td>{quantityCell ? quantityCell(a, line) : `${a.allocated_quantity} ${line.unit}`}</td>
+        <td>{quantityCell ? quantityCell(a, line) : `${a.allocated_quantity} ${unitText(line.unit)}`}</td>
         {actionsCell && <td>{actionsCell(a, line)}</td>}
       </tr>)}
     </tbody>)}

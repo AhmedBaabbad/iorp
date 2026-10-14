@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 import uuid
 
-from sqlalchemy import Boolean, JSON, DateTime, Enum as SqlEnum, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, JSON, DateTime, Enum as SqlEnum, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -368,10 +368,19 @@ class QuoteItem(Base):
     unit: Mapped[str] = mapped_column(String(32), nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     line_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    # The line's discount, a percentage taken before VAT, and its amount (domain/pricing.py).
+    discount_percent: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=Decimal("0"), server_default="0")
+    discount_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0"), server_default="0")
     # The line as printed on the quotation; empty falls back to the product and its specification.
     description_ar: Mapped[str | None] = mapped_column(Text, nullable=True)
     description_en: Mapped[str | None] = mapped_column(Text, nullable=True)
     quote: Mapped[Quote] = relationship(back_populates="items")
+
+    __table_args__ = (CheckConstraint("discount_percent >= 0 AND discount_percent <= 100", name="ck_quote_item_discount_percent"),)
+
+    @property
+    def net_total(self) -> Decimal:
+        return Decimal(self.line_total) - Decimal(self.discount_amount or 0)
 
 
 class QuoteSettings(Base):
@@ -392,7 +401,7 @@ class QuoteSettings(Base):
 class QuoteTerm(Base):
     """One term of the organization's quotation terms and conditions (e.g. Delivery, Payment), in both languages.
 
-    Terms belong to the settings, not to a quote: every quotation document prints the current active terms.
+    Drafts use these settings. Issued revisions print their immutable terms snapshot.
     """
     __tablename__ = "commercial_quote_terms"
     __table_args__ = (Index("ix_commercial_quote_terms_org_order", "organization_id", "sort_order"),)
@@ -493,7 +502,8 @@ class CommercialOrderItem(Base):
     requested_spec_json: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)  # customer-facing commercial spec only
     quantity: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     unit: Mapped[str] = mapped_column(String(32), nullable=False)
-    agreed_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    # Four places: a price after a quotation's percentage discount (e.g. 12.35 less 7 % = 11.4855).
+    agreed_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
     line_total: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     commercial_order: Mapped[CommercialOrder] = relationship(back_populates="items")
 
@@ -530,10 +540,7 @@ class CustomerInteraction(Base):
         nullable=False,
         index=True,
     )
-    interaction_type: Mapped[InteractionType] = mapped_column(
-        SqlEnum(InteractionType, name="customer_interaction_type", values_callable=enum_values),
-        nullable=False,
-    )
+    interaction_type: Mapped[str] = mapped_column(String(60), nullable=False)  # MD-003: a key of the interaction_type list
     interaction_date: Mapped[datetime] = mapped_column(TZDateTime, nullable=False)
     subject: Mapped[str] = mapped_column(String(255), nullable=False)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -617,3 +624,10 @@ class FollowUp(Base):
         default=utc_now,
         onupdate=utc_now,
     )
+
+# Register complaint-owned tables with the commercial metadata.
+from .complaint_models import Complaint, ComplaintItem, ComplaintItemProperty, ComplaintEvent, ComplaintLink, ComplaintAttachment, ComplaintCodeCounter  # noqa: F401
+
+from .quote_terms_models import QuoteTermsSnapshot  # noqa: F401,E402
+
+from .contact_models import CustomerContact, CustomerSite  # noqa: E402,F401
