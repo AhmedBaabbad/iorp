@@ -50,6 +50,12 @@ def upgrade() -> None:
         target = permission_ids.get((grant["organization_id"], grant["code"]))
         if target:
             connection.execute(sa.text("UPDATE foundation_role_permissions SET permission_id=:permission_id WHERE id=:id"), {"permission_id": target, "id": grant["id"]})
+    # A fresh installation has no organization yet: the catalog rows seeded earlier belong to none, and each
+    # organization receives its own catalog when it is provisioned. Where organizations exist every row was assigned
+    # above, so this removes nothing (a database already past this revision never runs it again).
+    connection.execute(sa.text("DELETE FROM foundation_role_permissions WHERE permission_id IN "
+                               "(SELECT id FROM foundation_permissions WHERE organization_id IS NULL)"))
+    connection.execute(sa.text("DELETE FROM foundation_permissions WHERE organization_id IS NULL"))
     op.alter_column("foundation_permissions", "organization_id", nullable=False)
     op.alter_column("foundation_permissions", "description", nullable=False)
     op.alter_column("foundation_permissions", "resource_name", nullable=False)

@@ -39,7 +39,8 @@ def pg():
         with Session(isolated) as db:
             org = Organization(name="Allocation test", code="test", timezone="UTC")
             db.add(org); db.flush()
-            user = User(organization_id=org.id, full_name="Test", email="test@example.invalid", password_hash="unused")
+            user = User(organization_id=org.id, full_name="Test", email="test@example.invalid", password_hash="unused",
+                        is_organization_root=True)  # signs the order steps (approvals check the authority); these tests are about locking
             customer = Customer(organization_id=org.id, customer_code="C", name="Test")
             wc = WorkCenter(organization_id=org.id, code="WC", name="Line")
             db.add_all([user, customer, wc]); db.flush()

@@ -1,3 +1,4 @@
+import re
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -31,10 +32,19 @@ config.set_main_option("sqlalchemy.url", settings.database_url)
 target_metadata = Base.metadata
 
 
+MIGRATION_OWNED = re.compile(r"(^|_)[a-z]\d{1,2}(_|$)|_backup$")
+
+
 def include_object(obj, name, type_, reflected, compare_to):
     # This migration-owned historical archive deliberately has no live ORM/FKs.
     # Autogenerate must never propose removing preserved legacy associations.
-    return not (type_ == "table" and name == "production_legacy_shift_centers")
+    if type_ == "table" and name == "production_legacy_shift_centers":
+        return False
+    # Rollback bookkeeping that migrations keep for their own downgrade (e.g. rbac_k9_added_grants,
+    # quality_rbac_i6_backup): present in the database, absent from the models on purpose. Never propose dropping them.
+    if type_ == "table" and reflected and compare_to is None and MIGRATION_OWNED.search(name):
+        return False
+    return True
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
