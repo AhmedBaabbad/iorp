@@ -145,6 +145,37 @@ def test_verify_cannot_default_to_application_database(tmp_path):
         tool.verify(tmp_path, None, False)
 
 
+@pytest.mark.parametrize('failure', [None, 'production', 'remote_host', 'query', 'wrong_id', 'wrong_port', 'remote_daemon', 'bind',
+                                     'label', 'docker_override', 'application_server'])
+def test_restore_destination_fails_closed(monkeypatch, failure):
+    """Only the verified disposable container passes (None); every other destination is refused."""
+    import json
+    from sqlalchemy.engine import make_url
+    monkeypatch.setenv('APP_ENV', 'production' if failure == 'production' else 'test')
+    monkeypatch.setenv('DATABASE_URL', 'postgresql+psycopg://iorp:x@127.0.0.1:' + ('45678' if failure == 'application_server' else '5434') + '/iorp')
+    monkeypatch.setenv('IORP_RESTORE_CONTAINER_ID', 'a' * 64)
+    monkeypatch.delenv('DOCKER_HOST', raising=False)
+    monkeypatch.delenv('DOCKER_CONTEXT', raising=False)
+    if failure == 'docker_override':
+        monkeypatch.setenv('DOCKER_HOST', 'tcp://production:2375')
+    url = make_url('postgresql://test:test@127.0.0.1:45678/iorp_restore_verify_test')
+    if failure == 'remote_host': url = url.set(host='production')
+    if failure == 'query': url = url.update_query_dict({'host': 'production'})
+    info = {'Id': ('b' if failure == 'wrong_id' else 'a') * 64,
+            'State': {'Running': True}, 'Config': {'Labels': {'iorp.purpose': 'production' if failure == 'label' else 'backup-test'}},
+            'HostConfig': {'NetworkMode': 'bridge'},
+            'Mounts': [{'Type': 'bind'}] if failure == 'bind' else [],
+            'NetworkSettings': {'Ports': {'5432/tcp': [{'HostIp': '127.0.0.1', 'HostPort': '5432' if failure == 'wrong_port' else '45678'}]}}}
+    def inspect(args, **kwargs):
+        return json.dumps([{'Endpoints': {'docker': {'Host': 'tcp://production:2375' if failure == 'remote_daemon' else 'npipe://docker'}}}] if 'context' in args else [info]).encode()
+    monkeypatch.setattr(tool.subprocess, 'check_output', inspect)
+    if failure is None:
+        tool.validate_restore_destination(url, 'disposable')  # the verified disposable server is accepted
+        return
+    with pytest.raises(SystemExit):
+        tool.validate_restore_destination(url, 'disposable')
+
+
 def test_artifact_path_escape_is_rejected(tmp_path):
     manifest = {'encrypted': False, 'artifacts': {'database.dump': {'stored_as': '../secret'}}}
     with pytest.raises(SystemExit, match='Unsafe artifact'):

@@ -267,11 +267,48 @@ def _artifact(folder: Path, manifest: dict, name: str, work: Path) -> Path:
     return plain
 
 
+def validate_restore_destination(url, container: str | None) -> None:
+    """Only an explicitly identified disposable local Docker server may be restored.
+
+    Verify Docker's actual published endpoint, not just the requested DB name.
+    Remote daemons, URL connection overrides and host-mounted data fail closed.
+    """
+    expected = os.environ.get("IORP_RESTORE_CONTAINER_ID", "")
+    if os.environ.get("APP_ENV") != "test" or not container or not re.fullmatch(r"[a-f0-9]{64}", expected):
+        raise SystemExit("Restore requires APP_ENV=test and the full disposable IORP_RESTORE_CONTAINER_ID")
+    if url.host != "127.0.0.1" or not url.port or url.query:
+        raise SystemExit("Restore URL must use the verified loopback port without connection overrides")
+    if os.environ.get("DOCKER_HOST") or os.environ.get("DOCKER_CONTEXT"):
+        raise SystemExit("Restore refuses Docker endpoint environment overrides")
+    try:
+        application = make_url(os.environ.get("DATABASE_URL") or settings().database_url)
+    except Exception as exc:  # the application's server must be known to be excluded
+        raise SystemExit("Cannot determine the application database to exclude it") from exc
+    if application.host in {"127.0.0.1", "localhost", "::1"} and (application.port or 5432) == url.port:
+        raise SystemExit("Restore destination is the application database server")
+    try:
+        context = json.loads(subprocess.check_output(["docker", "context", "inspect"], stderr=subprocess.PIPE))[0]
+        endpoint = context["Endpoints"]["docker"]["Host"]
+        if not endpoint.startswith(("npipe://", "unix://")):
+            raise ValueError("remote daemon")
+        info = json.loads(subprocess.check_output(["docker", "inspect", container], stderr=subprocess.PIPE))[0]
+        bindings = info["NetworkSettings"]["Ports"].get("5432/tcp") or []
+        if (info["Id"] != expected or not info["State"]["Running"]
+                or info["Config"].get("Labels", {}).get("iorp.purpose") != "backup-test"
+                or info["HostConfig"].get("NetworkMode") in {"host", "container"}
+                or any(m.get("Type") == "bind" for m in info.get("Mounts", []))
+                or bindings != [{"HostIp": "127.0.0.1", "HostPort": str(url.port)}]):
+            raise ValueError("destination identity mismatch")
+    except (subprocess.SubprocessError, OSError, ValueError, KeyError, IndexError, TypeError) as exc:
+        raise SystemExit("Cannot independently confirm disposable restore destination") from exc
+
+
 def verify(folder: Path, container: str | None, keep: bool, target: str | None = None, url_override: str | None = None) -> dict:
     manifest = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
     if not url_override:
         raise SystemExit("Restore verification requires an explicit isolated target URL; never defaults to application database")
     url = database_url(url_override)
+    validate_restore_destination(url, container)
     if not url.database or not url.database.startswith(VERIFY_PREFIX):
         raise SystemExit("Target connection database must identify an isolated verification server")
     name = verification_name(manifest["source_database"], target)

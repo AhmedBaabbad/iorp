@@ -53,3 +53,15 @@ python backend/scripts/recovery_drill.py --application-schema --output .tmp/reco
 لا تستعد نسخة إلى قاعدة التشغيل للاختبار. لا تستخدم DROP أو clean لاستبدال بيانات قائمة. استعادة منظمة منفردة من قاعدة مشتركة تحتاج خطة منفصلة لضمان كل العلاقات، ولا تنفذ بنسخ صفوف يدويًا إلى الإنتاج. يلزم اعتماد منفصل قبل أي استبدال إنتاجي، مع نقطة رجوع ووقت توقف معلوم.
 
 **غير منفذ:** الجدولة الإنتاجية، النسخ الخارجية والتشفير وإدارة مفاتيحه، اختبار نسخة واقعية، اختبار سلسلة migrations في هذا التمرين، قياس RPO/RTO للإنتاج، استعادة منظمة منفردة. توفر الأداة اختبارًا فعليًا للآلية ومخطط ORM، وليس إعلان جاهزية التعافي التشغيلي.
+# Restore destination gate (2026-10-14)
+
+Restore verification now requires `APP_ENV=test`, a disposable local Docker container
+labelled `iorp.purpose=backup-test`, and `IORP_RESTORE_CONTAINER_ID` set to its full
+64-character ID returned by `docker run`. Pass that container to `--docker-container`.
+`IORP_RESTORE_DATABASE_URL` must use its inspected `127.0.0.1` published PostgreSQL
+port, with no connection query overrides. Remote Docker endpoints, endpoint environment
+overrides, bind mounts, mismatched IDs/ports and missing evidence are rejected before
+connecting to PostgreSQL. Existing scratch/encryption/database-name safeguards still apply.
+The opt-in `tests/test_backup_roundtrip_isolated.py` provisions and checks this destination.
+This intentionally restricts restore drills; it does not change production backup collection.
+

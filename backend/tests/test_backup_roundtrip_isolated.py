@@ -17,10 +17,12 @@ def test_encrypted_backup_restore_and_retention_on_disposable_server(tmp_path, m
     password = uuid4().hex
     def docker(*args):
         return subprocess.run(['docker', *args], check=True, capture_output=True, text=True).stdout.strip()
-    docker('run', '-d', '--name', name, '--label', 'iorp.purpose=backup-test',
+    container_id = docker('run', '-d', '--name', name, '--label', 'iorp.purpose=backup-test',
            '-p', '127.0.0.1::5432', '-e', 'POSTGRES_PASSWORD=' + password, 'postgres:16')
     engine = None
     try:
+        monkeypatch.setenv('APP_ENV', 'test')
+        monkeypatch.setenv('IORP_RESTORE_CONTAINER_ID', container_id)
         for _ in range(60):
             try:
                 docker('exec', name, 'pg_isready', '-U', 'postgres')
