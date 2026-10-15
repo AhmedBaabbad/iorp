@@ -1,0 +1,50 @@
+.page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--page-bg);
+  color: var(--text);
+}
+.card {
+  width: 100%;
+  max-width: 580px;
+  padding: clamp(24px, 6vw, 56px);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+.brand { color: var(--text-muted); font-weight: 700; letter-spacing: .15em; }
+.code {
+  margin: 24px auto;
+  padding: 16px;
+  width: fit-content;
+  min-width: 140px;
+  border-radius: 24px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: clamp(48px, 12vw, 80px);
+  font-weight: 700;
+  line-height: 1.2;
+}
+.card h1 { margin: 0 0 12px; font-size: clamp(24px, 5vw, 32px); }
+.card p { color: var(--text-muted); line-height: 1.9; margin: 0; }
+.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 28px; }
+.primary, .secondary {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px 20px;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.secondary { background: var(--surface-muted); color: var(--text); }
+.primary:focus-visible, .secondary:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
