@@ -154,7 +154,10 @@ jobs:
         run: npm audit --omit=dev --audit-level=critical
 
   images:
-    name: Docker images (immutable tag = commit SHA, not pushed)
+    name: Docker images (publish tested images on main push only)
+    permissions:
+      contents: read
+      packages: write
     needs: [backend, security-tests, postgres, frontend, scan, compose-config]
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -169,17 +172,44 @@ jobs:
         run: |
           set -euo pipefail
           tag="${GITHUB_SHA}"
-          docker build --target runtime -t "iorp/backend:${tag}" backend
-          docker build --build-arg BACKEND_URL=http://backend:8080 -t "iorp/frontend:${tag}" frontend
-          docker build -f deploy/reporting/Dockerfile.gateway -t "iorp/report-gateway:${tag}" .
-          docker build -f deploy/reporting/Dockerfile.renderer -t "iorp/report-renderer:${tag}" .
+          source="org.opencontainers.image.source=https://github.com/AhmedBaabbad/iorp"
+          docker build --label "$source" --target runtime -t "iorp/backend:${tag}" backend
+          docker build --label "$source" --build-arg BACKEND_URL=http://backend:8080 -t "iorp/frontend:${tag}" frontend
+          docker build --label "$source" -f deploy/reporting/Dockerfile.gateway -t "iorp/report-gateway:${tag}" .
+          docker build --label "$source" -f deploy/reporting/Dockerfile.renderer -t "iorp/report-renderer:${tag}" .
       - name: no secrets or local state inside the images
         run: |
           set -euo pipefail
           tag="${GITHUB_SHA}"
+          for image in backend frontend report-gateway report-renderer; do
+            test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.source"}}' "iorp/${image}:${tag}")" = 'https://github.com/AhmedBaabbad/iorp'
+          done
           for image in backend frontend; do
             if docker run --rm --entrypoint sh "iorp/${image}:${tag}" -c 'find / -xdev \( -name ".env" -o -name "*.dump" -o -name "*.pem" -o -name "*.key" \) 2>/dev/null | grep -v /proc/ | grep -v "/usr/" | grep .'; then
               echo "secret-like file found in iorp/${image}"; exit 1; fi
           done
           docker run --rm --entrypoint sh "iorp/backend:${tag}" -c 'id -u | grep -qv "^0$" && test ! -d /app/tests && test ! -d /app/uploads'
           docker run --rm --entrypoint sh "iorp/frontend:${tag}" -c 'id -u | grep -qv "^0$" && test -f server.js'
+      - name: log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: publish the tested local images (no rebuild)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          echo '### Published images' >> "$GITHUB_STEP_SUMMARY"
+          for image in backend frontend report-gateway report-renderer; do
+            local="iorp/${image}:${GITHUB_SHA}"
+            remote="ghcr.io/ahmedbaabbad/iorp/${image}:${GITHUB_SHA}"
+            tested_id=$(docker image inspect --format '{{.Id}}' "$local")
+            docker tag "$local" "$remote"
+            test "$(docker image inspect --format '{{.Id}}' "$remote")" = "$tested_id"
+            docker push "$remote"
+            digest=$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$remote" | grep "^ghcr.io/ahmedbaabbad/iorp/${image}@sha256:" | head -n 1)
+            test -n "$digest"
+            printf -- '- `%s` → `%s` (image ID `%s`)\n' "$remote" "$digest" "$tested_id" >> "$GITHUB_STEP_SUMMARY"
+          done
