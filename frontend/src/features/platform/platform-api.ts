@@ -1,4 +1,14 @@
-import { apiClient } from "@/lib/api-client";
+import { apiClient as baseClient } from "@/lib/api-client";
+import { requestStepUp } from "./platform-step-up";
+async function apiClient<T>(path: string, options: Parameters<typeof baseClient>[1] = {}): Promise<T> {
+  const method = options?.method ?? "GET";
+  if (method !== "GET" && (path.startsWith("/platform/organizations") || path.startsWith("/platform/administrators"))) {
+    const proof = await requestStepUp({ method, path, body: options?.body, token: options?.token });
+    const headers = new Headers(options?.headers); headers.set("X-Platform-Step-Up", proof);
+    return baseClient<T>(path, { ...options, headers });
+  }
+  return baseClient<T>(path, options);
+}
 import { storePlatformToken } from "@/lib/platform-auth";
 import type {
   ChangePlatformPasswordRequest,

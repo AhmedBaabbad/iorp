@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     # (checked when the access token is renewed, so it must exceed PLATFORM_ACCESS_TOKEN_MINUTES)
     platform_session_max_hours: int = Field(default=8, ge=1, le=24, alias="PLATFORM_SESSION_MAX_HOURS")
     platform_idle_timeout_minutes: int = Field(default=15, ge=5, le=240, alias="PLATFORM_IDLE_TIMEOUT_MINUTES")
+    platform_mfa_required: bool = Field(default=False, alias="PLATFORM_MFA_REQUIRED")
+    platform_mfa_keys: str = Field(default="", alias="PLATFORM_MFA_KEYS", repr=False)
     jwt_clock_skew_seconds: int = Field(default=30, ge=0, le=120, alias="JWT_CLOCK_SKEW_SECONDS")
     refresh_cookie_name: str = Field(default="iorp_refresh", min_length=3, alias="REFRESH_COOKIE_NAME")
     refresh_cookie_secure: bool = Field(default=False, alias="REFRESH_COOKIE_SECURE")
@@ -85,6 +87,14 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_security_configuration(self):
+        if self.platform_mfa_required and not self.platform_mfa_keys.strip():
+            raise ValueError('Mandatory Platform MFA requires configured encryption keys')
+        if self.platform_mfa_keys:
+            from cryptography.fernet import Fernet
+            try:
+                for key in self.platform_mfa_keys.split(','): Fernet(key.strip())
+            except (ValueError, TypeError):
+                raise ValueError('Invalid Platform MFA encryption key configuration') from None
         if self.smtp_ssl and self.smtp_tls:
             raise ValueError("Use SMTP_SSL or SMTP_TLS, not both")
         for value in (self.frontend_url, self.platform_frontend_url):
@@ -98,6 +108,11 @@ class Settings(BaseSettings):
         if self.refresh_cookie_samesite == "none" and not self.refresh_cookie_secure:
             raise ValueError("SameSite=None refresh cookies must be Secure")
         if self.app_env == "production":
+            origins = [v.strip() for v in self.cors_origins.split(',') if v.strip()]
+            if any(v == '*' or urlsplit(v).scheme != 'https' or not urlsplit(v).hostname
+                   or urlsplit(v).username or urlsplit(v).password or urlsplit(v).query or urlsplit(v).fragment
+                   or urlsplit(v).path not in ('', '/') for v in origins):
+                raise ValueError('Production CORS requires explicit HTTPS origins')
             if self.debug:
                 raise ValueError("Production DEBUG must be disabled")
             if self.email_mode != "smtp":
@@ -115,6 +130,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
         populate_by_name=True,
+        hide_input_in_errors=True,
     )
 
 

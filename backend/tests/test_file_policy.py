@@ -208,3 +208,9 @@ def test_an_open_records_file_is_deleted_and_its_space_freed(db, test_org, test_
     used = files.usage(db, test_org.id)
     assert used > 0 and service.remove_attachment(report.id, row.id) == []
     assert files.usage(db, test_org.id) == 0 and not storage.exists(row.storage_path)
+
+
+# Exercise the same fresh-verification handshake as the Platform UI.
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401
+import pytest
+pytestmark = pytest.mark.usefixtures("verified_platform_browser")

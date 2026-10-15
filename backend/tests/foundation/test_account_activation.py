@@ -92,3 +92,9 @@ def test_a_new_platform_administrator_activates_their_own_account(client, monkey
     assert client.post("/api/v1/platform/login", json={"email": "new-admin@example.com", "password": "AnyGuess12345!"}).status_code == 401
     activate("new-admin@example.com", "NewAdminOwn12345!", platform=True)
     assert client.post("/api/v1/platform/login", json={"email": "new-admin@example.com", "password": "NewAdminOwn12345!"}).status_code == 200
+
+
+# Exercise the same fresh-verification handshake as the Platform UI.
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401
+import pytest
+pytestmark = pytest.mark.usefixtures("verified_platform_browser")

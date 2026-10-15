@@ -155,3 +155,9 @@ def test_suspend_organization_blocks_login_and_active_sessions(client, monkeypat
         "/api/v1/auth/login", json={"email": "first-admin@example.com", "password": "AdminPassword123!"}
     )
     assert restored_login.status_code == 200
+
+
+# Exercise the same fresh-verification handshake as the Platform UI.
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401
+import pytest
+pytestmark = pytest.mark.usefixtures("verified_platform_browser")

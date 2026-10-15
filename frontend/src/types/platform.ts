@@ -1,6 +1,7 @@
 import type { OrganizationInput } from "./organization-provisioning";
 
 export type PlatformLoginRequest = {
+  mfa_code?: string;
   email: string;
   password: string;
 };
@@ -12,6 +13,7 @@ export type PlatformLoginResponse = {
 };
 
 export type PlatformAccount = {
+  mfa_enrollment_required?: boolean;
   id: string;
   full_name: string;
   email: string;

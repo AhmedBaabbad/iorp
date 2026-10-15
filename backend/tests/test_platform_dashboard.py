@@ -84,3 +84,9 @@ def test_t10_both_endpoints_provide_dashboard_computation_fields(dashboard_env):
     admins = dashboard_env["client"].get("/api/v1/platform/administrators", headers=dashboard_env["root"]).json()
     assert all({"status", "created_at"} <= item.keys() for item in orgs)
     assert all({"role", "full_name", "status"} <= item.keys() for item in admins)
+
+
+# Exercise the same fresh-verification handshake as the Platform UI.
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401
+import pytest
+pytestmark = pytest.mark.usefixtures("verified_platform_browser")

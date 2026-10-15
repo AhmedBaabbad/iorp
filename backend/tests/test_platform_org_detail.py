@@ -140,3 +140,9 @@ def test_t15_the_organization_root_chooses_their_own_password_through_the_link(d
     assert client.post("/api/v1/auth/reset-password", json={"token": token, "new_password": NEW_PASSWORD, "new_password_confirmation": NEW_PASSWORD}).status_code in (200, 204)
     login = client.post("/api/v1/auth/login", json={"email": "detail-tenant@example.com", "password": NEW_PASSWORD})
     assert login.status_code == 200 and login.json()["access_token"]
+
+
+# Exercise the same fresh-verification handshake as the Platform UI.
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401
+import pytest
+pytestmark = pytest.mark.usefixtures("verified_platform_browser")

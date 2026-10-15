@@ -260,3 +260,9 @@ def test_http_20_create_ignores_is_protected(client, db, monkeypatch):
     headers, _, _ = _bootstrap(client, db, monkeypatch)
     response = client.post("/api/v1/admin/roles", headers=headers, json={"name": "Safe", "code": "safe_protected", "is_protected": True})
     assert response.status_code == 201 and response.json()["is_protected"] is False
+
+
+# Exercise the same fresh-verification handshake as the Platform UI.
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401
+import pytest
+pytestmark = pytest.mark.usefixtures("verified_platform_browser")

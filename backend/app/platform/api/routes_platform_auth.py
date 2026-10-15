@@ -43,7 +43,7 @@ def platform_login(
         return JSONResponse(status_code=429, headers={"Retry-After": str(exc.retry_after_seconds)}, content={"code": "RATE_LIMIT_EXCEEDED", "message": "Too many login attempts. Please try again later.", "retry_after_seconds": exc.retry_after_seconds})
     try:
         ip, user_agent = request_metadata(request)
-        pair = PlatformAuthService(db).login(str(payload.email), payload.password, ip=ip, user_agent=user_agent)
+        pair = PlatformAuthService(db).login(str(payload.email), payload.password, ip=ip, user_agent=user_agent, mfa_code=payload.mfa_code)
     except LoginProtectionError as exc:
         content = {"code": exc.code, "message": exc.message}
         if exc.locked_until is not None:
@@ -81,6 +81,11 @@ def platform_refresh(request: Request, response: Response, db: Session = Depends
             raise TokenValidationError("ACCOUNT_INACTIVE")
         if account.token_version != claims["token_version"]:
             raise TokenValidationError("SESSION_INVALIDATED")
+        from app.platform.infrastructure.mfa_models import PlatformMFA
+        from app.platform.application.mfa import digest
+        factor = db.get(PlatformMFA, account.id)
+        if factor and factor.enabled and claims.get('mfa') != digest(factor.secret):
+            raise TokenValidationError('MFA_SESSION_REQUIRED')
         ip, user_agent = request_metadata(request)
         _, pair = rotate_refresh_token(db, raw, "platform", ip=ip, user_agent=user_agent)
         log_platform_security(db, PLATFORM_TOKEN_REFRESHED, account.id, account.email, ip, user_agent)
@@ -110,7 +115,10 @@ def platform_logout(request: Request, response: Response, db: Session = Depends(
 @router.get("/me", response_model=PlatformMeResponse)
 def platform_me(
     account: PlatformAccount = Depends(get_current_platform_account),
+    db: Session = Depends(get_db),
 ):
+    from app.platform.infrastructure.mfa_models import PlatformMFA
+    factor = db.get(PlatformMFA, account.id)
     role = PlatformAccountRole.ROOT if account.is_root else account.role
     return PlatformMeResponse(
         id=account.id,
@@ -119,6 +127,7 @@ def platform_me(
         is_root=account.is_root,
         role=role,
         permissions=sorted(permission.value for permission in PLATFORM_ROLE_PERMISSIONS[role]),
+        mfa_enrollment_required=settings.platform_mfa_required and not (factor and factor.enabled),
     )
 
 

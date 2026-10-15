@@ -121,3 +121,9 @@ def test_t15_admin_cannot_create(console):
 
 def test_t16_tenant_token_cannot_access_platform_organizations(console):
     assert _list(console, console["tenant"]).status_code == 401
+
+
+# Exercise the same fresh-verification handshake as the Platform UI.
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401
+import pytest
+pytestmark = pytest.mark.usefixtures("verified_platform_browser")

@@ -84,6 +84,7 @@ export function PlatformLoginPage() {
   const { login, isAuthenticated, isLoading } = usePlatformAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [retryAfter, setRetryAfter] = useState(0);
@@ -115,11 +116,15 @@ export function PlatformLoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login({ email, password });
+      await login({ email, password, mfa_code: mfaCode });
       router.replace("/platform/dashboard");
     } catch (caughtError) {
       const data = caughtError instanceof ApiClientError && caughtError.details && typeof caughtError.details === "object"
         ? caughtError.details as { code?: string; retry_after_seconds?: number } : null;
+      if (data?.code === "MFA_REQUIRED" || data?.code === "VERIFICATION_FAILED" || data?.code === "VERIFICATION_LOCKED") {
+        setError(t("security.failed"));
+        return;
+      }
       if (data?.code === "ACCOUNT_TEMPORARILY_LOCKED" || data?.code === "RATE_LIMIT_EXCEEDED") {
         setRetryAfter(data.retry_after_seconds ?? 60);
         setError(t(data.code === "ACCOUNT_TEMPORARILY_LOCKED" ? "login.accountTemporarilyLocked" : "login.rateLimitExceeded"));
@@ -180,6 +185,7 @@ export function PlatformLoginPage() {
             />
           </label>
 
+          <label style={styles.field}><span>{t("security.code")}</span><input style={styles.input} dir="ltr" autoComplete="one-time-code" value={mfaCode} onChange={e => setMfaCode(e.target.value)} /></label>
           {!error && sessionMessage === "expired" ? (
             <div style={styles.error} role="status">{t("login.sessionExpired")}</div>
           ) : null}

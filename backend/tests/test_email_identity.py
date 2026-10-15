@@ -116,3 +116,9 @@ def test_t31_t32_tenant_isolation_and_safe_error(identity_env):
     body = response.json()
     assert body == {"code": "EMAIL_ALREADY_EXISTS", "message": "This email is already registered in the system"}
     assert "organization" not in str(body).lower() and "table" not in str(body).lower()
+
+
+# Exercise the same fresh-verification handshake as the Platform UI.
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401
+import pytest
+pytestmark = pytest.mark.usefixtures("verified_platform_browser")

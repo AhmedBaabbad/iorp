@@ -117,3 +117,9 @@ def test_isolation_and_platform(env, case):
     detail=env["client"].get(f"/api/v1/platform/organizations/{env['org'].id}",headers=env["platform"]); assert detail.status_code==200
     if case=="T35": assert {"name","industry_type","timezone","default_locale","has_logo","logo_url"}<=detail.json().keys()
     if case=="T36": _upload(env); response=env["client"].get(f"/api/v1/platform/organizations/{env['org'].id}/logo",headers=env["platform"]); assert response.status_code==200 and response.content.startswith(PNG[:8])
+
+
+# Exercise the same fresh-verification handshake as the Platform UI.
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401
+import pytest
+pytestmark = pytest.mark.usefixtures("verified_platform_browser")

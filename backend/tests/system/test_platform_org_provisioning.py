@@ -92,3 +92,9 @@ def test_an_activation_password_still_needs_twelve_characters(client, monkeypatc
     assert client.post("/api/v1/platform/organizations", headers=headers, json=_payload()).status_code == 201
     short = client.post("/api/v1/auth/reset-password", json={"token": mailbox["new-root@example.com"], "new_password": "Short123", "new_password_confirmation": "Short123"})
     assert short.status_code in (400, 422)
+
+
+# Exercise the same fresh-verification handshake as the Platform UI.
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401
+import pytest
+pytestmark = pytest.mark.usefixtures("verified_platform_browser")

@@ -191,6 +191,7 @@ function PlatformDashboardContent() {
     canReadSecurityLog && { key: "securityLog", href: "/platform/security-log", icon: icons.key, label: t("quickActions.securityLog") },
     canReadActivityLog && { key: "activityLog", href: "/platform/activity-log", icon: icons.clock, label: t("quickActions.activityLog") },
     { key: "changePassword", onClick: () => setPasswordDialogOpen(true), icon: icons.key, label: t("quickActions.changePassword") },
+    { key: "accountSecurity", href: "/platform/security", icon: icons.shield, label: t("quickActions.accountSecurity") },
   ].filter(Boolean) as Array<{ key: string; href?: string; onClick?: () => void; icon: ReactNode; label: string }>;
 
   const today = new Intl.DateTimeFormat(locale, { weekday: "long", year: "numeric", month: "long", day: "numeric" }).format(new Date());

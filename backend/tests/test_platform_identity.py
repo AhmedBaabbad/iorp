@@ -119,3 +119,9 @@ def test_t37_t40_platform_accounts_are_independent(client, db, monkeypatch):
     assert db.query(PlatformAccount).count() == 2
     assert db.query(User).count() == 1
     assert not hasattr(db.query(PlatformAccount).first(), "organization_id")
+
+
+# Exercise the same fresh-verification handshake as the Platform UI.
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401
+import pytest
+pytestmark = pytest.mark.usefixtures("verified_platform_browser")

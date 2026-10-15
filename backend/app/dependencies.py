@@ -7,6 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.auth import AuthenticatedUser
+from app.core.config import settings
 from app.core.authorization.scoped_policy import ScopedAuthorizationPolicy
 from app.core.db import get_db_session
 from app.core.permission import has_any_permission, has_permission, has_role
@@ -135,6 +136,7 @@ def get_platform_email_queries(db: Session = Depends(get_db)) -> PlatformEmailQu
 
 
 def get_current_platform_account(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> PlatformAccount:
@@ -164,6 +166,15 @@ def get_current_platform_account(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid platform authentication token.",
         )
+    from app.platform.infrastructure.mfa_models import PlatformMFA
+    from app.platform.application.mfa import digest
+    factor = db.get(PlatformMFA, account.id)
+    if factor and factor.enabled and payload.get('mfa') != digest(factor.secret):
+        raise HTTPException(401, detail={'code': 'MFA_SESSION_REQUIRED'})
+    if settings.platform_mfa_required:
+        allowed = {'/platform/me', '/platform/mfa', '/platform/mfa/enroll', '/platform/mfa/confirm'}
+        if not (factor and factor.enabled) and request.url.path.removeprefix(settings.api_prefix) not in allowed:
+            raise HTTPException(403, detail={'code': 'MFA_ENROLLMENT_REQUIRED'})
     return account
 
 

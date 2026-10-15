@@ -88,6 +88,7 @@ class BootstrapInitializeResponse(BaseModel):
 class PlatformLoginRequest(BaseModel):
     email: NormalizedEmail
     password: str = Field(min_length=1, max_length=128)
+    mfa_code: str = Field(default="", max_length=128)
 
 
 class PlatformLoginResponse(BaseModel):
@@ -105,6 +106,7 @@ class PlatformMeResponse(BaseModel):
     is_root: bool
     role: PlatformAccountRole
     permissions: list[str]
+    mfa_enrollment_required: bool = False
 
 
 class ChangePasswordRequest(BaseModel):

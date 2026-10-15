@@ -108,3 +108,9 @@ def test_organization_suspension_contract(suspension_env, case):
         set_status(env, "suspended")
         response = env["client"].get(f"/api/v1/platform/organizations/{env['organization'].id}", headers=env["platform_headers"])
         assert response.status_code == 200
+
+
+# Exercise the same fresh-verification handshake as the Platform UI.
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401
+import pytest
+pytestmark = pytest.mark.usefixtures("verified_platform_browser")

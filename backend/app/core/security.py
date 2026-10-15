@@ -187,7 +187,8 @@ def issue_token_pair(
     # SEC-001: the access token names its sign-in ("sid"), so ending the sign-in ends the access token at once.
     claims = {**(extra_claims or {}), "sid": str(family_id)}
     access, _, access_exp = _encode_token(subject=str(account_id), account_type=account_type, token_type="access", token_version=token_version, organization_id=organization_id, extra_claims=claims)
-    refresh, refresh_jti, refresh_exp = _encode_token(subject=str(account_id), account_type=account_type, token_type="refresh", token_version=token_version, organization_id=organization_id)
+    refresh, refresh_jti, refresh_exp = _encode_token(subject=str(account_id), account_type=account_type, token_type="refresh", token_version=token_version, organization_id=organization_id,
+        extra_claims={"mfa": claims.get("mfa")} if account_type == "platform" else None)
     db.add(AuthSession(
         jti_hash=_jti_hash(refresh_jti), family_id=family_id, account_type=account_type,
         account_id=account_id, organization_id=organization_id, token_version=token_version, expires_at=refresh_exp,
@@ -250,6 +251,7 @@ def rotate_refresh_token(db: Session, raw_token: str, expected_account_type: Acc
         db, account_id=session.account_id, account_type=expected_account_type,
         token_version=session.token_version, organization_id=session.organization_id,
         family_id=session.family_id, ip=ip, user_agent=user_agent, commit=False,
+        extra_claims={"mfa": payload.get("mfa")} if expected_account_type == "platform" else None,
         started_at=started,
     )
     new_payload = decode_token(pair.refresh_token, "refresh")

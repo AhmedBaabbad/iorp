@@ -159,3 +159,9 @@ def test_lifecycle_edge_cases(lifecycle, case):
     else: _set_status(lifecycle, "inactive"); response = _post(lifecycle, "archive", reason="   ")
     assert response.status_code == (200 if case == "T39" else 400 if case == "T40" else 409)
     if case == "T40": assert response.json()["code"] == "ARCHIVE_REASON_REQUIRED"
+
+
+# Exercise the same fresh-verification handshake as the Platform UI.
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401
+import pytest
+pytestmark = pytest.mark.usefixtures("verified_platform_browser")

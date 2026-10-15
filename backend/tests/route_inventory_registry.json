@@ -507,6 +507,10 @@
     "category": "platform_administration",
     "isolation_coverage": "requires_route_specific_evidence"
   },
+  "GET /api/v1/platform/mfa": {
+    "category": "authenticated_self",
+    "isolation_coverage": "platform_mfa_regression"
+  },
   "GET /api/v1/platform/organizations": {
     "category": "platform_administration",
     "isolation_coverage": "requires_route_specific_evidence"
@@ -1470,6 +1474,26 @@
   "POST /api/v1/platform/logout": {
     "category": "platform_administration",
     "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "POST /api/v1/platform/mfa/confirm": {
+    "category": "authenticated_self",
+    "isolation_coverage": "platform_mfa_regression"
+  },
+  "POST /api/v1/platform/mfa/disable": {
+    "category": "authenticated_self",
+    "isolation_coverage": "platform_mfa_regression"
+  },
+  "POST /api/v1/platform/mfa/enroll": {
+    "category": "authenticated_self",
+    "isolation_coverage": "platform_mfa_regression"
+  },
+  "POST /api/v1/platform/mfa/recovery": {
+    "category": "authenticated_self",
+    "isolation_coverage": "platform_mfa_regression"
+  },
+  "POST /api/v1/platform/mfa/step-up": {
+    "category": "authenticated_self",
+    "isolation_coverage": "platform_mfa_regression"
   },
   "POST /api/v1/platform/organizations": {
     "category": "platform_administration",

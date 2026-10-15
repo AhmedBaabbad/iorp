@@ -26,6 +26,8 @@ from tests.route_inventory import require_nonempty
 STATIC=require_nonempty([r for r in ROUTES if any(p[0] in ('all','any') for p in policies(r))], 'static permission routes')
 
 PUBLIC_OR_SELF = {
+    '/api/v1/platform/mfa', '/api/v1/platform/mfa/enroll', '/api/v1/platform/mfa/confirm',
+    '/api/v1/platform/mfa/step-up', '/api/v1/platform/mfa/disable', '/api/v1/platform/mfa/recovery',
     # ADR-010: authenticated owner only; current password + dual mailbox verification.
     '/api/v1/auth/me/email-change', '/api/v1/auth/me/email-change/confirm',
     '/health', '/health/ready', '/api/v1/auth/login','/api/v1/auth/refresh','/api/v1/auth/logout',

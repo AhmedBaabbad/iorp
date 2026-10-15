@@ -17,7 +17,8 @@ from app.core.email.service import EmailService
 def production_settings(**overrides):
     return Settings(_env_file=None, app_env='production', secret_key='test-only-runtime-secret-value-123456',
                     refresh_cookie_secure=True, **{'debug': False, 'email_mode': 'smtp', 'smtp_tls': True,
-                    'frontend_url':'https://app.example.test', 'platform_frontend_url':'https://app.example.test', **overrides})
+                    'frontend_url':'https://app.example.test', 'platform_frontend_url':'https://app.example.test',
+                    'cors_origins':'https://app.example.test', **overrides})
 
 
 @pytest.mark.parametrize('override', [{'debug': True}, {'email_mode': 'console'}, {'smtp_tls': False}])

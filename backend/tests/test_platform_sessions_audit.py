@@ -18,6 +18,7 @@ from app.core.utils import utc_now
 from app.foundation.infrastructure.models import Organization
 from app.platform.infrastructure.models import PlatformAccount, PlatformActivityLog
 from tests.test_platform_identity import _bootstrap, _headers
+from tests.test_platform_mfa import proof
 
 ADMIN = {"full_name": "Second Admin", "email": "second-admin@example.com", "role": "admin"}
 
@@ -27,7 +28,7 @@ def _me(client, token):
 
 
 def _admin(client, root_token, activate):
-    assert client.post("/api/v1/platform/administrators", headers=_headers(root_token), json=ADMIN).status_code == 201
+    assert client.post("/api/v1/platform/administrators", headers=proof(client, root_token, 'POST', ("/api/v1/platform/administrators").removeprefix('/api/v1'), ADMIN), json=ADMIN).status_code == 201
     activate(ADMIN["email"], "SecondAdmin12345!", platform=True)
     login = client.post("/api/v1/platform/login", json={"email": ADMIN["email"], "password": "SecondAdmin12345!"})
     assert login.status_code == 200
@@ -98,7 +99,7 @@ def test_sensitive_account_changes_end_the_accounts_sessions(client, db, monkeyp
     admin = _admin(client, root, activate)
     assert _me(client, admin).status_code == 200
     target = db.scalar(select(PlatformAccount).where(PlatformAccount.email == ADMIN["email"]))
-    assert client.patch(f"/api/v1/platform/administrators/{target.id}", headers=_headers(root), json=change).status_code == 200
+    assert client.patch(f"/api/v1/platform/administrators/{target.id}", headers=proof(client, root, 'PATCH', (f"/api/v1/platform/administrators/{target.id}").removeprefix('/api/v1'), change), json=change).status_code == 200
     assert _me(client, admin).status_code == 401
     assert _me(client, root).status_code == 200  # only the changed account
 
@@ -107,7 +108,7 @@ def test_a_name_change_keeps_the_sessions(client, db, monkeypatch, activate):
     root = _bootstrap(client, monkeypatch)
     admin = _admin(client, root, activate)
     target = db.scalar(select(PlatformAccount).where(PlatformAccount.email == ADMIN["email"]))
-    assert client.patch(f"/api/v1/platform/administrators/{target.id}", headers=_headers(root), json={"full_name": "Renamed"}).status_code == 200
+    assert client.patch(f"/api/v1/platform/administrators/{target.id}", headers=proof(client, root, 'PATCH', (f"/api/v1/platform/administrators/{target.id}").removeprefix('/api/v1'), {"full_name": "Renamed"}), json={"full_name": "Renamed"}).status_code == 200
     assert _me(client, admin).status_code == 200
 
 
@@ -141,7 +142,7 @@ def _records(db, action):
 def test_a_lifecycle_change_and_its_audit_record_are_kept_together(client, db, monkeypatch):
     root = _bootstrap(client, monkeypatch)
     org = _org(db)
-    r = client.post(f"/api/v1/platform/organizations/{org.id}/suspend", headers=_headers(root), json={"reason": "Unpaid"})
+    r = client.post(f"/api/v1/platform/organizations/{org.id}/suspend", headers=proof(client, root, 'POST', (f"/api/v1/platform/organizations/{org.id}/suspend").removeprefix('/api/v1'), {"reason": "Unpaid"}), json={"reason": "Unpaid"})
     assert r.status_code == 200
     [record] = _records(db, "organization.suspended")
     assert record.entity_id == org.id and record.actor_name == "Origin Root"
@@ -154,11 +155,12 @@ def test_when_the_audit_record_fails_the_lifecycle_change_is_not_kept(client, db
     root = _bootstrap(client, monkeypatch)
     org = _org(db)
 
+    verified_headers = proof(client, root, 'POST', (f"/api/v1/platform/organizations/{org.id}/suspend").removeprefix('/api/v1'), {"reason": "Unpaid"})
     def broken(self, **kwargs):
         raise RuntimeError("audit store unavailable")
     monkeypatch.setattr(PlatformAuditService, "record", broken)
     with pytest.raises(RuntimeError):
-        client.post(f"/api/v1/platform/organizations/{org.id}/suspend", headers=_headers(root), json={"reason": "Unpaid"})
+        client.post(f"/api/v1/platform/organizations/{org.id}/suspend", headers=verified_headers, json={"reason": "Unpaid"})
     db.rollback()
     db.expire_all()
     assert _org(db).status.value == "active"
@@ -170,11 +172,12 @@ def test_a_failing_activity_write_is_not_swallowed(client, db, monkeypatch):
     org = _org(db)
     import app.platform.application.activity_log as activity
 
+    verified_headers = proof(client, root, 'PUT', (f"/api/v1/platform/organizations/{org.id}/storage").removeprefix('/api/v1'), {"quota_bytes": 5 * 1024 * 1024})
     def unwritable(**fields):
         raise RuntimeError("disk full")
     monkeypatch.setattr(activity, "PlatformActivityLog", unwritable)
     with pytest.raises(RuntimeError):
-        client.put(f"/api/v1/platform/organizations/{org.id}/storage", headers=_headers(root), json={"quota_bytes": 5 * 1024 * 1024})
+        client.put(f"/api/v1/platform/organizations/{org.id}/storage", headers=verified_headers, json={"quota_bytes": 5 * 1024 * 1024})
     monkeypatch.undo()
     db.rollback()
     db.expire_all()
@@ -185,7 +188,7 @@ def test_a_storage_quota_change_is_audited_with_before_and_after(client, db, mon
     root = _bootstrap(client, monkeypatch)
     org = _org(db)
     for quota in (5 * 1024 * 1024, 7 * 1024 * 1024):
-        assert client.put(f"/api/v1/platform/organizations/{org.id}/storage", headers=_headers(root), json={"quota_bytes": quota}).status_code == 200
+        assert client.put(f"/api/v1/platform/organizations/{org.id}/storage", headers=proof(client, root, 'PUT', (f"/api/v1/platform/organizations/{org.id}/storage").removeprefix('/api/v1'), {"quota_bytes": quota}), json={"quota_bytes": quota}).status_code == 200
     first, second = sorted(_records(db, "organization_storage_quota_changed"), key=lambda r: r.details["changes"]["quota_bytes"]["after"])
     assert first.details["changes"]["quota_bytes"] == {"before": None, "after": 5 * 1024 * 1024}
     assert second.details["changes"]["quota_bytes"] == {"before": 5 * 1024 * 1024, "after": 7 * 1024 * 1024}
@@ -195,9 +198,10 @@ def test_a_storage_quota_change_is_audited_with_before_and_after(client, db, mon
 def test_when_the_quota_audit_fails_the_quota_is_not_changed(client, db, monkeypatch):
     root = _bootstrap(client, monkeypatch)
     org = _org(db)
+    verified_headers = proof(client, root, 'PUT', (f"/api/v1/platform/organizations/{org.id}/storage").removeprefix('/api/v1'), {"quota_bytes": 5 * 1024 * 1024})
     monkeypatch.setattr(PlatformAuditService, "record", lambda self, **kw: (_ for _ in ()).throw(RuntimeError("audit down")))
     with pytest.raises(RuntimeError):
-        client.put(f"/api/v1/platform/organizations/{org.id}/storage", headers=_headers(root), json={"quota_bytes": 5 * 1024 * 1024})
+        client.put(f"/api/v1/platform/organizations/{org.id}/storage", headers=verified_headers, json={"quota_bytes": 5 * 1024 * 1024})
     db.rollback()
     db.expire_all()
     assert _org(db).storage_quota_bytes is None
@@ -205,9 +209,10 @@ def test_when_the_quota_audit_fails_the_quota_is_not_changed(client, db, monkeyp
 
 def test_when_the_audit_fails_no_administrator_is_created(client, db, monkeypatch):
     root = _bootstrap(client, monkeypatch)
+    verified_headers = proof(client, root, 'POST', ("/api/v1/platform/administrators").removeprefix('/api/v1'), ADMIN)
     monkeypatch.setattr(PlatformAuditService, "record", lambda self, **kw: (_ for _ in ()).throw(RuntimeError("audit down")))
     with pytest.raises(RuntimeError):
-        client.post("/api/v1/platform/administrators", headers=_headers(root), json=ADMIN)
+        client.post("/api/v1/platform/administrators", headers=verified_headers, json=ADMIN)
     db.rollback()
     assert db.scalar(select(PlatformAccount).where(PlatformAccount.email == ADMIN["email"])) is None
 
@@ -215,7 +220,7 @@ def test_when_the_audit_fails_no_administrator_is_created(client, db, monkeypatc
 def test_a_refused_lifecycle_change_is_audited_as_a_failure(client, db, monkeypatch):
     root = _bootstrap(client, monkeypatch)
     org = _org(db)
-    r = client.post(f"/api/v1/platform/organizations/{org.id}/archive", headers=_headers(root), json={"reason": "Closing"})
+    r = client.post(f"/api/v1/platform/organizations/{org.id}/archive", headers=proof(client, root, 'POST', (f"/api/v1/platform/organizations/{org.id}/archive").removeprefix('/api/v1'), {"reason": "Closing"}), json={"reason": "Closing"})
     assert r.status_code == 409  # active → archived is not allowed
     [record] = _records(db, "organization_status_change_refused")
     assert record.details["outcome"] == "failure" and record.details["error_code"] == "INVALID_STATE_TRANSITION"

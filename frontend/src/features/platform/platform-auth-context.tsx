@@ -13,6 +13,7 @@ import {
 import { getStoredPlatformToken, removeStoredPlatformToken } from "@/lib/platform-auth";
 import type { PlatformAccount, PlatformAuthState, PlatformLoginRequest } from "@/types/platform";
 import { getPlatformAccount, platformLogin, platformLogout } from "./platform-api";
+import { PlatformStepUpDialog } from "./PlatformStepUpDialog";
 
 type PlatformAuthContextValue = PlatformAuthState & {
   login: (payload: PlatformLoginRequest) => Promise<PlatformAccount>;
@@ -87,7 +88,7 @@ export function PlatformAuthProvider({ children }: { children: ReactNode }) {
     [account, isLoading, login, logout, refreshAccount, token],
   );
 
-  return <PlatformAuthContext.Provider value={value}>{children}</PlatformAuthContext.Provider>;
+  return <PlatformAuthContext.Provider value={value}>{children}<PlatformStepUpDialog /></PlatformAuthContext.Provider>;
 }
 
 export function usePlatformAuth() {

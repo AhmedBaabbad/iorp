@@ -42,7 +42,8 @@
       "auditLog": "Administrative Audit Log",
       "securityLog": "Security Log",
       "activityLog": "Activity Log",
-      "changePassword": "Change Password"
+      "changePassword": "Change Password",
+      "accountSecurity": "Account security"
     },
     "recentOrgs": {
       "title": "Recently Created Organizations",
@@ -458,5 +459,25 @@
     "notFoundTitle": "Organization not found",
     "notFoundMessage": "The requested organization could not be found.",
     "notAvailable": "Not available"
+  },
+  "security": {
+    "title": "Platform account security",
+    "verifyTitle": "Verify your identity",
+    "verifyHint": "Enter your password and, if enrolled, an authenticator or unused recovery code. Authorization lasts two minutes for this action only.",
+    "password": "Current password",
+    "code": "Authenticator or recovery code (if enabled)",
+    "failed": "Verification failed. Check your credentials, use a fresh code, or sign in again if your session expired.",
+    "verify": "Verify",
+    "cancel": "Cancel",
+    "cancelled": "Verification cancelled",
+    "enroll": "Set up authenticator",
+    "secretHint": "Add this setup key to your authenticator as a time-based (TOTP) account named IORP Platform. Do not share it.",
+    "recovery": "Generate recovery codes",
+    "saveHint": "Save these codes in a private password manager. They are shown once; each works once.",
+    "saved": "I have saved my recovery codes securely",
+    "disable": "Disable authenticator",
+    "loginAgain": "Security settings changed. Sign in again.",
+    "login": "Sign in",
+    "timeout": "Your Platform session expires after 15 minutes without renewal. Expired sessions require signing in again."
   }
 }

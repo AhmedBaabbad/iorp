@@ -261,7 +261,7 @@ class PlatformAuthService:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def login(self, email: str, password: str, *, ip: str | None = None, user_agent: str | None = None):
+    def login(self, email: str, password: str, *, ip: str | None = None, user_agent: str | None = None, mfa_code: str = ""):
         account = self.db.scalar(
             select(PlatformAccount).where(PlatformAccount.email == normalize_email(email))
         )
@@ -281,6 +281,15 @@ class PlatformAuthService:
                 root_exempt=account.is_root,
             )
             return None
+        from app.platform.application import mfa
+        row = mfa.factor(self.db, account)
+        verified_factor = None
+        if row and row.enabled:
+            if not mfa_code:
+                from fastapi import HTTPException
+                raise HTTPException(403, detail={"code": "MFA_REQUIRED"})
+            verified_factor = mfa.digest(row.secret)
+            mfa.verify_factor(self.db, account, mfa_code)
         record_successful_login(self.db, account)
         role = PlatformAccountRole.ROOT if account.is_root else account.role
         return issue_token_pair(
@@ -288,7 +297,7 @@ class PlatformAuthService:
             account_id=account.id,
             account_type="platform",
             token_version=account.token_version,
-            extra_claims={"account_id": str(account.id), "role": role.value},
+            extra_claims={"account_id": str(account.id), "role": role.value, "mfa": verified_factor},
             ip=ip,
             user_agent=user_agent,
         )

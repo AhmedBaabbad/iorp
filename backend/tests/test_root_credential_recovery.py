@@ -153,3 +153,9 @@ def test_t32_t35_password_version_is_per_user_and_tenant_safe(client, db, monkey
     })
     db.refresh(root)
     assert root.organization_id == original_org and root.token_version == 1
+
+
+# Exercise the same fresh-verification handshake as the Platform UI.
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401
+import pytest
+pytestmark = pytest.mark.usefixtures("verified_platform_browser")

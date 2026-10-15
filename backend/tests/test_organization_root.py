@@ -260,3 +260,9 @@ def test_t25_each_organization_has_independent_root(client, db, monkeypatch):
     client.post("/api/v1/platform/organizations", headers=platform_headers, json=payload)
     roots = db.query(User).filter(User.is_organization_root.is_(True)).all()
     assert len(roots) == 2 and len({root.organization_id for root in roots}) == 2
+
+
+# Exercise the same fresh-verification handshake as the Platform UI.
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401
+import pytest
+pytestmark = pytest.mark.usefixtures("verified_platform_browser")

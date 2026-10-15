@@ -214,9 +214,22 @@ app = FastAPI(
     version="0.1.0",
     debug=settings.debug,
     lifespan=lifespan,
+    docs_url=None if settings.app_env == 'production' else '/docs',
+    redoc_url=None if settings.app_env == 'production' else '/redoc',
+    openapi_url=None if settings.app_env == 'production' else '/openapi.json',
 )
 
 register_middleware(app)
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
+
+
+@app.exception_handler(RequestValidationError)
+async def safe_platform_validation(request: Request, exc: RequestValidationError):
+    if request.url.path.startswith(f'{settings.api_prefix}/platform/'):
+        return JSONResponse(status_code=422, content={'detail': 'Invalid request data.'})
+    return await request_validation_exception_handler(request, exc)
+
 app.include_router(branding_router, prefix=settings.api_prefix)
 app.include_router(delegations_router, prefix=settings.api_prefix)
 app.include_router(approvals_router, prefix=settings.api_prefix)
@@ -306,8 +319,11 @@ app.include_router(procurement_dashboard_router, prefix=f"{settings.api_prefix}/
 app.include_router(bootstrap_router, prefix=settings.api_prefix)
 app.include_router(system_router, prefix=settings.api_prefix)
 app.include_router(platform_router, prefix=settings.api_prefix)
-app.include_router(platform_organizations_router, prefix=settings.api_prefix)
-app.include_router(platform_administrators_router, prefix=settings.api_prefix)
+from app.platform.api.routes_mfa import router as mfa_router, require_step_up
+from fastapi import Depends
+app.include_router(mfa_router, prefix=settings.api_prefix)
+app.include_router(platform_organizations_router, prefix=settings.api_prefix, dependencies=[Depends(require_step_up)])
+app.include_router(platform_administrators_router, prefix=settings.api_prefix, dependencies=[Depends(require_step_up)])
 app.include_router(platform_audit_router, prefix=settings.api_prefix)
 app.include_router(platform_security_router, prefix=settings.api_prefix)
 app.include_router(platform_activity_router, prefix=settings.api_prefix)

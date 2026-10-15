@@ -5,6 +5,10 @@ from pathlib import Path
 import re
 import warnings
 
+import pytest
+
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401  (Batch 3 step-up handshake)
+
 from sqlalchemy import func, select
 
 from app.core.config import settings
@@ -132,6 +136,7 @@ def test_t14_bootstrap_seeds_permissions(client, db, monkeypatch):
     assert db.query(Permission).filter_by(organization_id=organization.id).count() == len(ALL_TENANT_PERMISSIONS)
 
 
+@pytest.mark.usefixtures('verified_platform_browser')  # Batch 3: creating an organization requires fresh verification
 def test_t15_platform_provisioning_seeds_permissions(client, db, monkeypatch):
     _bootstrap(client, db, monkeypatch)
     login = client.post("/api/v1/platform/login", json={"email": "platform@example.com", "password": "PlatformRoot123!"})

@@ -203,3 +203,9 @@ def test_t35_wrong_platform_token_version_is_rejected(client, platform_identity)
     )
     response = client.get("/api/v1/platform/me", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 401
+
+
+# Exercise the same fresh-verification handshake as the Platform UI.
+from tests.platform_stepup_client import verified_platform_browser  # noqa: F401
+import pytest
+pytestmark = pytest.mark.usefixtures("verified_platform_browser")
