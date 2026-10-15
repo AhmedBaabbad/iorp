@@ -1,0 +1,4 @@
+# IORP report renderer: pinned Gotenberg with the report fonts baked in (no host bind mounts in deployment).
+ARG GOTENBERG_IMAGE=gotenberg/gotenberg:8.37.0@sha256:f29984bd1e226bf1b93ba90af06000afa8b315853e99d27b9aaa41b93f15c769
+FROM ${GOTENBERG_IMAGE}
+COPY --chown=root:root backend/app/core/reporting/assets/fonts/ /usr/local/share/fonts/reports/

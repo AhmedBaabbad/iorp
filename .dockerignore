@@ -1,0 +1,4 @@
+# Root build context (deploy/reporting images): only the report fonts and the gateway configuration are needed.
+*
+!backend/app/core/reporting/assets/fonts/
+!backend/app/core/reporting/nginx.conf

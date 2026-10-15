@@ -6,6 +6,10 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const nextConfig = {
   // Allows production verification to run beside an active development server.
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // PHASE-4: the production image runs the self-contained server (only what it needs, no node_modules copy).
+  ...(process.env.NEXT_OUTPUT === "standalone" ? { output: "standalone" } : {}),
+  // The messages are read from disk at request time (src/i18n/messages.ts), so the traced output must carry them.
+  outputFileTracingIncludes: { "/**": ["./src/i18n/locales/**/*.json"] },
   // SEC-001: the browser talks to the API through this site's own address (same origin), as production does behind its
   // reverse proxy: the session-renewal cookie is first-party (SameSite works, nothing cross-site), and no CORS is needed.
   async rewrites() {

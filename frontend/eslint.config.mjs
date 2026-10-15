@@ -13,6 +13,7 @@ export default defineConfig([
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   globalIgnores([
     ".next/**",
+    ".next-*/**", // alternate build outputs (QA runs); never source
     "next-env.d.ts",
     "node_modules/**",
   ]),

@@ -31,3 +31,6 @@ backend/artifacts/
 backups/
 *.dump
 *.dump.enc
+
+# PHASE-4: real deployment environment files never live in Git (templates end in .example)
+deploy/env/*.env

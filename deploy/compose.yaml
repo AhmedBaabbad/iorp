@@ -1,0 +1,180 @@
+# IORP deployment (PHASE-4) — one file, two independent projects:
+#   docker compose --env-file deploy/env/staging.env    -f deploy/compose.yaml up -d
+#   docker compose --env-file deploy/env/production.env -f deploy/compose.yaml up -d
+# Each project has its own database, uploads, secrets and networks. The development docker-compose.yml is untouched.
+#
+# Networks
+#   edge     — external, owned by the VPS's existing Traefik (name from TRAEFIK_NETWORK; verify on the VPS first).
+#              Only the frontend joins it.
+#   app      — frontend ↔ backend. Not internal: the backend needs outbound SMTP.
+#   db       — backend ↔ PostgreSQL. internal: no route outside, nothing published.
+#   reports  — backend ↔ report gateway. internal.
+#   renderer — gateway ↔ Gotenberg. internal (Gotenberg also denies public/private IPs itself).
+# No port of the backend, PostgreSQL, gateway or renderer is published on the host.
+#
+# Migrations are a one-off step, never on container start:
+#   docker compose --env-file deploy/env/staging.env -f deploy/compose.yaml run --rm migrate
+
+name: ${IORP_PROJECT:?set IORP_PROJECT (iorp-staging or iorp-production)}
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-backend: &backend
+  image: ${IORP_REGISTRY:-iorp}/backend:${IORP_IMAGE_TAG:?set IORP_IMAGE_TAG to the commit SHA being deployed}
+  build:
+    context: ../backend
+    target: runtime
+  env_file:
+    - ${IORP_BACKEND_ENV_FILE:?set IORP_BACKEND_ENV_FILE (deploy/env/backend.env.example is the template)}
+  environment:
+    UPLOADS_DIR: /var/lib/iorp/uploads
+    REPORT_RENDERER_URL: http://report-gateway
+  logging: *logging
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  frontend:
+    image: ${IORP_REGISTRY:-iorp}/frontend:${IORP_IMAGE_TAG}
+    build:
+      context: ../frontend
+      args:
+        BACKEND_URL: http://backend:8080
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [edge, app]
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    logging: *logging
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 512M }
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: ${TRAEFIK_NETWORK:?set TRAEFIK_NETWORK to the existing Traefik network on the VPS}
+      traefik.http.routers.${IORP_PROJECT:?set IORP_PROJECT (iorp-staging or iorp-production)}.rule: Host(`${IORP_DOMAIN:?set IORP_DOMAIN}`)
+      traefik.http.routers.${IORP_PROJECT:?set IORP_PROJECT (iorp-staging or iorp-production)}.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.${IORP_PROJECT:?set IORP_PROJECT (iorp-staging or iorp-production)}.tls: "true"
+      traefik.http.routers.${IORP_PROJECT:?set IORP_PROJECT (iorp-staging or iorp-production)}.tls.certresolver: ${TRAEFIK_CERTRESOLVER:?set TRAEFIK_CERTRESOLVER}
+      traefik.http.services.${IORP_PROJECT:?set IORP_PROJECT (iorp-staging or iorp-production)}.loadbalancer.server.port: "3000"
+
+  backend:
+    <<: *backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      report-gateway:
+        condition: service_started
+    networks: [app, db, reports]
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - uploads:/var/lib/iorp/uploads
+    deploy:
+      resources:
+        limits: { cpus: "1.5", memory: 1G }
+
+  migrate:
+    <<: *backend
+    profiles: [migrate]
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [db]
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 512M }
+
+  postgres:
+    image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+    restart: unless-stopped
+    env_file:
+      - ${IORP_POSTGRES_ENV_FILE:?set IORP_POSTGRES_ENV_FILE (deploy/env/postgres.env.example is the template)}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [db]
+    shm_size: 256mb
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+    deploy:
+      resources:
+        limits: { cpus: "1.5", memory: 1G }
+
+  report-gateway:
+    image: ${IORP_REGISTRY:-iorp}/report-gateway:${IORP_IMAGE_TAG}
+    build:
+      context: ..
+      dockerfile: deploy/reporting/Dockerfile.gateway
+    restart: unless-stopped
+    depends_on:
+      report-renderer:
+        condition: service_started
+    networks: [reports, renderer]
+    logging: *logging
+    deploy:
+      resources:
+        limits: { cpus: "0.25", memory: 64M }
+
+  report-renderer:
+    image: ${IORP_REGISTRY:-iorp}/report-renderer:${IORP_IMAGE_TAG}
+    build:
+      context: ..
+      dockerfile: deploy/reporting/Dockerfile.renderer
+    command:
+      - gotenberg
+      - --chromium-disable-javascript=true
+      - --chromium-deny-public-ips=true
+      - --chromium-deny-private-ips=true
+      - --api-disable-download-from=true
+      - --webhook-disable=true
+      - --chromium-max-concurrency=2
+      - --chromium-max-queue-size=4
+      - --api-timeout=60s
+    restart: unless-stopped
+    networks: [renderer]
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 1G }
+
+volumes:
+  pgdata:
+  uploads:
+
+networks:
+  edge:
+    external: true
+    name: ${TRAEFIK_NETWORK}
+  app:
+    # A fixed range per project, so IORP_TRUSTED_PROXY_IPS can name the web container's network exactly.
+    ipam:
+      config:
+        - subnet: ${IORP_APP_SUBNET:?set IORP_APP_SUBNET (distinct per project, e.g. 172.28.10.0/24)}
+  db:
+    internal: true
+  reports:
+    internal: true
+  renderer:
+    internal: true

@@ -1,0 +1,22 @@
+# Never in an image: secrets, data, local environments, build/test leftovers.
+.env
+.env.*
+!.env.example
+uploads/
+artifacts/
+docs/
+*.log
+*.dump
+*.dump.enc
+backups/
+.venv*/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+iorp_backend.egg-info/
+.coverage
+htmlcov/
+Dockerfile
+.dockerignore

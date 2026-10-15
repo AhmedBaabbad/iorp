@@ -1,0 +1,15 @@
+# Never in an image: secrets, dependencies (installed by npm ci), build outputs, tests, local tooling.
+.env
+.env.*
+!.env.example
+node_modules/
+.next/
+.next-*/
+out/
+coverage/
+tests/
+*.log
+*.tsbuildinfo
+.vscode/
+Dockerfile
+.dockerignore
