@@ -1,0 +1,173 @@
+# IORP CI (PHASE-4). Runs on pull requests and pushes; never deploys and never sees production credentials.
+# Third-party actions are pinned to reviewed commit SHAs (tag in the trailing comment).
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main, master, "release/**", "fix/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "24"
+  # Tests never reach an operational database: SQLite in-process, PostgreSQL only as a CI service.
+  APP_ENV: test
+  DEBUG: "false"
+  EMAIL_MODE: console
+  PRODUCTION_AUTO_START_BY_DATE: "false"
+
+jobs:
+  backend:
+    name: backend tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults: { run: { working-directory: backend } }
+    env:
+      RUN_POSTGRES_TESTS: "0"
+      DATABASE_URL: postgresql+psycopg://unused:unused@127.0.0.1:1/isolated_unreachable
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { persist-credentials: false }
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+      - run: pip install --require-hashes --no-deps -r requirements-dev.lock
+      - run: python -m pytest -q -p no:cacheprovider -rfs
+
+  security-tests:
+    name: isolation, authorization, MFA/session and backup safety
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults: { run: { working-directory: backend } }
+    env:
+      RUN_POSTGRES_TESTS: "0"
+      DATABASE_URL: postgresql+psycopg://unused:unused@127.0.0.1:1/isolated_unreachable
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { persist-credentials: false }
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+      - run: pip install --require-hashes --no-deps -r requirements-dev.lock
+      - name: route discovery and authorization (fail closed)
+        run: python -m pytest -q -p no:cacheprovider tests/test_route_inventory.py tests/test_all_route_authorization.py tests/test_authorization_architecture.py tests/test_rbac_decisions.py tests/test_module_boundaries.py
+      - name: tenant isolation
+        run: python -m pytest -q -p no:cacheprovider tests/test_tenant_isolation.py tests/test_batch1_isolation.py tests/security tests/test_platform_isolation.py
+      - name: MFA, step-up and sessions
+        run: python -m pytest -q -p no:cacheprovider tests/test_platform_mfa.py tests/test_platform_security_config.py tests/test_platform_sessions_audit.py tests/foundation/test_session_security.py tests/test_jwt_token_architecture.py tests/core/test_client_ip.py
+      - name: backup and restore safety
+        run: python -m pytest -q -p no:cacheprovider tests/core/test_backup_tool.py tests/test_recovery_drill.py
+
+  postgres:
+    name: PostgreSQL migrations and integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults: { run: { working-directory: backend } }
+    services:
+      postgres:
+        image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        env:
+          POSTGRES_DB: iorp_ci
+          POSTGRES_USER: iorp_ci
+          POSTGRES_PASSWORD: ci-only-disposable
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U iorp_ci -d iorp_ci" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      RUN_POSTGRES_TESTS: "1"
+      DATABASE_URL: postgresql+psycopg://iorp_ci:ci-only-disposable@127.0.0.1:5432/iorp_ci
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { persist-credentials: false }
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+      - run: pip install --require-hashes --no-deps -r requirements-dev.lock
+      - name: migrate an empty database to head
+        run: python -m alembic upgrade head && python -m alembic current
+      - name: PostgreSQL integration tests
+        run: python -m pytest -q -p no:cacheprovider -rs $(grep -rlE "RUN_POSTGRES_TESTS|Requires explicit isolated PostgreSQL" tests --include=*.py)
+
+  frontend:
+    name: frontend tests, types, lint and production build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "${{ env.NODE_VERSION }}"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsc --noEmit -p .
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+        env: { NEXT_TELEMETRY_DISABLED: "1", BACKEND_URL: "http://backend:8080" }
+
+  scan:
+    name: dependency and secret scanning
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { persist-credentials: false, fetch-depth: 0 }
+      - name: secrets in the repository history
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Organisation-owned repositories also need GITLEAKS_LICENSE (free for personal accounts).
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+      - name: Python dependencies (documented exceptions in .github/security-exceptions.md)
+        run: |
+          pip install pip-audit==2.9.0
+          pip-audit --strict --requirement backend/requirements.lock --disable-pip \
+            --ignore-vuln PYSEC-2026-161 --ignore-vuln PYSEC-2026-248 --ignore-vuln PYSEC-2026-249 \
+            --ignore-vuln PYSEC-2026-2280 --ignore-vuln PYSEC-2026-2281 \
+            --ignore-vuln CVE-2026-85394 --ignore-vuln PYSEC-2026-1325
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: "${{ env.NODE_VERSION }}" }
+      - name: shipped JavaScript dependencies (critical blocks)
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=critical
+
+  images:
+    name: Docker images (immutable tag = commit SHA, not pushed)
+    needs: [backend, security-tests, postgres, frontend, scan]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    concurrency:
+      group: images-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { persist-credentials: false }
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - name: build
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_SHA}"
+          docker build --target runtime -t "iorp/backend:${tag}" backend
+          docker build --build-arg BACKEND_URL=http://backend:8080 -t "iorp/frontend:${tag}" frontend
+          docker build -f deploy/reporting/Dockerfile.gateway -t "iorp/report-gateway:${tag}" .
+          docker build -f deploy/reporting/Dockerfile.renderer -t "iorp/report-renderer:${tag}" .
+      - name: no secrets or local state inside the images
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_SHA}"
+          for image in backend frontend; do
+            if docker run --rm --entrypoint sh "iorp/${image}:${tag}" -c 'find / -xdev \( -name ".env" -o -name "*.dump" -o -name "*.pem" -o -name "*.key" \) 2>/dev/null | grep -v /proc/ | grep -v "/usr/" | grep .'; then
+              echo "secret-like file found in iorp/${image}"; exit 1; fi
+          done
+          docker run --rm --entrypoint sh "iorp/backend:${tag}" -c 'id -u | grep -qv "^0$" && test ! -d /app/tests && test ! -d /app/uploads'
+          docker run --rm --entrypoint sh "iorp/frontend:${tag}" -c 'id -u | grep -qv "^0$" && test -f server.js'
