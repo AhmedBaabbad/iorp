@@ -19,6 +19,13 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         request.state.correlation_id = correlation if _SAFE_REQUEST_ID.fullmatch(correlation) else None
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+        if request.url.path.startswith('/api/'):
+            response.headers['Cache-Control'] = 'no-store'
+        if settings.app_env == 'production':
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000'
         return response
 
 

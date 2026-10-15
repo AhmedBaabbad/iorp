@@ -21,8 +21,16 @@ const nextConfig = {
         { key: "X-Robots-Tag", value: "noindex, nofollow" },
       ],
     }));
-    if (process.env.NODE_ENV !== "development") return resetHeaders;
+    const securityHeaders = [{ source: "/:path*", headers: [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+      // Not inside another site's frame (clickjacking); the app's own report previews stay same-origin.
+      { key: "X-Frame-Options", value: "SAMEORIGIN" },
+    ] }];
+    if (process.env.NODE_ENV !== "development") return [...securityHeaders, ...resetHeaders];
     return [
+      ...securityHeaders,
       ...resetHeaders,
       {
         source: "/_next/static/(.*)",
