@@ -60,13 +60,14 @@ services:
       resources:
         limits: { cpus: "1.0", memory: 512M }
     labels:
-      traefik.enable: "true"
-      traefik.docker.network: ${TRAEFIK_NETWORK:?set TRAEFIK_NETWORK to the existing Traefik network on the VPS}
-      traefik.http.routers.${IORP_PROJECT:?set IORP_PROJECT (iorp-staging or iorp-production)}.rule: Host(`${IORP_DOMAIN:?set IORP_DOMAIN}`)
-      traefik.http.routers.${IORP_PROJECT:?set IORP_PROJECT (iorp-staging or iorp-production)}.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
-      traefik.http.routers.${IORP_PROJECT:?set IORP_PROJECT (iorp-staging or iorp-production)}.tls: "true"
-      traefik.http.routers.${IORP_PROJECT:?set IORP_PROJECT (iorp-staging or iorp-production)}.tls.certresolver: ${TRAEFIK_CERTRESOLVER:?set TRAEFIK_CERTRESOLVER}
-      traefik.http.services.${IORP_PROJECT:?set IORP_PROJECT (iorp-staging or iorp-production)}.loadbalancer.server.port: "3000"
+      - "traefik.enable=true"
+      - "traefik.docker.network=${TRAEFIK_NETWORK:?set TRAEFIK_NETWORK to the existing Traefik network on the VPS}"
+      - "traefik.http.routers.${IORP_PROJECT}.rule=Host(`${IORP_DOMAIN:?set IORP_DOMAIN}`)"
+      - "traefik.http.routers.${IORP_PROJECT}.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}"
+      - "traefik.http.routers.${IORP_PROJECT}.tls=true"
+      - "traefik.http.routers.${IORP_PROJECT}.tls.certresolver=${TRAEFIK_CERTRESOLVER:?set TRAEFIK_CERTRESOLVER}"
+      - "traefik.http.routers.${IORP_PROJECT}.service=${IORP_PROJECT}"
+      - "traefik.http.services.${IORP_PROJECT}.loadbalancer.server.port=3000"
 
   backend:
     <<: *backend
