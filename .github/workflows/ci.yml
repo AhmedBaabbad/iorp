@@ -185,9 +185,9 @@ jobs:
             test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.source"}}' "iorp/${image}:${tag}")" = 'https://github.com/AhmedBaabbad/iorp'
           done
           for image in backend frontend; do
-            if docker run --rm --entrypoint sh "iorp/${image}:${tag}" -c 'find / -xdev \( -name ".env" -o -name "*.dump" -o -name "*.pem" -o -name "*.key" \) 2>/dev/null | grep -v /proc/ | grep -v "/usr/" | grep .'; then
-              echo "secret-like file found in iorp/${image}"; exit 1; fi
+            bash scripts/check-image-secrets.sh "iorp/${image}:${tag}"
           done
+          bash scripts/test-check-image-secrets.sh "iorp/backend:${tag}"
           docker run --rm --entrypoint sh "iorp/backend:${tag}" -c 'id -u | grep -qv "^0$" && test ! -d /app/tests && test ! -d /app/uploads'
           docker run --rm --entrypoint sh "iorp/frontend:${tag}" -c 'id -u | grep -qv "^0$" && test -f server.js'
       - name: log in to GHCR
