@@ -1,9 +1,9 @@
-from dataclasses import dataclass
-
-
-@dataclass(frozen=True)
 class OrganizationAccessError(RuntimeError):
-    organization_status: str
+    """Organization denial with writable exception metadata for context managers."""
+
+    def __init__(self, organization_status: str) -> None:
+        self.organization_status = organization_status
+        super().__init__(self.message)
 
     @property
     def code(self) -> str:

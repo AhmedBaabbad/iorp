@@ -1,0 +1,85 @@
+name: GHCR retention review
+
+on:
+  schedule:
+    - cron: "30 23 * * 0" # Monday 02:30 Riyadh
+  workflow_dispatch:
+    inputs:
+      image:
+        description: Image whose older versions have been reviewed
+        type: choice
+        options: [backend, frontend, report-gateway, report-renderer]
+        required: true
+      reviewed_version_ids:
+        description: Exact comma-separated version IDs approved for deletion (from weekly summary)
+        type: string
+        required: true
+
+# No checkout or repository access; the token is only used for packages.
+permissions:
+  packages: write
+
+concurrency:
+  group: ghcr-retention
+  cancel-in-progress: false
+
+jobs:
+  retention:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [backend, frontend, report-gateway, report-renderer]
+    steps:
+      - name: review candidates and protect the newest ten versions
+        id: review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE: ${{ matrix.image }}
+          SELECTED_IMAGE: ${{ inputs.image }}
+          REVIEWED_IDS: ${{ inputs.reviewed_version_ids }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          package=$(printf 'iorp/%s' "$IMAGE" | jq -sRr @uri)
+          versions='[]'
+          page=1
+          while :; do
+            batch=$(curl --fail-with-body --silent --show-error \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/users/ahmedbaabbad/packages/container/${package}/versions?per_page=100&page=${page}")
+            versions=$(jq -cn --argjson all "$versions" --argjson batch "$batch" '$all + $batch')
+            test "$(jq length <<< "$batch")" -eq 100 || break
+            page=$((page + 1))
+          done
+          candidates=$(jq -c 'sort_by(.created_at, .id) | reverse | .[10:]' <<< "$versions")
+          {
+            printf '### iorp/%s: deletion candidates (newest 10 protected)\n\n' "$IMAGE"
+            echo '| Version ID | Created | Tags | Digest |'
+            echo '|---|---|---|---|'
+            jq -r '.[] | "| \(.id) | \(.created_at) | \(.metadata.container.tags | join(", ")) | \(.name) |"' <<< "$candidates"
+            echo
+            echo 'Review deployed and rollback SHAs before manually dispatching exact version IDs. Scheduled runs delete nothing.'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && "$SELECTED_IMAGE" == "$IMAGE" ]]; then
+            [[ "$REVIEWED_IDS" =~ ^[0-9]+(,[0-9]+)*$ ]] || { echo 'Invalid version IDs'; exit 1; }
+            for id in ${REVIEWED_IDS//,/ }; do
+              jq -e --arg id "$id" 'any(.[]; (.id | tostring) == $id)' <<< "$candidates" > /dev/null || {
+                echo "Version $id is absent or protected among newest ten; refusing deletion"; exit 1;
+              }
+            done
+            printf 'ids=%s\n' "$REVIEWED_IDS" >> "$GITHUB_OUTPUT"
+          fi
+      - name: delete only explicitly reviewed older versions
+        if: github.event_name == 'workflow_dispatch' && inputs.image == matrix.image && steps.review.outputs.ids != ''
+        uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
+        with:
+          owner: ahmedbaabbad
+          package-name: iorp/${{ matrix.image }}
+          package-type: container
+          package-version-ids: ${{ steps.review.outputs.ids }}
+          token: ${{ secrets.GITHUB_TOKEN }}

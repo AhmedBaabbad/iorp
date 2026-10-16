@@ -1,0 +1,2 @@
+# Synthetic private-key fixture for check-image-secrets.sh; contains no real key material.
+f88b094e422b12f90dca6e8ba2fb667d5e3b46fb:scripts/test-check-image-secrets.sh:private-key:40

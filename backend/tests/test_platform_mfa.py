@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 import pytest
 import pyotp
 from cryptography.fernet import Fernet
@@ -25,8 +25,8 @@ def enroll(client, token):
     return response.json()
 
 
-def confirm(client, token, secret):
-    return client.post('/api/v1/platform/mfa/confirm', headers=_headers(token), json={'code':pyotp.TOTP(secret).now(), 'saved_recovery_codes':True})
+def confirm(client, token, code):
+    return client.post('/api/v1/platform/mfa/confirm', headers=_headers(token), json={'code':code, 'saved_recovery_codes':True})
 
 
 def login(client, code=''):
@@ -39,16 +39,45 @@ def test_enrollment_encrypted_replay_recovery_and_invalidation(client, db, signe
     row = db.get(PlatformMFA, account.id)
     assert data['secret'] not in row.secret and not row.enabled
     assert data['recovery_codes'][0] not in row.recovery_hashes
-    assert confirm(client, token, data['secret']).status_code == 200
+    code = pyotp.TOTP(data['secret']).at(mfa.now())
+    assert confirm(client, token, code).status_code == 200
     assert client.get('/api/v1/platform/me', headers=_headers(token)).status_code == 401
     assert login(client).status_code == 403
-    assert login(client, pyotp.TOTP(data['secret']).now()).status_code == 400
+    assert login(client, code).status_code == 400
     assert login(client, data['recovery_codes'][0]).status_code == 200
     assert login(client, data['recovery_codes'][0]).status_code == 400
     db.expire_all()
     assert len(db.get(PlatformMFA, account.id).recovery_hashes) == 9
     logs = str([r.details for r in db.query(PlatformActivityLog).all()])
     assert data['secret'] not in logs and data['recovery_codes'][0] not in logs
+
+
+def test_replay_across_totp_period_boundary(client, db, signed, monkeypatch):
+    token, account = signed
+    # A fixed secret avoids a random collision between adjacent six-digit codes.
+    monkeypatch.setattr(pyotp, 'random_base32', lambda: 'JBSWY3DPEHPK3PXP')
+    current = datetime(2026, 10, 16, 12, 0, 29, tzinfo=timezone.utc)
+    monkeypatch.setattr(mfa, 'now', lambda: current)
+    data = enroll(client, token)
+    totp = pyotp.TOTP(data['secret'])
+    old_code = totp.at(current)
+    assert confirm(client, token, old_code).status_code == 200
+    old_counter = int(current.timestamp()) // 30
+    db.expire_all()
+    assert db.get(PlatformMFA, account.id).last_counter == old_counter
+
+    current += timedelta(seconds=1)
+    new_code = totp.at(current)
+    assert new_code != old_code
+    replay = login(client, old_code)
+    assert replay.status_code == 400, replay.text
+    assert replay.json()['detail']['code'] == 'VERIFICATION_FAILED'
+    db.expire_all()
+    assert db.get(PlatformMFA, account.id).last_counter == old_counter
+    assert login(client, new_code).status_code == 200
+    assert login(client, new_code).status_code == 400
+    db.expire_all()
+    assert db.get(PlatformMFA, account.id).last_counter == old_counter + 1
 
 
 def test_invalid_enrollment_code_does_not_enable(client, db, signed):
@@ -123,7 +152,7 @@ def test_step_up_does_not_cross_sessions(client, db, signed):
 
 def test_recovery_replacement_requires_factor_and_invalidates(client, db, signed):
     token, account = signed
-    data=enroll(client,token); assert confirm(client,token,data['secret']).status_code==200
+    data=enroll(client,token); assert confirm(client,token,pyotp.TOTP(data['secret']).at(mfa.now())).status_code==200
     token=login(client,data['recovery_codes'][0]).json()['access_token']
     assert client.post('/api/v1/platform/mfa/recovery',headers=_headers(token)).status_code==403
     headers=proof(client,token,'POST','/platform/mfa/recovery',code=data['recovery_codes'][1])
@@ -138,7 +167,7 @@ def test_audit_failure_rolls_back_enrollment_confirmation(client, db, signed, mo
     token,account=signed; data=enroll(client,token)
     def broken(self, **kw): raise RuntimeError('test audit failure')
     monkeypatch.setattr(PlatformAuditService,'record',broken)
-    with pytest.raises(RuntimeError): confirm(client,token,data['secret'])
+    with pytest.raises(RuntimeError): confirm(client,token,pyotp.TOTP(data['secret']).at(mfa.now()))
     db.rollback();db.expire_all()
     assert not db.get(PlatformMFA,account.id).enabled
     assert db.get(PlatformAccount,account.id).token_version==0
@@ -166,7 +195,7 @@ def test_validation_never_echoes_sensitive_input(client,signed):
 
 def test_unverified_session_cannot_bypass_enabled_factor_even_with_current_version(client,db,signed):
     from app.core.security import issue_token_pair
-    token,account=signed; data=enroll(client,token);assert confirm(client,token,data['secret']).status_code==200
+    token,account=signed; data=enroll(client,token);assert confirm(client,token,pyotp.TOTP(data['secret']).at(mfa.now())).status_code==200
     unverified=issue_token_pair(db,account_id=account.id,account_type='platform',token_version=account.token_version)
     assert client.get('/api/v1/platform/me',headers=_headers(unverified.access_token)).status_code==401
     client.cookies.clear();client.cookies.set('iorp_refresh',unverified.refresh_token,path='/api/v1/platform')
