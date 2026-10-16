@@ -37,5 +37,8 @@ fixture() {
 fixture public-ca-links "RUN mkdir -p /usr/share/scan-test /etc/ssl/certs; printf public > /usr/share/scan-test/ca.crt; ln -s /usr/share/scan-test/ca.crt /etc/ssl/certs/scan-test.pem; printf example > /app/.env.example" 0
 fixture env-file "RUN printf synthetic > /app/.env" 1
 fixture real-ssl-pem "RUN mkdir -p /etc/ssl/certs; printf synthetic > /etc/ssl/certs/scan-test.pem" 1
-fixture key-content "RUN printf '%s\\n' '-----BEGIN PRIVATE KEY-----' synthetic > /app/scan-test.txt" 1
-fixture volume-content $'RUN mkdir /scan-data; printf "%s\\n" "-----BEGIN RSA PRIVATE KEY-----" synthetic > /scan-data/record.txt\nVOLUME ["/scan-data"]' 1
+marker="-----BEGIN $(printf %s PRIVATE) KEY-----"
+fixture key-content "RUN printf '%s\\n' '$marker' synthetic > /app/scan-test.txt" 1
+marker="-----BEGIN RSA $(printf %s PRIVATE) KEY-----"
+fixture volume-content "RUN mkdir /scan-data; printf '%s\\n' '$marker' synthetic > /scan-data/record.txt
+VOLUME [\"/scan-data\"]" 1
