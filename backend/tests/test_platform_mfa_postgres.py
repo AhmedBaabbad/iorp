@@ -21,13 +21,15 @@ pytestmark = pytest.mark.skipif(os.environ.get('RUN_POSTGRES_TESTS') != '1', rea
 
 @pytest.mark.parametrize('recovery', [False, True])
 def test_concurrent_factor_replay_is_rejected(monkeypatch, recovery):
+    fixed_now = mfa.now()
+    monkeypatch.setattr(mfa, 'now', lambda: fixed_now)
     schema='test_mfa_'+uuid4().hex
     monkeypatch.setattr(settings,'platform_mfa_keys',Fernet.generate_key().decode())
     with engine.begin() as c: c.execute(sa.text(f'CREATE SCHEMA "{schema}"'))
     isolated=sa.create_engine(engine.url,connect_args={'options':f'-csearch_path={schema}'})
     try:
         Base.metadata.create_all(isolated)
-        account_id=uuid4(); secret=pyotp.random_base32();code='synthetic-recovery-code' if recovery else pyotp.TOTP(secret).now()
+        account_id=uuid4(); secret=pyotp.random_base32();code='synthetic-recovery-code' if recovery else pyotp.TOTP(secret).at(fixed_now)
         with Session(isolated) as db:
             db.add(PlatformAccount(id=account_id,email='isolated@example.test',full_name='Isolated',password_hash='unused',status='active',role='root',is_root=True,token_version=0))
             db.flush()
