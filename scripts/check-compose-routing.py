@@ -33,11 +33,11 @@ def check():
             }
             result = subprocess.run(
                 ["docker", "compose", "--env-file", str(env_file), "-f",
-                 str(ROOT / "deploy/compose.yaml"), "config", "--format", "json"],
+                 str(ROOT / "deploy/compose.yaml"), "--profile", "backup", "config", "--format", "json"],
                 env=env, check=True, capture_output=True, text=True,
             )
             config = json.loads(result.stdout)
-            backup = config['services'].get('backup')
+            backup = config['services']['backup']
             if backup is not None:
                 assert set(backup['networks']) == {'db'}
                 assert backup.get('profiles') == ['backup']

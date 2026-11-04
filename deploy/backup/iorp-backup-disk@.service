@@ -14,4 +14,3 @@ ProtectHome=true
 PrivateTmp=true
 MemoryMax=256M
 CPUQuota=10%
-
