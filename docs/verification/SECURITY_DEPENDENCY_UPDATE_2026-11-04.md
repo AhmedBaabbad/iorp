@@ -20,6 +20,8 @@ The nearest patch fixing the reported critical Next finding is **15.5.28**, per 
 
 [Pillow 13 release notes](https://pillow.readthedocs.io/en/stable/releasenotes/13.0.0.html) cover its security fixes and compatibility changes. IORP's actual Pillow usage is upload decoding, image normalization/thumbnails/quantization and logo preparation; the tests cover these paths. PDF parsing uses pypdf in `GotenbergRenderer`.
 
+Pillow 13 drops Python 3.10 support. Accordingly, project metadata now requires Python **3.11 or newer**; the deployment image, CI and validation remain pinned to **3.12**. Existing Python 3.10 development environments must be recreated with a supported interpreter before installing these locks.
+
 ## Lock generation
 
 JavaScript uses exactly `node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f` (Node 24.22.0, npm **11.19.1**):

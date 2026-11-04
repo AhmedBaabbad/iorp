@@ -15,7 +15,7 @@ include = ["app*"]
 name = "iorp-backend"
 version = "0.1.0"
 description = "IORP FastAPI backend"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "pyotp>=2.10,<3",
     "cryptography>=43,<51",
