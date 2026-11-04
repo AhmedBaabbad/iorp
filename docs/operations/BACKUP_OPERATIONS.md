@@ -44,7 +44,7 @@
    nano "$BASE/env/project.env"
    chmod 600 "$BASE/env/project.env"
    grep -qx "IORP_IMAGE_TAG=$RELEASE_SHA" "$BASE/env/project.env"
-   docker compose --env-file "$BASE/env/project.env" -f "$BASE/compose.yaml" --profile backup --profile migrate pull
+   docker compose --env-file "$BASE/env/project.env" -f "$BASE/compose.yaml" --profile migrate pull
    docker compose --env-file "$BASE/env/project.env" -f "$BASE/compose.yaml" --profile migrate run --rm migrate
    docker compose --env-file "$BASE/env/project.env" -f "$BASE/compose.yaml" up -d
    docker compose --env-file "$BASE/env/project.env" -f "$BASE/compose.yaml" ps
@@ -56,6 +56,8 @@
    sudo install -o rehanh -g rehanh -m 600 "$SOURCE/deploy/env/backup-database.env.example" "$BASE/env/backup-database.env"
    sudo install -o rehanh -g rehanh -m 600 "$SOURCE/deploy/env/backup-push.env.example" "$BASE/env/backup-push.env"
    ```
+
+   سحب الترقية يشمل التطبيق وmigrate فقط؛ لا تفعّل profile النسخ قبل إنشاء ملفي `backup-database.env` و`backup-key.env`. المنسّق يسحب صورة `backup` بنفس SHA عند النسخة اليدوية الأولى في الخطوة 8، بعد تجهيز الأسرار. التحقق المحلي من Compose يؤكد أن profile `migrate` يعمل قبل وجود هذين الملفين.
 
 3. أدخل الرابط من backend.env إلى `backup-database.env` فقط، وضع **ثلاثة** Push URLs في الملف المخصص. في Kuma: daily وrestore مهلة 93600 ثانية (26 ساعة)، وdisk مهلة 1200 ثانية؛ فعّل قنوات التنبيه واختبر وصولها. افتح إعدادات غير سرية واضبط المسارات الفعلية لملف Compose env، ويجب أن يحمل `IORP_IMAGE_TAG` نفس SHA. اترك `PRODUCTION_APPROVED=no`، واضبط `ENABLED=yes` لـstaging فقط. لا تطبع الملفات.
 
