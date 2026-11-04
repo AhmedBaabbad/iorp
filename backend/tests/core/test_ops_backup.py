@@ -2,6 +2,7 @@
 import io
 import json
 import os
+import shutil
 from pathlib import Path
 import sys
 from unittest.mock import Mock
@@ -214,3 +215,64 @@ def test_dump_table_count_uses_actual_toc(tmp_path, monkeypatch):
             return 0
     monkeypatch.setattr(ops.tool.subprocess, 'Popen', Process)
     assert ops.tool.dump_table_count(dump, None, None) == 1
+
+
+@pytest.mark.parametrize('damage', [None, 'payload', 'missing-hash', 'manifest', 'legacy-marker'])
+def test_remote_catalog_never_downloads_historical_payloads(tmp_path, monkeypatch, damage):
+    job = ops.Job(config(tmp_path))
+    ops.private_dir(job.scratch)
+    ops.private_dir(job.local)
+    remote_root = tmp_path / 'remote'
+    source = tmp_path / 'iorp-20261001T233000Z'
+    artifact(source)
+    job.encrypt_manifest(source)
+    downloaded = tmp_path / 'downloaded'
+    shutil.copytree(source, downloaded)
+    calls = []
+
+    def rclone(*args):
+        calls.append(args)
+        def path(value):
+            if value.startswith(job.remote):
+                return remote_root / value[len(job.remote):].lstrip('/')
+            return Path(value)
+        if args[0] == 'copyto':
+            target = path(args[2])
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(path(args[1]), target)
+            return ''
+        if args[0] == 'lsf':
+            return '\n'.join(p.name + ('/' if p.is_dir() else '') for p in path(args[1]).iterdir())
+        assert args[:2] == ('hashsum', 'MD5')
+        assert '--download' not in args
+        return '\n'.join(ops.checksums(p)['md5'] + '  ' + p.name
+                         for p in path(args[2]).iterdir()
+                         if not (damage == 'missing-hash' and p.name == 'database.dump.enc'))
+
+    monkeypatch.setattr(job, 'rclone', rclone)
+    for name in ops.PAYLOADS:
+        rclone('copyto', str(source / name), job.remote + '/' + source.name + '/' + name)
+    newest = job.receipt(source, downloaded)
+    remote = remote_root / newest.name
+    # Confirm publication includes both hashes inside the encrypted marker.
+    marker = tmp_path / 'complete.json'
+    ops.tool.decrypt_file(remote / 'complete.enc', marker, job.key_env['IORP_BACKUP_KEY'])
+    expected = json.loads(marker.read_text())
+    assert expected['database.dump.enc'] == ops.checksums(remote / 'database.dump.enc')
+    if damage == 'payload':
+        (remote / 'database.dump.enc').write_bytes(b'tampered ciphertext')
+    elif damage == 'manifest':
+        (remote / 'manifest.json.enc').write_bytes(b'tampered metadata')
+    elif damage == 'legacy-marker':
+        marker.write_text(json.dumps({n: h['sha256'] for n, h in expected.items()}))
+        ops.tool.encrypt_file(marker, remote / 'complete.enc', job.key_env['IORP_BACKUP_KEY'])
+    calls.clear()
+    if damage:
+        with pytest.raises(ops.Failure, match='remote-(checksum|completion)'):
+            job.retention(newest)
+        assert not any(c[0] == 'purge' for c in calls)
+    else:
+        assert set(job.remote_catalog()) == {newest.name}
+    downloads = [Path(c[1]).name for c in calls if c[0] == 'copyto' and c[1].startswith(job.remote)]
+    assert downloads == ['complete.enc', 'manifest.json.enc', 'verification.json.enc']
+    assert newest.exists()

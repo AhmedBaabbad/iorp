@@ -11,7 +11,7 @@
 - v1 تستخدم **حساب التطبيق** من نسخة env مستقلة تحوي `DATABASE_URL` فقط. دين تقني: reader مخصص بعد اختبار GRANT للموجود وALTER DEFAULT PRIVILEGES لكل مالك ينشئ الجداول وsequences المستقبلية. الجمع ينفّذ SELECT وpg_dump فقط؛ عدد جداول public في TOC للـdump يجب أن يساوي `pg_tables`، ويتحقق restore من الأعداد والمرفقات وAlembic.
 - scratch مجلد قرص خاص `700` يملكه root، حساب خدمة التنسيق الإدارية. مخرجات حاوية الجمع `700` بمالك `10001`. بيانات PostgreSQL على Docker volume مؤقت بلا bind mount، بصلاحيات PostgreSQL الخاصة. يُحذف scratch والحاوية والvolume والشبكة في `finally` عند النجاح والفشل وSIGTERM/SIGINT. لا ضمان trap عند انقطاع الكهرباء أو SIGKILL؛ وجود scratch قديم يمنع الجولة التالية حتى التحقيق. حذف SSD ليس مسحًا آمنًا. لا اشتراط swap مشفر: القاعدة الحية أصلًا غير مشفرة على القرص نفسه، حسب قرار المراجعة.
 - الحدود الافتراضية: جمع 512MiB/0.5CPU؛ PostgreSQL مؤقت 768MiB/0.5CPU دون swap؛ منسّق 768MiB/50% CPU وأولوية I/O منخفضة. scratch وPG كل منهما 8GiB، مساحة حرة دنيا 2GiB، مهلة 7200 ثانية، نقل 8MiB/s. فحص دوري للحجم أثناء العمليات؛ هذه حدود إيقاف مراقبة وليست filesystem quota ذرية، وقد تتجاوزها الكتابة بين فحصين. `LimitFSIZE=10G` حد إضافي لملفات عمليات المضيف، لا لحاويات Docker. تُقاس الأحجام على staging قبل إنتاج فعلي؛ لا تعدّل nexus أو cron التنظيف.
-- محليًا أحدث 3 نسخ ناجحة؛ خارجيًا اتحاد أحدث نسخة لكل 7 أيام و4 أسابيع ISO و6 أشهر UTC، مع حماية أحدث نسخة متحقق منها. التحقق اليومي يعيد فحص محتوى مرشحي الاحتفاظ الخارجيين قبل الحذف (تكلفة تنزيل إضافية يجب قياسها). لا حذف عند فشل الرفع/الاستعادة؛ قد يتجاوز العدد السياسة مؤقتًا. مجلد رفع بلا `complete.enc` غير معتمد، يُترك للتحقيق ولا يُحذف آليًا. لا `rclone sync` أو purge للمجلد الأب.
+- محليًا أحدث 3 نسخ ناجحة؛ خارجيًا اتحاد أحدث نسخة لكل 7 أيام و4 أسابيع ISO و6 أشهر UTC، مع حماية أحدث نسخة متحقق منها. كتالوج الاحتفاظ ينزّل فقط `complete.enc` و`manifest.json.enc` و`verification.json.enc` لكل نسخة، ويقارن MD5 للحمولات مع بصمات Drive الأصلية بواسطة `rclone hashsum MD5` دون `--download`. يسجل `complete.json` المشفّر MD5 وSHA-256 لكل ملف، ويربط SHA-256 للحمولات بالـmanifest وبـreceipt. MD5 لفحص سلامة النقل، والتشفير الموثق وSHA-256 يظلان حدود التحقق؛ النسخة الجديدة وحدها تُنزّل كاملة وتُستعاد يوميًا. غياب MD5 أو علامة الإتمام القديمة بلا البصمتين يمنع الحذف، ولا يؤدي إلى تنزيل الحمولات كحل بديل؛ لم تُفعّل هذه الخدمة بعد ولا يوجد ترحيل تلقائي للعلامة القديمة. لا حذف عند فشل الرفع/الاستعادة؛ قد يتجاوز العدد السياسة مؤقتًا. مجلد رفع بلا `complete.enc` غير معتمد، يُترك للتحقيق ولا يُحذف آليًا. لا `rclone sync` أو purge للمجلد الأب.
 - ملفات Drive الوحيدة: dump وuploads وmanifest وreceipt وعلامة الإتمام، كلها مشفرة. لا manifest واضح خارج المضيف. سجلات journal ثابتة بلا أسرار؛ لا `set -x`، ولا طباعة env أو `docker inspect` كاملًا أو stderr الخام. root/Docker وصول إداري؛ لا تمنح صلاحيات تعديل source أو config لمستخدمي التطبيق.
 
 ## تسلسل التثبيت والتحقق على staging
@@ -34,17 +34,24 @@
    sudo install -d -m 700 "$BASE/env/rclone"
    ```
 
-2. ثبّت source مطابقًا للإصدار وvenv باعتماديات مقفلة. لا تنسخ أسرارًا إلى source. تأكد أن staging نفسها نُشرت بالإصدار المعتمد عبر إجراء النشر المعتاد قبل استكمال الخطوة.
+2. **رقِّ staging أولًا، قبل إعداد النسخ أو تفعيله.** صورة `backup` موجودة فقط من SHA الإصدار الجديد الذي يتضمن هذه المرحلة، ولا توجد لصورة `9134fd9`. هذا هو إجراء الترقية القياسي: source وCompose مطابقان للإصدار المنشور، ثم `pull`، ثم `migrate`، ثم `up -d`. ملف Compose الفعلي هو `/opt/apps/iorp/<env>/env/project.env` بصلاحية `600` وملكية `rehanh`؛ عدّل `IORP_IMAGE_TAG` فيه إلى SHA المعتمد، وأبقِ بقية إعدادات البيئة الفعلية. لا تنسخ أسرارًا إلى source.
 
    ```bash
    sudo git clone https://github.com/AhmedBaabbad/iorp.git "$BASE/backup-runtime/source"
    sudo git -C "$BASE/backup-runtime/source" checkout --detach "$RELEASE_SHA"
    SOURCE=$BASE/backup-runtime/source
+   sudo install -m 644 "$SOURCE/deploy/compose.yaml" "$BASE/compose.yaml"
+   nano "$BASE/env/project.env"
+   chmod 600 "$BASE/env/project.env"
+   grep -qx "IORP_IMAGE_TAG=$RELEASE_SHA" "$BASE/env/project.env"
+   docker compose --env-file "$BASE/env/project.env" -f "$BASE/compose.yaml" --profile backup --profile migrate pull
+   docker compose --env-file "$BASE/env/project.env" -f "$BASE/compose.yaml" --profile migrate run --rm migrate
+   docker compose --env-file "$BASE/env/project.env" -f "$BASE/compose.yaml" up -d
+   docker compose --env-file "$BASE/env/project.env" -f "$BASE/compose.yaml" ps
    sudo python3 -m venv "$BASE/backup-runtime/venv"
    sudo "$BASE/backup-runtime/venv/bin/pip" install --require-hashes --no-deps -r "$SOURCE/backend/requirements.lock"
    PY=$BASE/backup-runtime/venv/bin/python
    OPS=$SOURCE/backend/scripts/backup/ops_backup.py
-   sudo install -m 644 "$SOURCE/deploy/compose.yaml" "$BASE/compose.yaml"
    sudo install -o root -g root -m 600 "$SOURCE/deploy/env/backup-ops.env.example" "$BASE/env/backup-ops.env"
    sudo install -o rehanh -g rehanh -m 600 "$SOURCE/deploy/env/backup-database.env.example" "$BASE/env/backup-database.env"
    sudo install -o rehanh -g rehanh -m 600 "$SOURCE/deploy/env/backup-push.env.example" "$BASE/env/backup-push.env"
@@ -56,7 +63,6 @@
    nano "$BASE/env/backup-database.env"
    nano "$BASE/env/backup-push.env"
    sudoedit "$BASE/env/backup-ops.env"
-   nano "$BASE/env/staging.env"
    chmod 600 "$BASE/env/backup-database.env" "$BASE/env/backup-push.env"
    ```
 

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 from datetime import datetime, timezone
 import json
 import os
@@ -83,6 +84,17 @@ def private_dir(path: Path, uid: int | None = None):
 
 def digest(path: Path) -> str:
     return tool.sha256_file(path)
+
+
+def checksums(path: Path) -> dict[str, str]:
+    # MD5 is Drive's native ciphertext checksum, not the authenticity boundary.
+    md5 = hashlib.md5(usedforsecurity=False)
+    sha256 = hashlib.sha256()
+    with path.open('rb') as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+            md5.update(chunk)
+            sha256.update(chunk)
+    return {'sha256': sha256.hexdigest(), 'md5': md5.hexdigest()}
 
 
 def check_manifest(folder: Path):
@@ -289,7 +301,7 @@ class Job:
             raise Failure('receipt-checksum')
         # Publishing this encrypted completion record is the final remote write.
         marker = source / 'complete.json'
-        marker.write_text(json.dumps({name: digest(source / name) for name in (*PAYLOADS, 'verification.json.enc')}))
+        marker.write_text(json.dumps({name: checksums(source / name) for name in (*PAYLOADS, 'verification.json.enc')}))
         tool.encrypt_file(marker, source / 'complete.enc', self.key_env['IORP_BACKUP_KEY'])
         marker.unlink()
         self.rclone('copyto', str(source / 'complete.enc'), remote + '/complete.enc', '--immutable')
@@ -319,17 +331,41 @@ class Job:
                 raise Failure('remote-layout')
             folder = self.scratch / 'catalog' / name
             private_dir(folder)
-            for item in entries:
+            # Historical payloads stay remote. Never pass --download to hashsum:
+            # unsupported/missing native hashes must fail closed, not fetch data.
+            for item in ('complete.enc', 'manifest.json.enc', 'verification.json.enc'):
                 self.rclone('copyto', remote + '/' + item, str(folder / item))
             tool.decrypt_file(folder / 'complete.enc', folder / 'complete.json', self.key_env['IORP_BACKUP_KEY'])
             expected = json.loads((folder / 'complete.json').read_text())
             if set(expected) != {*PAYLOADS, 'verification.json.enc'}:
                 raise Failure('remote-completion')
-            if any(digest(folder / n) != expected[n] for n in expected):
+            for hashes in expected.values():
+                if (not isinstance(hashes, dict) or set(hashes) != {'sha256', 'md5'}
+                        or not re.fullmatch(r'[0-9a-f]{64}', str(hashes['sha256']))
+                        or not re.fullmatch(r'[0-9a-f]{32}', str(hashes['md5']))):
+                    raise Failure('remote-completion')
+            native = {}
+            for line in self.rclone('hashsum', 'MD5', remote).splitlines():
+                match = re.fullmatch(r'([0-9a-fA-F]{32})  (.+)', line)
+                if not match or match[2] in native:
+                    raise Failure('remote-checksum')
+                native[match[2]] = match[1].lower()
+            if set(native) != set(entries) or any(native[n] != expected[n]['md5'] for n in expected):
+                raise Failure('remote-checksum')
+            if any(digest(folder / n) != expected[n]['sha256']
+                   for n in ('manifest.json.enc', 'verification.json.enc')):
                 raise Failure('remote-checksum')
             for stem in ('manifest.json', 'verification.json'):
                 tool.decrypt_file(folder / (stem + '.enc'), folder / stem, self.key_env['IORP_BACKUP_KEY'])
-            check_manifest(folder)
+            manifest = json.loads((folder / 'manifest.json').read_text())
+            if (manifest.get('format') != 'iorp-backup/1' or manifest.get('encrypted') is not True
+                    or manifest.get('referenced_but_missing')):
+                raise Failure('manifest')
+            for stem in ('database.dump', 'uploads.tar.gz'):
+                entry = manifest['artifacts'][stem]
+                if (entry['stored_as'] != stem + '.enc'
+                        or entry['stored_sha256'] != expected[stem + '.enc']['sha256']):
+                    raise Failure('remote-checksum')
             if not matching_receipt(folder):
                 raise Failure('remote-receipt')
             catalog[name] = folder
