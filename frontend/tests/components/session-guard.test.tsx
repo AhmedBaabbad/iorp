@@ -20,6 +20,7 @@ let messages: Record<string, unknown>;
 beforeAll(async () => { messages = await loadMessages("en") as Record<string, unknown>; });
 beforeEach(() => {
   vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-10-15T12:00:00Z"));
   localStorage.clear();
   localStorage.setItem(ACCESS_TOKEN_KEY, jwt(15 * MIN));
   calls.refresh.mockReset().mockResolvedValue("new-token");

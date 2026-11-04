@@ -223,6 +223,11 @@ function customerReturn(over: Partial<ShipmentReturn> = {}): ShipmentReturn {
 }
 
 describe("returns", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-15T12:00:00Z"));
+  });
+  afterEach(() => { vi.useRealTimers(); });
   it("registers a customer return against a delivered note, up to what may still be returned", async () => {
     const note = shipment({ status: "delivered", actions: ["return"], delivered_at: new Date().toISOString(),
       line_returns: { l1: { returned: "0.000", returnable: "120.000" } } });

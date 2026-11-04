@@ -17,7 +17,7 @@ import { AcknowledgeGate, NotificationBell } from "@/components/notify/Notificat
 import { Notifications, dismiss } from "@/components/notify/Notifications";
 import { AnnouncementForm } from "@/features/announcements/Announcements";
 
-const now = new Date().toISOString();
+const now = "2026-10-15T12:00:00.000Z";
 const PO = { id: "n1", event: "procurement.purchase_order.awaiting_approval", category: "work", severity: "important",
   params: { number: "PO-2026-0007", supplier: "Gulf Resins" }, link: "/purchase-orders/p7", actor_name: "Sara Ali", created_at: now,
   read: false, settled: false, announcement: null };
@@ -30,6 +30,8 @@ let summary = { unread: 1, latest: [PO, ROLE], pending_ack: [] as typeof POLICY[
 const messages: Record<string, Record<string, unknown>> = {};
 beforeAll(async () => { for (const l of ["ar", "en"] as const) messages[l] = await loadMessages(l) as Record<string, unknown>; });
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(now));
   api.call.mockReset(); nav.push.mockReset();
   summary = { unread: 1, latest: [PO, ROLE], pending_ack: [] };
   api.call.mockImplementation((path: string, options?: { method?: string; body?: Record<string, unknown> }) => {
@@ -41,7 +43,7 @@ beforeEach(() => {
     return Promise.resolve(null);
   });
 });
-afterEach(() => { cleanup(); for (let id = 0; id < 200; id++) dismiss(id); });
+afterEach(() => { cleanup(); for (let id = 0; id < 200; id++) dismiss(id); vi.useRealTimers(); });
 const ui = (node: ReactNode, locale: "ar" | "en" = "ar") =>
   render(<NextIntlClientProvider locale={locale} messages={messages[locale]} timeZone="UTC">{node}<Notifications /></NextIntlClientProvider>);
 

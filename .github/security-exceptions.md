@@ -10,4 +10,6 @@ CI ignores only these IDs. Each needs a fix or re-review before its review date;
 | CVE-2026-85394 | python-jose 3.5.0 | HMAC key confusion; IORP pins `HS256` with a server secret, no client-supplied keys. No fixed release. | Replace with PyJWT. Review by 2026-12-31 |
 | PYSEC-2026-1325 | ecdsa 0.19.2 | Timing attack on P-256 signing; not used by IORP (transitive of python-jose). | Goes with python-jose |
 
-JavaScript: CI blocks critical advisories in shipped dependencies (`npm audit --omit=dev --audit-level=critical`). Known high advisories (postcss, sharp via Next) are build-time / unused-path issues — see `docs/architecture/foundation-hardening/DEPENDENCY_SECURITY_REVIEW.md`.
+JavaScript: CI blocks high and critical advisories in shipped dependencies (`npm audit --omit=dev --audit-level=high`). The previously recorded Next/postcss/sharp/source-map-js findings were fixed on 2026-11-04; no JavaScript audit exceptions are added. See `docs/verification/SECURITY_DEPENDENCY_UPDATE_2026-11-04.md`. The older architecture review is historical, not an exemption for these packages.
+
+Python: the 2026-11-04 update fixes pypdf, pyasn1, Pillow, certifi and dnspython. The seven IDs listed above remain the complete CI ignore list; no new ignore IDs were added.

@@ -27,13 +27,16 @@ let OPTIONS = { delegators: [{ id: "m1", name: "Production Manager", permissions
 const messages: Record<string, Record<string, unknown>> = {};
 beforeAll(async () => { for (const l of ["ar", "en"] as const) messages[l] = await loadMessages(l) as Record<string, unknown>; });
 beforeEach(() => {
+  // Fake Date only: Testing Library polling and notification timers stay real.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-15T12:00:00Z"));
   api.call.mockReset(); nav.push.mockReset();
   api.call.mockImplementation((path: string, options?: { method?: string }) => Promise.resolve(
     path.endsWith("/options") ? OPTIONS : path.endsWith("/waiting") ? { count: 1, items: [WAITING] }
       : path.startsWith("/delegations?") ? { items: [WAITING, ACTIVE], total: 2, page: 1, page_size: 50, pages: 1 }
       : options?.method === "POST" ? { ...WAITING, status: "awaiting_manager" } : null));
 });
-afterEach(() => { cleanup(); for (let id = 0; id < 100; id++) dismiss(id); });
+afterEach(() => { cleanup(); for (let id = 0; id < 100; id++) dismiss(id); vi.useRealTimers(); });
 const ui = (page: ReactNode, locale: "ar" | "en" = "en") =>
   render(<NextIntlClientProvider locale={locale} messages={messages[locale]} timeZone="UTC">{page}<Notifications /></NextIntlClientProvider>);
 
