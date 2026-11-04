@@ -8,7 +8,7 @@ on:
       image:
         description: Image whose older versions have been reviewed
         type: choice
-        options: [backend, frontend, report-gateway, report-renderer]
+        options: [backend, backup, frontend, report-gateway, report-renderer]
         required: true
       reviewed_version_ids:
         description: Exact comma-separated version IDs approved for deletion (from weekly summary)
@@ -31,7 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [backend, frontend, report-gateway, report-renderer]
+        image: [backend, backup, frontend, report-gateway, report-renderer]
     steps:
       - name: review candidates and protect the newest ten versions
         id: review

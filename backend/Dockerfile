@@ -48,3 +48,24 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
 # One process: the login/refresh rate limiter is in-process (see the deployment plan before adding workers).
 # Proxy headers are evaluated by the application itself against TRUSTED_PROXY_IPS.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1", "--no-server-header"]
+
+# Explicit --target runtime remains the application build. No Docker CLI/socket here.
+FROM runtime AS backup
+USER root
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+ && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /tmp/pgdg.asc \
+ && test "$(gpg --show-keys --with-colons /tmp/pgdg.asc | awk -F: '$1 == "fpr" { print $10; exit }')" = B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8 \
+ && gpg --dearmor -o /usr/share/keyrings/pgdg.gpg /tmp/pgdg.asc \
+ && echo 'deb [signed-by=/usr/share/keyrings/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main' > /etc/apt/sources.list.d/pgdg.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends postgresql-client-16 \
+ && apt-get purge -y --auto-remove curl gnupg \
+ && rm -rf /var/lib/apt/lists/* /tmp/pgdg.asc
+USER iorp
+HEALTHCHECK NONE
+ENTRYPOINT ["python", "/app/scripts/backup/collect.py"]
+CMD []
+
+# Preserve the default build's application behavior as well as --target runtime.
+FROM runtime AS application

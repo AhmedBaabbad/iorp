@@ -1,0 +1,16 @@
+[Unit]
+Description=IORP %i backup disk threshold monitor
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/opt/apps/iorp/%i/backup-runtime/venv/bin/python /opt/apps/iorp/%i/backup-runtime/source/backend/scripts/backup/ops_backup.py disk --config /opt/apps/iorp/%i/env/backup-ops.env
+TimeoutStartSec=30s
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+MemoryMax=256M
+CPUQuota=10%

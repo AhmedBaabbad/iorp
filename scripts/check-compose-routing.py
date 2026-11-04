@@ -25,16 +25,27 @@ def check():
                 "IORP_APP_SUBNET": subnet,
                 "IORP_BACKEND_ENV_FILE": env_file.as_posix(),
                 "IORP_POSTGRES_ENV_FILE": env_file.as_posix(),
+                "IORP_BACKUP_DATABASE_ENV_FILE": env_file.as_posix(),
+                "IORP_BACKUP_KEY_ENV_FILE": env_file.as_posix(),
                 "TRAEFIK_NETWORK": "proxy",
                 "TRAEFIK_ENTRYPOINT": "websecure",
                 "TRAEFIK_CERTRESOLVER": "le",
             }
             result = subprocess.run(
                 ["docker", "compose", "--env-file", str(env_file), "-f",
-                 str(ROOT / "deploy/compose.yaml"), "config", "--format", "json"],
+                 str(ROOT / "deploy/compose.yaml"), "--profile", "backup", "config", "--format", "json"],
                 env=env, check=True, capture_output=True, text=True,
             )
             config = json.loads(result.stdout)
+            backup = config['services']['backup']
+            if backup is not None:
+                assert set(backup['networks']) == {'db'}
+                assert backup.get('profiles') == ['backup']
+                assert backup['read_only'] is True
+                assert not backup.get('ports')
+                assert all('docker.sock' not in mount.get('source', '') for mount in backup['volumes'])
+                uploads = [m for m in backup['volumes'] if m['target'] == '/var/lib/iorp/uploads']
+                assert len(uploads) == 1 and uploads[0]['read_only'] is True
             labels = config["services"]["frontend"]["labels"]
             if config["name"] != project:
                 raise AssertionError(config["name"])
