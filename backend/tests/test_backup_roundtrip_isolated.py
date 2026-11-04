@@ -22,6 +22,7 @@ def test_encrypted_backup_restore_and_retention_on_disposable_server(tmp_path, m
     engine = None
     try:
         monkeypatch.setenv('APP_ENV', 'test')
+        monkeypatch.setenv('DATABASE_URL', 'postgresql+psycopg://unused:unused@127.0.0.1:1/unused')
         monkeypatch.setenv('IORP_RESTORE_CONTAINER_ID', container_id)
         for _ in range(60):
             try:

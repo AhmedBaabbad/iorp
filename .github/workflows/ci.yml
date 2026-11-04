@@ -72,7 +72,25 @@ jobs:
       - name: MFA, step-up and sessions
         run: python -m pytest -q -p no:cacheprovider tests/test_platform_mfa.py tests/test_platform_security_config.py tests/test_platform_sessions_audit.py tests/foundation/test_session_security.py tests/test_jwt_token_architecture.py tests/core/test_client_ip.py
       - name: backup and restore safety
-        run: python -m pytest -q -p no:cacheprovider tests/core/test_backup_tool.py tests/test_recovery_drill.py
+        run: python -m pytest -q -p no:cacheprovider tests/core/test_backup_tool.py tests/core/test_ops_backup.py tests/test_recovery_drill.py
+
+  backup-roundtrip:
+    name: encrypted backup offsite roundtrip (synthetic rclone local)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      RUN_BACKUP_CONTAINER_TESTS: "1"
+      BACKUP_TEST_IMAGE: iorp/backup:roundtrip
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { persist-credentials: false }
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+      - run: pip install --require-hashes --no-deps -r requirements-dev.lock
+      - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends rclone
+      - run: docker build --target backup -t "$BACKUP_TEST_IMAGE" .
+      - run: python -m pytest -q -p no:cacheprovider tests/test_ops_backup_roundtrip.py tests/test_backup_roundtrip_isolated.py
 
   postgres:
     name: PostgreSQL migrations and integration
@@ -162,7 +180,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    needs: [backend, security-tests, postgres, frontend, scan, compose-config]
+    needs: [backend, security-tests, postgres, frontend, scan, compose-config, backup-roundtrip]
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     concurrency:
@@ -178,6 +196,7 @@ jobs:
           tag="${GITHUB_SHA}"
           source="org.opencontainers.image.source=https://github.com/AhmedBaabbad/iorp"
           docker build --label "$source" --target runtime -t "iorp/backend:${tag}" backend
+          docker build --label "$source" --target backup -t "iorp/backup:${tag}" backend
           docker build --label "$source" --build-arg BACKEND_URL=http://backend:8080 -t "iorp/frontend:${tag}" frontend
           docker build --label "$source" -f deploy/reporting/Dockerfile.gateway -t "iorp/report-gateway:${tag}" .
           docker build --label "$source" -f deploy/reporting/Dockerfile.renderer -t "iorp/report-renderer:${tag}" .
@@ -185,14 +204,15 @@ jobs:
         run: |
           set -euo pipefail
           tag="${GITHUB_SHA}"
-          for image in backend frontend report-gateway report-renderer; do
+          for image in backend backup frontend report-gateway report-renderer; do
             test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.source"}}' "iorp/${image}:${tag}")" = 'https://github.com/AhmedBaabbad/iorp'
           done
-          for image in backend frontend; do
+          for image in backend backup frontend; do
             bash scripts/check-image-secrets.sh "iorp/${image}:${tag}"
           done
           bash scripts/test-check-image-secrets.sh "iorp/backend:${tag}"
           docker run --rm --entrypoint sh "iorp/backend:${tag}" -c 'id -u | grep -qv "^0$" && test ! -d /app/tests && test ! -d /app/uploads'
+          docker run --rm --network none --entrypoint sh "iorp/backup:${tag}" -c 'test "$(id -u)" = 10001 && pg_dump --version | grep -q " 16\." && pg_restore --version | grep -q " 16\." && ! command -v docker && test ! -S /var/run/docker.sock'
           docker run --rm --entrypoint sh "iorp/frontend:${tag}" -c 'id -u | grep -qv "^0$" && test -f server.js'
       - name: log in to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -206,7 +226,7 @@ jobs:
         run: |
           set -euo pipefail
           echo '### Published images' >> "$GITHUB_STEP_SUMMARY"
-          for image in backend frontend report-gateway report-renderer; do
+          for image in backend backup frontend report-gateway report-renderer; do
             local="iorp/${image}:${GITHUB_SHA}"
             remote="ghcr.io/ahmedbaabbad/iorp/${image}:${GITHUB_SHA}"
             tested_id=$(docker image inspect --format '{{.Id}}' "$local")

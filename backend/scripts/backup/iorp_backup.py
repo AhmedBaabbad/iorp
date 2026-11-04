@@ -16,7 +16,7 @@ manifest, unpacks the uploads into a temporary folder, checks every file, and dr
 (unless --keep-database). Encryption: Fernet (AES-128-CBC + HMAC-SHA256) in 16 MB chunks, the key in IORP_BACKUP_KEY
 (`python scripts/backup/iorp_backup.py new-key` prints one; keep it apart from the backups).
 Verification requires IORP_RESTORE_DATABASE_URL (database component starting
-iorp_restore_verify_) and IORP_RESTORE_SCRATCH on encrypted or RAM-backed storage.
+iorp_restore_verify_) and a dedicated private IORP_RESTORE_SCRATCH directory.
 It never defaults to the application's database. Prune requires a matching
 successful verification receipt for the newest intact backup and always keeps it.
 """
@@ -84,6 +84,39 @@ def decrypt_file(source: Path, target: Path, key: str) -> None:
             if len(token) != length:
                 raise SystemExit('Truncated encrypted backup')
             dst.write(fernet.decrypt(token))
+
+
+def dump_table_count(dump: Path, key: str | None, container: str | None) -> int:
+    """Inspect the actual archive TOC, not merely the source catalog/manifest.
+
+    Stream decrypted data into pg_restore; only its metadata listing uses a private
+    temporary file, preventing pipe deadlocks for schemas with many tables.
+    """
+    command = (["docker", "exec", "-i", container] if container else []) + ["pg_restore", "--list"]
+    with tempfile.TemporaryFile() as listing, dump.open('rb') as source:
+        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=listing, stderr=subprocess.DEVNULL)
+        try:
+            if key:
+                fernet = _fernet(key)
+                while header := source.read(4):
+                    length = int.from_bytes(header, 'big')
+                    if len(header) != 4 or not 1 <= length <= CHUNK * 2:
+                        raise SystemExit('Invalid encrypted dump frame')
+                    token = source.read(length)
+                    if len(token) != length:
+                        raise SystemExit('Truncated encrypted dump')
+                    process.stdin.write(fernet.decrypt(token))
+            else:
+                shutil.copyfileobj(source, process.stdin, CHUNK)
+            process.stdin.close()
+            if process.wait() != 0:
+                raise SystemExit('Cannot inspect dump table coverage')
+            listing.seek(0)
+            return sum(bool(re.match(rb'^\d+; \d+ \d+ TABLE public ', line)) for line in listing)
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
 
 
 class BackupSink:
@@ -174,12 +207,13 @@ def upload_inventory(root: Path) -> dict[str, dict]:
 
 # ── backup ───────────────────────────────────────────────────────────────────────────────────────
 
-def backup(out: Path, container: str | None, encrypt: bool, url_override: str | None = None) -> Path:
+def backup(out: Path, container: str | None, encrypt: bool, url_override: str | None = None,
+           uploads_dir: Path | None = None) -> Path:
     key = os.environ.get("IORP_BACKUP_KEY") if encrypt else None
     if encrypt:
         _fernet(key)  # refuse before touching anything
     url = database_url(url_override)
-    uploads = (BACKEND / settings().uploads_dir).resolve()
+    uploads = (uploads_dir if uploads_dir is not None else BACKEND / settings().uploads_dir).resolve()
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     folder = out / f"iorp-{stamp}"
     folder.mkdir(parents=True, exist_ok=False)
@@ -205,6 +239,9 @@ def backup(out: Path, container: str | None, encrypt: bool, url_override: str | 
                 dump_info = {"sha256": sink.digest.hexdigest(), "bytes": sink.size,
                              "stored_as": stored_dump.name, "stored_sha256": sha256_file(stored_dump)}
     engine.dispose()
+    archived_tables = dump_table_count(stored_dump, key, container)
+    if archived_tables != len(counts):
+        raise SystemExit('Dump table count differs from pg_tables; refusing incomplete backup')
     files = upload_inventory(uploads)
     stored_tar = folder / ("uploads.tar.gz.enc" if encrypt else "uploads.tar.gz")
     with stored_tar.open("xb") as handle:
@@ -222,6 +259,7 @@ def backup(out: Path, container: str | None, encrypt: bool, url_override: str | 
         "alembic_revision": revision, "table_counts": counts, "artifacts": artifacts,
         "uploads": {"root": "uploads", "files": files, "file_count": len(files), "bytes": sum(f["size"] for f in files.values())},
         "referenced_file_keys": len(keys), "referenced_but_missing": missing,
+        "dump_public_tables": archived_tables,
         "seconds": round(time.monotonic() - started, 2),
     }
     (folder / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -314,7 +352,7 @@ def verify(folder: Path, container: str | None, keep: bool, target: str | None =
     name = verification_name(manifest["source_database"], target)
     scratch = os.environ.get('IORP_RESTORE_SCRATCH')
     if not scratch or not Path(scratch).is_dir():
-        raise SystemExit('Set IORP_RESTORE_SCRATCH to a dedicated encrypted-volume or RAM-backed directory')
+        raise SystemExit('Set IORP_RESTORE_SCRATCH to a dedicated private scratch directory')
     started = time.monotonic()
     admin = create_engine(url.set(database="postgres").render_as_string(hide_password=False), isolation_level="AUTOCOMMIT")
     report: dict = {"backup": folder.name, "database": name}

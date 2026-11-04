@@ -1,0 +1,12 @@
+[Unit]
+Description=IORP %i daily backup at 23:30 UTC
+
+[Timer]
+OnCalendar=*-*-* 23:30:00 UTC
+Persistent=true
+AccuracySec=1s
+RandomizedDelaySec=0
+Unit=iorp-backup@%i.service
+
+[Install]
+WantedBy=timers.target

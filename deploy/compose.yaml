@@ -38,6 +38,30 @@ x-backend: &backend
     - no-new-privileges:true
 
 services:
+  backup:
+    image: ${IORP_REGISTRY:-iorp}/backup:${IORP_IMAGE_TAG}
+    build:
+      context: ../backend
+      target: backup
+    profiles: [backup]
+    restart: "no"
+    env_file:
+      - ${IORP_BACKUP_DATABASE_ENV_FILE:-./env/backup-database.env}
+      - ${IORP_BACKUP_KEY_ENV_FILE:-./env/backup-key.env}
+    networks: [db]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    volumes:
+      - uploads:/var/lib/iorp/uploads:ro
+      - ${IORP_BACKUP_OUT_DIR:-/var/lib/iorp-backups/disabled}:/backup-out
+    logging: *logging
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 512M }
+
   frontend:
     image: ${IORP_REGISTRY:-iorp}/frontend:${IORP_IMAGE_TAG}
     build:
