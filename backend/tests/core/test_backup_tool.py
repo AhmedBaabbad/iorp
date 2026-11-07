@@ -17,6 +17,61 @@ tool = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(tool)
 
 
+@pytest.mark.parametrize('encrypted', [False, True])
+@pytest.mark.parametrize('on_close', [False, True])
+@pytest.mark.parametrize('returncode', [0, 1])
+def test_dump_table_count_early_close(tmp_path, monkeypatch, encrypted, on_close, returncode):
+    from cryptography.fernet import Fernet
+    key = Fernet.generate_key().decode() if encrypted else None
+    dump = tmp_path / 'archive'
+    with dump.open('wb') as handle:
+        sink = tool.BackupSink(handle, key)
+        sink.write(b'x' * 128 * 1024)
+        if not on_close:
+            sink.write(b'unread tail')
+
+    class EarlyInput:
+        writes = 0
+        closed = False
+
+        def write(self, data):
+            self.writes += 1
+            assert self.writes == 1  # no feeding after a broken pipe
+            self.prefix = data[:32]
+            if not on_close:
+                raise BrokenPipeError()
+            return len(data)
+
+        def close(self):
+            self.closed = True
+            raise BrokenPipeError()  # buffered close may fail after write too
+
+    class Process:
+        stdin = EarlyInput()
+        waited = False
+
+        def __init__(self, command, **kwargs):
+            kwargs['stdout'].write(b'1; 1259 1 TABLE public documents postgres\n'
+                                   b'2; 0 1 TABLE DATA public documents postgres\n'
+                                   b'3; 1259 2 TABLE public alembic_version postgres\n')
+
+        def wait(self):
+            self.waited = True
+            return returncode
+
+        def poll(self):
+            assert self.waited
+            return returncode
+
+    monkeypatch.setattr(tool.subprocess, 'Popen', Process)
+    if returncode:
+        with pytest.raises(SystemExit, match='Cannot inspect dump table coverage'):
+            tool.dump_table_count(dump, key, None)
+    else:
+        assert tool.dump_table_count(dump, key, None) == 2
+    assert Process.stdin.closed
+
+
 @pytest.mark.parametrize("name", ["iorp", "postgres", "iorp_restore", "iorp_restore_verify_X; drop", "something_else"])
 def test_a_restore_never_targets_anything_but_a_new_verification_database(name):
     with pytest.raises(SystemExit):
