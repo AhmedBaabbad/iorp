@@ -106,7 +106,7 @@ jobs:
           POSTGRES_PASSWORD: ci-only-disposable
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U iorp_ci -d iorp_ci" --health-interval 5s --health-timeout 5s --health-retries 20
+          --health-cmd "pg_isready -h 127.0.0.1 -p 5432 -U iorp_ci -d iorp_ci" --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       RUN_POSTGRES_TESTS: "1"
       DATABASE_URL: postgresql+psycopg://iorp_ci:ci-only-disposable@127.0.0.1:5432/iorp_ci

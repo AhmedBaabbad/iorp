@@ -264,18 +264,32 @@ class Job:
              '--mount', 'type=volume,src=' + self.volume + ',dst=/var/lib/postgresql/data',
              '-e', 'POSTGRES_PASSWORD', PG_IMAGE], env={**self.child_env, 'POSTGRES_PASSWORD': password})
         self.active_db = True
+        startup_deadline = min(self.deadline, time.monotonic() + 90)
         for _ in range(90):
             self.budget()
-            ready = subprocess.run(['docker', 'exec', self.container, 'pg_isready', '-U', 'postgres'],
-                                   env=self.child_env, capture_output=True, timeout=10)
+            remaining = startup_deadline - time.monotonic()
+            if remaining <= 0:
+                raise Failure('postgres-start')
+            try:
+                ready = subprocess.run(['docker', 'exec', self.container, 'pg_isready',
+                                        '-h', '127.0.0.1', '-p', '5432', '-U', 'postgres'],
+                                       env=self.child_env, capture_output=True, timeout=min(10, remaining))
+            except subprocess.TimeoutExpired:
+                continue
             if ready.returncode == 0:
                 break
-            time.sleep(1)
+            time.sleep(min(1, max(0, startup_deadline - time.monotonic())))
         else:
             raise Failure('postgres-start')
         port = self.run(['docker', 'port', self.container, '5432/tcp']).removeprefix('127.0.0.1:')
         if not port.isdigit():
             raise Failure('restore-port')
+        try:
+            tool.wait_postgres_connection(
+                f'postgresql+psycopg://postgres:{password}@127.0.0.1:{port}/postgres',
+                min(startup_deadline, self.deadline, time.monotonic() + 30), self.budget)
+        except TimeoutError:
+            raise Failure('postgres-start') from None
         scratch = self.scratch / 'restore'
         private_dir(scratch)
         target = f'postgresql+psycopg://postgres:{password}@127.0.0.1:{port}/iorp_restore_verify_target'
