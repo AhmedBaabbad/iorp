@@ -96,19 +96,16 @@ def dump_table_count(dump: Path, key: str | None, container: str | None) -> int:
     with tempfile.TemporaryFile() as listing, dump.open('rb') as source:
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=listing, stderr=subprocess.DEVNULL)
         try:
-            if key:
-                fernet = _fernet(key)
-                while header := source.read(4):
-                    length = int.from_bytes(header, 'big')
-                    if len(header) != 4 or not 1 <= length <= CHUNK * 2:
-                        raise SystemExit('Invalid encrypted dump frame')
-                    token = source.read(length)
-                    if len(token) != length:
-                        raise SystemExit('Truncated encrypted dump')
-                    process.stdin.write(fernet.decrypt(token))
-            else:
-                shutil.copyfileobj(source, process.stdin, CHUNK)
-            process.stdin.close()
+            try:
+                _feed_dump(process.stdin, source, key)
+            except BrokenPipeError:
+                # --list exits after the TOC without consuming the table data.
+                pass
+            finally:
+                try:
+                    process.stdin.close()
+                except BrokenPipeError:
+                    pass
             if process.wait() != 0:
                 raise SystemExit('Cannot inspect dump table coverage')
             listing.seek(0)
@@ -117,6 +114,21 @@ def dump_table_count(dump: Path, key: str | None, container: str | None) -> int:
             if process.poll() is None:
                 process.kill()
                 process.wait()
+
+
+def _feed_dump(stdin, source, key):
+    if key:
+        fernet = _fernet(key)
+        while header := source.read(4):
+            length = int.from_bytes(header, 'big')
+            if len(header) != 4 or not 1 <= length <= CHUNK * 2:
+                raise SystemExit('Invalid encrypted dump frame')
+            token = source.read(length)
+            if len(token) != length:
+                raise SystemExit('Truncated encrypted dump')
+            stdin.write(fernet.decrypt(token))
+    else:
+        shutil.copyfileobj(source, stdin, CHUNK)
 
 
 class BackupSink:
