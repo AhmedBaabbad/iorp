@@ -15,8 +15,8 @@ from tests.core.test_backup_tool import tool
 def test_encrypted_backup_restore_and_retention_on_disposable_server(tmp_path, monkeypatch):
     name = 'iorp-backup-test-' + uuid4().hex
     password = uuid4().hex
-    def docker(*args):
-        return subprocess.run(['docker', *args], check=True, capture_output=True, text=True).stdout.strip()
+    def docker(*args, timeout=None):
+        return subprocess.run(['docker', *args], check=True, capture_output=True, text=True, timeout=timeout).stdout.strip()
     container_id = docker('run', '-d', '--name', name, '--label', 'iorp.purpose=backup-test',
            '-p', '127.0.0.1::5432', '-e', 'POSTGRES_PASSWORD=' + password, 'postgres:16')
     engine = None
@@ -24,14 +24,22 @@ def test_encrypted_backup_restore_and_retention_on_disposable_server(tmp_path, m
         monkeypatch.setenv('APP_ENV', 'test')
         monkeypatch.setenv('DATABASE_URL', 'postgresql+psycopg://unused:unused@127.0.0.1:1/unused')
         monkeypatch.setenv('IORP_RESTORE_CONTAINER_ID', container_id)
+        startup_deadline = time.monotonic() + 60
         for _ in range(60):
+            remaining = startup_deadline - time.monotonic()
+            if remaining <= 0:
+                raise RuntimeError('postgres-start')
             try:
-                docker('exec', name, 'pg_isready', '-U', 'postgres')
+                docker('exec', name, 'pg_isready', '-h', '127.0.0.1', '-p', '5432', '-U', 'postgres',
+                       timeout=min(10, remaining))
                 break
-            except subprocess.CalledProcessError:
-                time.sleep(1)
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                time.sleep(min(1, max(0, startup_deadline - time.monotonic())))
+        else:
+            raise RuntimeError('postgres-start')
         port = docker('port', name, '5432/tcp').rsplit(':', 1)[1]
         url = f'postgresql+psycopg://postgres:{password}@127.0.0.1:{port}/postgres'
+        tool.wait_postgres_connection(url, min(startup_deadline, time.monotonic() + 30))
         engine = create_engine(url)
         tenant = str(uuid4())
         file_key = f'organizations/{tenant}/example.txt'

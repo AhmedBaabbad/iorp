@@ -89,7 +89,11 @@ def rehearse(output, application_schema=False):
         created = True
         for _ in range(60):
             try:
-                docker('exec', name, 'pg_isready', '-U', 'postgres')
+                docker('exec', name, 'pg_isready', '-h', '127.0.0.1', '-p', '5432', '-U', 'postgres')
+                # This network=none drill has no published host port. Confirm a
+                # real TCP query inside it without changing its isolation.
+                docker('exec', name, 'psql', '-h', '127.0.0.1', '-p', '5432',
+                       '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-Atc', 'SELECT 1')
                 break
             except subprocess.CalledProcessError:
                 time.sleep(1)

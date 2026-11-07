@@ -41,10 +41,38 @@ sys.path.insert(0, str(BACKEND))
 
 from sqlalchemy import create_engine, text  # noqa: E402
 from sqlalchemy.engine import make_url  # noqa: E402
+from sqlalchemy.exc import OperationalError  # noqa: E402
 
 VERIFY_PREFIX = "iorp_restore_verify_"
 CHUNK = 16 * 1024 * 1024
 KEY_PATTERN = re.compile(r"^organizations/[0-9a-fA-F-]{36}/")
+
+
+def wait_postgres_connection(url, deadline, budget=lambda: None):
+    """Confirm the published host endpoint, retrying transient startup failures.
+
+    Never propagate connection diagnostics: they may contain credentials.
+    The caller supplies a monotonic deadline bounded by its startup/job budget.
+    """
+    while True:
+        budget()
+        remaining = deadline - time.monotonic()
+        # Allow libpq's two-second minimum timeout plus the one-second query.
+        if remaining < 3:
+            raise TimeoutError('postgres-start') from None
+        engine = create_engine(url, connect_args={'connect_timeout': 2, 'options': '-c statement_timeout=1000'})
+        try:
+            with engine.connect() as connection:
+                connection.execute(text('SELECT 1'))
+            if time.monotonic() >= deadline:
+                raise TimeoutError('postgres-start') from None
+            budget()
+            return
+        except OperationalError:
+            pass
+        finally:
+            engine.dispose()
+        time.sleep(min(1, max(0, deadline - time.monotonic())))
 
 
 # ── small helpers ────────────────────────────────────────────────────────────────────────────────

@@ -24,22 +24,30 @@ def test_complete_daily_job_with_local_remote(tmp_path, monkeypatch):
     name = 'iorp-synthetic-source-' + uuid4().hex
     password = uuid4().hex
     source_network = name + '-net'
-    def docker(*args):
-        return subprocess.run(['docker', *args], check=True, capture_output=True, text=True).stdout.strip()
+    def docker(*args, timeout=None):
+        return subprocess.run(['docker', *args], check=True, capture_output=True, text=True, timeout=timeout).stdout.strip()
     docker('network', 'create', '--label', 'iorp.purpose=backup-test', source_network)
     source_id = docker('run', '-d', '--name', name, '--network', source_network, '--label', 'iorp.purpose=backup-test',
                        '--memory', '512m', '--cpus', '0.5', '-p', '127.0.0.1::5432',
                        '-e', 'POSTGRES_PASSWORD=' + password, ops.PG_IMAGE)
     engine = None
     try:
+        startup_deadline = time.monotonic() + 90
         for _ in range(90):
+            remaining = startup_deadline - time.monotonic()
+            if remaining <= 0:
+                raise RuntimeError('postgres-start')
             try:
-                docker('exec', name, 'pg_isready', '-U', 'postgres')
+                docker('exec', name, 'pg_isready', '-h', '127.0.0.1', '-p', '5432', '-U', 'postgres',
+                       timeout=min(10, remaining))
                 break
-            except subprocess.CalledProcessError:
-                time.sleep(1)
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                time.sleep(min(1, max(0, startup_deadline - time.monotonic())))
+        else:
+            raise RuntimeError('postgres-start')
         port = docker('port', name, '5432/tcp').rsplit(':', 1)[1]
         url = f'postgresql+psycopg://postgres:{password}@127.0.0.1:{port}/postgres'
+        ops.tool.wait_postgres_connection(url, min(startup_deadline, time.monotonic() + 30))
         engine = create_engine(url)
         file_key = f'organizations/{uuid4()}/synthetic.txt'
         with engine.begin() as connection:

@@ -53,6 +53,72 @@ def test_production_requires_two_explicit_switches(tmp_path):
     assert not job.root.exists()
 
 
+@pytest.mark.parametrize('failure', [None, 'host', 'container'])
+@pytest.mark.parametrize('job_seconds', [5, 120])
+def test_verify_waits_for_tcp_and_retries_host_connection(tmp_path, monkeypatch, failure, job_seconds, capsys):
+    from sqlalchemy.exc import OperationalError
+    job = ops.Job(config(tmp_path))
+    folder = tmp_path / 'backup'
+    folder.mkdir()
+    now = [0.0]
+    monkeypatch.setattr(ops.time, 'monotonic', lambda: now[0])
+    monkeypatch.setattr(ops.time, 'sleep', lambda seconds: now.__setitem__(0, now[0] + seconds))
+    job.deadline = job_seconds
+    budget = Mock()
+    monkeypatch.setattr(job, 'budget', budget)
+    commands = []
+
+    def run(args, env=None):
+        commands.append(args)
+        if args[:2] == ['docker', 'port']:
+            return '127.0.0.1:45678'
+        return 'a' * 64
+
+    monkeypatch.setattr(job, 'run', run)
+    probes = []
+
+    def probe(args, **kwargs):
+        probes.append(args)
+        assert args == ['docker', 'exec', job.container, 'pg_isready',
+                        '-h', '127.0.0.1', '-p', '5432', '-U', 'postgres']
+        assert kwargs['timeout'] <= 10
+        return Mock(returncode=1 if failure == 'container' else 0)
+
+    monkeypatch.setattr(ops.subprocess, 'run', probe)
+    engines = []
+
+    def create_engine(url, **kwargs):
+        assert ops.tool.make_url(url).host == '127.0.0.1'
+        assert ops.tool.make_url(url).port == 45678
+        assert ops.tool.make_url(url).database == 'postgres'
+        assert kwargs['connect_args']['connect_timeout'] == 2
+        engine = Mock()
+        engines.append(engine)
+        if failure == 'host' or len(engines) == 1:
+            engine.connect.side_effect = OperationalError('secret', {}, Exception('password'))
+        else:
+            from unittest.mock import MagicMock
+            engine.connect.return_value = MagicMock()
+        return engine
+
+    monkeypatch.setattr(ops.tool, 'create_engine', create_engine)
+    monkeypatch.setattr(ops, 'matching_receipt', lambda _: True)
+    if failure:
+        with pytest.raises(ops.Failure, match='^postgres-start$'):
+            job.verify(folder)
+        assert not any(args[0] == sys.executable for args in commands)
+        assert now[0] <= min(job_seconds, 30 if failure == 'host' else 90)
+    else:
+        job.verify(folder)
+        assert len(engines) == 2
+        assert any(args[0] == sys.executable for args in commands)
+    assert probes
+    assert budget.called
+    for engine in engines:
+        engine.dispose.assert_called_once()
+    assert capsys.readouterr() == ('', '')
+
+
 @pytest.mark.parametrize('stage', ['collect', 'transfer', 'verify', 'receipt', 'retention'])
 def test_failures_always_clean_scratch_and_never_advance(tmp_path, monkeypatch, stage):
     job = ops.Job(config(tmp_path))
