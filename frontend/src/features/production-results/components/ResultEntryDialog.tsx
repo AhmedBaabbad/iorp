@@ -1,4 +1,5 @@
 "use client";
+import { Dialog } from "@/components/ui/Dialog";
 
 import { useId, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
@@ -44,51 +45,46 @@ export function ResultEntryDialog({ view, entry, busy, error, onSave, onClose }:
     });
   }
 
-  return <div className={s.overlay} onKeyDown={e => { if (e.key === "Escape" && !busy) onClose(); }}>
-    <form role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} className={`${s.panel} ${s.dialog}`} onSubmit={submit}>
-      <h2 id={`${id}-title`}>{entry ? t("dialog.editTitle") : t("dialog.addTitle")}</h2>
-      <label className={s.field}>{t("fields.disposition")}
-        <select value={disposition} disabled={busy} onChange={e => { setDisposition(e.target.value as Disposition); setSampleLoss(null); }}>
-          {DISPOSITIONS.map(d => <option key={d} value={d}>{t(`dispositions.${d}`)}</option>)}
-        </select>
+  return <Dialog title={entry ? t("dialog.editTitle") : t("dialog.addTitle")} onClose={onClose} busy={busy} onSubmit={submit}
+    footer={<><button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("actions.cancel")}</button>
+      <button type="submit" className={`${s.button} ${s.primary}`} disabled={!valid || busy}>{t("actions.save")}</button></>}>
+    <label className={s.field}>{t("fields.disposition")}
+      <select value={disposition} disabled={busy} onChange={e => { setDisposition(e.target.value as Disposition); setSampleLoss(null); }}>
+        {DISPOSITIONS.map(d => <option key={d} value={d}>{t(`dispositions.${d}`)}</option>)}
+      </select>
+    </label>
+    <p className={s.muted} style={{ margin: 0 }}>{t(`dispositionHints.${disposition}`)}</p>
+    {multi && <label className={s.field}>{t("fields.item")}
+      <select required value={itemId} disabled={busy} onChange={e => setItemId(e.target.value)}>
+        <option value="">{t("dialog.selectItem")}</option>
+        {view.items.map(i => <option key={i.id} value={i.id}>{t("dialog.itemOption", { no: String(i.line_no), spec: specSummary(i.target_spec_json) || "—", unit: i.unit })}</option>)}
+      </select>
+    </label>}
+    <label className={s.field}>{t("fields.quantityWithUnit", { unit })}
+      <input type="number" required min="0.001" step="0.001" inputMode="decimal" value={quantity} disabled={busy} onChange={e => setQuantity(e.target.value)} />
+    </label>
+    {disposition === "customer_good" && (room
+      ? <p role="status" className={over ? s.error : s.muted} style={{ margin: 0 }}>
+        {t(over ? "dialog.customerExceeded" : "dialog.customerRoom", { allocated: room.allocated, recorded: room.recorded, remaining: room.remaining, unit })}
+      </p>
+      : <p role="status" className={s.error} style={{ margin: 0 }}>{t("dialog.noAllocation")}</p>)}
+    {disposition === "sample" && <fieldset className={s.field} style={{ border: 0, padding: 0, margin: 0 }}>
+      <legend>{t("fields.sampleLoss")}</legend>
+      <label><input type="radio" name={`${id}-loss`} checked={sampleLoss === true} disabled={busy} onChange={() => setSampleLoss(true)} required /> {t("dialog.sampleLossYes")}</label>
+      <label><input type="radio" name={`${id}-loss`} checked={sampleLoss === false} disabled={busy} onChange={() => setSampleLoss(false)} /> {t("dialog.sampleLossNo")}</label>
+    </fieldset>}
+    {disposition in FIXED_LOSS && <p className={s.muted} style={{ margin: 0 }}>{FIXED_LOSS[disposition] ? t("dialog.alwaysLoss") : t("dialog.neverLoss")}</p>}
+    <div className={s.grid}>
+      <label className={s.field}>{t("fields.secondaryQuantity")}
+        <input type="number" min="0.001" step="0.001" value={secondaryQuantity} disabled={busy} onChange={e => setSecondaryQuantity(e.target.value)} />
       </label>
-      <p className={s.muted} style={{ margin: 0 }}>{t(`dispositionHints.${disposition}`)}</p>
-      {multi && <label className={s.field}>{t("fields.item")}
-        <select required value={itemId} disabled={busy} onChange={e => setItemId(e.target.value)}>
-          <option value="">{t("dialog.selectItem")}</option>
-          {view.items.map(i => <option key={i.id} value={i.id}>{t("dialog.itemOption", { no: String(i.line_no), spec: specSummary(i.target_spec_json) || "—", unit: i.unit })}</option>)}
-        </select>
-      </label>}
-      <label className={s.field}>{t("fields.quantityWithUnit", { unit })}
-        <input type="number" required min="0.001" step="0.001" inputMode="decimal" value={quantity} disabled={busy} onChange={e => setQuantity(e.target.value)} />
+      <label className={s.field}>{t("fields.secondaryUnit")}
+        <input maxLength={32} value={secondaryUnit} disabled={busy} onChange={e => setSecondaryUnit(e.target.value)} />
       </label>
-      {disposition === "customer_good" && (room
-        ? <p role="status" className={over ? s.error : s.muted} style={{ margin: 0 }}>
-          {t(over ? "dialog.customerExceeded" : "dialog.customerRoom", { allocated: room.allocated, recorded: room.recorded, remaining: room.remaining, unit })}
-        </p>
-        : <p role="status" className={s.error} style={{ margin: 0 }}>{t("dialog.noAllocation")}</p>)}
-      {disposition === "sample" && <fieldset className={s.field} style={{ border: 0, padding: 0, margin: 0 }}>
-        <legend>{t("fields.sampleLoss")}</legend>
-        <label><input type="radio" name={`${id}-loss`} checked={sampleLoss === true} disabled={busy} onChange={() => setSampleLoss(true)} required /> {t("dialog.sampleLossYes")}</label>
-        <label><input type="radio" name={`${id}-loss`} checked={sampleLoss === false} disabled={busy} onChange={() => setSampleLoss(false)} /> {t("dialog.sampleLossNo")}</label>
-      </fieldset>}
-      {disposition in FIXED_LOSS && <p className={s.muted} style={{ margin: 0 }}>{FIXED_LOSS[disposition] ? t("dialog.alwaysLoss") : t("dialog.neverLoss")}</p>}
-      <div className={s.grid}>
-        <label className={s.field}>{t("fields.secondaryQuantity")}
-          <input type="number" min="0.001" step="0.001" value={secondaryQuantity} disabled={busy} onChange={e => setSecondaryQuantity(e.target.value)} />
-        </label>
-        <label className={s.field}>{t("fields.secondaryUnit")}
-          <input maxLength={32} value={secondaryUnit} disabled={busy} onChange={e => setSecondaryUnit(e.target.value)} />
-        </label>
-      </div>
-      {secondaryPartial && <p className={s.muted} style={{ margin: 0 }}>{t("dialog.secondaryBoth")}</p>}
-      <label className={s.field}>{t("fields.reasonCode")}<input maxLength={64} value={reasonCode} disabled={busy} onChange={e => setReasonCode(e.target.value)} /></label>
-      <label className={s.field}>{t("fields.notes")}<textarea maxLength={2000} value={notes} disabled={busy} onChange={e => setNotes(e.target.value)} /></label>
-      {error && <p role="alert" className={s.error}>{error}</p>}
-      <div className={s.actions}>
-        <button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("actions.cancel")}</button>
-        <button type="submit" className={`${s.button} ${s.primary}`} disabled={!valid || busy}>{t("actions.save")}</button>
-      </div>
-    </form>
-  </div>;
+    </div>
+    {secondaryPartial && <p className={s.muted} style={{ margin: 0 }}>{t("dialog.secondaryBoth")}</p>}
+    <label className={s.field}>{t("fields.reasonCode")}<input maxLength={64} value={reasonCode} disabled={busy} onChange={e => setReasonCode(e.target.value)} /></label>
+    <label className={s.field}>{t("fields.notes")}<textarea maxLength={2000} value={notes} disabled={busy} onChange={e => setNotes(e.target.value)} /></label>
+    {error && <p role="alert" className={s.error}>{error}</p>}
+  </Dialog>;
 }

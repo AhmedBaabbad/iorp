@@ -1,6 +1,7 @@
 "use client";
+import { Dialog } from "@/components/ui/Dialog";
 
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import s from "@/features/production-demands/demands.module.css";
 import { getOrderResult } from "../api";
@@ -19,7 +20,6 @@ export function CloseResultDialog({ orderId, orderNumber, busy, error, onConfirm
 }) {
   const t = useTranslations("production.results");
   const locale = useLocale();
-  const id = useId();
   const [view, setView] = useState<OrderResult | null>(null);
   const [loadError, setLoadError] = useState("");
   const [zeroOutput, setZeroOutput] = useState(false);
@@ -41,23 +41,18 @@ export function CloseResultDialog({ orderId, orderNumber, busy, error, onConfirm
     event.preventDefault();
     if (valid && !busy) onConfirm(zeroOutput ? { reason: reason.trim(), zeroOutput: true } : { reason: reason.trim() || undefined, zeroOutput: false });
   }
-  return <div className={s.overlay} onKeyDown={e => { if (e.key === "Escape" && !busy) onClose(); }}>
-    <form role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} className={`${s.panel} ${s.dialog}`} style={{ width: "min(760px, 100%)" }} onSubmit={submit}>
-      <h2 id={`${id}-title`}>{t("close.title", { order: orderNumber })}</h2>
-      <p className={s.muted}>{t("close.text")}</p>
-      {loadError && <p role="alert" className={s.error}>{loadError}</p>}
-      {view && !zeroOutput && view.totals.map(total => <SummaryCards key={total.unit} summary={total} unit={total.unit} showUnit={view.totals.length > 1} />)}
-      {check && !check.has_entries && <p role="status" className={s.error} style={{ margin: 0 }}>{t("close.noEntries")}</p>}
-      {missing.length > 0 && <p role="status" className={s.error} style={{ margin: 0 }}>{t("close.missingItems", { lines: joinList(missing, locale) })}</p>}
-      {canZero && <label><input type="checkbox" checked={zeroOutput} disabled={busy} onChange={e => setZeroOutput(e.target.checked)} /> {t("close.zeroOutput")}</label>}
-      {(zeroOutput || check?.ready || !canReadResult) && <label className={s.field}>{zeroOutput ? t("close.zeroReason") : t("close.reasonOptional")}
-        <textarea maxLength={500} required={zeroOutput} value={reason} disabled={busy} onChange={e => setReason(e.target.value)} />
-      </label>}
-      {error && <p role="alert" className={s.error}>{error}</p>}
-      <div className={s.actions}>
-        <button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("actions.cancel")}</button>
-        <button type="submit" className={`${s.button} ${s.primary}`} disabled={!valid || busy}>{t("close.confirm")}</button>
-      </div>
-    </form>
-  </div>;
+  return <Dialog title={t("close.title", { order: orderNumber })} onClose={onClose} busy={busy} size="lg" onSubmit={submit}
+    footer={<><button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("actions.cancel")}</button>
+      <button type="submit" className={`${s.button} ${s.primary}`} disabled={!valid || busy}>{t("close.confirm")}</button></>}>
+    <p className={s.muted}>{t("close.text")}</p>
+    {loadError && <p role="alert" className={s.error}>{loadError}</p>}
+    {view && !zeroOutput && view.totals.map(total => <SummaryCards key={total.unit} summary={total} unit={total.unit} showUnit={view.totals.length > 1} />)}
+    {check && !check.has_entries && <p role="status" className={s.error} style={{ margin: 0 }}>{t("close.noEntries")}</p>}
+    {missing.length > 0 && <p role="status" className={s.error} style={{ margin: 0 }}>{t("close.missingItems", { lines: joinList(missing, locale) })}</p>}
+    {canZero && <label><input type="checkbox" checked={zeroOutput} disabled={busy} onChange={e => setZeroOutput(e.target.checked)} /> {t("close.zeroOutput")}</label>}
+    {(zeroOutput || check?.ready || !canReadResult) && <label className={s.field}>{zeroOutput ? t("close.zeroReason") : t("close.reasonOptional")}
+      <textarea maxLength={500} required={zeroOutput} value={reason} disabled={busy} onChange={e => setReason(e.target.value)} />
+    </label>}
+    {error && <p role="alert" className={s.error}>{error}</p>}
+  </Dialog>;
 }

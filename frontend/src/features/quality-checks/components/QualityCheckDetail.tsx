@@ -1,4 +1,5 @@
 "use client";
+import { Dialog } from "@/components/ui/Dialog";
 
 import {useUnitLabel} from "@/components/UnitLabel";
 import Link from "next/link";
@@ -182,46 +183,41 @@ function CloseDialog({ check, busy, onClose, onConfirm }: { check: QualityCheckD
       rejection_reason: hasRejected ? reason : null });
   }
 
-  return <div className={s.overlay} onKeyDown={e => { if (e.key === "Escape" && !busy) onClose(); }}>
-    <form role="dialog" aria-modal="true" aria-label={t("closeDialog.title")} className={`${s.panel} ${s.dialog}`} onSubmit={submit}>
-      <h2 style={{ margin: 0 }}>{t("closeDialog.title")}</h2>
-      <p className={s.muted} style={{ margin: 0 }}>{t("closeDialog.text")}</p>
-      <label className={s.field}>{t("fields.result")}
-        <select required value={result} disabled={busy} onChange={e => setResult(e.target.value as QualityCheckResult)} autoFocus>
-          <option value="">{t("selectResult")}</option>
-          {CHECK_RESULTS.map(v => <option key={v} value={v}>{enums(v)}</option>)}
+  return <Dialog title={t("closeDialog.title")} onClose={onClose} busy={busy} onSubmit={submit}
+    footer={<><button type="button" className={s.button} disabled={busy} onClick={onClose}>{common("actions.close")}</button>
+      <button type="submit" className={`${s.button} ${s.primary}`} disabled={!valid || busy}>{t("actions.closeInspection")}</button></>}>
+    <p className={s.muted} style={{ margin: 0 }}>{t("closeDialog.text")}</p>
+    <label className={s.field}>{t("fields.result")}
+      <select required value={result} disabled={busy} onChange={e => setResult(e.target.value as QualityCheckResult)} autoFocus>
+        <option value="">{t("selectResult")}</option>
+        {CHECK_RESULTS.map(v => <option key={v} value={v}>{enums(v)}</option>)}
+      </select>
+    </label>
+    <div className={s.grid}>
+      <label className={s.field}>{t("fields.qtyInspected")}{unit}
+        <input type="number" required min="0.001" step="0.001" inputMode="decimal" value={inspected} disabled={busy}
+          onChange={e => { setInspected(e.target.value); rebalance(e.target.value, accepted); }} />
+      </label>
+      <label className={s.field}>{t("fields.qtyAccepted")}{unit}
+        <input type="number" required min="0" step="0.001" inputMode="decimal" value={accepted} disabled={busy}
+          onChange={e => { setAccepted(e.target.value); rebalance(inspected, e.target.value); }} />
+      </label>
+      <label className={s.field}>{t("fields.qtyRejected")}{unit}
+        <input type="number" required min="0" step="0.001" inputMode="decimal" value={rejected} disabled={busy} onChange={e => setRejected(e.target.value)} />
+      </label>
+    </div>
+    {numbers && !balanced && <p className={s.error} style={{ margin: 0 }}>{t("qtyConstraint")}</p>}
+    {mismatch && <p className={s.error} style={{ margin: 0 }}>{t(`closeDialog.${mismatch}`)}</p>}
+    {pendingMeasurements > 0 && <p className={s.error} style={{ margin: 0 }}>{t("closeDialog.measurementsPending", { count: String(pendingMeasurements) })}</p>}
+    {failedMeasurements > 0 && <p className={s.muted} style={{ margin: 0 }}>{t("closeDialog.measurementsFailed", { count: String(failedMeasurements) })}</p>}
+    {hasRejected && <>
+      <label className={s.field}>{t("closeDialog.rejectionReason")}
+        <select value={reason} disabled={busy} onChange={e => setReason(e.target.value)}>
+          {reasonChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
         </select>
       </label>
-      <div className={s.grid}>
-        <label className={s.field}>{t("fields.qtyInspected")}{unit}
-          <input type="number" required min="0.001" step="0.001" inputMode="decimal" value={inspected} disabled={busy}
-            onChange={e => { setInspected(e.target.value); rebalance(e.target.value, accepted); }} />
-        </label>
-        <label className={s.field}>{t("fields.qtyAccepted")}{unit}
-          <input type="number" required min="0" step="0.001" inputMode="decimal" value={accepted} disabled={busy}
-            onChange={e => { setAccepted(e.target.value); rebalance(inspected, e.target.value); }} />
-        </label>
-        <label className={s.field}>{t("fields.qtyRejected")}{unit}
-          <input type="number" required min="0" step="0.001" inputMode="decimal" value={rejected} disabled={busy} onChange={e => setRejected(e.target.value)} />
-        </label>
-      </div>
-      {numbers && !balanced && <p className={s.error} style={{ margin: 0 }}>{t("qtyConstraint")}</p>}
-      {mismatch && <p className={s.error} style={{ margin: 0 }}>{t(`closeDialog.${mismatch}`)}</p>}
-      {pendingMeasurements > 0 && <p className={s.error} style={{ margin: 0 }}>{t("closeDialog.measurementsPending", { count: String(pendingMeasurements) })}</p>}
-      {failedMeasurements > 0 && <p className={s.muted} style={{ margin: 0 }}>{t("closeDialog.measurementsFailed", { count: String(failedMeasurements) })}</p>}
-      {hasRejected && <>
-        <label className={s.field}>{t("closeDialog.rejectionReason")}
-          <select value={reason} disabled={busy} onChange={e => setReason(e.target.value)}>
-            {reasonChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-          </select>
-        </label>
-        <p className={s.muted} style={{ margin: 0 }}>{t("closeDialog.rejectionHint")}</p>
-      </>}
-      <label className={s.field}>{t("fields.notes")}<textarea maxLength={2000} value={notes} disabled={busy} onChange={e => setNotes(e.target.value)} /></label>
-      <div className={s.actions}>
-        <button type="button" className={s.button} disabled={busy} onClick={onClose}>{common("actions.close")}</button>
-        <button type="submit" className={`${s.button} ${s.primary}`} disabled={!valid || busy}>{t("actions.closeInspection")}</button>
-      </div>
-    </form>
-  </div>;
+      <p className={s.muted} style={{ margin: 0 }}>{t("closeDialog.rejectionHint")}</p>
+    </>}
+    <label className={s.field}>{t("fields.notes")}<textarea maxLength={2000} value={notes} disabled={busy} onChange={e => setNotes(e.target.value)} /></label>
+  </Dialog>;
 }

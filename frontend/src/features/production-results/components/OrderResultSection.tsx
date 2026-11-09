@@ -1,4 +1,5 @@
 "use client";
+import { Dialog } from "@/components/ui/Dialog";
 
 import {useUnitLabel} from "@/components/UnitLabel";
 import { UnitLabel } from "@/components/UnitLabel";
@@ -81,17 +82,12 @@ export function OrderResultSection({ order, revision = 0, onChanged }: {
       onSave={body => run(() => updateResultEntry(order.id, dialog.entry.id, body))} />}
     {dialog?.kind === "correct" && <CorrectionDialog entry={dialog.entry} busy={busy} error={error} onClose={close}
       onSave={body => run(() => correctResultEntry(order.id, dialog.entry.id, body))} />}
-    {dialog?.kind === "delete" && <div className={s.overlay} onKeyDown={e => { if (e.key === "Escape" && !busy) close(); }}>
-      <div role="dialog" aria-modal="true" aria-label={t("delete.title")} className={`${s.panel} ${s.dialog}`}>
-        <h2>{t("delete.title")}</h2>
-        <p className={s.muted}>{t("delete.text", { disposition: t(`dispositions.${dialog.entry.disposition}`), quantity: dialog.entry.quantity, unit: dialog.entry.unit })}</p>
-        {error && <p role="alert" className={s.error}>{error}</p>}
-        <div className={s.actions}>
-          <button type="button" className={s.button} disabled={busy} onClick={close} autoFocus>{t("actions.cancel")}</button>
-          <button type="button" className={`${s.button} ${s.danger}`} disabled={busy} onClick={() => run(() => deleteResultEntry(order.id, dialog.entry.id))}>{t("actions.delete")}</button>
-        </div>
-      </div>
-    </div>}
+    {dialog?.kind === "delete" && <Dialog title={t("delete.title")} onClose={close} busy={busy} role="alertdialog"
+      footer={<><button type="button" className={s.button} disabled={busy} onClick={close} autoFocus>{t("actions.cancel")}</button>
+        <button type="button" className={`${s.button} ${s.danger}`} disabled={busy} onClick={() => run(() => deleteResultEntry(order.id, dialog.entry.id))}>{t("actions.delete")}</button></>}>
+      <p className={s.muted}>{t("delete.text", { disposition: t(`dispositions.${dialog.entry.disposition}`), quantity: dialog.entry.quantity, unit: dialog.entry.unit })}</p>
+      {error && <p role="alert" className={s.error}>{error}</p>}
+    </Dialog>}
   </section>;
 }
 
