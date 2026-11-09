@@ -85,7 +85,7 @@
 .skeleton{background:linear-gradient(90deg,var(--surface),var(--surface-muted),var(--surface));background-size:220% 100%;animation:shimmer 1.4s infinite}
 @keyframes shimmer{to{background-position:-220% 0}}
 
-.dialogOverlay{position:fixed;z-index:1000;inset:0;background: var(--overlay);backdrop-filter:blur(4px);padding:24px;display:grid;place-items:center}
+.dialogOverlay{position:fixed;z-index:1000;inset:0;background: var(--overlay);backdrop-filter:blur(4px);padding:24px;display:flex;align-items:flex-start;justify-content:center overflow-y: auto; overscroll-behavior: contain; }
 .dialog{width:min(440px,100%);border:1px solid var(--border);border-radius:16px;background:var(--surface);padding:24px;box-shadow:0 30px 90px rgba(0,0,0,.55)}
 .dialog h2{margin:0 0 16px}
 .dialogField{display:grid;gap:7px;margin-bottom:14px}
@@ -113,3 +113,5 @@
   .kpis{grid-template-columns:1fr}
   .infoGrid{grid-template-columns:1fr}
 }
+
+.dialogOverlay > .dialog { margin: auto; flex-shrink: 0; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; }

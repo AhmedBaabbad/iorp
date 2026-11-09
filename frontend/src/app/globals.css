@@ -342,7 +342,7 @@ option:disabled { color: var(--text-subtle); }
 }
 
 /* Idle sign-out warning (features/auth/session-guard.tsx). */
-.iorp-session-overlay { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 16px; background: var(--overlay); }
+.iorp-session-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-start; justify-content: center; padding: 16px; background: var(--overlay);  overflow-y: auto; overscroll-behavior: contain; }
 .iorp-session-dialog { width: min(440px, 100%); padding: 24px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-raised); color: var(--text); box-shadow: var(--shadow-lg); text-align: center; }
 .iorp-session-dialog h2 { margin: 0 0 8px; font-size: 1.15rem; }
 .iorp-session-dialog p { margin: 0; color: var(--text-muted); line-height: 1.6; }
@@ -351,3 +351,5 @@ option:disabled { color: var(--text-subtle); }
 .iorp-session-actions button { min-height: 42px; padding: 10px 18px; border-radius: 9px; font: inherit; font-weight: 700; cursor: pointer; }
 .iorp-session-primary { border: 0; background: var(--accent); color: var(--on-accent); }
 .iorp-session-secondary { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); }
+
+.iorp-session-overlay > .iorp-session-dialog { margin: auto; flex-shrink: 0; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; }

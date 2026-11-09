@@ -51,9 +51,11 @@ const styles: Record<string, CSSProperties> = {
   },
   backdrop: {
     position: "fixed", inset: 0, background: "var(--overlay)",
-    backdropFilter: "blur(2px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
+    backdropFilter: "blur(2px)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 1000,
+    overflowY: "auto", overscrollBehavior: "contain",
   },
   modal: {
+    maxHeight: "calc(100dvh - 32px)", overflowY: "auto", margin: "auto", flexShrink: 0,
     background: "var(--surface)", borderRadius: "14px",
     boxShadow: "0 24px 64px rgba(15, 23, 42, 0.28)",
     padding: "32px", maxWidth: "460px", width: "90%", display: "grid", gap: "20px",
