@@ -103,6 +103,7 @@ const styles: Record<string, CSSProperties> = {
   },
   header: {
     display: "flex",
+    flexWrap: "wrap",
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: "16px",
