@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -49,7 +49,7 @@ export function Dialog({ title, onClose, busy = false, size = "md", footer, onSu
     openDialogs.push(node);
     const isTop = () => openDialogs.at(-1) === node;
     const first = () => (body.current && focusable(body.current)[0]) || focusable(node)[0] || node;
-    first().focus();
+    if (!node.contains(document.activeElement)) first().focus();
     const keydown = (event: KeyboardEvent) => {
       if (!isTop()) return;
       if (event.key === "Escape") {

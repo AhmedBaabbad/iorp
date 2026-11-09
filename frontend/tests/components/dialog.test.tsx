@@ -1,4 +1,4 @@
-﻿import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { useState, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -10,6 +10,10 @@ function ui(children: ReactNode, locale = "en") {
 afterEach(() => { cleanup(); document.body.style.overflow = ""; });
 
 describe("Dialog", () => {
+  it("preserves autoFocus on a footer button when the dialog opens", () => {
+    ui(<Dialog title="Edit" onClose={() => {}} footer={<button autoFocus>Save</button>}><input aria-label="Quantity" /></Dialog>);
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Save" }));
+  });
   it("renders a labelled dialog, its footer, and a named close button", () => {
     const close = vi.fn();
     ui(<Dialog title="Edit result" onClose={close} footer={<button>Save</button>}><input aria-label="Quantity" /></Dialog>);
