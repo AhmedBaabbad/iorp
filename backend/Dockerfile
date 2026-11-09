@@ -52,15 +52,15 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--worker
 # Explicit --target runtime remains the application build. No Docker CLI/socket here.
 FROM runtime AS backup
 USER root
-RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
- && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /tmp/pgdg.asc \
+RUN apt-get -o Acquire::Retries=5 update \
+ && apt-get -o Acquire::Retries=5 install -y --no-install-recommends ca-certificates curl gnupg \
+ && curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 20 --max-time 120 --http1.1 https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /tmp/pgdg.asc \
  && test "$(gpg --show-keys --with-colons /tmp/pgdg.asc | awk -F: '$1 == "fpr" { print $10; exit }')" = B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8 \
  && gpg --dearmor -o /usr/share/keyrings/pgdg.gpg /tmp/pgdg.asc \
  && echo 'deb [signed-by=/usr/share/keyrings/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main' > /etc/apt/sources.list.d/pgdg.list \
- && apt-get update \
- && apt-get install -y --no-install-recommends postgresql-client-16 \
- && apt-get purge -y --auto-remove curl gnupg \
+ && apt-get -o Acquire::Retries=5 update \
+ && apt-get -o Acquire::Retries=5 install -y --no-install-recommends postgresql-client-16 \
+ && apt-get -o Acquire::Retries=5 purge -y --auto-remove curl gnupg \
  && rm -rf /var/lib/apt/lists/* /tmp/pgdg.asc
 USER iorp
 HEALTHCHECK NONE
