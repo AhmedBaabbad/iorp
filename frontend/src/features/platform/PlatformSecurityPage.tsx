@@ -33,7 +33,7 @@ export function PlatformSecurityPage() {
       await apiClient("/platform/mfa/confirm", { method: "POST", token, body: { code, saved_recovery_codes: saved }, notify: false });
       setSecret(""); setCodes([]); setCode(""); setDone(true);
     }); }}><label>{t("code")}<input required autoComplete="one-time-code" dir="ltr" value={code} onChange={e => setCode(e.target.value)} /></label><button disabled={!saved || busy}>{t("verify")}</button></form>}
-    {enabled && !done && <div style={{ display: "flex", gap: 16 }}>
+    {enabled && !done && <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
       {(["recovery", "disable"] as const).map(action => <button key={action} disabled={busy} onClick={() => void run(async () => {
         const path = `/platform/mfa/${action}`;
         const proof = await requestStepUp({ method: "POST", path, token });

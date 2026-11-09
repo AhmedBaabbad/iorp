@@ -171,7 +171,7 @@ export function TrendChart({ series, names, colors, unit, onDownload }: {
           </svg>
         )}
         {hover !== null && !empty ? (
-          <div className={s.tooltip} style={{ [x(hover) > width / 2 ? "right" : "left"]: x(hover) > width / 2 ? width - x(hover) + 10 : x(hover) + 10 }}>
+          <div className={s.tooltip} style={{ [x(hover) > width / 2 ? "insetInlineEnd" : "insetInlineStart"]: x(hover) > width / 2 ? width - x(hover) + 10 : x(hover) + 10 }}>
             <strong>{fmt.date(`${dates[hover]}T12:00:00Z`)}</strong>
             {shown.map((line) => (
               <span key={line.key} style={{ color: colors[line.key] }}>{names[line.key] ?? line.key}: {figure(line.points[hover]?.value, line.unit)}</span>

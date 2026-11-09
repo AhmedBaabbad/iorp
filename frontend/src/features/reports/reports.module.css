@@ -31,3 +31,14 @@
 .brandLegal dt{min-width:84px;color:#5b6e78} /* theme-exempt: printed-page muted ink */
 .brandLegal dd{margin:0;font-weight:600}
 .brandStrip{display:flex;justify-content:space-between;padding-top:6px;color:#5b6e78} /* theme-exempt: printed-page muted ink */
+
+@media (width < 1024px) {
+  .cards, .grid { grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
+  .field, .brandColumns dl { min-inline-size: 0; }
+  .brandColumns, .brandColumns dl div, .brandLegal div, .brandStrip { flex-wrap: wrap; }
+  .brandColumns dl { flex-basis: 180px; }
+  .brandColumns dd, .brandLegal dd { overflow-wrap: anywhere; }
+}
+@media (width < 640px) {
+  .brandHeader { grid-template-columns: minmax(0, 1fr); }
+}

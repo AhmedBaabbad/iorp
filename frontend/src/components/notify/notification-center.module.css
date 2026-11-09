@@ -92,3 +92,9 @@
 .pageList .row[data-link="true"] { cursor: pointer; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+@media (width < 1024px) {
+  .panel { position: fixed; inset-inline: 16px; inset-block-start: 80px; inline-size: min(420px, calc(100vw - 32px)); max-inline-size: calc(100vw - 32px); margin-inline: auto; }
+  .panelHead { flex-wrap: wrap; }
+  .row { grid-template-columns: 38px minmax(0, 1fr); }
+}

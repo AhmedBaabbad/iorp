@@ -95,7 +95,7 @@ const styles: Record<string, CSSProperties> = {
     color: "var(--text-muted)",
   },
   modalActions: {
-    display: "flex",
+    display: "flex", flexWrap: "wrap",
     gap: "12px",
     justifyContent: "flex-end",
   },
@@ -227,7 +227,7 @@ export function CustomerDetailPage() {
       title={customer?.name ?? t("detailTitle")}
       subtitle={customer ? customer.customer_code : t("detailSubtitle")}
       action={
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
           <Link href="/customers" style={sharedStyles.secondaryButton}>
             {t("backToList")}
           </Link>

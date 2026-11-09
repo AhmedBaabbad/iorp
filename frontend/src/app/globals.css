@@ -184,10 +184,15 @@
 :root[data-theme="contrast"] :focus-visible { outline: 3px solid var(--focus) !important; outline-offset: 2px; }
 
 body {
+  overflow-wrap: break-word;
   margin: 0;
   background: var(--page-bg);
   color: var(--text);
 }
+
+/* Allow table scroll containers inside fieldsets to shrink to the viewport. */
+fieldset { min-inline-size: 0; }
+img, video, canvas { max-width: 100%; height: auto; }
 
 input, textarea, select, button { color-scheme: inherit; }
 input, textarea, select { background-color: var(--surface); color: var(--text); }
@@ -233,6 +238,7 @@ option:disabled { color: var(--text-subtle); }
 }
 
 .iorp-content {
+  min-width: 0;
   margin-inline-start: 276px;
   min-height: 100vh;
   transition: margin-inline-start 0.2s ease;

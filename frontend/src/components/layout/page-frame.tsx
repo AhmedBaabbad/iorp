@@ -103,6 +103,7 @@ const styles: Record<string, CSSProperties> = {
   },
   header: {
     display: "flex",
+    flexWrap: "wrap",
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: "16px",
@@ -490,7 +491,7 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
             </div>
             <AcknowledgeGate />
             <header style={styles.header}>
-              <div>
+              <div style={{ minInlineSize: 0, maxInlineSize: "100%" }}>
                 <p style={styles.eyebrow}>{formatSectionLabel(section, t)}</p>
                 <h1 style={styles.title}>{title}</h1>
                 {subtitle ? <p style={styles.subtitle}>{subtitle}</p> : null}

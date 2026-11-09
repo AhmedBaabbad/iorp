@@ -6,6 +6,7 @@
  * values — before → after — without ids or technical keys.
  */
 import { useCallback } from "react";
+import s from "./log-words.module.css";
 import { useLocale, useTranslations } from "next-intl";
 
 import { useFormatter } from "@/hooks/useFormatter";
@@ -89,7 +90,7 @@ export function useDetailRows() {
 export function DetailList({ rows }: { rows: Row[] }) {
   const t = useTranslations("logs");
   if (!rows.length) return <p style={{ margin: 0, color: "var(--text-muted)" }}>{t("noDetails")}</p>;
-  return <dl style={{ display: "grid", gridTemplateColumns: "minmax(120px, max-content) 1fr", gap: "6px 16px", margin: 0 }}>
+  return <dl className={s.details}>
     {rows.map((r, i) => <div key={i} style={{ display: "contents" }}>
       <dt style={{ color: "var(--text-muted)", fontWeight: 700 }}>{r.label}</dt>
       <dd style={{ margin: 0, overflowWrap: "anywhere" }}>{r.value}</dd>

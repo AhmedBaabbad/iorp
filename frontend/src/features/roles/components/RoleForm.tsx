@@ -15,7 +15,7 @@ const styles: Record<string, CSSProperties> = {
   card: { background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "8px", padding: "28px", maxWidth: "600px" },
   field: { display: "grid", gap: "6px", marginBottom: "18px" },
   label: { fontSize: "14px", fontWeight: 600, color: "var(--text)" },
-  actions: { display: "flex", gap: "12px", marginTop: "24px" },
+  actions: { display: "flex", flexWrap: "wrap", gap: "12px", marginTop: "24px" },
 };
 
 type RoleFormProps = {

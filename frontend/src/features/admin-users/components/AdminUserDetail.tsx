@@ -289,7 +289,7 @@ export function AdminUserDetail() {
                 {deactivationMessage}
               </div>
             ) : null}
-            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "flex-end" }}>
               <button
                 type="button"
                 style={sharedStyles.secondaryButton}

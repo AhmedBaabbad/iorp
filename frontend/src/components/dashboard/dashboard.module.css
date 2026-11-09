@@ -64,3 +64,12 @@ a.card:hover { box-shadow: var(--shadow-sm); transform: translateY(-1px); }
 .select { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-size: 14px; }
 .muted { color: var(--text-muted); font-size: 14px; }
 .skeleton { height: 120px; border-radius: 10px; }
+
+@media (width < 1024px) {
+  .page { grid-template-columns: minmax(0, 1fr); }
+  .panel, .cards > *, .tableWrap { min-inline-size: 0; }
+  .cards { grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); }
+  .cardRow { flex-wrap: wrap; }
+  .cardValue, .cardToday, .change { white-space: normal; overflow-wrap: anywhere; }
+  .tooltip { inset-inline: 0 !important; max-inline-size: min(100%, calc(100vw - 32px)); white-space: normal; overflow-wrap: anywhere; }
+}

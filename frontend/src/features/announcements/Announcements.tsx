@@ -29,7 +29,7 @@ type Receipt = { user_id: string; name: string; read_at: string | null; acknowle
 type Options = { users: { id: string; name: string }[]; roles: { id: string; code: string; name: string }[] };
 
 const ROOT = "/announcements";
-const CARD: CSSProperties = { background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: 12, padding: 18 };
+const CARD: CSSProperties = { minInlineSize: 0, background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: 12, padding: 18 };
 const cell: CSSProperties = { padding: 10, verticalAlign: "top" };
 const SEVERITY_CHIP: Record<Severity, string> = { info: "", important: css.chipImportant, urgent: css.chipUrgent };
 
@@ -153,7 +153,7 @@ export function AnnouncementForm() {
           onChange={(e) => set("expires_at", e.target.value)} /></label>
       <label style={{ display: "flex", gap: 10, alignItems: "center", gridColumn: "1 / -1", fontWeight: 700 }}>
         <input type="checkbox" checked={form.requires_ack} onChange={(e) => set("requires_ack", e.target.checked)} />{t("fields.requiresAck")}</label>
-      <div style={{ display: "flex", gap: 8, gridColumn: "1 / -1" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, gridColumn: "1 / -1" }}>
         <button style={sharedStyles.button} disabled={busy || !options}>{t("send")}</button>
         <Link href="/admin/announcements" style={sharedStyles.secondaryButton}>{t("cancel")}</Link>
       </div>
@@ -182,7 +182,7 @@ export function AnnouncementDetail({ id }: { id: string }) {
   }
 
   return <PageFrame title={data?.title ?? t("title")} subtitle={data ? t("author", { name: data.author_name, date: fmt.dateTime(data.created_at) }) : undefined}
-    action={<div style={{ display: "flex", gap: 8 }}>
+    action={<div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
       {data?.can_withdraw && <button type="button" style={sharedStyles.secondaryButton} onClick={() => void withdraw()}>{t("withdraw")}</button>}
       <Link href="/admin/announcements" style={sharedStyles.secondaryButton}>{t("backToList")}</Link></div>}>
     {error && <div role="alert" style={sharedStyles.error}>{error}</div>}

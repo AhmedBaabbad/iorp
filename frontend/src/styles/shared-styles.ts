@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 
 export const sharedStyles: Record<string, CSSProperties> = {
   field: {
+    minInlineSize: 0,
     display: "grid",
     gap: "8px",
   },
@@ -10,6 +11,7 @@ export const sharedStyles: Record<string, CSSProperties> = {
     fontWeight: 700,
   },
   input: {
+    minInlineSize: 0,
     width: "100%",
     boxSizing: "border-box",
     border: "1px solid var(--border-strong)",
@@ -21,6 +23,7 @@ export const sharedStyles: Record<string, CSSProperties> = {
     outlineColor: "var(--focus)",
   },
   textarea: {
+    minInlineSize: 0,
     width: "100%",
     minHeight: "90px",
     boxSizing: "border-box",
@@ -143,7 +146,7 @@ export const sharedStyles: Record<string, CSSProperties> = {
     padding: "10px 12px",
   },
   modalActions: {
-    display: "flex",
+    display: "flex", flexWrap: "wrap",
     gap: "10px",
     justifyContent: "flex-end",
     marginTop: "20px",

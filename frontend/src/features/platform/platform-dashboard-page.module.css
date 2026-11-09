@@ -115,3 +115,12 @@
 }
 
 .dialogOverlay > .dialog { margin: auto; flex-shrink: 0; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; }
+
+@media (width < 1024px) {
+  .kpi > * { min-inline-size: 0; max-inline-size: 100%; }
+  .kpi strong { overflow-wrap: anywhere; }
+  .header, .panelHeading, .dialogActions, .orgRow, .accountRow, .orgMeta, .accountMeta { flex-wrap: wrap; }
+  .grid2 > *, .kpis > *, .infoGrid > *, .header > * { min-inline-size: 0; }
+  .orgTime { white-space: normal; }
+  .dialog input, .dialog select { min-inline-size: 0; max-inline-size: 100%; }
+}

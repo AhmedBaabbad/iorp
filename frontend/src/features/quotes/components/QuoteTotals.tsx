@@ -26,7 +26,7 @@ const styles: Record<string, CSSProperties> = {
     width: "100%",
   },
   row: {
-    display: "flex",
+    display: "flex", flexWrap: "wrap",
     justifyContent: "space-between",
     gap: "16px",
   },
