@@ -1,4 +1,5 @@
 "use client";
+import { Dialog } from "@/components/ui/Dialog";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -129,27 +130,22 @@ function DecideDialog({ rejection, busy, onClose, onConfirm }: { rejection: Qual
     onConfirm({ disposition, decision_notes: notes.trim() || null, concession_approved_by: concession ? approver.trim() : null });
   }
 
-  return <div className={s.overlay} onKeyDown={e => { if (e.key === "Escape" && !busy) onClose(); }}>
-    <form role="dialog" aria-modal="true" aria-label={t("decideDialog.title")} className={`${s.panel} ${s.dialog}`} onSubmit={submit}>
-      <h2 style={{ margin: 0 }}>{t("decideDialog.title")}</h2>
-      <p className={s.muted} style={{ margin: 0 }}>{t("decideDialog.text")}</p>
-      <label className={s.field}>{t("fields.disposition")}
-        <select required value={disposition} disabled={busy} autoFocus onChange={e => setDisposition(e.target.value as Disposition)}>
-          <option value="">{t("placeholders.selectDisposition")}</option>
-          {DISPOSITIONS.map(v => <option key={v} value={v}>{dispositions(v)}</option>)}
-        </select>
-      </label>
-      {disposition && <p className={s.muted} style={{ margin: 0 }}>{t(`dispositionHints.${disposition}`)}</p>}
-      {concession && <label className={s.field}>{t("fields.concessionApprovedBy")}
-        <input required maxLength={255} value={approver} disabled={busy} onChange={e => setApprover(e.target.value)} />
-      </label>}
-      <label className={s.field}>{concession ? t("fields.concessionJustification") : t("fields.decisionNotesOptional")}
-        <textarea required={concession} maxLength={2000} value={notes} disabled={busy} onChange={e => setNotes(e.target.value)} />
-      </label>
-      <div className={s.actions}>
-        <button type="button" className={s.button} disabled={busy} onClick={onClose}>{common("actions.close")}</button>
-        <button type="submit" className={`${s.button} ${s.primary}`} disabled={!valid || busy}>{t("actions.saveDecision")}</button>
-      </div>
-    </form>
-  </div>;
+  return <Dialog title={t("decideDialog.title")} onClose={onClose} busy={busy} onSubmit={submit}
+    footer={<><button type="button" className={s.button} disabled={busy} onClick={onClose}>{common("actions.close")}</button>
+      <button type="submit" className={`${s.button} ${s.primary}`} disabled={!valid || busy}>{t("actions.saveDecision")}</button></>}>
+    <p className={s.muted} style={{ margin: 0 }}>{t("decideDialog.text")}</p>
+    <label className={s.field}>{t("fields.disposition")}
+      <select required value={disposition} disabled={busy} autoFocus onChange={e => setDisposition(e.target.value as Disposition)}>
+        <option value="">{t("placeholders.selectDisposition")}</option>
+        {DISPOSITIONS.map(v => <option key={v} value={v}>{dispositions(v)}</option>)}
+      </select>
+    </label>
+    {disposition && <p className={s.muted} style={{ margin: 0 }}>{t(`dispositionHints.${disposition}`)}</p>}
+    {concession && <label className={s.field}>{t("fields.concessionApprovedBy")}
+      <input required maxLength={255} value={approver} disabled={busy} onChange={e => setApprover(e.target.value)} />
+    </label>}
+    <label className={s.field}>{concession ? t("fields.concessionJustification") : t("fields.decisionNotesOptional")}
+      <textarea required={concession} maxLength={2000} value={notes} disabled={busy} onChange={e => setNotes(e.target.value)} />
+    </label>
+  </Dialog>;
 }

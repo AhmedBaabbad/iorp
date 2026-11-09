@@ -1,8 +1,9 @@
 "use client";
+import { Dialog } from "@/components/ui/Dialog";
 
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { UnitSelect } from "@/components/forms/UnitSelect";
 import { PageFrame } from "@/components/layout/page-frame";
@@ -29,15 +30,6 @@ import { FilePicker } from "@/components/forms/FilePicker";
 import { Signatures } from "@/components/Signatures";
 function Item({ label, children }: { label: string; children: ReactNode }) {
   return <div><dt className={s.muted}>{label}</dt><dd style={{ margin: "4px 0 0", overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>{children}</dd></div>;
-}
-
-function Modal({ title, busy, onClose, onSubmit, children }: { title: string; busy: boolean; onClose: () => void; onSubmit: (e: FormEvent) => void; children: ReactNode }) {
-  return <div className={s.overlay} onKeyDown={e => { if (e.key === "Escape" && !busy) onClose(); }}>
-    <form role="dialog" aria-modal="true" aria-label={title} className={`${s.panel} ${s.dialog}`} onSubmit={onSubmit}>
-      <h2 style={{ margin: 0 }}>{title}</h2>
-      {children}
-    </form>
-  </div>;
 }
 
 type Dialog = { kind: "contain" | "investigate" | "verify" | "review" | "cancel" | "action" | "item" } | { kind: "editItem"; item: NcrItem }
@@ -290,14 +282,12 @@ export function TextDialog({ title, text, label, confirm, busy, onClose, onConfi
   busy: boolean; onClose: () => void; onConfirm: (value: string) => void }) {
   const t = useTranslations("ncr");
   const [value, setValue] = useState("");
-  return <Modal title={title} busy={busy} onClose={onClose} onSubmit={e => { e.preventDefault(); if (value.trim() && !busy) onConfirm(value.trim()); }}>
+  return <Dialog title={title} busy={busy} onClose={onClose} onSubmit={e => { e.preventDefault(); if (value.trim() && !busy) onConfirm(value.trim()); }}
+    footer={<><button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("cancel")}</button>
+      <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy || !value.trim()}>{confirm}</button></>}>
     <p className={s.muted} style={{ margin: 0, whiteSpace: "pre-wrap" }}>{text}</p>
     <label className={s.field}>{label}<textarea required autoFocus maxLength={4000} value={value} disabled={busy} onChange={e => setValue(e.target.value)} /></label>
-    <div className={s.actions}>
-      <button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("cancel")}</button>
-      <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy || !value.trim()}>{confirm}</button>
-    </div>
-  </Modal>;
+  </Dialog>;
 }
 
 // The earlier reports this one repeats, and those that came after it was closed (QUAL-CAPA-001).
@@ -333,8 +323,10 @@ function ReviewDialog({ sinceClosing, busy, onClose, onConfirm }: { sinceClosing
   const [effective, setEffective] = useState<"yes" | "no" | "">("");
   const [notes, setNotes] = useState("");
   const ok = effective === "yes" || (effective === "no" && Boolean(notes.trim()));
-  return <Modal title={t("review.title")} busy={busy} onClose={onClose}
-    onSubmit={e => { e.preventDefault(); if (ok && !busy) onConfirm(effective === "yes", notes.trim() || null); }}>
+  return <Dialog title={t("review.title")} busy={busy} onClose={onClose}
+    onSubmit={e => { e.preventDefault(); if (ok && !busy) onConfirm(effective === "yes", notes.trim() || null); }}
+    footer={<><button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("cancel")}</button>
+      <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy || !ok}>{t("review.confirm")}</button></>}>
     <p className={s.muted} style={{ margin: 0 }}>{t("review.text")}</p>
     {sinceClosing > 0 && <p role="status" className={s.error} style={{ margin: 0 }}>{t("recurrence.sinceClosing", { count: String(sinceClosing) })}</p>}
     <div className={s.actions} role="radiogroup" aria-label={t("review.title")}>
@@ -344,11 +336,7 @@ function ReviewDialog({ sinceClosing, busy, onClose, onConfirm }: { sinceClosing
     {effective === "no" && <p className={s.error} style={{ margin: 0 }}>{t("review.reopens")}</p>}
     <label className={s.field}>{effective === "no" ? t("verifyDialog.notesRequired") : t("verifyDialog.notes")}
       <textarea maxLength={4000} required={effective === "no"} value={notes} disabled={busy} onChange={e => setNotes(e.target.value)} /></label>
-    <div className={s.actions}>
-      <button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("cancel")}</button>
-      <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy || !ok}>{t("review.confirm")}</button>
-    </div>
-  </Modal>;
+  </Dialog>;
 }
 
 function InvestigateDialog({ busy, recurring, onClose, onConfirm }: { busy: boolean; recurring: boolean; onClose: () => void;
@@ -360,9 +348,15 @@ function InvestigateDialog({ busy, recurring, onClose, onConfirm }: { busy: bool
   const [required, setRequired] = useState(true);
   const [why, setWhy] = useState("");
   const ok = Boolean(category && cause.trim()) && (required || Boolean(why.trim()));
-  return <Modal title={t("investigateDialog.title")} busy={busy} onClose={onClose}
-    onSubmit={e => { e.preventDefault(); if (ok && !busy) onConfirm({ root_cause_category: category, root_cause_method: method || null, root_cause: cause.trim(),
-      action_required: required, no_action_justification: required ? null : why.trim() }); }}>
+  return <Dialog title={t("investigateDialog.title")} busy={busy} onClose={onClose}
+    onSubmit={e => {
+      e.preventDefault(); if (ok && !busy) onConfirm({
+        root_cause_category: category, root_cause_method: method || null, root_cause: cause.trim(),
+        action_required: required, no_action_justification: required ? null : why.trim()
+      });
+    }}
+    footer={<><button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("cancel")}</button>
+      <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy || !ok}>{required ? t("investigateDialog.confirm") : t("investigateDialog.close")}</button></>}>
     <p className={s.muted} style={{ margin: 0 }}>{t("investigateDialog.text")}</p>
     <div className={s.grid}>
       <label className={s.field}>{t("fields.root_cause_category")}
@@ -376,11 +370,7 @@ function InvestigateDialog({ busy, recurring, onClose, onConfirm }: { busy: bool
     {recurring ? <p role="status" className={s.error} style={{ margin: 0 }}>{t("investigateDialog.recurring")}</p>
       : <label><input type="checkbox" checked={!required} disabled={busy} onChange={e => setRequired(!e.target.checked)} /> {t("investigateDialog.noAction")}</label>}
     {!required && <label className={s.field}>{t("fields.no_action_justification")}<textarea required maxLength={4000} value={why} disabled={busy} onChange={e => setWhy(e.target.value)} /></label>}
-    <div className={s.actions}>
-      <button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("cancel")}</button>
-      <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy || !ok}>{required ? t("investigateDialog.confirm") : t("investigateDialog.close")}</button>
-    </div>
-  </Modal>;
+  </Dialog>;
 }
 
 function VerifyDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: () => void;
@@ -390,8 +380,10 @@ function VerifyDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: ()
   const [notes, setNotes] = useState("");
   const [days, setDays] = useState("90");
   const ok = effective === "yes" || (effective === "no" && Boolean(notes.trim()));
-  return <Modal title={t("verifyDialog.title")} busy={busy} onClose={onClose}
-    onSubmit={e => { e.preventDefault(); if (ok && !busy) onConfirm(effective === "yes", notes.trim() || null, effective === "yes" ? Number(days) : 0); }}>
+  return <Dialog title={t("verifyDialog.title")} busy={busy} onClose={onClose}
+    onSubmit={e => { e.preventDefault(); if (ok && !busy) onConfirm(effective === "yes", notes.trim() || null, effective === "yes" ? Number(days) : 0); }}
+    footer={<><button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("cancel")}</button>
+      <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy || !ok}>{t("actions.verify")}</button></>}>
     <p className={s.muted} style={{ margin: 0 }}>{t("verifyDialog.text")}</p>
     <div className={s.actions} role="radiogroup" aria-label={t("verifyDialog.title")}>
       <label><input type="radio" checked={effective === "yes"} disabled={busy} onChange={() => setEffective("yes")} /> {t("verifyDialog.effective")}</label>
@@ -403,11 +395,7 @@ function VerifyDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: ()
       </select><span className={s.muted}>{t("verifyDialog.reviewHint")}</span></label>}
     <label className={s.field}>{effective === "no" ? t("verifyDialog.notesRequired") : t("verifyDialog.notes")}
       <textarea maxLength={4000} required={effective === "no"} value={notes} disabled={busy} onChange={e => setNotes(e.target.value)} /></label>
-    <div className={s.actions}>
-      <button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("cancel")}</button>
-      <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy || !ok}>{t("actions.verify")}</button>
-    </div>
-  </Modal>;
+  </Dialog>;
 }
 
 function ActionDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: () => void; onConfirm: (body: ActionBody) => void }) {
@@ -420,9 +408,15 @@ function ActionDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: ()
   const [users, setUsers] = useState<UserOption[]>([]);
   useEffect(() => { getNcrUsers().then(setUsers).catch(() => setUsers([])); }, []);
   const ok = Boolean(description.trim());
-  return <Modal title={t("actionDialog.title")} busy={busy} onClose={onClose}
-    onSubmit={e => { e.preventDefault(); if (ok && !busy) onConfirm({ kind, description: description.trim(), owner_user_id: owner || null,
-      owner_name: owner ? null : outside.trim() || null, due_date: due || null }); }}>
+  return <Dialog title={t("actionDialog.title")} busy={busy} onClose={onClose}
+    onSubmit={e => {
+      e.preventDefault(); if (ok && !busy) onConfirm({
+        kind, description: description.trim(), owner_user_id: owner || null,
+        owner_name: owner ? null : outside.trim() || null, due_date: due || null
+      });
+    }}
+    footer={<><button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("cancel")}</button>
+      <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy || !ok}>{t("addAction")}</button></>}>
     <p className={s.muted} style={{ margin: 0 }}>{t(`kindHints.${kind}`)}</p>
     <div className={s.grid}>
       <label className={s.field}>{t("fields.kind")}
@@ -434,11 +428,7 @@ function ActionDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: ()
       <label className={s.field}>{t("fields.due_date")}<input type="date" value={due} disabled={busy} onChange={e => setDue(e.target.value)} /></label>
     </div>
     <label className={s.field}>{t("fields.action")}<textarea required autoFocus maxLength={4000} value={description} disabled={busy} onChange={e => setDescription(e.target.value)} /></label>
-    <div className={s.actions}>
-      <button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("cancel")}</button>
-      <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy || !ok}>{t("addAction")}</button>
-    </div>
-  </Modal>;
+  </Dialog>;
 }
 
 function ItemDialog({ item, busy, onClose, onConfirm }: { item: NcrItem | null; busy: boolean; onClose: () => void; onConfirm: (body: NcrItemInput) => void }) {
@@ -449,12 +439,16 @@ function ItemDialog({ item, busy, onClose, onConfirm }: { item: NcrItem | null; 
   const set = (field: keyof typeof v, value: string) => setV(old => ({ ...old, [field]: value }));
   const ok = Boolean(v.item_name.trim() && v.issue_description.trim()) && (!v.quantity_affected.trim() || DECIMAL.test(v.quantity_affected.trim()));
   const title = item ? t("itemDialog.edit") : t("itemDialog.add");
-  return <Modal title={title} busy={busy} onClose={onClose} onSubmit={e => {
+  return <Dialog title={title} busy={busy} onClose={onClose} onSubmit={e => {
     e.preventDefault();
-    if (ok && !busy) onConfirm({ item_name: v.item_name.trim(), item_reference: v.item_reference.trim() || null, quantity_affected: v.quantity_affected.trim() || null,
+    if (ok && !busy) onConfirm({
+      item_name: v.item_name.trim(), item_reference: v.item_reference.trim() || null, quantity_affected: v.quantity_affected.trim() || null,
       unit: v.unit || null, issue_description: v.issue_description.trim(), disposition: (v.disposition || null) as NcrItemInput["disposition"],
-      disposition_notes: v.disposition_notes.trim() || null, notes: item?.notes ?? null });
-  }}>
+      disposition_notes: v.disposition_notes.trim() || null, notes: item?.notes ?? null
+    });
+  }}
+    footer={<><button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("cancel")}</button>
+      <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy || !ok}>{t("save")}</button></>}>
     <div className={s.grid}>
       <label className={s.field}>{t("itemFields.item_name")}<input required autoFocus maxLength={255} value={v.item_name} disabled={busy} onChange={e => set("item_name", e.target.value)} /></label>
       <label className={s.field}>{t("itemFields.item_reference")}<input maxLength={255} dir="auto" value={v.item_reference} disabled={busy} onChange={e => set("item_reference", e.target.value)} /></label>
@@ -466,9 +460,5 @@ function ItemDialog({ item, busy, onClose, onConfirm }: { item: NcrItem | null; 
     </div>
     <label className={s.field}>{t("itemFields.issue_description")}<textarea required maxLength={4000} value={v.issue_description} disabled={busy} onChange={e => set("issue_description", e.target.value)} /></label>
     <label className={s.field}>{t("itemFields.disposition_notes")}<textarea maxLength={4000} value={v.disposition_notes} disabled={busy} onChange={e => set("disposition_notes", e.target.value)} /></label>
-    <div className={s.actions}>
-      <button type="button" className={s.button} disabled={busy} onClick={onClose}>{t("cancel")}</button>
-      <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy || !ok}>{t("save")}</button>
-    </div>
-  </Modal>;
+  </Dialog>;
 }

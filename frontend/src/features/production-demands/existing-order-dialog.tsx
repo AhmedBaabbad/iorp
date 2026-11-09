@@ -1,6 +1,7 @@
 "use client";
+import { Dialog } from "@/components/ui/Dialog";
 import {useUnitLabel} from "@/components/UnitLabel";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { addOrderAllocation, getEligibleOrders, type EligibleOrder } from "@/features/production-orders/api/production-orders-api";
@@ -17,11 +18,9 @@ export function ExistingOrderDialog({ item, quantity, onClose }: { item: Item; q
   const enums = useTranslations();
   const common = useTranslations("common");
   const router = useRouter();
-  const dialog = useRef<HTMLDialogElement>(null);
   const [orders, setOrders] = useState<EligibleOrder[] | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  useEffect(() => { const node = dialog.current; node?.showModal(); return () => node?.close(); }, []);
   useEffect(() => {
     let active = true;
     getEligibleOrders(item.id!).then(found => { if (active) setOrders(found); }).catch(e => { if (active) { setOrders([]); setError(lifecycleErrorCode(e)); } });
@@ -33,8 +32,8 @@ export function ExistingOrderDialog({ item, quantity, onClose }: { item: Item; q
     catch (e) { setError(lifecycleErrorCode(e)); }
     finally { setBusy(false); }
   }
-  return <dialog ref={dialog} onCancel={onClose} className={s.panel} aria-labelledby="existing-order-title" style={{ width: "min(820px, 92vw)", maxHeight: "85vh", overflow: "auto" }}>
-    <h2 id="existing-order-title">{t("existingTitle")}</h2>
+  return <Dialog title={t("existingTitle")} onClose={onClose} busy={busy} size="lg"
+    footer={<button type="button" className={s.button} disabled={busy} onClick={onClose}>{common("actions.cancel")}</button>}>
     <p className={s.muted}>{t("existingHint", { quantity, unit: item.unit })}</p>
     {error && <p role="alert" className={s.error}>{t(`errors.${t.has(`errors.${error}`) ? error : "request_failed"}`)}</p>}
     {orders === null ? <p>{d("loading")}</p> : !orders.length ? <p>{t("noEligible")}</p> :
@@ -49,6 +48,5 @@ export function ExistingOrderDialog({ item, quantity, onClose }: { item: Item; q
           <td><button type="button" className={`${s.button} ${s.primary}`} disabled={busy} onClick={() => choose(order)}>{t("addToThisOrder")}</button></td>
         </tr>)}</tbody>
       </table></div>}
-    <div className={s.actions}><button type="button" className={s.button} disabled={busy} onClick={onClose}>{common("actions.cancel")}</button></div>
-  </dialog>;
+  </Dialog>;
 }

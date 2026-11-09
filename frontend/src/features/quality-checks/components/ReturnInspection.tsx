@@ -1,4 +1,5 @@
 "use client";
+import { Dialog } from "@/components/ui/Dialog";
 
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
@@ -87,22 +88,17 @@ export function ReturnDecisionDialog({ check, busy, onClose, onConfirm }: { chec
     onConfirm({ ...Object.fromEntries(RETURN_PARTS.map(p => [p, parts[p].trim() || "0"])) as Record<ReturnPart, string>,
       notes: notes.trim() || null, concession_approved_by: concession ? approver.trim() : null, open_ncr: rejected > 0 && ncr });
   }
-  return <div className={s.overlay} onKeyDown={e => { if (e.key === "Escape" && !busy) onClose(); }}>
-    <form role="dialog" aria-modal="true" aria-label={t("decisionTitle")} className={`${s.panel} ${s.dialog}`} onSubmit={submit}>
-      <h2 style={{ margin: 0 }}>{t("decisionTitle")}</h2>
-      <p className={s.muted} style={{ margin: 0 }}>{t("decisionText", { quantity: fmt.quantity(check.qty_inspected, unit(check.unit)) })}</p>
-      <div className={s.grid}>{RETURN_PARTS.map(p => <label key={p} className={s.field}>{t(`parts.${p}`)}
-        <input inputMode="decimal" dir="ltr" value={parts[p]} disabled={busy} onChange={e => setParts(old => ({ ...old, [p]: e.target.value }))} />
-        <span className={s.muted}>{t(`partHints.${p}`)}</span></label>)}</div>
-      <p role="status" className={balanced ? s.muted : s.error} style={{ margin: 0 }}>
-        {t("decisionTotal", { total: String(total / 1000), quantity: String(thousandths(check.qty_inspected) / 1000) })}</p>
-      {concession && <label className={s.field}>{t("concessionBy")}<input required maxLength={255} value={approver} disabled={busy} onChange={e => setApprover(e.target.value)} /></label>}
-      <label className={s.field}>{concession ? t("notesRequired") : t("notes")}<textarea maxLength={2000} required={concession} value={notes} disabled={busy} onChange={e => setNotes(e.target.value)} /></label>
-      {rejected > 0 && <label><input type="checkbox" checked={ncr} disabled={busy} onChange={e => setNcr(e.target.checked)} /> {t("openNcr")}</label>}
-      <div className={s.actions}>
-        <button type="button" className={s.button} disabled={busy} onClick={onClose}>{common("actions.close")}</button>
-        <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy || !ok}>{t("decide")}</button>
-      </div>
-    </form>
-  </div>;
+  return <Dialog title={t("decisionTitle")} onClose={onClose} busy={busy} onSubmit={submit}
+    footer={<><button type="button" className={s.button} disabled={busy} onClick={onClose}>{common("actions.close")}</button>
+      <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy || !ok}>{t("decide")}</button></>}>
+    <p className={s.muted} style={{ margin: 0 }}>{t("decisionText", { quantity: fmt.quantity(check.qty_inspected, unit(check.unit)) })}</p>
+    <div className={s.grid}>{RETURN_PARTS.map(p => <label key={p} className={s.field}>{t(`parts.${p}`)}
+      <input inputMode="decimal" dir="ltr" value={parts[p]} disabled={busy} onChange={e => setParts(old => ({ ...old, [p]: e.target.value }))} />
+      <span className={s.muted}>{t(`partHints.${p}`)}</span></label>)}</div>
+    <p role="status" className={balanced ? s.muted : s.error} style={{ margin: 0 }}>
+      {t("decisionTotal", { total: String(total / 1000), quantity: String(thousandths(check.qty_inspected) / 1000) })}</p>
+    {concession && <label className={s.field}>{t("concessionBy")}<input required maxLength={255} value={approver} disabled={busy} onChange={e => setApprover(e.target.value)} /></label>}
+    <label className={s.field}>{concession ? t("notesRequired") : t("notes")}<textarea maxLength={2000} required={concession} value={notes} disabled={busy} onChange={e => setNotes(e.target.value)} /></label>
+    {rejected > 0 && <label><input type="checkbox" checked={ncr} disabled={busy} onChange={e => setNcr(e.target.checked)} /> {t("openNcr")}</label>}
+  </Dialog>;
 }

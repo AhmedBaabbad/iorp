@@ -110,15 +110,17 @@ export const sharedStyles: Record<string, CSSProperties> = {
     textDecoration: "none",
   },
   modalOverlay: {
+    overflowY: "auto", overscrollBehavior: "contain", padding: "16px",
     position: "fixed",
     inset: 0,
     background: "var(--overlay)",
     display: "flex",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "center",
     zIndex: 50,
   },
   modal: {
+    maxHeight: "calc(100dvh - 32px)", overflowY: "auto", margin: "auto", flexShrink: 0,
     background: "var(--surface)",
     border: "1px solid var(--border)",
     borderRadius: "10px",

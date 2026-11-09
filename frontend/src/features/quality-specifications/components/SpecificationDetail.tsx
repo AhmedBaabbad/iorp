@@ -1,4 +1,5 @@
 "use client";
+import { Dialog } from "@/components/ui/Dialog";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -86,15 +87,10 @@ export function SpecificationDetail({ specId }: { specId: string }) {
         </tr>)}</tbody>
       </table></div>}
     </section>
-    {confirming && <div className={s.overlay} onKeyDown={e => { if (e.key === "Escape" && !busy) setConfirming(false); }}>
-      <div role="dialog" aria-modal="true" aria-label={t("activateTitle")} className={`${s.panel} ${s.dialog}`}>
-        <h2 style={{ margin: 0 }}>{t("activateTitle")}</h2>
-        <p className={s.muted}>{t("activateText")}</p>
-        <div className={s.actions}>
-          <button type="button" className={s.button} disabled={busy} onClick={() => setConfirming(false)} autoFocus>{t("cancel")}</button>
-          <button type="button" className={`${s.button} ${s.primary}`} disabled={busy} onClick={() => void activate()}>{t("activate")}</button>
-        </div>
-      </div>
-    </div>}
+    {confirming && <Dialog title={t("activateTitle")} onClose={() => setConfirming(false)} busy={busy} role="alertdialog"
+      footer={<><button type="button" className={s.button} disabled={busy} onClick={() => setConfirming(false)} autoFocus>{t("cancel")}</button>
+        <button type="button" className={`${s.button} ${s.primary}`} disabled={busy} onClick={() => void activate()}>{t("activate")}</button></>}>
+      <p className={s.muted}>{t("activateText")}</p>
+    </Dialog>}
   </PageFrame>;
 }

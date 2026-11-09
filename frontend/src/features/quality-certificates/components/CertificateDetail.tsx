@@ -1,4 +1,5 @@
 "use client";
+import { Dialog } from "@/components/ui/Dialog";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -118,16 +119,11 @@ export function CertificateDetail({ certificateId }: { certificateId: string }) 
       </table></div>
     </section>
     <QualityHistory entries={c.history} statusLabel={v => (t.has(`statuses.${v}`) ? t(`statuses.${v}`) : v)} />
-    {dialog === "issue" && <div className={s.overlay} onKeyDown={e => { if (e.key === "Escape" && !busy) setDialog(null); }}>
-      <div role="dialog" aria-modal="true" aria-label={t("issueDialog.title")} className={`${s.panel} ${s.dialog}`}>
-        <h2 style={{ margin: 0 }}>{t("issueDialog.title")}</h2>
-        <p className={s.muted}>{t("issueDialog.text")}</p>
-        <div className={s.actions}>
-          <button type="button" className={s.button} disabled={busy !== null} onClick={() => setDialog(null)} autoFocus>{t("cancel")}</button>
-          <button type="button" className={`${s.button} ${s.primary}`} disabled={busy !== null} onClick={() => void run("issue", () => issueCertificate(c.id))}>{t("actions.issue")}</button>
-        </div>
-      </div>
-    </div>}
+    {dialog === "issue" && <Dialog title={t("issueDialog.title")} onClose={() => setDialog(null)} busy={busy !== null}
+      footer={<><button type="button" className={s.button} disabled={busy !== null} onClick={() => setDialog(null)} autoFocus>{t("cancel")}</button>
+        <button type="button" className={`${s.button} ${s.primary}`} disabled={busy !== null} onClick={() => void run("issue", () => issueCertificate(c.id))}>{t("actions.issue")}</button></>}>
+      <p className={s.muted}>{t("issueDialog.text")}</p>
+    </Dialog>}
     {dialog === "revoke" && <ReasonDialog title={t("revokeDialog.title")} description={t("revokeDialog.text")} confirmLabel={t("actions.revoke")}
       busy={busy !== null} danger onClose={() => setDialog(null)} onConfirm={reason => void run("revoke", () => revokeCertificate(c.id, reason))} />}
       <Signatures resourceType="quality_certificate" id={c.id} version={c.status} />

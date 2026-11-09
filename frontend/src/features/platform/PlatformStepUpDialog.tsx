@@ -23,8 +23,8 @@ export function PlatformStepUpDialog() {
   }, []);
   const close = () => { setPending(null); current.current = null; setPassword(""); setCode(""); };
   if (!pending) return null;
-  return <div role="dialog" aria-modal="true" aria-labelledby="step-title" style={{ position: "fixed", inset: 0, zIndex: 10000, background: "var(--overlay)", display: "grid", placeItems: "center" }}>
-    <form style={{ background: "var(--surface)", color: "var(--text)", padding: 24, borderRadius: 12, display: "grid", gap: 16, maxWidth: 480 }} onSubmit={async e => {
+  return <div role="dialog" aria-modal="true" aria-labelledby="step-title" style={{ position: "fixed", inset: 0, zIndex: 10000, background: "var(--overlay)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 16, overflowY: "auto", overscrollBehavior: "contain" }}>
+    <form style={{ margin: "auto", flexShrink: 0, maxHeight: "calc(100dvh - 32px)", overflowY: "auto", background: "var(--surface)", color: "var(--text)", padding: 24, borderRadius: 12, display: "grid", gap: 16, maxWidth: 480 }} onSubmit={async e => {
       e.preventDefault(); setBusy(true); setError(false);
       try {
         const response = await apiClient<{ authorization: string }>("/platform/mfa/step-up", { method: "POST", token: pending.action.token, notify: false,

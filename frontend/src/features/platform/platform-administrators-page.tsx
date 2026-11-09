@@ -116,7 +116,7 @@ function PlatformAdministratorsContent() {
           )}
         </div>
       </section>
-      {resetTarget && <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", background: "var(--overlay)", padding: 20 }}><form onSubmit={submitReset} style={{ ...styles.panel, width: "min(460px, 100%)", padding: 24 }}><h2>{t("resetTitle", { name: resetTarget.full_name })}</h2><p>{t("resetLinkHint", { email: resetTarget.email })}</p><div style={{ display: "flex", gap: 8, marginTop: 16 }}><button style={styles.dangerButton} disabled={busy}>{t("sendResetLink")}</button><button type="button" style={styles.secondaryButton} onClick={() => setResetTarget(null)}>{t("cancel")}</button></div></form></div>}
+      {resetTarget && <div style={{ position: "fixed", inset: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", overscrollBehavior: "contain", background: "var(--overlay)", padding: 20 }}><form onSubmit={submitReset} style={{ ...styles.panel, width: "min(460px, 100%)", padding: 24, margin: "auto", flexShrink: 0, maxHeight: "calc(100dvh - 32px)", overflowY: "auto" }}><h2>{t("resetTitle", { name: resetTarget.full_name })}</h2><p>{t("resetLinkHint", { email: resetTarget.email })}</p><div style={{ display: "flex", gap: 8, marginTop: 16 }}><button style={styles.dangerButton} disabled={busy}>{t("sendResetLink")}</button><button type="button" style={styles.secondaryButton} onClick={() => setResetTarget(null)}>{t("cancel")}</button></div></form></div>}
     </main>
   );
 }
