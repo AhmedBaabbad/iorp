@@ -109,7 +109,7 @@ export function ShiftDetail() {
       title={shift?.name ?? t("detailTitle")}
       subtitle={shift ? shift.code : t("detailSubtitle")}
       action={
-        <div style={{ display: "flex", gap: "8px" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
           {canUpdate ? (
             <Link href={`/shifts/${shiftId}/edit`} style={sharedStyles.button}>
               {common("actions.edit")}

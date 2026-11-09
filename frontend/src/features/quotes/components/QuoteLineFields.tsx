@@ -17,7 +17,7 @@ export function LineDescriptionFields({ arabic, english, onChange, disabled }: {
     <details open={Boolean(arabic || english)}>
       <summary style={{ cursor: "pointer", color: "var(--accent-strong)" }}>{t("customDescription")}</summary>
       <p style={{ margin: "6px 0 10px", color: "var(--text-muted)", fontSize: "13px" }}>{t("customDescriptionHint")}</p>
-    <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+    <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))" }}>
       <label style={sharedStyles.field}>
         <span style={sharedStyles.label}>{t("descriptionAr")}</span>
         <textarea style={{ ...sharedStyles.textarea, minHeight: "64px" }} dir="rtl" lang="ar" value={arabic} maxLength={1000}
@@ -41,7 +41,7 @@ export function DiscountAllField({ onApply, disabled }: { onApply: (percent: str
   return (
     <div style={sharedStyles.field}>
       <span style={sharedStyles.label}>{t("allLines")}</span>
-      <div style={{ display: "flex", gap: "8px" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
         <input style={sharedStyles.input} type="number" min="0" max="100" step="0.01" value={value} disabled={disabled}
           aria-label={t("allLines")} placeholder="10" onChange={(event) => setValue(event.target.value)} />
         <button type="button" style={sharedStyles.secondaryButton} disabled={disabled || !valid} onClick={() => onApply(value)}>{t("apply")}</button>
@@ -72,7 +72,7 @@ export function QuoteHeadingFields({ attention, subject, onChange, disabled }: {
 }) {
   const t = useTranslations("commercial.quotes.document");
   return (
-    <div style={{ display: "grid", gap: "18px", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+    <div style={{ display: "grid", gap: "18px", gridTemplateColumns: "repeat(auto-fit, minmax(min(220px, 100%), 1fr))" }}>
       <label style={sharedStyles.field}>
         <span style={sharedStyles.label}>{t("attention")}</span>
         <input style={sharedStyles.input} value={attention} maxLength={255} placeholder={t("attentionHint")}

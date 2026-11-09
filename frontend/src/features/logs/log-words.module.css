@@ -1,0 +1,2 @@
+.details { display: grid; grid-template-columns: minmax(120px, max-content) minmax(0, 1fr); gap: 6px 16px; margin: 0; }
+@media (width < 640px) { .details { grid-template-columns: minmax(0, 1fr); } }

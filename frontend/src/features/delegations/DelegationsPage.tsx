@@ -32,7 +32,7 @@ type Pending = { delegation: Delegation; verb: "reject" | "revoke" } | null;
 const ROOT = "/delegations";
 const MAX_DAYS = 90;
 const STATES = ["waiting", "active", "scheduled", "ended", "lapsed", "rejected", "revoked"] as const;
-const CARD = { background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: 8, padding: 18 };
+const CARD = { minInlineSize: 0, background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: 8, padding: 18 };
 const today = () => new Date().toLocaleDateString("en-CA");
 const addDays = (day: string, days: number) => {
   const d = new Date(`${day}T00:00:00`);
@@ -110,7 +110,7 @@ export function DelegationsPage() {
         <strong>{t(`${pending.verb}Title`, { delegate: pending.delegation.delegate_name, permission: permission(pending.delegation.permission_code) })}</strong>
         <label style={sharedStyles.field}><span style={sharedStyles.label}>{t(`fields.${pending.verb}Reason`)}</span>
           <textarea style={sharedStyles.textarea} required maxLength={2000} value={pendingReason} onChange={(e) => setPendingReason(e.target.value)} /></label>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           <button style={sharedStyles.button} disabled={busy}>{t(pending.verb)}</button>
           <button type="button" style={sharedStyles.secondaryButton} onClick={() => setPending(null)}>{t("cancel")}</button>
         </div>
@@ -209,7 +209,7 @@ export function DelegationForm() {
           <span style={{ color: "var(--text-muted)", fontSize: 12 }}>{t("maxDays", { days: MAX_DAYS })}</span></label>
         <label style={{ ...sharedStyles.field, gridColumn: "1 / -1" }}><span style={sharedStyles.label}>{t("fields.reason")}</span>
           <textarea style={sharedStyles.textarea} required maxLength={2000} value={form.reason} placeholder={t("reasonHint")} onChange={(e) => set("reason", e.target.value)} /></label>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           <button style={sharedStyles.button} disabled={busy}>{options.manages ? t("create") : t("request")}</button>
           <Link href="/admin/delegations" style={sharedStyles.secondaryButton}>{t("cancel")}</Link>
         </div>

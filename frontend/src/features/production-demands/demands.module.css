@@ -50,3 +50,12 @@
 .linkButton { border: 0; padding: 0; background: none; color: var(--accent-strong); font: inherit; text-decoration: underline; cursor: pointer; }
 
 .overlay > .dialog { margin: auto; flex-shrink: 0; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; }
+
+@media (width < 1024px) {
+  .panel, .field, .grid > *, .tableWrap { min-inline-size: 0; }
+  .tableWrap { max-inline-size: 100%; }
+  .grid { grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); }
+  .field input, .field select, .field textarea { min-inline-size: 0; max-inline-size: 100%; }
+  .pickerMenu { inset-inline: 0; inline-size: 100%; min-inline-size: 0; max-inline-size: calc(100vw - 32px); }
+  .pickerOption { min-inline-size: 0; overflow-wrap: anywhere; }
+}

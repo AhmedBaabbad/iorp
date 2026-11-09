@@ -63,7 +63,7 @@ const styles: Record<string, CSSProperties> = {
   formGrid: {
     display: "grid",
     gap: "18px",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(220px, 100%), 1fr))",
   },
   itemPanel: {
     border: "1px solid var(--border)",

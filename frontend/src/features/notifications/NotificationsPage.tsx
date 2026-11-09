@@ -42,7 +42,7 @@ export function NotificationsPage() {
   }, [query, reload, summary.unread]);
 
   return <PageFrame title={t("title")} subtitle={t("subtitle")}
-    action={<div style={{ display: "flex", gap: 8 }}>
+    action={<div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
       <button type="button" className={css.linkButton} disabled={summary.unread === 0} style={{ fontSize: 14 }}
         onClick={() => void markAllRead().then(() => { notify.done("readAll"); again(); }).catch(() => {})}>{t("markAllRead")}</button>
       <button type="button" className={css.linkButton} style={{ fontSize: 14 }}

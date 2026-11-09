@@ -67,7 +67,7 @@ const styles: Record<string, CSSProperties> = {
   modalTitle: { fontSize: "18px", fontWeight: 700, color: "var(--text)", margin: 0, textAlign: "center" as const },
   modalBody: { fontSize: "14px", color: "var(--text-muted)", margin: 0, lineHeight: "1.7", textAlign: "center" as const },
   modalWarning: { fontSize: "13px", fontWeight: 600, color: "var(--danger)", textAlign: "center" as const, margin: 0 },
-  modalActions: { display: "flex", gap: "12px", justifyContent: "center" },
+  modalActions: { display: "flex", flexWrap: "wrap", gap: "12px", justifyContent: "center" },
   modalCancelButton: { ...sharedStyles.secondaryButton, minHeight: "40px", padding: "10px 24px", fontSize: "14px" },
   modalDeleteButton: {
     background: "var(--danger)", border: "none", borderRadius: "8px", color: "var(--on-accent)",

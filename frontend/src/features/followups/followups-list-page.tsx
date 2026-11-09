@@ -140,7 +140,7 @@ const styles: Record<string, CSSProperties> = {
     fontSize: "12px",
   },
   pagination: {
-    display: "flex",
+    display: "flex", flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "space-between",
     gap: "12px",
@@ -678,7 +678,7 @@ export function FollowUpsListPage() {
                 total,
               })}
             </span>
-            <div style={{ display: "flex", gap: "8px" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
               <button
                 type="button"
                 style={sharedStyles.secondaryButton}

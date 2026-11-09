@@ -11,3 +11,15 @@
 .analytics>.breakdown:last-child:nth-child(odd){grid-column:1/-1}
 
 .page,.department{grid-template-columns:minmax(0,1fr)}.department>*{min-width:0}.sectionHeader>div{min-width:0}.metrics,.workload{min-width:0}.gaugeCard>div:first-child{min-width:0}.ranking,.breakdown{overflow-wrap:anywhere}
+
+@media (width < 1024px) {
+  .tabs, .sectionHeader, .gaugeCard, .counter, .rankRow, .departmentFooter, .barRow > div:first-child { flex-wrap: wrap; }
+  .tabs a, .openLink, .barRow strong { white-space: normal; overflow-wrap: anywhere; }
+  .snapshot > *, .counter > div, .rankRow > *, .metrics > * { min-inline-size: 0; }
+  .counterMark { flex-shrink: 0; }
+  .snapshot { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .snapshot strong { overflow-wrap: anywhere; }
+}
+@media (width < 640px) {
+  .snapshot { grid-template-columns: minmax(0, 1fr); }
+}

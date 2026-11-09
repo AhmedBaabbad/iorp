@@ -195,7 +195,7 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
         {can("update") && can("manage_members") && <button style={styles.secondaryButton} onClick={() => openForm(selected)}>{t("createReplacement")}</button>}
         {can("close") && <><label>{t("closeOn")}<input type="date" value={closeDate} onChange={e => setCloseDate(e.target.value)} /></label><button style={styles.secondaryButton} disabled={busy || !closeDate} onClick={() => mutate(`shift-rosters/${selected.id}/close`, { effective_to: closeDate })}>{t("closePeriod")}</button></>}
       </div>}
-      {orderId && <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+      {orderId && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
         {selected.status === "planned" && selected.shift_roster_id && can("manage_members") && <button style={styles.secondaryButton} disabled={busy} onClick={() => mutate(`runs/${selected.id}/load-roster-members`)}>{t("loadRosterMembers")}</button>}
         {runActions.filter(([, permission, states]) => can(permission) && states.includes(selected.status)).map(([action]) => <button style={styles.secondaryButton} key={action} disabled={busy} onClick={() => mutate(`runs/${selected.id}/${action}`)}>{t(`actions.${action}`)}</button>)}
       </div>}

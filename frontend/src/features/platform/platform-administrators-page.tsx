@@ -85,9 +85,9 @@ function PlatformAdministratorsContent() {
 
   return (
     <main style={styles.page}>
-      <header style={{ maxWidth: 980, margin: "0 auto 24px", display: "flex", justifyContent: "space-between", gap: 16 }}>
+      <header style={{ maxWidth: 980, margin: "0 auto 24px", display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 16 }}>
         <div><p style={styles.eyebrow}>{t("eyebrow")}</p><h1 style={styles.title}>{t("title")}</h1><p style={{ color: "var(--text-subtle)" }}>{t("subtitle")}</p></div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}><LanguageSwitcher label={t("languageLabel")} /><Link href="/platform/dashboard" style={styles.secondaryButton}>{t("back")}</Link></div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}><LanguageSwitcher label={t("languageLabel")} /><Link href="/platform/dashboard" style={styles.secondaryButton}>{t("back")}</Link></div>
       </header>
       <section style={{ maxWidth: 980, margin: "0 auto" }}>
         {error && <div role="alert" style={{ ...styles.error, marginBottom: 12 }}>{error}</div>}
@@ -116,7 +116,7 @@ function PlatformAdministratorsContent() {
           )}
         </div>
       </section>
-      {resetTarget && <div style={{ position: "fixed", inset: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", overscrollBehavior: "contain", background: "var(--overlay)", padding: 20 }}><form onSubmit={submitReset} style={{ ...styles.panel, width: "min(460px, 100%)", padding: 24, margin: "auto", flexShrink: 0, maxHeight: "calc(100dvh - 32px)", overflowY: "auto" }}><h2>{t("resetTitle", { name: resetTarget.full_name })}</h2><p>{t("resetLinkHint", { email: resetTarget.email })}</p><div style={{ display: "flex", gap: 8, marginTop: 16 }}><button style={styles.dangerButton} disabled={busy}>{t("sendResetLink")}</button><button type="button" style={styles.secondaryButton} onClick={() => setResetTarget(null)}>{t("cancel")}</button></div></form></div>}
+      {resetTarget && <div style={{ position: "fixed", inset: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", overscrollBehavior: "contain", background: "var(--overlay)", padding: 20 }}><form onSubmit={submitReset} style={{ ...styles.panel, width: "min(460px, 100%)", padding: 24, margin: "auto", flexShrink: 0, maxHeight: "calc(100dvh - 32px)", overflowY: "auto" }}><h2>{t("resetTitle", { name: resetTarget.full_name })}</h2><p>{t("resetLinkHint", { email: resetTarget.email })}</p><div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}><button style={styles.dangerButton} disabled={busy}>{t("sendResetLink")}</button><button type="button" style={styles.secondaryButton} onClick={() => setResetTarget(null)}>{t("cancel")}</button></div></form></div>}
     </main>
   );
 }

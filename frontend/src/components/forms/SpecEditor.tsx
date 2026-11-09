@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import s from "./spec-editor.module.css";
 import { useEffect, useRef, useState } from "react";
 import { sharedStyles } from "@/styles/shared-styles";
 
@@ -54,7 +55,7 @@ export function SpecEditor({ value, onChange, disabled, template }: {
     <fieldset style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "12px", display: "grid", gap: "8px" }}>
       <legend style={{ padding: "0 6px", fontWeight: 600 }}>{t("title")}</legend>
       {props.length ? (
-        <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(min(180px, 100%), 1fr))" }}>
           {props.map(p => (
             <label key={p.key} style={sharedStyles.field}><span style={sharedStyles.label}>{label(p)}</span>
               {p.kind === "choice" ? (
@@ -76,7 +77,7 @@ export function SpecEditor({ value, onChange, disabled, template }: {
       {props.length ? <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>{t("extra")}</span>
         : !rows.length ? <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "13px" }}>{t("empty")}</p> : null}
       {rows.map((row, index) => (
-        <div key={index} style={{ display: "grid", gridTemplateColumns: "minmax(120px, 1fr) minmax(120px, 1.4fr) auto", gap: "8px" }}>
+        <div key={index} className={s.row}>
           <input style={sharedStyles.input} aria-label={t("property")} placeholder={t("propertyHint")} value={row.key} maxLength={200} disabled={disabled}
             onChange={(event) => emit(values, rows.map((r, i) => (i === index ? { ...r, key: event.target.value } : r)))} />
           <input style={sharedStyles.input} aria-label={t("value")} placeholder={t("valueHint")} value={row.value} maxLength={200} disabled={disabled}

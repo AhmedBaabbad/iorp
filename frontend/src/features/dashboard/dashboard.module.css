@@ -35,3 +35,11 @@
 .page button:focus-visible, .page a:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 @media (max-width: 1199px) { .kpiGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.moduleGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }.chartGrid { grid-template-columns: 1fr; } }
 @media (max-width: 767px) { .hero, .quickPanel { align-items: stretch; flex-direction: column; }.heroActions { justify-items: stretch; }.heroActions button { width: 100%; }.kpiGrid, .mainGrid, .moduleGrid { grid-template-columns: 1fr; }.panel, .panelWide, .hero { padding: 18px; }.error { align-items: stretch; flex-direction: column; } }
+
+@media (width < 1024px) {
+  .page { grid-template-columns: minmax(0, 1fr); }
+  .mainGrid > *, .kpiCard > *, .moduleCard > * { min-inline-size: 0; }
+  .kpiCard, .moduleCard { grid-template-columns: auto minmax(0, 1fr); }
+  .sectionHeading, .panelHeader, .chartMeta, .attentionList a, .quickPanel { flex-wrap: wrap; }
+  .kpiCard strong, .moduleCard > span { overflow-wrap: anywhere; }
+}
