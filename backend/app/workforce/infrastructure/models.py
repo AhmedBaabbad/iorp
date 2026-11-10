@@ -1,7 +1,7 @@
 from datetime import datetime
 import uuid
 
-from sqlalchemy import Enum as SqlEnum, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Enum as SqlEnum, ForeignKey, Integer, String, Text, UniqueConstraint, Index, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column
@@ -20,6 +20,8 @@ class WorkforceMember(Base):
             name="uq_workforce_members_org_code",
         ),
         UniqueConstraint("user_id", name="uq_workforce_members_user_id"),
+        Index("uq_workforce_members_org_national_id", "organization_id", "national_id", unique=True,
+              postgresql_where=text("national_id IS NOT NULL"), sqlite_where=text("national_id IS NOT NULL")),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -38,6 +40,7 @@ class WorkforceMember(Base):
     display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    national_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     worker_type: Mapped[WorkerType] = mapped_column(
         SqlEnum(WorkerType, name="workforce_worker_type", values_callable=enum_values),
         nullable=False,

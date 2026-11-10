@@ -35,7 +35,7 @@ ENTITIES: dict[str, tuple[str, str]] = {
     'shift': ('وردية', 'Shift'),
     'shift_roster': ('فريق وردية', 'Shift roster'),
     'work_center': ('مركز عمل', 'Work centre'),
-    'workforce_member': ('عضو في القوى العاملة', 'Workforce member'),
+    'workforce_member': ('موظف', 'Employee'),
     'user': ('مستخدم', 'User'),
     'role': ('دور', 'Role'),
     'role_assignment': ('أدوار مستخدم', 'User roles'),

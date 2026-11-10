@@ -162,6 +162,7 @@ const styles: Record<string, CSSProperties> = {
 const statuses: WorkforceMemberStatus[] = ["active", "inactive", "suspended", "terminated"];
 const employmentTypes: EmploymentType[] = ["employee", "contractor", "temporary"];
 const workerTypes: WorkerType[] = [
+  "driver",
   "factory_manager",
   "production_manager",
   "supervisor",

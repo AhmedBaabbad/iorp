@@ -39,6 +39,7 @@ type FormValues = {
   status: WorkforceMemberStatus;
   phone: string;
   email: string;
+  national_id: string;
   primary_skill: string;
   notes: string;
 };
@@ -62,6 +63,7 @@ const styles: Record<string, CSSProperties> = {
 };
 
 const workerTypes: WorkerType[] = [
+  "driver",
   "factory_manager",
   "production_manager",
   "supervisor",
@@ -91,6 +93,7 @@ const defaultValues: FormValues = {
   status: "active",
   phone: "",
   email: "",
+  national_id: "",
   primary_skill: "",
   notes: "",
 };
@@ -160,7 +163,8 @@ export function WorkforceMemberForm({ mode }: { mode: Mode }) {
         setSuccessRedirect(`/workforce/${updated.id}`);
       }
     } catch (caughtError) {
-      setError(getApiErrorMessage(caughtError, messages));
+      setError(caughtError instanceof ApiClientError && caughtError.status === 409 && caughtError.message === "WORKFORCE_NATIONAL_ID_EXISTS"
+        ? t("nationalIdExists") : getApiErrorMessage(caughtError, messages));
     } finally {
       setIsSubmitting(false);
     }
@@ -330,6 +334,11 @@ export function WorkforceMemberForm({ mode }: { mode: Mode }) {
               </label>
 
               <label style={sharedStyles.field}>
+                <span style={sharedStyles.label}>{t("fields.nationalId")}</span>
+                <input style={sharedStyles.input} value={values.national_id} maxLength={40}
+                  onChange={event => updateField("national_id", event.target.value)} disabled={isSubmitting} />
+              </label>
+              <label style={sharedStyles.field}>
                 <span style={sharedStyles.label}>{t("fields.primarySkill")}</span>
                 <ReferenceTextSelect list="workforce_skill" value={values.primary_skill} onChange={v=>updateField("primary_skill",v)} disabled={isSubmitting}/>
               </label>
@@ -374,6 +383,7 @@ function fromMember(member: WorkforceMember): FormValues {
     status: member.status,
     phone: member.phone ?? "",
     email: member.email ?? "",
+    national_id: member.national_id ?? "",
     primary_skill: member.primary_skill ?? "",
     notes: member.notes ?? "",
   };
@@ -387,6 +397,7 @@ function toCreateRequest(values: FormValues): CreateWorkforceMemberRequest {
     display_name: optionalText(values.display_name) ?? null,
     phone: optionalText(values.phone) ?? null,
     email: optionalText(values.email) ?? null,
+    national_id: optionalText(values.national_id) ?? null,
     primary_skill: optionalText(values.primary_skill) ?? null,
     notes: optionalText(values.notes) ?? null,
   };

@@ -586,9 +586,9 @@
     "kpi": {
       "customers": "العملاء",
       "samples": "العينات",
-      "workforce": "أعضاء الفريق",
+      "workforce": "الموظفين",
       "systemUsers": "مستخدمو النظام",
-      "activeMembers": "القوى العاملة النشطة",
+      "activeMembers": "الموارد البشرية النشطة",
       "roles": "الأدوار",
       "qualityChecks": "فحوصات الجودة",
       "productionOrders": "أوامر الإنتاج",
@@ -603,7 +603,7 @@
     "charts": {
       "production": "أوامر الإنتاج حسب الحالة",
       "quality": "نتائج فحوصات الجودة",
-      "workforce": "القوى العاملة حسب الحالة",
+      "workforce": "الموارد البشرية حسب الحالة",
       "empty": "لا تتوفر بيانات لهذا الرسم حتى الآن"
     },
     "attention": {
@@ -626,7 +626,7 @@
         "description": "الفحوصات والرفض وعدم المطابقة والإجراءات التصحيحية"
       },
       "workforce": {
-        "title": "القوى العاملة",
+        "title": "الموارد البشرية",
         "description": "الأعضاء والقوى النشطة والتوزيع الوظيفي"
       },
       "administration": {
@@ -639,7 +639,7 @@
       "title": "إجراءات سريعة",
       "newCustomer": "عميل جديد",
       "newSample": "عينة جديدة",
-      "newMember": "عضو فريق جديد",
+      "newMember": "موظف جديد",
       "newUser": "مستخدم جديد",
       "newRole": "دور جديد"
     },
@@ -718,7 +718,7 @@
     },
     "snapshot": {
       "customers_count": "العملاء المسجلون",
-      "workforce_active_count": "أعضاء الفريق النشطون",
+      "workforce_active_count": "الموظفين النشطون",
       "users_count": "مستخدمو النظام",
       "roles_count": "أدوار الوصول"
     }

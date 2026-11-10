@@ -40,7 +40,7 @@ MODULE_NAMES = {
     "shipping": {"en": "Shipping", "ar": "الشحن والتسليم"},
     "procurement": {"en": "Procurement", "ar": "المشتريات"},
     "masterdata": {"en": "Master data", "ar": "البيانات الأساسية"},
-    "workforce": {"en": "Workforce", "ar": "القوى العاملة"},
+    "workforce": {"en": "Human resources", "ar": "الموارد البشرية"},
     "notifications": {"en": "Notifications", "ar": "الإشعارات"},
 }
 
@@ -76,7 +76,7 @@ RESOURCE_NAMES = {
     "suppliers": ("Suppliers", "الموردين"), "materials": ("Materials", "المواد"),
     "receipts": ("Goods Receipts", "استلام المواد"), "purchase_orders": ("Purchase Orders", "أوامر الشراء"),
     "shipments": ("Shipments", "الشحنات"), "returns": ("Returns", "المرتجعات"), "settings": ("Settings", "الإعدادات"),
-    "members": ("Workforce Members", "أعضاء القوى العاملة"),
+    "members": ("Employees", "الموظفون"),
     "products": ("Products", "المنتجات"), "lists": ("Reference Lists", "القوائم المرجعية"),
 }
 

@@ -13,6 +13,7 @@ class WorkforceMemberCreate(BaseModel):
     display_name: str | None = Field(default=None, max_length=255)
     phone: str | None = Field(default=None, max_length=50)
     email: str | None = Field(default=None, max_length=255)
+    national_id: str | None = Field(default=None, max_length=40)
     primary_skill: str | None = Field(default=None, max_length=255)
     notes: str | None = None
 
@@ -27,6 +28,7 @@ class WorkforceMemberUpdate(BaseModel):
     worker_type: WorkerType | None = None
     employment_type: EmploymentType | None = None
     status: WorkforceMemberStatus | None = None
+    national_id: str | None = Field(default=None, max_length=40)
     primary_skill: str | None = Field(default=None, max_length=255)
     notes: str | None = None
 
@@ -57,6 +59,7 @@ class WorkforceMemberResponse(BaseModel):
     is_system_user: bool
     user_id: UUID | None
     linked_user: LinkedUser | None = None
+    national_id: str | None
     primary_skill: str | None
     notes: str | None
     created_at: ISODatetime

@@ -1847,6 +1847,10 @@
     "category": "dynamic_resource_policy",
     "isolation_coverage": "requires_route_specific_evidence"
   },
+  "POST /api/v1/shipping/directory/drivers/quick": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "tests/shipping/test_hr_drivers.py: quick permissions and tenant-scoped duplicates/options"
+  },
   "POST /api/v1/shipping/directory/{kind}": {
     "category": "tenant_resource_operation",
     "isolation_coverage": "requires_route_specific_evidence"

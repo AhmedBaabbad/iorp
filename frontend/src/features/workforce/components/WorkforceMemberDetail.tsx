@@ -412,6 +412,7 @@ export function WorkforceMemberDetail() {
               />
               <DetailItem label={t("fields.phone")} value={member.phone} />
               <DetailItem label={t("fields.email")} value={member.email} />
+              <DetailItem label={t("fields.nationalId")} value={member.national_id} />
               <DetailItem
                 label={t("fields.isSystemUser")}
                 value={member.is_system_user ? t("systemUserYes") : t("systemUserNo")}

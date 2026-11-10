@@ -586,9 +586,9 @@
     "kpi": {
       "customers": "Customers",
       "samples": "Samples",
-      "workforce": "Team members",
+      "workforce": "Employees",
       "systemUsers": "System users",
-      "activeMembers": "Active workforce",
+      "activeMembers": "Active Human resources",
       "roles": "Roles",
       "qualityChecks": "Quality checks",
       "productionOrders": "Production orders",
@@ -603,7 +603,7 @@
     "charts": {
       "production": "Production orders by status",
       "quality": "Quality results",
-      "workforce": "Workforce by status",
+      "workforce": "Human resources by status",
       "empty": "No data is available for this chart yet"
     },
     "attention": {
@@ -626,8 +626,8 @@
         "description": "Inspections, rejections, NCR and corrective actions"
       },
       "workforce": {
-        "title": "Workforce",
-        "description": "Members, active workforce and role distribution"
+        "title": "Human resources",
+        "description": "Members, active Human resources and role distribution"
       },
       "administration": {
         "title": "Administration",
@@ -639,7 +639,7 @@
       "title": "Quick actions",
       "newCustomer": "New customer",
       "newSample": "New sample",
-      "newMember": "New team member",
+      "newMember": "New Employee",
       "newUser": "New user",
       "newRole": "New role"
     },
@@ -718,7 +718,7 @@
     },
     "snapshot": {
       "customers_count": "Registered customers",
-      "workforce_active_count": "Active team members",
+      "workforce_active_count": "Active Employees",
       "users_count": "System users",
       "roles_count": "Access roles"
     }

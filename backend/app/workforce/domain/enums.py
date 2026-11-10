@@ -15,6 +15,7 @@ class EmploymentType(str, Enum):
 
 
 class WorkerType(str, Enum):
+    DRIVER = "driver"
     FACTORY_MANAGER = "factory_manager"
     PRODUCTION_MANAGER = "production_manager"
     SUPERVISOR = "supervisor"

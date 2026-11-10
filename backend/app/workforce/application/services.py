@@ -1,4 +1,6 @@
 from uuid import UUID
+from fastapi import HTTPException
+from sqlalchemy import select
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -31,6 +33,7 @@ class WorkforceService:
             raise ValueError("Current organization does not exist.")
 
         payload = data.model_dump()
+        self._validate_national_id(tenant.organization_id, payload)
         from app.core.interfaces.reference_lists import assert_reference_text
         assert_reference_text(self.db,tenant.organization_id,'workforce_skill',payload.get('primary_skill'))
 
@@ -40,6 +43,8 @@ class WorkforceService:
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
+            if "national_id" in str(exc.orig):
+                raise HTTPException(409, "WORKFORCE_NATIONAL_ID_EXISTS") from exc
             raise ValueError("Workforce member could not be saved due to invalid or duplicate data.") from exc
 
         self.db.refresh(member)
@@ -72,6 +77,7 @@ class WorkforceService:
         from app.core.interfaces.reference_lists import assert_reference_text
         current=self.workforce.get_workforce_member_by_id(member_id,organization_id)
         if current is None:return None
+        self._validate_national_id(organization_id, payload, member_id)
         assert_reference_text(self.db,organization_id,'workforce_skill',payload.get('primary_skill'),current.primary_skill)
 
         try:
@@ -82,6 +88,8 @@ class WorkforceService:
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
+            if "national_id" in str(exc.orig):
+                raise HTTPException(409, "WORKFORCE_NATIONAL_ID_EXISTS") from exc
             raise ValueError("Workforce member could not be saved due to invalid or duplicate data.") from exc
 
         self.db.refresh(member)
@@ -159,6 +167,25 @@ class WorkforceService:
         linked_member = self.workforce.get_by_user_id(user_id, organization_id)
         if linked_member is not None and linked_member.id != current_member_id:
             raise ValueError("User is already linked to another workforce member.")
+
+    def _validate_national_id(self, organization_id, payload, member_id=None):
+        if "national_id" not in payload:
+            return
+        if member_id is not None:
+            self.db.scalar(select(WorkforceMember.id).where(WorkforceMember.organization_id == organization_id,
+                WorkforceMember.id == member_id).with_for_update())
+        payload["national_id"] = (payload["national_id"] or "").strip() or None
+        if payload["national_id"]:
+            query = select(WorkforceMember.id).where(WorkforceMember.organization_id == organization_id,
+                WorkforceMember.national_id == payload["national_id"])
+            if member_id is not None:
+                query = query.where(WorkforceMember.id != member_id)
+            if self.db.scalar(query.limit(1)):
+                raise HTTPException(409, "WORKFORCE_NATIONAL_ID_EXISTS")
+
+        if member_id is not None:
+            from app.core.interfaces.transport_directory import validate_worker_identity
+            validate_worker_identity(self.db, organization_id, member_id, payload["national_id"])
 
     def _to_response(self, member: WorkforceMember) -> WorkforceMemberResponse:
         response = WorkforceMemberResponse.model_validate(member)

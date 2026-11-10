@@ -21,7 +21,7 @@
   "sections": {
     "iorp": "IORP",
     "commercial": "التجاري",
-    "workforce": "القوى العاملة",
+    "workforce": "الموارد البشرية",
     "production": "الإنتاج",
     "quality": "الجودة",
     "ncr": "عدم المطابقة",
@@ -48,7 +48,7 @@
     "samples": "العينات",
     "quotes": "عروض الأسعار",
     "commercialOrders": "أوامر البيع",
-    "workforceMembers": "أعضاء الفريق",
+    "workforceMembers": "الموظفون",
     "workCenters": "مراكز العمل",
     "shifts": "الورديات",
     "productionOrders": "أوامر الإنتاج",
