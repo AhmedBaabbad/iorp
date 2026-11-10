@@ -245,7 +245,8 @@
       "hr_officer": "مسؤول موارد بشرية",
       "accountant": "محاسب",
       "safety_officer": "مسؤول السلامة",
-      "admin_support": "دعم إداري"
+      "admin_support": "دعم إداري",
+      "driver": "سائق"
     }
   },
   "customer": {

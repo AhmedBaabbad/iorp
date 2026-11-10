@@ -21,7 +21,7 @@
   "sections": {
     "iorp": "IORP",
     "commercial": "Commercial",
-    "workforce": "Workforce",
+    "workforce": "Human resources",
     "production": "Production",
     "quality": "Quality",
     "ncr": "NCR",
@@ -48,7 +48,7 @@
     "samples": "Samples",
     "quotes": "Quotes",
     "commercialOrders": "Commercial Orders",
-    "workforceMembers": "Team Members",
+    "workforceMembers": "Employees",
     "workCenters": "Work Centers",
     "shifts": "Shifts",
     "productionOrders": "Production Orders",

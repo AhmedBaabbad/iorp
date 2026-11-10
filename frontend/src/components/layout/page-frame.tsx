@@ -201,6 +201,7 @@ const staticNavGroups: StaticNavGroup[] = [
     labelKey: "sections.procurement",
     icon: IconPackage,
     links: [
+      { href: "/shipping-directory", labelKey: "links.transportDirectory", permission: "shipping:directory:read" },
       { href: "/procurement-dashboard", labelKey: "links.procurementDashboard", anyPermissions: [...DEPARTMENTS.find(d => d.key === "procurement")!.permissions] },
       { href: "/suppliers", labelKey: "links.suppliers", permission: PR.SUPPLIERS_READ },
       { href: "/materials", labelKey: "links.materials", permission: PR.MATERIALS_READ },

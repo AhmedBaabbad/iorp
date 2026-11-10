@@ -245,7 +245,8 @@
       "hr_officer": "HR Officer",
       "accountant": "Accountant",
       "safety_officer": "Safety Officer",
-      "admin_support": "Admin Support"
+      "admin_support": "Admin Support",
+      "driver": "Driver"
     }
   },
   "customer": {

@@ -3,6 +3,7 @@ export type WorkforceMemberStatus = "active" | "inactive" | "suspended" | "termi
 export type EmploymentType = "employee" | "contractor" | "temporary";
 
 export type WorkerType =
+  | "driver"
   | "factory_manager"
   | "production_manager"
   | "supervisor"
@@ -37,6 +38,7 @@ export type WorkforceMember = {
   display_name: string | null;
   phone: string | null;
   email: string | null;
+  national_id: string | null;
   worker_type: WorkerType;
   employment_type: EmploymentType;
   status: WorkforceMemberStatus;
@@ -68,6 +70,7 @@ export type CreateWorkforceMemberRequest = {
   display_name?: string | null;
   phone?: string | null;
   email?: string | null;
+  national_id?: string | null;
   primary_skill?: string | null;
   notes?: string | null;
 };
