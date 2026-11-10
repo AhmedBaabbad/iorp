@@ -333,9 +333,9 @@ LABELS: dict[str, tuple[str, str, str, str]] = {
 
     # ── Human resources ────────────────────────────────────────────────────────────────────────────────────────────────
     "workforce:members:read": ("عرض الموارد البشرية", "View employees", "يعرض العمال والموظفين.", "Shows workers and staff."),
-    "workforce:members:create": ("إضافة عامل أو موظف", "Add a employee", "يسجّل عاملاً أو موظفاً.", "Registers a worker or employee."),
-    "workforce:members:update": ("تعديل بيانات عامل أو موظف", "Edit a employee", "يعدّل بيانات العامل وحالته.", "Edits a member's details and status."),
-    "workforce:members:delete": ("حذف عامل أو موظف", "Delete a employee", "يحذف سجل عامل.", "Deletes a member's record."),
+    "workforce:members:create": ("إضافة عامل أو موظف", "Add an employee", "يسجّل عاملاً أو موظفاً.", "Registers a worker or employee."),
+    "workforce:members:update": ("تعديل بيانات عامل أو موظف", "Edit an employee", "يعدّل بيانات العامل وحالته.", "Edits a member's details and status."),
+    "workforce:members:delete": ("حذف عامل أو موظف", "Delete an employee", "يحذف سجل عامل.", "Deletes a member's record."),
     "workforce:members:link_user": ("ربط العامل بحساب مستخدم", "Link a member to a user", "يربط سجل العامل بحساب دخول أو يفك الربط.",
                                     "Links a member to a sign-in account, or unlinks it."),
 

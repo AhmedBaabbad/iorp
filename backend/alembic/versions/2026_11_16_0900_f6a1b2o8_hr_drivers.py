@@ -19,6 +19,8 @@ def check_duplicate_identities(bind):
 
 
 def upgrade():
+    # Internal personal data belongs to workforce; discard legacy snapshots first.
+    op.execute("UPDATE shipping_drivers SET name = '', phone = NULL, identity_no = NULL WHERE affiliation = 'internal'")
     check_duplicate_identities(op.get_bind())
     with op.get_context().autocommit_block():
         op.execute("ALTER TYPE workforce_worker_type ADD VALUE IF NOT EXISTS 'driver'")
@@ -35,6 +37,7 @@ def upgrade():
 
 
 def downgrade():
+    # Legacy internal personal snapshots are intentionally not restored.
     if op.get_bind().scalar(sa.text("SELECT count(*) FROM workforce_members WHERE worker_type::text = 'driver'")):
         raise RuntimeError('Cannot downgrade HR-DRIVERS-001 while driver employees exist; reclassify them explicitly first')
     op.drop_index('uq_shipping_drivers_org_identity', table_name='shipping_drivers')
