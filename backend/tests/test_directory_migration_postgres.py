@@ -23,6 +23,11 @@ def test_directory_upgrade_downgrade_and_legacy_baseline():
     try:
         Base.metadata.create_all(isolated)
         with isolated.begin() as c,Operations.context(MigrationContext.configure(c)):
+            # The current model links drivers to default vehicles; remove that new FK before replaying the frozen old schema.
+            for fk in sa.inspect(c).get_foreign_keys('shipping_drivers'):
+                if fk['constrained_columns'] == ['default_vehicle_id']:
+                    name = fk['name'].replace('"', '""')
+                    c.execute(sa.text(f'ALTER TABLE shipping_drivers DROP CONSTRAINT "{name}"'))
             for table in reversed(migration.TABLES):
                 c.execute(sa.text(f'DROP TABLE {table}'))
             for table,columns in changes.items():

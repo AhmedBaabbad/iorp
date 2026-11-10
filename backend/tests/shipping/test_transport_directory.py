@@ -9,6 +9,8 @@ from app.workforce.infrastructure.models import WorkforceMember
 DIRECTORY='/api/v1/shipping/directory'
 
 def add(ship,kind,**body):
+    if kind == 'drivers' and body.get('affiliation') == 'external':
+        body.setdefault('identity_no', 'DRIVER-' + uuid4().hex[:12])
     response=ship.client.post(f'{DIRECTORY}/{kind}',json=body)
     assert response.status_code==201,response.text
     return response.json()
@@ -18,7 +20,7 @@ def test_saved_external_and_oneoff_are_distinct_and_frozen(ship):
     driver=add(ship,'drivers',name='External',affiliation='external',phone='0551234567')
     shipment=ship.create(driver_id=driver['id'])
     assert shipment['driver_name']=='External' and shipment['driver_affiliation']=='external'
-    assert ship.client.put(f"{DIRECTORY}/drivers/{driver['id']}",json=dict(name='Renamed',affiliation='external',version=1)).status_code==200
+    assert ship.client.put(f"{DIRECTORY}/drivers/{driver['id']}",json=dict(name='Renamed',affiliation='external',version=1,identity_no=driver['identity_no'])).status_code==200
     edited=ship.client.patch(f"{ROOT}/{shipment['id']}",json=dict(notes='Only notes',driver_name='Spoof')).json()
     assert edited['driver_name']=='External'
     oneoff=ship.create(driver_name='One off',driver_affiliation='internal')
@@ -62,7 +64,7 @@ def test_unavailable_driver_and_cross_tenant_rejected(ship):
 
 def test_version_and_permissions(ship):
     driver=add(ship,'drivers',name='Driver',affiliation='external')
-    body=dict(name='Changed',affiliation='external',version=1,active=False)
+    body=dict(name='Changed',affiliation='external',version=1,active=False,identity_no=driver['identity_no'])
     assert ship.client.put(f"{DIRECTORY}/drivers/{driver['id']}",json=body).status_code==200
     assert ship.client.put(f"{DIRECTORY}/drivers/{driver['id']}",json=body).status_code==409
     assert ship.client.post(ROOT,json=ship.body(driver_id=driver['id'])).status_code==422

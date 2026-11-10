@@ -354,6 +354,11 @@ def readiness_check():
 from app.production.api.routes_execution import router as execution_router
 app.include_router(execution_router, prefix=f"{settings.api_prefix}/production")
 
+# Workforce owns personal data exposed to the transport directory through a read-only interface.
+from app.workforce.application.directory_provider import WorkforceDirectoryProvider
+from app.core.interfaces.workforce_directory import register_workforce_directory
+register_workforce_directory(WorkforceDirectoryProvider())
+
 # Reusable transport directory, owned by Shipping.
 from app.shipping.api.routes_directory import router as transport_directory_router
 from app.shipping.application.directory_service import TransportProvider
