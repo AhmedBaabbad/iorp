@@ -683,7 +683,8 @@
     "ORDER_UNIT_INVALID": "اختر الوحدة من القائمة.",
     "ORDER_SPEC_INVALID": "قيمة غير صحيحة في المواصفات: {value}",
     "INTERACTION_HAS_FOLLOW_UPS": "فُتحت متابعة من هذا التفاعل، فلا يُحذف.",
-    "QUOTE_HAS_ISSUED_HISTORY": "لا يمكن حذف عرض له إصدار محفوظ. احتفظ به للمراجعة."
+    "QUOTE_HAS_ISSUED_HISTORY": "لا يمكن حذف عرض له إصدار محفوظ. احتفظ به للمراجعة.",
+    "ORDER_CONFIRMER_IS_PREPARER": "لا يمكنك اعتماد أمر أعددته بنفسك — يحتاج اعتماد مستخدم آخر لديه صلاحية الاعتماد."
   },
   "complaints": {
     "title": "شكاوى العملاء",

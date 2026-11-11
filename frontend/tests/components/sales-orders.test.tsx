@@ -58,6 +58,14 @@ function answer(o: CommercialOrderData) {
 }
 
 describe("sales order detail", () => {
+  it("explains why a preparer cannot confirm, without offering an active confirmation", async () => {
+    api.apiClient.mockImplementation(answer(order({ status: "draft", allowed_actions: ["edit"], confirm_blocked_reason: "preparer" })));
+    ui(<CommercialOrderDetail />);
+    const button = await screen.findByRole("button", { name: "Confirm order" });
+    expect(button.hasAttribute("disabled")).toBe(true);
+    expect(button.title).toContain("another user");
+    expect(screen.getByText(/You cannot confirm an order/, { selector: "small" })).toBeTruthy();
+  });
   it("shows what was sent to production and what remains, and offers only the server's actions", async () => {
     api.apiClient.mockImplementation(answer(order()));
     ui(<CommercialOrderDetail />);

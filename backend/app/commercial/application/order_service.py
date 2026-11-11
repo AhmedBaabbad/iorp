@@ -246,6 +246,11 @@ class OrderService:
             order.fulfilment = L.fulfilment(lines)
             in_production = any(q > 0 for q in sent.values())
             order.allowed_actions = L.order_actions(order.status, in_production, order.fulfilment == "full", can)
+            order.confirm_blocked_reason = None
+            if (order.created_by_user_id == tenant.user_id and not tenant.is_organization_root
+                    and "confirm" in order.allowed_actions):
+                order.allowed_actions.remove("confirm")
+                order.confirm_blocked_reason = "preparer"
             if "delete" in order.allowed_actions and (order.revision > 1 or self._has_history(tenant, order)):
                 order.allowed_actions.remove("delete")
             order.transferred_quantities = {str(i.id): sent.get(i.id, Decimal(0)) for i in order.items}
