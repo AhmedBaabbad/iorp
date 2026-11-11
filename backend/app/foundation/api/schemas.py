@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from typing import Literal
 
 from app.core.types import ISODatetime, NormalizedEmail
+from app.core.password_policy import PASSWORD_MIN_LENGTH
 from app.foundation.domain.enums import OrganizationStatus, UserStatus
 
 
@@ -32,7 +33,7 @@ class UserCreate(BaseModel):
     full_name: str = Field(min_length=1, max_length=255)
     email: NormalizedEmail
     phone: str | None = Field(default=None, max_length=50)
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
     status: UserStatus = UserStatus.ACTIVE
 
 

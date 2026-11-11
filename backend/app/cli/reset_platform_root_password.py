@@ -21,7 +21,7 @@ def reset_password(email: str, password: str, confirmation: str | None = None) -
         )
         if account is None:
             return False
-        validate_password(password, confirmation if confirmation is not None else password, account.email, 12)
+        validate_password(password, confirmation if confirmation is not None else password, account.email)
         account.password_hash = hash_password(password)
         account.password_changed_at = datetime.now(timezone.utc)
         account.token_version += 1

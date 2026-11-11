@@ -7,6 +7,7 @@ import type { FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { PasswordRequirements, PASSWORD_MIN_LENGTH, passwordIsValid, usePasswordErrorMessage } from "@/components/forms/PasswordRequirements";
 import { PasswordInput } from "@/components/PasswordInput";
 import { API_BASE_URL, ApiClientError } from "@/lib/api-client";
 import type { PlatformAdministrator, PlatformOrganizationSummary } from "@/types/platform";
@@ -147,6 +148,7 @@ function PlatformDashboardContent() {
 
   const fullError = orgsError && (!canReadAdmins || adminsError);
 
+  const passwordErrorMessage = usePasswordErrorMessage();
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -177,7 +179,7 @@ function PlatformDashboardContent() {
       setPasswordSuccess(true);
     } catch (caughtError) {
       const message = caughtError instanceof ApiClientError ? caughtError.message : t("changePassword.errorGeneric");
-      setPasswordError(message || t("changePassword.errorGeneric"));
+      setPasswordError(passwordErrorMessage(caughtError, message || t("changePassword.errorGeneric")));
     } finally {
       setIsSubmittingPassword(false);
     }
@@ -384,16 +386,17 @@ function PlatformDashboardContent() {
                 </div>
                 <div className={css.dialogField}>
                   <label>{t("changePassword.newPasswordLabel")}</label>
-                  <PasswordInput autoComplete="new-password" minLength={12} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} disabled={isSubmittingPassword} required />
+                  <PasswordInput autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} disabled={isSubmittingPassword} required />
                 </div>
                 <div className={css.dialogField}>
                   <label>{t("changePassword.confirmPasswordLabel")}</label>
-                  <PasswordInput autoComplete="new-password" minLength={12} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} disabled={isSubmittingPassword} required />
+                  <PasswordInput autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} disabled={isSubmittingPassword} required />
                 </div>
+                <PasswordRequirements password={newPassword} confirmation={confirmPassword} email={account?.email} />
                 {passwordError ? <div className={css.formError} role="alert">{passwordError}</div> : null}
                 <div className={css.dialogActions}>
                   <button type="button" className={css.cancelButton} onClick={closePasswordDialog} disabled={isSubmittingPassword}>{t("changePassword.cancel")}</button>
-                  <button type="submit" className={css.primaryButton} disabled={isSubmittingPassword}>{isSubmittingPassword ? t("changePassword.submitting") : t("changePassword.submitButton")}</button>
+                  <button type="submit" className={css.primaryButton} disabled={isSubmittingPassword || !passwordIsValid(newPassword, confirmPassword, account?.email) || newPassword === currentPassword}>{isSubmittingPassword ? t("changePassword.submitting") : t("changePassword.submitButton")}</button>
                 </div>
               </form>
             )}

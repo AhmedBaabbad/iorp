@@ -168,7 +168,7 @@ def change_password(
     try:
         FoundationService(db).change_password(current.user, payload)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": exc.code, "message": str(exc)} if hasattr(exc, "code") else str(exc)) from exc
     return {
         "message": "Password changed successfully",
         "session_invalidated": True,
