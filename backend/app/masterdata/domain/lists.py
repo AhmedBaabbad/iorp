@@ -8,6 +8,7 @@ An item is deactivated, never deleted, and its key never changes.
 the Kingdom's main cities — which the organization then edits.
 """
 from .rules import KEY, MasterDataError
+from .geography import COUNTRIES, CITIES, country_sort_key
 
 SECTOR, SOURCE, COUNTRY, CITY = "sector", "opportunity_source", "country", "city"
 # Operational lists: the record keeps the item's English name as a snapshot (core reference_lists.assert_reference_text).
@@ -99,20 +100,8 @@ STANDARD: dict[str, tuple[tuple[str, ...], ...]] = {
         ("social_media", "وسائل التواصل الاجتماعي", "Social media"), ("tender", "مناقصة", "Tender"), ("walk_in", "زيارة مباشرة", "Walk-in"),
         ("other", "أخرى", "Other"),
     ),
-    COUNTRY: (
-        ("sa", "المملكة العربية السعودية", "Saudi Arabia"), ("ae", "الإمارات العربية المتحدة", "United Arab Emirates"), ("kw", "الكويت", "Kuwait"),
-        ("qa", "قطر", "Qatar"), ("bh", "البحرين", "Bahrain"), ("om", "عُمان", "Oman"), ("eg", "مصر", "Egypt"), ("jo", "الأردن", "Jordan"),
-        ("iq", "العراق", "Iraq"), ("ye", "اليمن", "Yemen"), ("sd", "السودان", "Sudan"), ("cn", "الصين", "China"), ("in", "الهند", "India"),
-        ("tr", "تركيا", "Turkey"),
-    ),
-    CITY: tuple((key, ar, en, "sa") for key, ar, en in (
-        ("riyadh", "الرياض", "Riyadh"), ("jeddah", "جدة", "Jeddah"), ("makkah", "مكة المكرمة", "Makkah"), ("madinah", "المدينة المنورة", "Madinah"),
-        ("dammam", "الدمام", "Dammam"), ("khobar", "الخبر", "Al Khobar"), ("dhahran", "الظهران", "Dhahran"), ("jubail", "الجبيل", "Jubail"),
-        ("al_kharj", "الخرج", "Al Kharj"), ("al_ahsa", "الأحساء", "Al Ahsa"), ("qatif", "القطيف", "Qatif"), ("taif", "الطائف", "Taif"),
-        ("tabuk", "تبوك", "Tabuk"), ("buraidah", "بريدة", "Buraidah"), ("unaizah", "عنيزة", "Unaizah"), ("abha", "أبها", "Abha"),
-        ("khamis_mushait", "خميس مشيط", "Khamis Mushait"), ("hail", "حائل", "Hail"), ("jazan", "جازان", "Jazan"), ("najran", "نجران", "Najran"),
-        ("yanbu", "ينبع", "Yanbu"), ("al_baha", "الباحة", "Al Baha"), ("sakaka", "سكاكا", "Sakaka"), ("arar", "عرعر", "Arar"),
-    )),
+    COUNTRY: COUNTRIES,
+    CITY: CITIES,
 }
 
 
