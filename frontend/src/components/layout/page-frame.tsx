@@ -192,7 +192,6 @@ const staticNavGroups: StaticNavGroup[] = [
     icon: IconTruck,
     links: [
       { href: "/shipping-dashboard", labelKey: "links.shippingDashboard", anyPermissions: [...DEPARTMENTS.find(d => d.key === "shipping")!.permissions] },
-      { href: "/shipping-directory", labelKey: "links.transportDirectory", permission: "shipping:directory:read" },
       { href: "/shipments", labelKey: "links.shipments", permission: S.SHIPMENTS_READ },
       { href: "/shipment-returns", labelKey: "links.shipmentReturns", permission: S.RETURNS_READ },
     ],
@@ -201,7 +200,6 @@ const staticNavGroups: StaticNavGroup[] = [
     labelKey: "sections.procurement",
     icon: IconPackage,
     links: [
-      { href: "/shipping-directory", labelKey: "links.transportDirectory", permission: "shipping:directory:read" },
       { href: "/procurement-dashboard", labelKey: "links.procurementDashboard", anyPermissions: [...DEPARTMENTS.find(d => d.key === "procurement")!.permissions] },
       { href: "/suppliers", labelKey: "links.suppliers", permission: PR.SUPPLIERS_READ },
       { href: "/materials", labelKey: "links.materials", permission: PR.MATERIALS_READ },
@@ -216,6 +214,7 @@ const staticNavGroups: StaticNavGroup[] = [
     links: [
       { href: "/master-data/products", labelKey: "links.products", permission: MD.PRODUCTS_READ },
       { href: "/master-data/lists", labelKey: "links.referenceLists", permission: MD.LISTS_READ },
+      { href: "/shipping-directory", labelKey: "links.transportDirectory", permission: "shipping:directory:read" },
       { href: "/master-data/settings", labelKey: "links.generalSettings", permission: MD.SETTINGS_READ },
     ],
   },
