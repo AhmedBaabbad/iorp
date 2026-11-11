@@ -363,6 +363,10 @@
     "category": "tenant_collection_or_operation",
     "isolation_coverage": "requires_route_specific_evidence"
   },
+  "GET /api/v1/commercial/quote-settings/validity": {
+    "category": "tenant_collection_or_operation",
+    "isolation_coverage": "tests/commercial/test_quote_validity.py::test_validity_policy_is_tenant_scoped"
+  },
   "GET /api/v1/commercial/quotes": {
     "category": "tenant_collection_or_operation",
     "isolation_coverage": "requires_route_specific_evidence"
