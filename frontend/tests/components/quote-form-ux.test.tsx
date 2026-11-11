@@ -3,11 +3,14 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ApiClientError } from "@/lib/api-client";
 
-const api = vi.hoisted(() => ({ request: vi.fn(), create: vi.fn(), samples: vi.fn() }));
-vi.mock("next-intl", () => ({ useTranslations: () => Object.assign((key: string, values?: { days?: number }) => values?.days ? `${key}:${values.days}` : key, { has: () => true }), useLocale: () => "en" }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
+const api = vi.hoisted(() => ({ request: vi.fn(), create: vi.fn(), samples: vi.fn(), get: vi.fn(), update: vi.fn() }));
+vi.mock("next-intl", () => {
+  const translate = Object.assign((key: string, values?: { days?: number }) => values?.days ? `${key}:${values.days}` : key, { has: () => true });
+  return { useTranslations: () => translate, useLocale: () => "en" };
+});
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }), useParams: () => ({ id: "q1" }) }));
 vi.mock("@/lib/api-client", async original => ({ ...await original<object>(), apiClient: api.request }));
-vi.mock("@/features/quotes/api/quotes-api", () => ({ createQuote: api.create, listSamplesForQuoteCustomer: api.samples }));
+vi.mock("@/features/quotes/api/quotes-api", () => ({ createQuote: api.create, listSamplesForQuoteCustomer: api.samples, getQuoteById: api.get, updateQuote: api.update }));
 vi.mock("@/components/layout/page-frame", () => ({ PageFrame: ({ children }: { children: ReactNode }) => <main>{children}</main> }));
 vi.mock("@/hooks/useFormatter", () => ({ useFormatter: () => ({ decimal: String }) }));
 vi.mock("@/features/customers", () => ({ CustomerPicker: ({ onChange }: { onChange: (id: string) => void }) => <button type="button" onClick={() => onChange("c1")}>Choose customer</button> }));
@@ -18,11 +21,16 @@ vi.mock("@/features/quotes/components/QuoteLineFields", () => ({ LineDescription
 vi.mock("@/features/quotes/components/QuoteItemsTable", () => ({ QuoteItemsTable: () => null }));
 vi.mock("@/features/quotes/components/QuoteTotals", () => ({ QuoteTotals: () => null }));
 import { QuoteForm } from "@/features/quotes/components/QuoteForm";
+import { QuoteEditForm } from "@/features/quotes/components/QuoteEditForm";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-11-11T09:00:00Z"));
   api.request.mockReset().mockResolvedValue({ quote_validity_days: 12 });
   api.create.mockReset(); api.samples.mockReset().mockResolvedValue([]);
+  api.get.mockReset().mockResolvedValue({ id: "q1", customer_id: "c1", status: "draft", currency: "SAR",
+    issue_date: "2026-01-01T09:00:00Z", valid_until: "2026-01-31T09:00:00Z", subtotal_amount: "10", discount_amount: "0", tax_amount: "0", tax_rate: "0",
+    items: [{ product_type: "film", quantity: "1", unit: "kg", unit_price: "10" }] });
+  api.update.mockReset().mockResolvedValue({});
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
@@ -43,6 +51,28 @@ it("shows the server's actual allowed validity limit", async () => {
   await waitFor(() => expect(screen.getByRole("button", { name: "actions.create" }).hasAttribute("disabled")).toBe(false));
   fireEvent.submit(container.querySelector("form")!);
   expect(await screen.findByRole("alert")).toHaveProperty("textContent", "errors.validityExceeded:7");
+});
+
+it("preserves legacy edit dates and omits untouched dates from the update", async () => {
+  const { container } = render(<QuoteEditForm />);
+  await screen.findByRole("button", { name: "updateButton" });
+  const valid = container.querySelectorAll<HTMLInputElement>('input[type="datetime-local"]')[1];
+  expect(valid.value).toContain("2026-01-31");
+  fireEvent.submit(container.querySelector("form")!);
+  await waitFor(() => expect(api.update).toHaveBeenCalled());
+  expect(api.update.mock.calls[0][1]).not.toHaveProperty("issue_date");
+  expect(api.update.mock.calls[0][1]).not.toHaveProperty("valid_until");
+});
+
+it("recomputes edited validity only until a manual override", async () => {
+  const { container } = render(<QuoteEditForm />);
+  await screen.findByRole("button", { name: "updateButton" });
+  const [issue, valid] = Array.from(container.querySelectorAll<HTMLInputElement>('input[type="datetime-local"]'));
+  fireEvent.change(issue, { target: { value: "2026-12-01T09:00" } });
+  expect(valid.value).toBe("2026-12-13T09:00");
+  fireEvent.change(valid, { target: { value: "2026-12-06T09:00" } });
+  fireEvent.change(issue, { target: { value: "2026-12-02T09:00" } });
+  expect(valid.value).toBe("2026-12-06T09:00");
 });
 
 async function chooseSample() {
