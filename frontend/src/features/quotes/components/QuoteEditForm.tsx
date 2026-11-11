@@ -198,7 +198,7 @@ export function QuoteEditForm() {
           setIsNotFound(true);
           return;
         }
-        setError(quoteValidityError(caughtError) !== null ? t("errors.validityExceeded", { days: quoteValidityError(caughtError) ?? validityDays }) : getApiErrorMessage(caughtError, messages));
+        setError(getApiErrorMessage(caughtError, messages));
       } finally {
         if (isMounted) setIsLoading(false);
       }

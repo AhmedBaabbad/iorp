@@ -387,6 +387,7 @@ class QuoteSettings(Base):
     """Per-organization quotation document settings: the language quotations are printed in, and who signs them.
     The terms are QuoteTerm rows."""
     __tablename__ = "commercial_quote_settings"
+    __table_args__ = (CheckConstraint("quote_validity_days BETWEEN 1 AND 365", name="ck_quote_validity_days_range"),)
 
     organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), primary_key=True)
     # ar | en: every quotation is printed in this language, with the settings written in it (nothing from the other one).
