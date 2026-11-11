@@ -26,7 +26,7 @@ def reset_password(organization_code: str, password: str, confirmation: str) -> 
         )
         if root is None:
             return None
-        validate_password(password, confirmation, root.email, 12)
+        validate_password(password, confirmation, root.email)
         root.password_hash = hash_password(password)
         root.token_version += 1
         revoke_account_sessions(db, "tenant", root.id, reason="cli_password_reset")

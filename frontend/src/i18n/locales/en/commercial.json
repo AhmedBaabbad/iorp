@@ -418,7 +418,8 @@
         "unit": "Unit",
         "unitPrice": "Unit Price",
         "lineTotal": "Total"
-      }
+      },
+      "addFromSample": "Add line from sample"
     },
     "summary": {
       "sectionTitle": "Quote Summary",
@@ -474,7 +475,8 @@
       "signatureTitle": "Title",
       "termTitle": "Title",
       "termBody": "Text",
-      "notWritten": "Not written in this language: it will not be printed."
+      "notWritten": "Not written in this language: it will not be printed.",
+      "validityDays": "Quote validity (days)"
     },
     "lifecycle": {
       "title": "Quotation status",
@@ -514,6 +516,9 @@
       "subtotalBefore": "Subtotal before discount",
       "total": "Discount",
       "subtotalAfter": "Subtotal after discount"
+    },
+    "errors": {
+      "validityExceeded": "Validity must be between the issue date and {days} days after it."
     }
   },
   "commercialOrders": {
@@ -678,7 +683,8 @@
     "ORDER_UNIT_INVALID": "Choose the unit from the list.",
     "ORDER_SPEC_INVALID": "A specification value is not valid: {value}",
     "INTERACTION_HAS_FOLLOW_UPS": "A follow-up was opened from this interaction, so it stays.",
-    "QUOTE_HAS_ISSUED_HISTORY": "A quotation with issued history cannot be deleted."
+    "QUOTE_HAS_ISSUED_HISTORY": "A quotation with issued history cannot be deleted.",
+    "ORDER_CONFIRMER_IS_PREPARER": "You cannot confirm an order you prepared yourself — another user with confirmation permission must confirm it."
   },
   "complaints": {
     "title": "Customer complaints",

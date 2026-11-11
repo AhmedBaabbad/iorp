@@ -3,7 +3,7 @@ import { CUSTOMER_REPORTS } from "@/features/reports/customer-permissions";
 
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -192,7 +192,6 @@ const staticNavGroups: StaticNavGroup[] = [
     icon: IconTruck,
     links: [
       { href: "/shipping-dashboard", labelKey: "links.shippingDashboard", anyPermissions: [...DEPARTMENTS.find(d => d.key === "shipping")!.permissions] },
-      { href: "/shipping-directory", labelKey: "links.transportDirectory", permission: "shipping:directory:read" },
       { href: "/shipments", labelKey: "links.shipments", permission: S.SHIPMENTS_READ },
       { href: "/shipment-returns", labelKey: "links.shipmentReturns", permission: S.RETURNS_READ },
     ],
@@ -201,7 +200,6 @@ const staticNavGroups: StaticNavGroup[] = [
     labelKey: "sections.procurement",
     icon: IconPackage,
     links: [
-      { href: "/shipping-directory", labelKey: "links.transportDirectory", permission: "shipping:directory:read" },
       { href: "/procurement-dashboard", labelKey: "links.procurementDashboard", anyPermissions: [...DEPARTMENTS.find(d => d.key === "procurement")!.permissions] },
       { href: "/suppliers", labelKey: "links.suppliers", permission: PR.SUPPLIERS_READ },
       { href: "/materials", labelKey: "links.materials", permission: PR.MATERIALS_READ },
@@ -216,6 +214,7 @@ const staticNavGroups: StaticNavGroup[] = [
     links: [
       { href: "/master-data/products", labelKey: "links.products", permission: MD.PRODUCTS_READ },
       { href: "/master-data/lists", labelKey: "links.referenceLists", permission: MD.LISTS_READ },
+      { href: "/shipping-directory", labelKey: "links.transportDirectory", permission: "shipping:directory:read" },
       { href: "/master-data/settings", labelKey: "links.generalSettings", permission: MD.SETTINGS_READ },
     ],
   },
@@ -287,12 +286,42 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [groupsLoaded, setGroupsLoaded] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const restoredSidebar = useRef<{ element: HTMLElement; pathname: string; mobileOpen: boolean } | null>(null);
   const footerRef = useRef<HTMLDivElement>(null);
 
   // Read after the first render, so the server's page and the browser's match.
-  useEffect(() => {
+  useLayoutEffect(() => {
     try { setOpenGroups(JSON.parse(window.localStorage.getItem(SIDEBAR_GROUPS_KEY) ?? "{}")); } catch { /* nothing remembered */ }
+    setGroupsLoaded(true);
   }, []);
+
+  // Restore after remembered groups have expanded, before paint. The same nav
+  // scroll container is used by desktop and the mobile drawer.
+  useLayoutEffect(() => {
+    const element = sidebarRef.current;
+    if (!groupsLoaded || !element || element.clientHeight === 0) return;
+    const previous = restoredSidebar.current;
+    if (previous?.element === element && previous.pathname === pathname && previous.mobileOpen === mobileOpen) return;
+    restoredSidebar.current = { element, pathname, mobileOpen };
+    try {
+      const remembered = Number(window.sessionStorage.getItem("iorp.sidebar.scroll"));
+      if (Number.isFinite(remembered) && remembered >= 0) element.scrollTop = remembered;
+    } catch { /* storage can be disabled */ }
+    const active = element.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!active) return;
+    const viewport = element.getBoundingClientRect();
+    const item = active.getBoundingClientRect();
+    if (item.height > 0 && (item.top < viewport.top || item.bottom > viewport.bottom)) {
+      active.scrollIntoView?.({ block: "nearest" });
+    }
+  }); // ProtectedRoute can mount the nav on a later commit; the ref prevents repeated scrolling.
+
+  function rememberSidebarScroll() {
+    try { window.sessionStorage.setItem("iorp.sidebar.scroll", String(sidebarRef.current?.scrollTop ?? 0)); }
+    catch { /* private mode: retain navigation without persistence */ }
+  }
 
   // The user's menu closes with Escape or a click elsewhere.
   useEffect(() => {
@@ -400,7 +429,7 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
             </span>
           </div>
 
-          <nav className="iorp-sidebar-nav">
+          <nav className="iorp-sidebar-nav" ref={sidebarRef} onScroll={rememberSidebarScroll}>
             <Link href="/dashboard" className={`iorp-nav-link ${side.link} ${side.home} ${isLinkActive(pathname, "/dashboard") ? side.active : ""}`}
               title={t("dashboard")} aria-current={isLinkActive(pathname, "/dashboard") ? "page" : undefined}>
               <IconGrid size={19} />

@@ -104,6 +104,12 @@ export function CommercialOrderDetail() {
                 {busy === "confirm" ? messages("loading.saving") : t("lifecycle.actions.confirm")}
               </button>
             )}
+            {order.confirm_blocked_reason === "preparer" && <div>
+              <button type="button" className={`${s.button} ${s.primary}`} disabled title={errors("ORDER_CONFIRMER_IS_PREPARER")}>
+                {t("lifecycle.actions.confirm")}
+              </button>
+              <small style={{ display: "block", maxWidth: 360, color: "var(--text-muted)" }}>{errors("ORDER_CONFIRMER_IS_PREPARER")}</small>
+            </div>}
             {actions.includes("transfer") && (
               <Link href={`/production/demands/new?sales_order=${order.id}&customer=${order.customer_id}`} className={`${s.button} ${s.primary}`}>
                 {t("lifecycle.actions.transfer")}

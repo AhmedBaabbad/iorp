@@ -51,6 +51,7 @@ export type SalesOrderHistoryEntry = {
 };
 
 export type CommercialOrderData = CommercialOrderListItem & {
+  confirm_blocked_reason?: "preparer" | null;
   currency?: string | null;
   confirmed_at?: string | null;
   allowed_actions?: SalesOrderAction[];

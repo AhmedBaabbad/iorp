@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useState } from "react";
 import { PageFrame } from "@/components/layout/page-frame";
+import { PasswordRequirements, PASSWORD_MIN_LENGTH, passwordIsValid, usePasswordErrorMessage } from "@/components/forms/PasswordRequirements";
 import { PasswordInput } from "@/components/PasswordInput";
 import { ApiClientError } from "@/lib/api-client";
 import { sharedStyles } from "@/styles/shared-styles";
@@ -19,11 +20,12 @@ export function ChangePasswordPage() {
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const minimumLength = user?.is_organization_root ? 12 : 8;
+  const minimumLength = PASSWORD_MIN_LENGTH;
+  const passwordError = usePasswordErrorMessage();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (newPassword.length < minimumLength) return setError(t(user?.is_organization_root ? "passwordTooShortRoot" : "passwordTooShort"));
+    if (newPassword.length < minimumLength) return setError(t("passwordTooShort"));
     if (newPassword !== confirmation) return setError(t("passwordsDoNotMatch"));
     if (newPassword === currentPassword) return setError(t("passwordMustChange"));
     setSubmitting(true);
@@ -34,7 +36,7 @@ export function ChangePasswordPage() {
       router.replace("/login?session=password_changed");
     } catch (caught) {
       if (caught instanceof ApiClientError && caught.message.includes("Current password")) setError(t("incorrectCurrentPassword"));
-      else setError(t("passwordChangeError"));
+      else setError(passwordError(caught, t("passwordChangeError")));
     } finally {
       setSubmitting(false);
     }
@@ -46,16 +48,9 @@ export function ChangePasswordPage() {
         <label>{t("currentPassword")}<PasswordInput inputStyle={sharedStyles.input} value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></label>
         <label>{t("newPassword")}<PasswordInput inputStyle={sharedStyles.input} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={minimumLength} required /></label>
         <label>{t("confirmNewPassword")}<PasswordInput inputStyle={sharedStyles.input} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} minLength={minimumLength} required /></label>
-        <div style={{ display: "grid", gap: 6 }} aria-label={t("requirementsTitle")}>
-          <strong>{t("requirementsTitle")}</strong>
-          <span>{t("minCharacters", { count: minimumLength })}</span>
-          <span>{t("requiresUppercase")}</span>
-          <span>{t("requiresLowercase")}</span>
-          <span>{t("requiresNumber")}</span>
-          <span>{t("requiresSpecial")}</span>
-        </div>
+        <PasswordRequirements password={newPassword} confirmation={confirmation} email={user?.email} />
         {error ? <div style={sharedStyles.error}>{error}</div> : null}
-        <button type="submit" style={sharedStyles.button} disabled={submitting}>{submitting ? t("submitting") : t("changePasswordButton")}</button>
+        <button type="submit" style={sharedStyles.button} disabled={submitting || !passwordIsValid(newPassword, confirmation, user?.email) || newPassword === currentPassword}>{submitting ? t("submitting") : t("changePasswordButton")}</button>
       </form>
     </PageFrame>
   );

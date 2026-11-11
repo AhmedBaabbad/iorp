@@ -7,6 +7,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.platform.domain.enums import PlatformAccountRole, PlatformAccountStatus
 from app.core.types import NormalizedEmail
+from app.core.password_policy import PASSWORD_MIN_LENGTH, PasswordPolicyError, validate_password
+from pydantic_core import PydanticCustomError
 
 class BootstrapStatusResponse(BaseModel):
     initialized: bool
@@ -15,24 +17,31 @@ class BootstrapStatusResponse(BaseModel):
 class AccountInput(BaseModel):
     full_name: str = Field(min_length=1, max_length=255)
     email: NormalizedEmail
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
     password_confirmation: str
+
+    @field_validator("password", mode="before")
+    @classmethod
+    def password_length_code(cls, value):
+        if isinstance(value, str) and len(value) < PASSWORD_MIN_LENGTH:
+            raise PydanticCustomError("PASSWORD_TOO_SHORT", "Password must be at least {minimum} characters", {"minimum": PASSWORD_MIN_LENGTH})
+        return value
 
     @model_validator(mode="after")
     def passwords_match(self):
-        if self.password != self.password_confirmation:
-            raise ValueError("Passwords do not match.")
-        if self.password.casefold() == str(self.email).casefold():
-            raise ValueError("Password cannot equal email.")
+        try:
+            validate_password(self.password, self.password_confirmation, str(self.email))
+        except PasswordPolicyError as exc:
+            raise PydanticCustomError(exc.code, str(exc)) from exc
         return self
 
 
 class PlatformRootInput(AccountInput):
-    password: str = Field(min_length=12, max_length=128)
+    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
 
 
 class OrganizationAdminInput(AccountInput):
-    password: str = Field(min_length=12, max_length=128)
+    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
     phone: str | None = Field(default=None, max_length=50)
 
 
@@ -117,11 +126,6 @@ class ChangePasswordRequest(BaseModel):
         Field(validation_alias=AliasChoices("password_confirmation", "new_password_confirmation")),
     ] = ""
 
-    @model_validator(mode="after")
-    def passwords_match(self):
-        if self.new_password != self.password_confirmation:
-            raise ValueError("Passwords do not match.")
-        return self
 
 
 class PlatformOrganizationSummary(BaseModel):

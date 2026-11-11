@@ -392,7 +392,6 @@ class FoundationService:
             data.new_password,
             data.new_password_confirmation,
             user.email,
-            12 if user.is_organization_root else 8,
         )
         if verify_password(data.new_password, user.password_hash):
             raise ValueError("New password must be different from current password")

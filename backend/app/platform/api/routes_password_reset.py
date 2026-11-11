@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request
 from typing import Literal
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
 from app.core.rate_limit import LoginRateLimitError, check_rate_limit
@@ -18,10 +18,6 @@ class ResetPasswordRequest(BaseModel):
     token: str = Field(min_length=20, max_length=200)
     new_password: str
     new_password_confirmation: str
-    @model_validator(mode="after")
-    def passwords_match(self):
-        if self.new_password != self.new_password_confirmation: raise ValueError("Passwords do not match")
-        return self
 
 
 def _limited(request: Request, scope: str, limit: int):
@@ -41,8 +37,8 @@ def forgot_password(payload: ForgotPasswordRequest, request: Request, db: Sessio
 def reset_password(payload: ResetPasswordRequest, request: Request, db: Session = Depends(get_db)):
     limited = _limited(request, "platform_reset_password", 5)
     if limited: return limited
-    try: PlatformPasswordResetService().execute_reset(db, payload.token, payload.new_password)
+    try: PlatformPasswordResetService().execute_reset(db, payload.token, payload.new_password, payload.new_password_confirmation)
     except ResetTokenExpiredError: return JSONResponse(status_code=400, content={"code": "RESET_TOKEN_EXPIRED", "message": "This reset link has expired. Please request a new one."})
     except InvalidResetTokenError: return JSONResponse(status_code=400, content={"code": "INVALID_RESET_TOKEN", "message": "This reset link is invalid or has expired. Please request a new one."})
-    except PasswordTooWeakError as exc: return JSONResponse(status_code=400, content={"code": "PASSWORD_TOO_WEAK", "message": str(exc)})
+    except PasswordTooWeakError as exc: return JSONResponse(status_code=400, content={"code": exc.code, "message": str(exc)})
     return {"message": "Password has been reset successfully. You can now log in."}

@@ -24,9 +24,14 @@ class QuoteSettingsService:
             query = query.where(QuoteTerm.is_active.is_(True))
         return list(self.db.scalars(query.order_by(QuoteTerm.sort_order, QuoteTerm.id)))
 
+    def validity_days(self) -> int:
+        row = self.db.get(QuoteSettings, self.org_id)
+        return row.quote_validity_days if row else 10
+
     def read(self) -> dict:
         row = self.db.get(QuoteSettings, self.org_id)
         return dict(
+            quote_validity_days=self.validity_days(),
             document_language=row.document_language if row and row.document_language in ('ar', 'en') else 'ar',
             signature_title_ar=row.signature_title_ar if row and row.signature_title_ar else DEFAULT_SIGNATURE[0],
             signature_title_en=row.signature_title_en if row and row.signature_title_en else DEFAULT_SIGNATURE[1],
@@ -41,6 +46,7 @@ class QuoteSettingsService:
             row = QuoteSettings(organization_id=self.org_id)
             self.db.add(row)
         row.document_language = data.document_language
+        row.quote_validity_days = data.quote_validity_days
         row.signature_title_ar, row.signature_title_en = data.signature_title_ar, data.signature_title_en
         row.show_preparer_name, row.updated_by_user_id = data.show_preparer_name, actor_id
         for old in self.terms():

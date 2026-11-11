@@ -144,9 +144,9 @@ def change_password(
             detail="Current password is incorrect.",
         )
     try:
-        validate_password(payload.new_password, payload.password_confirmation, account.email, 12)
+        validate_password(payload.new_password, payload.password_confirmation, account.email)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": exc.code, "message": str(exc)} if hasattr(exc, "code") else str(exc)) from exc
     if verify_password(payload.new_password, account.password_hash):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="New password must be different from current password.")
     account.password_hash = hash_password(payload.new_password)

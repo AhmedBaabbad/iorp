@@ -418,7 +418,8 @@
         "unit": "الوحدة",
         "unitPrice": "سعر الوحدة",
         "lineTotal": "الإجمالي"
-      }
+      },
+      "addFromSample": "إضافة بند من العينة"
     },
     "summary": {
       "sectionTitle": "ملخص العرض",
@@ -474,7 +475,8 @@
       "signatureTitle": "المسمى",
       "termTitle": "العنوان",
       "termBody": "النص",
-      "notWritten": "غير مكتوب بهذه اللغة: لن يُطبع."
+      "notWritten": "غير مكتوب بهذه اللغة: لن يُطبع.",
+      "validityDays": "مدة صلاحية العرض (أيام)"
     },
     "lifecycle": {
       "title": "حالة عرض السعر",
@@ -514,6 +516,9 @@
       "subtotalBefore": "المجموع قبل الخصم",
       "total": "الخصم",
       "subtotalAfter": "المجموع بعد الخصم"
+    },
+    "errors": {
+      "validityExceeded": "يجب أن يكون تاريخ الصلاحية من تاريخ الإصدار وحتى {days} أيام بعده."
     }
   },
   "commercialOrders": {
@@ -678,7 +683,8 @@
     "ORDER_UNIT_INVALID": "اختر الوحدة من القائمة.",
     "ORDER_SPEC_INVALID": "قيمة غير صحيحة في المواصفات: {value}",
     "INTERACTION_HAS_FOLLOW_UPS": "فُتحت متابعة من هذا التفاعل، فلا يُحذف.",
-    "QUOTE_HAS_ISSUED_HISTORY": "لا يمكن حذف عرض له إصدار محفوظ. احتفظ به للمراجعة."
+    "QUOTE_HAS_ISSUED_HISTORY": "لا يمكن حذف عرض له إصدار محفوظ. احتفظ به للمراجعة.",
+    "ORDER_CONFIRMER_IS_PREPARER": "لا يمكنك اعتماد أمر أعددته بنفسك — يحتاج اعتماد مستخدم آخر لديه صلاحية الاعتماد."
   },
   "complaints": {
     "title": "شكاوى العملاء",

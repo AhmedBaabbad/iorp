@@ -1,0 +1,34 @@
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+import type { ReactNode } from "react";
+import { afterEach, beforeAll, expect, it, vi } from "vitest";
+import { loadMessages } from "@/i18n/messages";
+import { ShiftForm } from "@/features/shifts/components/ShiftForm";
+import { ShiftEditForm } from "@/features/shifts/components/ShiftEditForm";
+import type { ShiftData } from "@/features/shifts/types";
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
+vi.mock("@/components/layout/page-frame", () => ({ PageFrame: ({ children }: { children: ReactNode }) => <main>{children}</main> }));
+let messages: Awaited<ReturnType<typeof loadMessages>>;
+beforeAll(async () => { messages = await loadMessages("en"); });
+afterEach(cleanup);
+const ui = (node: ReactNode) => render(<NextIntlClientProvider locale="en" messages={messages}>{node}</NextIntlClientProvider>);
+const name = () => screen.getByDisplayValue(/shift|Line|Team/) as HTMLInputElement;
+const type = () => screen.getAllByRole("combobox")[0];
+it("follows type while untouched, clears custom, and preserves a user name", () => {
+  ui(<ShiftForm />);
+  expect(name().value).toBe("Morning shift");
+  fireEvent.change(type(), { target: { value: "night" } });
+  expect(name().value).toBe("Night shift");
+  const input = name();
+  fireEvent.change(type(), { target: { value: "custom" } });
+  expect(input.value).toBe(""); expect(input.required).toBe(true);
+  fireEvent.change(input, { target: { value: "Line 1" } });
+  fireEvent.change(type(), { target: { value: "evening" } });
+  expect(input.value).toBe("Line 1");
+});
+it("keeps an existing custom name when changing the type in edit", () => {
+  const shift: ShiftData = { id: "s", organization_id: "o", code: "S", name: "Team A", shift_type: "morning", start_time: "07:00", end_time: "15:00", duration_hours: "8", crosses_midnight: false, status: "active", created_at: "", updated_at: "", notes: null };
+  ui(<ShiftEditForm shift={shift} />);
+  fireEvent.change(type(), { target: { value: "night" } });
+  expect(name().value).toBe("Team A");
+});

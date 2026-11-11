@@ -25,6 +25,7 @@ export type QuoteSampleOption = {
   customer_id: string;
   sample_code: string;
   product_type: string;
+  requested_spec_json?: RequestedSpec | null;
 };
 
 export type QuoteListItem = {
@@ -118,6 +119,7 @@ export type QuoteTerm = { title_ar: string | null; title_en: string | null; body
 
 export type DocumentLanguage = "ar" | "en";
 export type QuoteSettings = {
+  quote_validity_days: number;
   /** Every quotation is printed in this language, with the settings written in it (nothing from the other one). */
   document_language: DocumentLanguage;
   signature_title_ar: string | null;

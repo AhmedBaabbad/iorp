@@ -80,6 +80,7 @@ export function ShiftEditForm({ shift }: Props) {
   const messages = useTranslations("messages");
   const tEnums = useTranslations();
   const [values, setValues] = useState<EditFormValues>(() => toFormValues(shift));
+  const [nameManual, setNameManual] = useState(() => shift.shift_type === "custom" || shift.name !== t(`defaultNames.${shift.shift_type}`));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successRedirect, setSuccessRedirect] = useState<string | null>(null);
@@ -95,7 +96,11 @@ export function ShiftEditForm({ shift }: Props) {
     field: TField,
     value: EditFormValues[TField],
   ) {
-    setValues((current) => ({ ...current, [field]: value }));
+    if (field === "name") setNameManual(true);
+    setValues(current => ({ ...current, [field]: value,
+      ...(field === "shift_type" && !nameManual
+        ? { name: value === "custom" ? "" : t(`defaultNames.${value as Exclude<ShiftType, "custom">}`) } : {}),
+    }));
   }
 
   async function handleSubmit(event: { preventDefault(): void }) {
@@ -163,6 +168,7 @@ export function ShiftEditForm({ shift }: Props) {
                   disabled={isSubmitting}
                   required
                 />
+              <small style={{ color: "var(--text-muted)" }}>{t("nameHint")}</small>
               </label>
 
               <label style={sharedStyles.field}>

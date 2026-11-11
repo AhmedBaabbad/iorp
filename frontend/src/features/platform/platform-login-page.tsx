@@ -7,6 +7,7 @@ import type { CSSProperties, FormEvent } from "react";
 import { useEffect, useState } from "react";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { PasswordRequirements } from "@/components/forms/PasswordRequirements";
 import { PasswordInput } from "@/components/PasswordInput";
 import { ApiClientError } from "@/lib/api-client";
 import { usePlatformAuth } from "./platform-auth-context";
@@ -185,6 +186,7 @@ export function PlatformLoginPage() {
             />
           </label>
 
+          <PasswordRequirements password={password} email={email} />
           <label style={styles.field}><span>{t("security.code")}</span><input style={styles.input} dir="ltr" autoComplete="one-time-code" value={mfaCode} onChange={e => setMfaCode(e.target.value)} /></label>
           {!error && sessionMessage === "expired" ? (
             <div style={styles.error} role="status">{t("login.sessionExpired")}</div>

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { type CSSProperties, type FormEvent, useEffect, useState } from "react";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { PasswordRequirements, PASSWORD_MIN_LENGTH, passwordIsValid, usePasswordErrorMessage } from "@/components/forms/PasswordRequirements";
 import { PasswordInput } from "@/components/PasswordInput";
 import { ApiClientError } from "@/lib/api-client";
 import { TIMEZONES, timezoneLabel } from "@/lib/timezones";
@@ -46,6 +47,7 @@ function isValidTimezone(timezone: string): boolean {
 
 export function SetupWizard() {
   const t = useTranslations("setup");
+  const passwordError = usePasswordErrorMessage();
   const [data, setData] = useState(empty);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [initialized, setInitialized] = useState<boolean | null>(null);
@@ -88,7 +90,7 @@ export function SetupWizard() {
   function validateStep(currentStep: number): string {
     if (currentStep === 0) {
       if (!data.bootstrap_token.trim()) return t("errors.bootstrapTokenRequired");
-      if (data.platform_root.password.length < 12) return t("errors.passwordTooShort", { min: 12 });
+      if (data.platform_root.password.length < PASSWORD_MIN_LENGTH) return t("errors.passwordTooShort", { min: PASSWORD_MIN_LENGTH });
       if (data.platform_root.password !== data.platform_root.password_confirmation) {
         return t("errors.passwordMismatch");
       }
@@ -101,7 +103,7 @@ export function SetupWizard() {
       if (!isValidTimezone(data.organization.timezone)) return t("errors.invalidTimezone");
     }
     if (currentStep === 2) {
-      if (data.organization_admin.password.length < 8) return t("errors.passwordTooShort", { min: 8 });
+      if (data.organization_admin.password.length < PASSWORD_MIN_LENGTH) return t("errors.passwordTooShort", { min: PASSWORD_MIN_LENGTH });
       if (data.organization_admin.password !== data.organization_admin.password_confirmation) {
         return t("errors.passwordMismatch");
       }
@@ -138,7 +140,7 @@ export function SetupWizard() {
       } else if (caughtError instanceof ApiClientError && caughtError.status === 409) {
         setError(t("errors.alreadyInitializedDuringSubmit"));
       } else if (caughtError instanceof ApiClientError && caughtError.status === 422) {
-        setError(caughtError.message || t("errors.setupFailed"));
+        setError(passwordError(caughtError, t("errors.setupFailed")));
       } else {
         setError(t("errors.setupFailed"));
       }
@@ -212,6 +214,7 @@ export function SetupWizard() {
               {field(t("fields.email"), data.platform_root.email, (v) => setSection("platform_root", "email", v), "email")}
               {field(t("fields.password"), data.platform_root.password, (v) => setSection("platform_root", "password", v), "password")}
               {field(t("fields.confirmPassword"), data.platform_root.password_confirmation, (v) => setSection("platform_root", "password_confirmation", v), "password")}
+              <PasswordRequirements password={data.platform_root.password} confirmation={data.platform_root.password_confirmation} email={data.platform_root.email} />
             </>
           )}
 
@@ -255,6 +258,7 @@ export function SetupWizard() {
               {field(t("fields.phone"), data.organization_admin.phone || "", (v) => setSection("organization_admin", "phone", v), "tel")}
               {field(t("fields.password"), data.organization_admin.password, (v) => setSection("organization_admin", "password", v), "password")}
               {field(t("fields.confirmPassword"), data.organization_admin.password_confirmation, (v) => setSection("organization_admin", "password_confirmation", v), "password")}
+              <PasswordRequirements password={data.organization_admin.password} confirmation={data.organization_admin.password_confirmation} email={data.organization_admin.email} />
             </>
           )}
 
@@ -296,7 +300,7 @@ export function SetupWizard() {
                 {t("buttons.back")}
               </button>
             )}
-            <button type="submit" style={sharedStyles.button} disabled={submitting}>
+            <button type="submit" style={sharedStyles.button} disabled={submitting || (step === 0 && !passwordIsValid(data.platform_root.password, data.platform_root.password_confirmation, data.platform_root.email)) || (step === 2 && !passwordIsValid(data.organization_admin.password, data.organization_admin.password_confirmation, data.organization_admin.email))}>
               {submitting ? t("buttons.submitting") : step === 3 ? t("buttons.completeSetup") : t("buttons.next")}
             </button>
           </div>

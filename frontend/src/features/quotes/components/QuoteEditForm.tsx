@@ -1,5 +1,6 @@
 "use client";
 
+import { quoteValidUntil, useQuoteValidity, quoteValidityError } from "../quote-validity";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -123,6 +124,9 @@ export function QuoteEditForm() {
   const [savedRate, setSavedRate] = useState<number | null>(null);
   const vatRate = savedRate ?? organizationRate;
 
+  const { days: validityDays, loaded: validityLoaded, error: validityLoadError } = useQuoteValidity();
+  const [validityManual, setValidityManual] = useState(false);
+  const [datesTouched, setDatesTouched] = useState({ issue: false, valid: false });
   const [values, setValues] = useState<QuoteEditValues>({
     sample_id: "",
     issue_date: toDatetimeLocalValue(new Date()),
@@ -136,6 +140,9 @@ export function QuoteEditForm() {
     items: [createDefaultItem()],
   });
   const [customerId, setCustomerId] = useState<string>("");
+  useEffect(() => {
+    if (datesTouched.issue && !validityManual) setValues(current => ({ ...current, valid_until: quoteValidUntil(current.issue_date, validityDays) }));
+  }, [validityDays, validityManual, datesTouched.issue]);
   const [samples, setSamples] = useState<QuoteSampleOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingSamples, setIsLoadingSamples] = useState(false);
@@ -232,7 +239,11 @@ export function QuoteEditForm() {
     field: TField,
     value: QuoteEditValues[TField],
   ) {
-    setValues((current) => ({ ...current, [field]: value }));
+    if (field === "valid_until") { setValidityManual(true); setDatesTouched(current => ({ ...current, valid: true })); }
+    if (field === "issue_date") setDatesTouched(current => ({ ...current, issue: true }));
+    setValues((current) => ({ ...current, [field]: value,
+      ...(field === "issue_date" && !validityManual ? { valid_until: quoteValidUntil(String(value), validityDays) } : {}),
+    }));
   }
 
   function updateItemField<TField extends keyof QuoteItemFormValues>(
@@ -267,8 +278,8 @@ export function QuoteEditForm() {
     try {
       const payload: UpdateQuoteRequest = {
         sample_id: optionalText(values.sample_id) ?? null,
-        issue_date: new Date(values.issue_date).toISOString(),
-        valid_until: new Date(values.valid_until).toISOString(),
+        ...(datesTouched.issue ? { issue_date: new Date(values.issue_date).toISOString() } : {}),
+        ...(datesTouched.issue || datesTouched.valid ? { valid_until: new Date(values.valid_until).toISOString() } : {}),
         currency: values.currency,
         tax_rate: values.include_tax ? vatRate : 0,
         tax_amount: taxAmount,
@@ -284,7 +295,9 @@ export function QuoteEditForm() {
       setError(
         caughtError instanceof FormValidationError
           ? caughtError.message
-          : getApiErrorMessage(caughtError, messages),
+          : quoteValidityError(caughtError) !== null
+            ? t("errors.validityExceeded", { days: quoteValidityError(caughtError) ?? validityDays })
+            : getApiErrorMessage(caughtError, messages),
       );
     } finally {
       setIsSubmitting(false);
@@ -359,7 +372,7 @@ export function QuoteEditForm() {
                   type="datetime-local"
                   value={values.issue_date}
                   onChange={(event) => updateField("issue_date", event.target.value)}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !validityLoaded}
                   required
                 />
               </label>
@@ -374,7 +387,7 @@ export function QuoteEditForm() {
                   type="datetime-local"
                   value={values.valid_until}
                   onChange={(event) => updateField("valid_until", event.target.value)}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !validityLoaded}
                   required
                 />
               </label>
@@ -388,7 +401,7 @@ export function QuoteEditForm() {
                   style={sharedStyles.input}
                   value={values.currency}
                   onChange={(event) => updateField("currency", event.target.value)}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !validityLoaded}
                   required
                 >
                   {CURRENCY_OPTIONS.map((c) => (
@@ -397,7 +410,7 @@ export function QuoteEditForm() {
                 </select>
               </label>
 
-              <DiscountAllField disabled={isSubmitting}
+              <DiscountAllField disabled={isSubmitting || !validityLoaded}
                 onApply={(percent) => updateField("items", values.items.map((item) => ({ ...item, discount_percent: percent })))} />
 
               <div style={sharedStyles.field}>
@@ -407,7 +420,7 @@ export function QuoteEditForm() {
                     type="checkbox"
                     checked={values.include_tax}
                     onChange={(event) => updateField("include_tax", event.target.checked)}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !validityLoaded}
                   />
                   <span>{t("taxCheckboxLabel", { rate: String(vatRate) })}</span>
                 </label>
@@ -417,7 +430,7 @@ export function QuoteEditForm() {
               </div>
             </div>
 
-            <QuoteHeadingFields attention={values.attention} subject={values.subject} disabled={isSubmitting}
+            <QuoteHeadingFields attention={values.attention} subject={values.subject} disabled={isSubmitting || !validityLoaded}
               onChange={(field, value) => updateField(field, value)} />
 
             <label style={sharedStyles.field}>
@@ -426,7 +439,7 @@ export function QuoteEditForm() {
                 style={{ ...sharedStyles.textarea, minHeight: "100px" }}
                 value={values.notes}
                 onChange={(event) => updateField("notes", event.target.value)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !validityLoaded}
               />
             </label>
 
@@ -437,7 +450,7 @@ export function QuoteEditForm() {
                   style={sharedStyles.secondaryButton}
                   type="button"
                   onClick={addItem}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !validityLoaded}
                 >
                   {t("items.addButton")}
                 </button>
@@ -469,7 +482,7 @@ export function QuoteEditForm() {
                         {t("items.fields.productType")}
                         <span style={styles.required} aria-hidden="true"> *</span>
                       </span>
-                      <ProductSelect style={sharedStyles.input} value={item.product_type} disabled={isSubmitting}
+                      <ProductSelect style={sharedStyles.input} value={item.product_type} disabled={isSubmitting || !validityLoaded}
                         ariaLabel={t("items.fields.productType")}
                         onChange={(key, product) => {
                           updateItemField(index, "product_type", key);
@@ -489,7 +502,7 @@ export function QuoteEditForm() {
                         min="0.01"
                         value={item.quantity}
                         onChange={(event) => updateItemField(index, "quantity", event.target.value)}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !validityLoaded}
                         required
                       />
                     </label>
@@ -499,7 +512,7 @@ export function QuoteEditForm() {
                         {t("items.fields.unit")}
                         <span style={styles.required} aria-hidden="true"> *</span>
                       </span>
-                      <UnitSelect value={item.unit} disabled={isSubmitting}
+                      <UnitSelect value={item.unit} disabled={isSubmitting || !validityLoaded}
                         onChange={(value) => updateItemField(index, "unit", value)} />
                     </label>
 
@@ -515,12 +528,12 @@ export function QuoteEditForm() {
                         min="0"
                         value={item.unit_price}
                         onChange={(event) => updateItemField(index, "unit_price", event.target.value)}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !validityLoaded}
                         required
                       />
                     </label>
 
-                    <LineDiscountField value={item.discount_percent} amount={amounts[index].discount} disabled={isSubmitting}
+                    <LineDiscountField value={item.discount_percent} amount={amounts[index].discount} disabled={isSubmitting || !validityLoaded}
                       onChange={(value) => updateItemField(index, "discount_percent", value)} />
 
                     <label style={sharedStyles.field}>
@@ -534,11 +547,11 @@ export function QuoteEditForm() {
                     </label>
                   </div>
 
-                  <SpecEditor value={item.requested_spec_json} disabled={isSubmitting}
+                  <SpecEditor value={item.requested_spec_json} disabled={isSubmitting || !validityLoaded}
                     template={products?.find((p) => p.key === item.product_type)?.properties}
                     onChange={(json) => updateItemField(index, "requested_spec_json", json)} />
 
-                  <LineDescriptionFields arabic={item.description_ar} english={item.description_en} disabled={isSubmitting}
+                  <LineDescriptionFields arabic={item.description_ar} english={item.description_en} disabled={isSubmitting || !validityLoaded}
                     onChange={(field, value) => updateItemField(index, field, value)} />
                 </section>
               ))}
@@ -555,12 +568,13 @@ export function QuoteEditForm() {
               }}
             />
 
-            {error ? (
+            {validityLoadError ? <div style={sharedStyles.error} role="alert">{getApiErrorMessage(validityLoadError, messages)}</div> : null}
+          {error ? (
               <div style={sharedStyles.error} role="alert">{error}</div>
             ) : null}
 
             <div style={styles.actions}>
-              <button style={sharedStyles.button} type="submit" disabled={isSubmitting}>
+              <button style={sharedStyles.button} type="submit" disabled={isSubmitting || !validityLoaded}>
                 {isSubmitting ? messages("loading.saving") : t("updateButton")}
               </button>
               <Link href={`/quotes/${quoteId}`} style={sharedStyles.secondaryButton}>

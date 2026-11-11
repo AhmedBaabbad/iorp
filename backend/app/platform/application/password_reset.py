@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.email.service import EmailService
 from app.core.email.templates import build_platform_reset_email
-from app.core.password_policy import validate_password
+from app.core.password_policy import PasswordPolicyError, validate_password
 from app.core.security import has_usable_password, hash_password, normalize_email, revoke_account_sessions
 from app.core.token_utils import generate_reset_token, get_reset_expiry_time, hash_token, is_token_expired, link_lifetime_minutes
 from app.core.utils import utc_now
@@ -20,7 +20,7 @@ PLATFORM_PASSWORD_RESET_VIA_EMAIL = "platform.password_reset_via_email"
 
 class InvalidResetTokenError(ValueError): pass
 class ResetTokenExpiredError(ValueError): pass
-class PasswordTooWeakError(ValueError): pass
+PasswordTooWeakError = PasswordPolicyError
 
 
 class PlatformPasswordResetService:
@@ -49,7 +49,7 @@ class PlatformPasswordResetService:
             return False
         return True
 
-    def execute_reset(self, db: Session, raw_token: str, new_password: str) -> None:
+    def execute_reset(self, db: Session, raw_token: str, new_password: str, confirmation: str | None = None) -> None:
         record = db.scalar(select(PlatformPasswordResetToken).where(PlatformPasswordResetToken.token_hash == hash_token(raw_token), PlatformPasswordResetToken.used_at.is_(None)))
         if record is None:
             raise InvalidResetTokenError
@@ -64,10 +64,7 @@ class PlatformPasswordResetService:
         if is_token_expired(record.expires_at):
             record.used_at = utc_now(); db.commit()
             raise ResetTokenExpiredError
-        try:
-            validate_password(new_password, new_password, account.email, 12)
-        except ValueError as exc:
-            raise PasswordTooWeakError(str(exc)) from exc
+        validate_password(new_password, confirmation if confirmation is not None else new_password, account.email)
         account.password_hash = hash_password(new_password); account.token_version += 1
         account.failed_login_attempts = 0; account.auto_locked_until = None; account.last_failed_login_at = None; account.password_changed_at = utc_now()
         db.execute(update(PlatformPasswordResetToken).where(PlatformPasswordResetToken.account_id == account.id, PlatformPasswordResetToken.used_at.is_(None)).values(used_at=utc_now()))

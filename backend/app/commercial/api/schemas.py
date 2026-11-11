@@ -1,6 +1,6 @@
 from typing import Annotated
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import AliasChoices, AwareDatetime, BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator, StringConstraints
@@ -638,6 +638,7 @@ class CommercialOrderPage(BaseModel):
 
 
 class CommercialOrderRead(CommercialOrderListItem):
+    confirm_blocked_reason: Literal["preparer"] | None = None
     currency: str | None = None
     confirmed_at: ISODatetime | None = None
     confirmed_by_user_id: UUID | None = None

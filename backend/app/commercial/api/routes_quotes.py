@@ -10,7 +10,7 @@ from app.commercial.domain.enums import QuoteStatus
 from app.commercial.domain.action_permissions import QUOTE_ACTIONS
 from app.commercial.infrastructure.repositories import ListFilters
 from app.core.pagination import PageParams, page_of, page_params
-from app.commercial.application.quote_service import QuoteService
+from app.commercial.application.quote_service import QuoteService, QuoteValidityError
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, permission_check, require_permission
 
@@ -28,7 +28,7 @@ def _step(db, tenant, can, quote_id, action, reason=None) -> QuoteRead:
     try:
         quote = service.transition(tenant, quote_id, action, reason)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": exc.code, "quote_validity_days": exc.days} if isinstance(exc, QuoteValidityError) else str(exc)) from exc
     if quote is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quote not found.")
     return service.get_quote(tenant, quote_id, _actions(can))
@@ -51,7 +51,7 @@ def create_quote(
     try:
         quote = service.create_quote(tenant, customer_id, payload)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": exc.code, "quote_validity_days": exc.days} if isinstance(exc, QuoteValidityError) else str(exc)) from exc
 
     if quote is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found.")
@@ -112,7 +112,7 @@ def update_quote(
     try:
         quote = service.update_quote(tenant, quote_id, payload)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": exc.code, "quote_validity_days": exc.days} if isinstance(exc, QuoteValidityError) else str(exc)) from exc
 
     if quote is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quote not found.")
@@ -175,7 +175,7 @@ def delete_quote(
     try:
         deleted = service.delete_quote(tenant, quote_id)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": exc.code, "quote_validity_days": exc.days} if isinstance(exc, QuoteValidityError) else str(exc)) from exc
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quote not found.")
     return {"status": "deleted"}

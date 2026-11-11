@@ -45,7 +45,7 @@ def s(client, auth_headers, test_user, approver_headers):
 
 
 def quote(s, **extra):
-    body = {"issue_date": "2026-06-09T10:00:00Z", "valid_until": "2026-07-09T10:00:00Z", "currency": "USD",
+    body = {"issue_date": "2026-06-09T10:00:00Z", "valid_until": "2026-06-19T10:00:00Z", "currency": "USD",
             "items": [{"line_no": 1, "product_type": "pp_strap", "requested_spec_json": {"width_mm": 19}, "quantity": "1000",
                        "unit": "kg", "unit_price": "2.50"},
                       {"line_no": 2, "product_type": "pp_strap", "requested_spec_json": {"width_mm": 12}, "quantity": "500",
@@ -67,6 +67,27 @@ def confirmed_order(s):
     r = s.post(f"{API}/orders/{order['id']}/confirm")  # by another manager
     assert r.status_code == 200, r.text
     return s.get(f"{API}/orders/{order['id']}").json()  # as the one who prepared it sees it
+
+
+def test_preparer_sees_confirmation_block_but_another_approver_can_confirm(s, client, auth_headers, approver_headers, db, test_user, test_org):
+    q = accepted_quote(s)
+    order = s.post(f"{API}/quotes/{q['id']}/sales-order").json()
+    path = f"{API}/orders/{order['id']}"
+    assert order["confirm_blocked_reason"] == "preparer"
+    assert "confirm" not in order["allowed_actions"]
+    other = client.get(path, headers=approver_headers).json()
+    assert other["confirm_blocked_reason"] is None
+    assert "confirm" in other["allowed_actions"]
+    denied = client.post(path + "/confirm", headers=auth_headers)
+    assert denied.status_code == 400 and denied.json()["detail"] == "ORDER_CONFIRMER_IS_PREPARER"
+    from uuid import UUID
+    from app.core.tenancy import TenantContext
+    from app.commercial.application.order_service import OrderService
+    service = OrderService(db)
+    root = service.get_order(TenantContext(test_user.id, test_org.id, is_organization_root=True), UUID(order["id"]))
+    assert root.confirm_blocked_reason is None and "confirm" in root.allowed_actions
+    denied_action = service.get_order(TenantContext(test_user.id, test_org.id), UUID(order["id"]), lambda _: False)
+    assert denied_action.confirm_blocked_reason is None and denied_action.allowed_actions == []
 
 
 def test_quote_is_edited_only_as_a_draft_and_every_step_is_recorded(s):

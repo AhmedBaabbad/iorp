@@ -21,7 +21,7 @@ beforeEach(() => { api.apiClient.mockReset(); });
 afterEach(cleanup);
 const ui = (node: ReactNode) => render(<NextIntlClientProvider locale="ar" messages={ar} timeZone="UTC">{node}</NextIntlClientProvider>);
 
-const settings: QuoteSettings = { document_language: "ar", signature_title_ar: "مدير المبيعات", signature_title_en: "Sales Manager", show_preparer_name: false,
+const settings: QuoteSettings = { quote_validity_days: 10, document_language: "ar", signature_title_ar: "مدير المبيعات", signature_title_en: "Sales Manager", show_preparer_name: false,
   terms: [{ title_ar: "الدفع", title_en: null, body_ar: "بعد شهر من الفاتورة", body_en: null, is_active: true },
     { title_ar: "التسليم", title_en: "Delivery", body_ar: "خلال 10 أيام", body_en: "Within 10 days", is_active: true }] };
 
