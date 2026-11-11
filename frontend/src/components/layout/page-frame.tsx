@@ -288,6 +288,7 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [groupsLoaded, setGroupsLoaded] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
+  const restoredSidebar = useRef<{ element: HTMLElement; pathname: string; mobileOpen: boolean } | null>(null);
   const footerRef = useRef<HTMLDivElement>(null);
 
   // Read after the first render, so the server's page and the browser's match.
@@ -301,6 +302,9 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
   useLayoutEffect(() => {
     const element = sidebarRef.current;
     if (!groupsLoaded || !element || element.clientHeight === 0) return;
+    const previous = restoredSidebar.current;
+    if (previous?.element === element && previous.pathname === pathname && previous.mobileOpen === mobileOpen) return;
+    restoredSidebar.current = { element, pathname, mobileOpen };
     try {
       const remembered = Number(window.sessionStorage.getItem("iorp.sidebar.scroll"));
       if (Number.isFinite(remembered) && remembered >= 0) element.scrollTop = remembered;
@@ -312,7 +316,7 @@ export function PageFrame({ title, subtitle, section, action, children }: PageFr
     if (item.height > 0 && (item.top < viewport.top || item.bottom > viewport.bottom)) {
       active.scrollIntoView?.({ block: "nearest" });
     }
-  }, [groupsLoaded, pathname, mobileOpen]);
+  }); // ProtectedRoute can mount the nav on a later commit; the ref prevents repeated scrolling.
 
   function rememberSidebarScroll() {
     try { window.sessionStorage.setItem("iorp.sidebar.scroll", String(sidebarRef.current?.scrollTop ?? 0)); }

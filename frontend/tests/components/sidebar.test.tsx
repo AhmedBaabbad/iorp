@@ -6,10 +6,10 @@ import type { ReactNode } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadMessages } from "@/i18n/messages";
 
-const nav = vi.hoisted(() => ({ pathname: "/production-orders" }));
+const nav = vi.hoisted(() => ({ pathname: "/production-orders", ready: true }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => nav.pathname }));
 vi.mock("@/features/auth", () => ({
-  ProtectedRoute: ({ children }: { children: ReactNode }) => <>{children}</>,
+  ProtectedRoute: ({ children }: { children: ReactNode }) => nav.ready ? <>{children}</> : null,
   useAuth: () => ({ user: { full_name: "Ahmed Saleh", organization_name: "Rehab Factory", roles: ["production_manager"] }, token: "t",
     hasPermission: () => true, logout: vi.fn() }),
   useHasAnyPermission: () => true,
@@ -22,9 +22,10 @@ import { PageFrame } from "@/components/layout/page-frame";
 
 let en: Record<string, unknown>;
 beforeAll(async () => { en = await loadMessages("en") as Record<string, unknown>; });
-beforeEach(() => { window.localStorage.clear(); window.sessionStorage.clear(); nav.pathname = "/production-orders"; });
+beforeEach(() => { window.localStorage.clear(); window.sessionStorage.clear(); nav.pathname = "/production-orders"; nav.ready = true; });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
-const ui = () => render(<NextIntlClientProvider locale="en" messages={en} timeZone="UTC"><PageFrame title="Orders">content</PageFrame></NextIntlClientProvider>);
+const view = () => <NextIntlClientProvider locale="en" messages={en} timeZone="UTC"><PageFrame title="Orders">content</PageFrame></NextIntlClientProvider>;
+const ui = () => render(view());
 
 describe("sidebar", () => {
   it("shows the transport directory only once under master data", () => {
@@ -59,8 +60,10 @@ describe("sidebar", () => {
     });
     const nearest = vi.fn();
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: nearest });
-    ui();
+    const page = ui();
     expect(nearest).toHaveBeenCalledWith({ block: "nearest" });
+    page.rerender(view());
+    expect(nearest).toHaveBeenCalledTimes(1);
   });
 
   it("restores the same saved position when the mobile drawer opens", () => {
@@ -71,6 +74,16 @@ describe("sidebar", () => {
     ui();
     fireEvent.click(document.querySelector(".iorp-hamburger")!);
     expect(document.querySelector(".iorp-sidebar-nav")?.scrollTop).toBe(540);
+  });
+
+  it("restores when the protected sidebar mounts after session loading", () => {
+    nav.ready = false;
+    window.sessionStorage.setItem("iorp.sidebar.scroll", "470");
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(200);
+    const page = ui();
+    expect(document.querySelector(".iorp-sidebar-nav")).toBeNull();
+    nav.ready = true; page.rerender(view());
+    expect(document.querySelector(".iorp-sidebar-nav")?.scrollTop).toBe(470);
   });
 
   it("still navigates when session storage is blocked", () => {
