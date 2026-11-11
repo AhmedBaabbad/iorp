@@ -44,6 +44,8 @@ from app.core.interfaces.reference_lists import unknown_list_values
 from app.core.tenancy import TenantContext
 from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.core.utils import utc_now
+from app.core.location_fields import normalize_city, assert_city_country
+from app.commercial.infrastructure.contact_models import CustomerContact
 from app.foundation.application.services import FoundationService
 
 
@@ -75,6 +77,7 @@ class CustomerService:
 
     def create_customer(self, tenant: TenantContext, data: CustomerCreate) -> Customer:
         assert_list_values(self.db, tenant.organization_id, data.model_dump())  # MD-002: sector, source, country, city
+        assert_city_country(self.db, tenant.organization_id, data.model_dump())
         eligibility = SalesOwnerEligibilityService(self.db)
         can_assign_owner = "commercial:customers:assign_owner" in tenant.permissions
 
@@ -98,10 +101,15 @@ class CustomerService:
             created_by_user_id=tenant.user_id,
             sales_owner_user_id=sales_owner_user_id,
             customer_code=self._generate_customer_code(tenant),
-            **data.model_dump(exclude={"sales_owner_user_id"}),
+            **normalize_city(data.model_dump(exclude={"sales_owner_user_id", "primary_contact"})),
         )
         try:
             self.customers.add(customer)
+            if data.primary_contact is not None:
+                self.db.add(CustomerContact(organization_id=tenant.organization_id, customer_id=customer.id,
+                    **data.primary_contact.model_dump(), is_default=True, active=True,
+                    created_by=tenant.user_id, updated_by=tenant.user_id))
+                self.db.flush()
             get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "customer.created", "customer", customer.id, customer.name, tenant.user_id)
             self.db.commit()
         except IntegrityError as exc:
@@ -556,7 +564,8 @@ class CustomerService:
         if customer is None:
             return None
 
-        payload = data.model_dump(exclude_unset=True)
+        payload = normalize_city(data.model_dump(exclude_unset=True), customer)
+        assert_city_country(self.db, tenant.organization_id, payload, customer)
 
         if payload.get("status") is not None and payload["status"] != "active" and self.demand_count and self.demand_count.count_demands_for_customer(self.db, customer_id, tenant.organization_id, active_only=True):
             raise ValueError("Customer has active production demands. Cancel or complete them before deactivation.")

@@ -24,7 +24,7 @@ from .purchase_order_service import PurchaseOrderService, by_line_owner
 from .support import QualityReads, history, log_activity, next_code, next_receipt_number, record, settings, user_names
 from . import notices
 
-SUPPLIER_FIELDS = ("name", "category", "supplies", "contact_name", "email", "address", "city", "country", "vat_number", "cr_number", "notes")
+SUPPLIER_FIELDS = ("name", "category", "supplies", "contact_name", "email", "address", "city", "city_other", "country", "vat_number", "cr_number", "notes")
 MATERIAL_FIELDS = ("name", "category", "unit", "inspection_required", "spec_product_type", "active", "notes")
 RECEIPT_FIELDS = ("driver_id", "vehicle_id", "driver_affiliation", "receipt_date", "supplier_delivery_no", "supplier_invoice_no", "purchase_reference", "vehicle_plate", "driver_name", "notes")
 LINE_FIELDS = ("material_id", "description", "supplier_lot", "quantity", "unit", "package_count", "weight", "weight_unit", "notes", "po_line_id")
@@ -89,6 +89,12 @@ class SupplierService:
         return out
 
     def _apply(self, supplier, values):
+        from app.core.location_fields import normalize_city, assert_city_country
+        try:
+            values = normalize_city(values, supplier)
+            assert_city_country(self.db, self.org, values, supplier)
+        except ValueError as exc:
+            raise ProcurementError(str(exc), 400) from exc
         if values.get("category") and unknown_list_values(self.db, self.org, "supplier_category", [values["category"]],
                                                           [supplier.category] if getattr(supplier, "category", None) else ()):
             raise ProcurementError("CATEGORY_UNKNOWN", 400)  # MD-003: from the organization's supplier categories

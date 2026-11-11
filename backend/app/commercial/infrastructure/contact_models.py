@@ -22,7 +22,9 @@ class CustomerRecord:
 
 class CustomerContact(CustomerRecord,Base):
     __tablename__='commercial_customer_contacts'
-    phone:Mapped[str|None]=mapped_column(String(30))
+    phone:Mapped[str|None]=mapped_column(String(50))
+    created_by:Mapped[UUID|None]=mapped_column(ForeignKey('foundation_users.id'),nullable=True)
+    updated_by:Mapped[UUID|None]=mapped_column(ForeignKey('foundation_users.id'),nullable=True)
     email:Mapped[str|None]=mapped_column(String(255))
     role:Mapped[str|None]=mapped_column(String(120))
 
@@ -31,5 +33,7 @@ class CustomerSite(CustomerRecord,Base):
     __tablename__='commercial_customer_sites'
     address:Mapped[str]=mapped_column(String(1000))
     city:Mapped[str|None]=mapped_column(String(120))
+    city_other:Mapped[str|None]=mapped_column(String(120))
+    country:Mapped[str|None]=mapped_column(String(120))
     location_url:Mapped[str|None]=mapped_column(String(500))
     contact_id:Mapped[UUID|None]=mapped_column(ForeignKey('commercial_customer_contacts.id'))

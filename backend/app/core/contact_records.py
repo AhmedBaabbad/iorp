@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field, EmailStr
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
+from app.core.location_fields import LocationURL
 
 
 class ContactInput(BaseModel):
@@ -22,7 +23,9 @@ class SiteInput(BaseModel):
     name:str=Field(min_length=1,max_length=200)
     address:str=Field(min_length=1,max_length=1000)
     city:str|None=Field(None,max_length=120)
-    location_url:str|None=Field(None,max_length=500,pattern=r'^https?://\S+$')
+    city_other:str|None=Field(None,max_length=120)
+    country:str|None=Field(None,max_length=120)
+    location_url:LocationURL|None=Field(None,max_length=500)
     contact_id:UUID|None=None
     active:bool=True
     is_default:bool=False

@@ -60,6 +60,7 @@ class Shipment(Base):
     consignee_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notify_consignee: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     delivery_address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    delivery_country: Mapped[str | None] = mapped_column(String(120), nullable=True)
     delivery_city: Mapped[str | None] = mapped_column(String(120), nullable=True)
     location_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # Who carries the goods: the customer's or the factory's driver, or a carrier company.

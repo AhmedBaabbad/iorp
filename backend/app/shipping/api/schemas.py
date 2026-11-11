@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.core.types import ISODatetime, NormalizedEmail
+from app.core.location_fields import LocationURL
 from app.core.units import UNITS, WEIGHT_UNITS
 from app.shipping.domain import returns as R
 
@@ -18,7 +19,6 @@ DeliveryReason = Literal["customer_refused", "site_closed", "no_receiver", "wron
 CustomerReason = Literal["quality_defect", "spec_mismatch", "wrong_item", "transit_damage", "excess_quantity", "customer_cancelled", "other"]
 assert set(DeliveryReason.__args__) == set(R.DELIVERY_REASONS) and set(CustomerReason.__args__) == set(R.CUSTOMER_REASONS)
 Quantity = Decimal
-URL = Field(default=None, max_length=500, pattern=r"^https?://\S+$")
 
 
 class _Input(BaseModel):
@@ -60,8 +60,9 @@ class _Header(_Input):
     consignee_email: NormalizedEmail | None = None
     notify_consignee: bool = False
     delivery_address: str | None = Field(default=None, max_length=1000)
+    delivery_country: str | None = Field(default=None, max_length=120)
     delivery_city: str | None = Field(default=None, max_length=120)
-    location_url: str | None = URL
+    location_url: LocationURL | None = Field(default=None, max_length=500)
     driver_name: str | None = Field(default=None, max_length=200)
     driver_phone: str | None = Field(default=None, max_length=30)
     driver_id_no: str | None = Field(default=None, max_length=40)
@@ -166,6 +167,7 @@ class ProductionOrderOption(BaseModel):
 
 
 class CustomerOption(BaseModel):
+    country: str | None = None
     id: UUID
     customer_code: str
     name: str
@@ -267,6 +269,7 @@ class ShipmentListItem(BaseModel):
 
 
 class ShipmentRead(ShipmentListItem):
+    delivery_country: str | None = None
     driver_id: UUID | None = None
     vehicle_id: UUID | None = None
     carrier_id: UUID | None = None

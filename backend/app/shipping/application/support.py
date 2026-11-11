@@ -6,6 +6,7 @@ another module's models (ADR-004). What a document prints is copied onto it, so 
 from sqlalchemy import select
 
 from app.core.db import Base
+from app.core.location_fields import effective_contact_columns, city_expression
 from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.core import numbering
 from app.shipping.domain import returns as R
@@ -26,8 +27,11 @@ class CustomerReads:
 
     def _query(self):
         customers = _t("commercial_customers")
-        return customers, select(customers.c.id, customers.c.customer_code, customers.c.name, customers.c.phone, customers.c.email,
-                                 customers.c.city).where(customers.c.organization_id == self.org)
+        contact = effective_contact_columns(customers, _t("commercial_customer_contacts"))
+        return customers, select(customers.c.id, customers.c.customer_code, customers.c.name,
+            contact['phone'].label('phone'), contact['email'].label('email'),
+            city_expression(customers.c.city, customers.c.city_other).label('city'), customers.c.country
+        ).where(customers.c.organization_id == self.org)
 
     def get(self, customer_id) -> dict:
         customers, query = self._query()

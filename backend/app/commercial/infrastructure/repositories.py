@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.commercial.domain.enums import FollowUpPriority, FollowUpStatus
 from app.core.pagination import PageParams, paginate
 from app.core.utils import utc_now
+from app.commercial.infrastructure.contact_models import CustomerContact
 
 if TYPE_CHECKING:
     from app.core.interfaces.authorization_policy import AuthorizationContext, AuthorizationPolicy
@@ -114,7 +115,10 @@ class CustomerRepository:
         if filters.search:
             like = f"%{filters.search.strip()}%"
             statement = statement.where(or_(Customer.customer_code.ilike(like), Customer.name.ilike(like),
-                                            Customer.phone.ilike(like), Customer.email.ilike(like)))
+                Customer.effective_phone.ilike(like), Customer.effective_email.ilike(like),
+                select(CustomerContact.id).where(CustomerContact.customer_id == Customer.id,
+                    CustomerContact.organization_id == Customer.organization_id,
+                    or_(CustomerContact.phone.ilike(like), CustomerContact.email.ilike(like))).exists()))
         if filters.status:
             statement = statement.where(Customer.status == filters.status)
         if filters.relationship_stage:

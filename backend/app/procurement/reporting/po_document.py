@@ -74,6 +74,8 @@ def build(db, tenant, params, selected) -> ReportData:
     v = lambda value: value or "—"  # noqa: E731
     # MD-002: the supplier's city and country by their names in the document's language.
     city = list_names(db, tenant.organization_id, "city", [supplier.city], params.lang).get(supplier.city) if supplier else None
+    if supplier and supplier.city and supplier.city.endswith('_other') and supplier.city_other:
+        city = supplier.city_other
     country = list_names(db, tenant.organization_id, "country", [supplier.country], params.lang).get(supplier.country) if supplier else None
     address = " — ".join(x for x in (supplier.address, city, country) if x) if supplier else ""
     party = [(say("المورد", "Supplier"), o.supplier_name), (say("رمز المورد", "Supplier code"), supplier.supplier_code if supplier else "—"),

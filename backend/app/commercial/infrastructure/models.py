@@ -4,7 +4,7 @@ import uuid
 
 from sqlalchemy import Boolean, CheckConstraint, JSON, DateTime, Enum as SqlEnum, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, column_property
 
 from app.commercial.domain.enums import (
     CommercialOrderStatus,
@@ -45,6 +45,7 @@ class Customer(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     sector: Mapped[str | None] = mapped_column(String(120), nullable=True)
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    city_other: Mapped[str | None] = mapped_column(String(120), nullable=True)
     country: Mapped[str | None] = mapped_column(String(120), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -61,7 +62,6 @@ class Customer(Base):
         default=RelationshipStage.LEAD,
     )
     opportunity_source: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    estimated_consumption: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     priority_level: Mapped[PriorityLevel] = mapped_column(
         SqlEnum(PriorityLevel, name="customer_priority_level", values_callable=enum_values),
         nullable=False,
@@ -633,3 +633,11 @@ from .complaint_models import Complaint, ComplaintItem, ComplaintItemProperty, C
 from .quote_terms_models import QuoteTermsSnapshot  # noqa: F401,E402
 
 from .contact_models import CustomerContact, CustomerSite  # noqa: E402,F401
+
+# Read-only mapped expressions keep legacy columns intact while every API read
+# can expose the current default contact without an N+1 query or an ORM write.
+from app.commercial.infrastructure.contact_models import CustomerContact
+from app.core.location_fields import effective_contact_columns
+_contact_columns = effective_contact_columns(Customer.__table__, CustomerContact.__table__)
+Customer.effective_phone = column_property(_contact_columns["phone"])
+Customer.effective_email = column_property(_contact_columns["email"])

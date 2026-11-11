@@ -2,6 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from app.commercial.infrastructure.contact_models import CustomerContact,CustomerSite
 from app.core.contact_records import view
+from app.core.location_fields import city_text
 
 
 class CustomerDeliveryProvider:
@@ -18,4 +19,6 @@ class CustomerDeliveryProvider:
         m,q=self.query(org,customer_id,kind)
         row=db.scalar(q.where(m.id==record_id))
         if not row:raise HTTPException(422,'CUSTOMER_DELIVERY_RECORD_UNAVAILABLE')
-        return view(row)
+        result=view(row)
+        if kind=='sites': result['city']=city_text(row.city,row.city_other)
+        return result
