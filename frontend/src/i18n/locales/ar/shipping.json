@@ -246,7 +246,8 @@
     "DRIVER_AFFILIATION_REQUIRED": "حدد صفة السائق: داخلي يعمل لدينا أو خارجي.",
     "TRANSPORT_RECORD_UNAVAILABLE": "السائق أو المركبة أو شركة النقل غير متاحة للاختيار.",
     "CUSTOMER_DELIVERY_RECORD_UNAVAILABLE": "موقع التسليم أو جهة الاتصال غير متاح لهذا العميل.",
-    "SUPPLIER_CONTACT_UNAVAILABLE": "جهة الاتصال غير متاحة لهذا المورد."
+    "SUPPLIER_CONTACT_UNAVAILABLE": "جهة الاتصال غير متاحة لهذا المورد.",
+    "LOCATION_URL_INVALID": "يجب أن يبدأ رابط الموقع بـ https://"
   },
   "productionOrder": {
     "none": "غير مرتبط",

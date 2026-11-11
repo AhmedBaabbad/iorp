@@ -19,7 +19,11 @@
     "notesRequired": "الملاحظات مطلوبة",
     "defectCountMin": "يجب أن يكون عدد العيوب أكبر من صفر",
     "itemNameRequired": "اسم العنصر مطلوب",
-    "issueDescriptionRequired": "وصف المشكلة مطلوب"
+    "issueDescriptionRequired": "وصف المشكلة مطلوب",
+    "cityOtherRequired": "أدخل اسم المدينة عند اختيار أخرى.",
+    "cityCountryMismatch": "اختر مدينة تابعة للبلد المحدد.",
+    "locationUrlInvalid": "استخدم رابط موقع يبدأ بـ https:// ويتضمن اسم موقع صالحًا.",
+    "contactNameRequired": "أدخل اسم جهة الاتصال عند إدخال أي بيانات لها."
   },
   "success": {
     "created": "تم الإنشاء بنجاح",

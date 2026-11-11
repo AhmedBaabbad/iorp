@@ -17,19 +17,23 @@
       "relationshipStage": "Relationship Stage",
       "priority": "Priority",
       "opportunitySource": "Opportunity Source",
-      "estimatedConsumption": "Estimated Consumption",
       "salesOwner": "Sales Owner",
       "keyInfluencerName": "Key Influencer",
       "createdBy": "Added by",
       "created": "Created",
       "updated": "Updated",
       "notes": "Notes",
-      "actions": "Actions"
+      "actions": "Actions",
+      "contact_name": "Contact name",
+      "contact_phone": "Mobile",
+      "contact_email": "Email",
+      "contact_role": "Position"
     },
     "sections": {
-      "contactInfo": "Contact Information",
-      "businessInfo": "Business Information",
-      "stageInfo": "Relationship and Status"
+      "basic": "Basic information",
+      "classification": "Classification and follow-up",
+      "primaryContact": "Primary contact",
+      "notes": "Notes"
     },
     "labels": {
       "statusVsStageNote": "Status is the operational record state. Relationship stage is the commercial relationship progression."
@@ -100,7 +104,8 @@
       "choose": "Choose the customer",
       "none": "No matches",
       "loading": "Searching..."
-    }
+    },
+    "primaryContactHint": "Optional. Enter the contact name if any contact details are provided."
   },
   "interactions": {
     "sectionTitle": "Interactions",

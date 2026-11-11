@@ -11,7 +11,7 @@ export type HistoryEntry = { action: string; from_status: string | null; to_stat
 export type SupplierInput = {
   name: string; category: string;  // MD-003: a key of the organization's supplier categories
   supplies: string | null; contact_name: string | null; phone: string | null;
-  email: string | null; address: string | null; city: string | null; country: string | null; vat_number: string | null; cr_number: string | null;
+  email: string | null; address: string | null; city: string | null; city_other?: string | null; country: string | null; vat_number: string | null; cr_number: string | null;
   notes: string | null;
 };
 // The supplier's score over a period (PROC-002), from its incoming lots and the non-conformance reports about it.

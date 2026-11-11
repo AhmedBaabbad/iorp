@@ -18,7 +18,7 @@ export type ShipmentHeader = {
   driver_id?: string|null; vehicle_id?: string|null; carrier_id?: string|null; driver_affiliation?: string|null; customer_contact_id?: string|null; delivery_site_id?: string|null;
   customer_id: string | null; customer_name: string | null; customer_reference: string | null;
   consignee_name: string | null; consignee_phone: string | null; consignee_email: string | null; notify_consignee: boolean;
-  delivery_address: string | null; delivery_city: string | null; location_url: string | null;
+  delivery_address: string | null; delivery_country?: string | null; delivery_city: string | null; location_url: string | null;
   driver_name: string | null; driver_phone: string | null; driver_id_no: string | null; vehicle_plate: string | null; vehicle_type: string | null;
   carrier_name: string | null; tracking_no: string | null; notes: string | null;
 };
@@ -50,7 +50,7 @@ export type Shipment = ShipmentListItem & ShipmentHeader & {
   history: HistoryEntry[]; updated_at: string;
 };
 
-export type CustomerOption = { id: string; customer_code: string; name: string; phone: string | null; email: string | null; city: string | null };
+export type CustomerOption = { country?: string | null; id: string; customer_code: string; name: string; phone: string | null; email: string | null; city: string | null };
 export type ProductionOrderOption = { id: string; number: string; product_type: string; status: string; planned_quantity: string; unit: string };
 
 export type ShippingSettings = { note_prefix: string; return_prefix: string; return_window_days: number; weight_tolerance_pct: string };

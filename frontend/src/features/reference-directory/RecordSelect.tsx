@@ -4,7 +4,7 @@ import { useLocale } from "next-intl";
 import { apiClient } from "@/lib/api-client";
 import row from "@/components/forms/control-row.module.css";
 import s from "@/features/production-demands/demands.module.css";
-export type Option = { id: string; name: string; plate?: string; affiliation?: string; active?: boolean; contact_id?: string|null; phone?: string|null; email?: string|null; identity_no?: string|null; worker_type?: string; default_vehicle_id?: string|null; license_expiry?: string|null };
+export type Option = { address?: string|null; city?: string|null; city_other?: string|null; country?: string|null; location_url?: string|null; id: string; name: string; plate?: string; affiliation?: string; active?: boolean; contact_id?: string|null; phone?: string|null; email?: string|null; identity_no?: string|null; worker_type?: string; default_vehicle_id?: string|null; license_expiry?: string|null };
 
 export function DirectorySelect({ path, value, label, onChange }: { path: string; value?: string | null; label: string; onChange: (id: string, row?: Option) => void }) {
   const ar=useLocale()==="ar";

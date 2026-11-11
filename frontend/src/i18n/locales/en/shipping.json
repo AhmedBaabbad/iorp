@@ -246,7 +246,8 @@
     "DRIVER_AFFILIATION_REQUIRED": "Choose whether the driver is an internal employee or external.",
     "TRANSPORT_RECORD_UNAVAILABLE": "The selected driver, vehicle or carrier is unavailable.",
     "CUSTOMER_DELIVERY_RECORD_UNAVAILABLE": "The selected delivery site or contact is unavailable for this customer.",
-    "SUPPLIER_CONTACT_UNAVAILABLE": "The selected contact is unavailable for this supplier."
+    "SUPPLIER_CONTACT_UNAVAILABLE": "The selected contact is unavailable for this supplier.",
+    "LOCATION_URL_INVALID": "Location URL must use https://"
   },
   "productionOrder": {
     "none": "Not linked",

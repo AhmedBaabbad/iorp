@@ -225,7 +225,9 @@
     "DRIVER_AFFILIATION_REQUIRED": "حدد صفة السائق: داخلي يعمل لدينا أو خارجي.",
     "TRANSPORT_RECORD_UNAVAILABLE": "السائق أو المركبة أو شركة النقل غير متاحة للاختيار.",
     "CUSTOMER_DELIVERY_RECORD_UNAVAILABLE": "موقع التسليم أو جهة الاتصال غير متاح لهذا العميل.",
-    "SUPPLIER_CONTACT_UNAVAILABLE": "جهة الاتصال غير متاحة لهذا المورد."
+    "SUPPLIER_CONTACT_UNAVAILABLE": "جهة الاتصال غير متاحة لهذا المورد.",
+    "CITY_OTHER_REQUIRED": "أدخل اسم المدينة عند اختيار أخرى.",
+    "CITY_COUNTRY_MISMATCH": "اختر مدينة تابعة للبلد المحدد."
   },
   "lotStatuses": {
     "not_required": "لا تُفحص",

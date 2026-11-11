@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CountryCityFields, cityLabel } from "@/components/forms/CountryCityFields";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
@@ -16,7 +17,7 @@ import { Q } from "@/lib/quality-permissions";
 import { createSupplier, getSupplier, getSuppliers, setSupplierStatus, updateSupplier, type SupplierFilters } from "../api";
 import { procurementErrorMessage } from "../procurement-errors";
 import { SUPPLIER_CATEGORIES, SUPPLIER_STATUSES, type Evaluation, type Supplier, type SupplierInput, type SupplierStatus } from "../types";
-import { ListSelect, useListChoices, useListName } from "@/features/masterdata";
+import { useListChoices, useListName } from "@/features/masterdata";
 
 import { joinList } from "@/lib/utils";
 import { Signatures } from "@/components/Signatures";
@@ -89,8 +90,8 @@ export function SuppliersList() {
   </PageFrame>;
 }
 
-type Text = { [K in keyof Omit<SupplierInput, "category">]: string };
-const EMPTY: Text = { name: "", supplies: "", contact_name: "", phone: "", email: "", address: "", city: "", country: "", vat_number: "", cr_number: "", notes: "" };
+type Text = { [K in keyof Omit<SupplierInput, "category">]-?: string };
+const EMPTY: Text = { name: "", supplies: "", contact_name: "", phone: "", email: "", address: "", city: "", city_other: "", country: "sa", vat_number: "", cr_number: "", notes: "" };
 
 // A supplier: register one (pending evaluation), or edit its details.
 export function SupplierForm({ supplierId }: { supplierId?: string }) {
@@ -142,10 +143,7 @@ export function SupplierForm({ supplierId }: { supplierId?: string }) {
           {input("contact_name", { maxLength: 200 })}
           {input("phone", { maxLength: 30, dir: "ltr", inputMode: "tel", placeholder: "05xxxxxxxx" })}
           {input("email", { maxLength: 255, dir: "ltr", type: "email" })}
-          <label className={s.field}>{t("fields.country")}<ListSelect list="country" ariaLabel={t("fields.country")} value={v.country}
-            onChange={key => set("country", key)} /></label>
-          <label className={s.field}>{t("fields.city")}<ListSelect list="city" ariaLabel={t("fields.city")} value={v.city} parent={v.country || null}
-            onChange={key => set("city", key)} /></label>
+          <CountryCityFields value={v} onChange={patch => setV(old => ({...old, ...patch}))} />
           {input("vat_number", { maxLength: 40, dir: "ltr" })}
           {input("cr_number", { maxLength: 40, dir: "ltr" })}
           <label className={s.field}>{t("fields.address")}<textarea maxLength={1000} value={v.address} onChange={e => set("address", e.target.value)} /></label>
@@ -207,7 +205,7 @@ export function SupplierDetail({ supplierId }: { supplierId: string }) {
         <Item label={t("fields.contact_name")}>{x.contact_name ?? "—"}</Item>
         <Item label={t("fields.phone")}><bdi dir="ltr">{x.phone ?? "—"}</bdi></Item>
         <Item label={t("fields.email")}><bdi dir="ltr">{x.email ?? "—"}</bdi></Item>
-        <Item label={t("fields.city")}>{joinList([x.city ? cityName(x.city) : null, x.country ? countryName(x.country) : null], locale) || "—"}</Item>
+        <Item label={t("fields.city")}>{joinList([x.city ? cityLabel(x.city, x.city_other, cityName) : null, x.country ? countryName(x.country) : null], locale) || "—"}</Item>
         <Item label={t("fields.vat_number")}><bdi dir="ltr">{x.vat_number ?? "—"}</bdi></Item>
         <Item label={t("fields.cr_number")}><bdi dir="ltr">{x.cr_number ?? "—"}</bdi></Item>
         {x.status_changed_at && <Item label={t("suppliers.standing")}>{x.status_changed_by_name} · {fmt.dateTime(x.status_changed_at)}
