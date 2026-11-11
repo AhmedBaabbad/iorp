@@ -20,6 +20,13 @@ class AccountInput(BaseModel):
     password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
     password_confirmation: str
 
+    @field_validator("password", mode="before")
+    @classmethod
+    def password_length_code(cls, value):
+        if isinstance(value, str) and len(value) < PASSWORD_MIN_LENGTH:
+            raise PydanticCustomError("PASSWORD_TOO_SHORT", "Password must be at least {minimum} characters", {"minimum": PASSWORD_MIN_LENGTH})
+        return value
+
     @model_validator(mode="after")
     def passwords_match(self):
         try:

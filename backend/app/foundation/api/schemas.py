@@ -1,10 +1,11 @@
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic_core import PydanticCustomError
 from typing import Literal
 
 from app.core.types import ISODatetime, NormalizedEmail
-from app.core.password_policy import PASSWORD_MIN_LENGTH
+from app.core.password_policy import PASSWORD_MIN_LENGTH, PasswordPolicyError, validate_password
 from app.foundation.domain.enums import OrganizationStatus, UserStatus
 
 
@@ -35,6 +36,21 @@ class UserCreate(BaseModel):
     phone: str | None = Field(default=None, max_length=50)
     password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
     status: UserStatus = UserStatus.ACTIVE
+
+    @field_validator("password", mode="before")
+    @classmethod
+    def password_length_code(cls, value):
+        if isinstance(value, str) and len(value) < PASSWORD_MIN_LENGTH:
+            raise PydanticCustomError("PASSWORD_TOO_SHORT", "Password must be at least {minimum} characters", {"minimum": PASSWORD_MIN_LENGTH})
+        return value
+
+    @model_validator(mode="after")
+    def password_policy(self):
+        try:
+            validate_password(self.password, self.password, str(self.email))
+        except PasswordPolicyError as exc:
+            raise PydanticCustomError(exc.code, str(exc)) from exc
+        return self
 
 
 class UserRead(BaseModel):

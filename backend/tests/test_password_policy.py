@@ -24,6 +24,17 @@ def test_eight_characters_are_sufficient_for_all_accounts():
 
 
 @pytest.mark.parametrize("platform", [False, True])
+def test_account_schemas_preserve_short_password_code(platform):
+    from pydantic import ValidationError
+    from app.foundation.api.schemas import UserCreate
+    from app.platform.api.schemas import PlatformRootInput
+    schema = PlatformRootInput if platform else UserCreate
+    with pytest.raises(ValidationError) as caught:
+        schema(full_name="Test", email="test@example.com", password="Ab1!", password_confirmation="Ab1!")
+    assert caught.value.errors()[0]["type"] == "PASSWORD_TOO_SHORT"
+
+
+@pytest.mark.parametrize("platform", [False, True])
 @pytest.mark.parametrize("password,code", [
     ("Ab1!", "PASSWORD_TOO_SHORT"), ("ABCDEFG1!", "PASSWORD_NEEDS_LOWER"),
     ("abcdefg1!", "PASSWORD_NEEDS_UPPER"), ("Abcdefg!!", "PASSWORD_NEEDS_DIGIT"),
