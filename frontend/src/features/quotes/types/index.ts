@@ -25,6 +25,7 @@ export type QuoteSampleOption = {
   customer_id: string;
   sample_code: string;
   product_type: string;
+  requested_spec_json?: RequestedSpec | null;
 };
 
 export type QuoteListItem = {

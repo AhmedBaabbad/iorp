@@ -418,7 +418,8 @@
         "unit": "Unit",
         "unitPrice": "Unit Price",
         "lineTotal": "Total"
-      }
+      },
+      "addFromSample": "Add line from sample"
     },
     "summary": {
       "sectionTitle": "Quote Summary",

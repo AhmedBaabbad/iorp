@@ -44,3 +44,29 @@ it("shows the server's actual allowed validity limit", async () => {
   fireEvent.submit(container.querySelector("form")!);
   expect(await screen.findByRole("alert")).toHaveProperty("textContent", "errors.validityExceeded:7");
 });
+
+async function chooseSample() {
+  api.samples.mockResolvedValue([{ id: "s1", customer_id: "c1", sample_code: "S-1", product_type: "film", requested_spec_json: { width: 20 } }]);
+  await waitFor(() => expect(screen.getByRole("button", { name: "actions.create" }).hasAttribute("disabled")).toBe(false));
+  fireEvent.click(screen.getByRole("button", { name: "fields.customer" }));
+  await screen.findByRole("option", { name: /S-1/ });
+  fireEvent.change(screen.getByRole("combobox", { name: "fields.sample" }), { target: { value: "s1" } });
+}
+
+it("copies sample product/specification into an empty editable line", async () => {
+  render(<QuoteForm />);
+  await chooseSample();
+  expect(screen.getByLabelText("items.fields.productType")).toHaveProperty("value", "film");
+  expect(screen.getByLabelText("Specification")).toHaveProperty("value", '{"width":20}');
+  fireEvent.change(screen.getByLabelText("Specification"), { target: { value: '{"width":25}' } });
+  expect(screen.getByLabelText("Specification")).toHaveProperty("value", '{"width":25}');
+});
+
+it("preserves written lines and adds the sample only on explicit request", async () => {
+  render(<QuoteForm />);
+  fireEvent.change(screen.getByLabelText("Specification"), { target: { value: '{"keep":true}' } });
+  await chooseSample();
+  expect(screen.getByLabelText("Specification")).toHaveProperty("value", '{"keep":true}');
+  fireEvent.click(screen.getByRole("button", { name: "items.addFromSample" }));
+  expect(screen.getAllByLabelText("Specification").map(node => (node as HTMLInputElement).value)).toEqual(['{"keep":true}', '{"width":20}']);
+});

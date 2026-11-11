@@ -418,7 +418,8 @@
         "unit": "الوحدة",
         "unitPrice": "سعر الوحدة",
         "lineTotal": "الإجمالي"
-      }
+      },
+      "addFromSample": "إضافة بند من العينة"
     },
     "summary": {
       "sectionTitle": "ملخص العرض",

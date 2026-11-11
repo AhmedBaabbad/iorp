@@ -214,6 +214,23 @@ export function QuoteForm() {
     }));
   }
 
+  function sampleItem(sample: QuoteSampleOption): QuoteItemFormValues {
+    const product = products?.find(product => product.key === sample.product_type);
+    return { ...createDefaultItem(), product_type: sample.product_type,
+      requested_spec_json: sample.requested_spec_json ? JSON.stringify(sample.requested_spec_json) : "",
+      unit: product?.default_unit ?? "" };
+  }
+
+  function selectSample(id: string) {
+    const sample = samples.find(sample => sample.id === id);
+    setValues(current => ({ ...current, sample_id: id,
+      items: sample && !current.items.some(itemHasInput)
+        ? current.items.map((item, index) => index === 0 ? sampleItem(sample) : item)
+        : current.items }));
+  }
+
+  const selectedSample = samples.find(sample => sample.id === values.sample_id);
+
   function removeItem(index: number) {
     setValues((current) => ({
       ...current,
@@ -280,7 +297,8 @@ export function QuoteForm() {
               <select
                 style={sharedStyles.input}
                 value={values.sample_id}
-                onChange={(event) => updateField("sample_id", event.target.value)}
+                aria-label={t("fields.sample")}
+                onChange={(event) => selectSample(event.target.value)}
                 disabled={isSubmitting || !values.customer_id || isLoadingSamples}
               >
                 <option value="">
@@ -297,6 +315,10 @@ export function QuoteForm() {
               {isLoadingSamples ? (
                 <p style={styles.helper}>{messages("loading.fetching")}</p>
               ) : null}
+              {selectedSample && values.items.some(itemHasInput) ? <button type="button" style={sharedStyles.secondaryButton}
+                disabled={isSubmitting} onClick={() => updateField("items", [...values.items, sampleItem(selectedSample)])}>
+                {t("items.addFromSample")}
+              </button> : null}
             </div>
 
             <label style={sharedStyles.field}>
@@ -543,6 +565,10 @@ function createDefaultValues(): QuoteFormValues {
     notes: "",
     items: [createDefaultItem()],
   };
+}
+
+function itemHasInput(item: QuoteItemFormValues): boolean {
+  return Object.values(item).some(value => value.trim() !== "");
 }
 
 function createDefaultItem(): QuoteItemFormValues {
