@@ -22,11 +22,62 @@ import { PageFrame } from "@/components/layout/page-frame";
 
 let en: Record<string, unknown>;
 beforeAll(async () => { en = await loadMessages("en") as Record<string, unknown>; });
-beforeEach(() => { window.localStorage.clear(); nav.pathname = "/production-orders"; });
-afterEach(cleanup);
+beforeEach(() => { window.localStorage.clear(); window.sessionStorage.clear(); nav.pathname = "/production-orders"; });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 const ui = () => render(<NextIntlClientProvider locale="en" messages={en} timeZone="UTC"><PageFrame title="Orders">content</PageFrame></NextIntlClientProvider>);
 
 describe("sidebar", () => {
+  it("shows the transport directory only once under master data", () => {
+    nav.pathname = "/shipping-directory";
+    ui();
+    const links = document.querySelectorAll('a[href="/shipping-directory"]');
+    expect(links.length).toBe(1);
+    expect(links[0].parentElement?.parentElement?.querySelector("button")?.textContent).toContain("Master data");
+  });
+
+  it("restores scroll across page remounts and leaves a visible active link alone", () => {
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(200);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return { top: this.tagName === "NAV" ? 100 : 120, bottom: this.tagName === "NAV" ? 300 : 140, height: 20 } as DOMRect;
+    });
+    const nearest = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: nearest });
+    const first = ui();
+    const scroll = document.querySelector<HTMLElement>(".iorp-sidebar-nav")!;
+    scroll.scrollTop = 700; fireEvent.scroll(scroll);
+    first.unmount();
+    nav.pathname = "/quality-checks";
+    ui();
+    expect(document.querySelector(".iorp-sidebar-nav")?.scrollTop).toBe(700);
+    expect(nearest).not.toHaveBeenCalled();
+  });
+
+  it("brings an offscreen active link into view using nearest", () => {
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(200);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return { top: this.tagName === "NAV" ? 100 : 400, bottom: this.tagName === "NAV" ? 300 : 420, height: 20 } as DOMRect;
+    });
+    const nearest = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: nearest });
+    ui();
+    expect(nearest).toHaveBeenCalledWith({ block: "nearest" });
+  });
+
+  it("restores the same saved position when the mobile drawer opens", () => {
+    window.sessionStorage.setItem("iorp.sidebar.scroll", "540");
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.closest(".iorp-sidebar-open") ? 200 : 0;
+    });
+    ui();
+    fireEvent.click(document.querySelector(".iorp-hamburger")!);
+    expect(document.querySelector(".iorp-sidebar-nav")?.scrollTop).toBe(540);
+  });
+
+  it("still navigates when session storage is blocked", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
+    ui();
+    expect(() => fireEvent.scroll(document.querySelector(".iorp-sidebar-nav")!)).not.toThrow();
+  });
   it("opens the section of the page shown and folds the others", () => {
     ui();
     const production = screen.getByRole("button", { name: /Production/ });
