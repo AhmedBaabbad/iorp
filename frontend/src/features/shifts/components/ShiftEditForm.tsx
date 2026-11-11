@@ -99,7 +99,7 @@ export function ShiftEditForm({ shift }: Props) {
     if (field === "name") setNameManual(true);
     setValues(current => ({ ...current, [field]: value,
       ...(field === "shift_type" && !nameManual
-        ? { name: value === "custom" ? "" : t(`defaultNames.${value}`) } : {}),
+        ? { name: value === "custom" ? "" : t(`defaultNames.${value as Exclude<ShiftType, "custom">}`) } : {}),
     }));
   }
 
