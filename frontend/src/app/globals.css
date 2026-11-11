@@ -13,6 +13,14 @@
  * Themes: light (default), dark, dim (low-glare night shift), contrast (high contrast, bright floors).
  */
 :root {
+  --control-height: 44px;
+  --control-padding-inline: 12px;
+  --control-radius: 6px;
+  --control-border: var(--border-strong);
+  --field-gap: 8px;
+  --label-size: 14px;
+  --label-weight: 700;
+  --form-gap: 16px;
   /* the sidebar (DASH-002): a blue panel; text and the active item keep their contrast */
   --sidebar-bg: #2448c9;
   --sidebar-bg-end: #1f3fae;
@@ -359,3 +367,29 @@ option:disabled { color: var(--text-subtle); }
 .iorp-session-secondary { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); }
 
 .iorp-session-overlay > .iorp-session-dialog { margin: auto; flex-shrink: 0; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; }
+
+/* Inline form grids share alignment without screen-specific overrides. */
+form [style*="grid-template-columns"]:not([style*="align-items"]), form[style*="grid-template-columns"]:not([style*="align-items"]),
+[style*="grid-template-columns"]:has(> [style*="gap: var(--field-gap)"]):not([style*="align-items"]) {
+  align-items: start;
+  gap: var(--form-gap);
+}
+/* Older sharedStyles callers put the control directly in a bare label. */
+label:has(> :is(input, select, textarea)[style*="var(--control-border)"]) {
+  display: grid;
+  min-inline-size: 0;
+  gap: var(--field-gap);
+  font-size: var(--label-size);
+  font-weight: var(--label-weight);
+}
+/* Helper text stays normal while the field title retains its label weight. */
+:is([style*="gap: var(--field-gap)"], label:has(> [style*="var(--control-border)"])) :is(small, [role="alert"], .muted, .error),
+:is([style*="gap: var(--field-gap)"], label:has(> [style*="var(--control-border)"])) > span ~ span,
+:is([style*="gap: var(--field-gap)"], label:has(> [style*="var(--control-border)"])) > :is(input, select, textarea) ~ span {
+  font-weight: 400;
+}
+/* Choice inputs keep native sizing, and multiple selects can grow. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="image"]):not([type="submit"]):not([type="reset"]):not([type="button"]), select:not([multiple]) {
+  block-size: var(--control-height);
+  box-sizing: border-box;
+}

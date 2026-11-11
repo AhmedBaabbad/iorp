@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 
+import { FormSection } from "@/components/forms/FormSection";
 import { DirectoryPanel } from "@/features/reference-directory/DirectoryPanel";
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth/permission-hooks";
@@ -132,7 +133,7 @@ export function SupplierForm({ supplierId }: { supplierId?: string }) {
   return <PageFrame title={title} subtitle={t("suppliers.formSubtitle")} action={<Link href={back} className={s.button}>{t("back")}</Link>}>
     {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form onSubmit={submit} aria-label={title}>
       <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0 }}>
-        <section className={s.panel}><div className={s.grid}>
+        <FormSection title={t("suppliers.detailsSection")}>
           {input("name", { required: true, maxLength: 255 })}
           <label className={s.field}>{t("fields.category")}
             <select value={category} onChange={e => setCategory(e.target.value)}>
@@ -147,10 +148,9 @@ export function SupplierForm({ supplierId }: { supplierId?: string }) {
             onChange={key => set("city", key)} /></label>
           {input("vat_number", { maxLength: 40, dir: "ltr" })}
           {input("cr_number", { maxLength: 40, dir: "ltr" })}
-        </div>
           <label className={s.field}>{t("fields.address")}<textarea maxLength={1000} value={v.address} onChange={e => set("address", e.target.value)} /></label>
           <label className={s.field}>{t("fields.notes")}<textarea maxLength={4000} value={v.notes} onChange={e => set("notes", e.target.value)} /></label>
-        </section>
+        </FormSection>
       </fieldset>
       {error && <p role="alert" className={s.error}>{error}</p>}
       <div className={s.actions}>
