@@ -84,7 +84,8 @@ export function ShiftForm() {
   const common = useTranslations("common");
   const messages = useTranslations("messages");
   const router = useRouter();
-  const [values, setValues] = useState<ShiftFormValues>(defaultValues);
+  const [values, setValues] = useState<ShiftFormValues>(() => ({ ...defaultValues, name: t("defaultNames.morning") }));
+  const [nameManual, setNameManual] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successRedirect, setSuccessRedirect] = useState<string | null>(null);
@@ -99,9 +100,10 @@ export function ShiftForm() {
     field: TField,
     value: ShiftFormValues[TField],
   ) {
-    setValues((current) => ({
-      ...current,
-      [field]: value,
+    if (field === "name") setNameManual(true);
+    setValues(current => ({ ...current, [field]: value,
+      ...(field === "shift_type" && !nameManual
+        ? { name: value === "custom" ? "" : t(`defaultNames.${value}`) } : {}),
     }));
   }
 
@@ -171,7 +173,8 @@ export function ShiftForm() {
                 disabled={isSubmitting}
                 required
               />
-            </label>
+            <small style={{ color: "var(--text-muted)" }}>{t("nameHint")}</small>
+              </label>
 
             <label style={sharedStyles.field}>
               <span style={sharedStyles.label}>

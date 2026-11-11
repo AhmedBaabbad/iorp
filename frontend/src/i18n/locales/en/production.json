@@ -116,7 +116,13 @@
       "confirm": "Delete Permanently",
       "deleting": "Deleting..."
     },
-    "rosters": "Shift Rosters & History"
+    "rosters": "Shift Rosters & History",
+    "defaultNames": {
+      "morning": "Morning shift",
+      "evening": "Evening shift",
+      "night": "Night shift"
+    },
+    "nameHint": "Name shown in schedules, for example: Morning shift – Line 1"
   },
   "productionOrders": {
     "listTitle": "Production Orders",
