@@ -105,6 +105,7 @@
     "emptyHint": "سجّل الموردين الذين تشتري منهم المواد.",
     "createTitle": "مورد جديد",
     "editTitle": "تعديل المورد",
+    "detailsSection": "بيانات المورد",
     "formSubtitle": "يُرقَّم SUP-NNNN؛ ويبقى بانتظار التقييم حتى يُعتمد.",
     "suppliesPlaceholder": "مثال: حبيبات PP، ماستر باتش",
     "back": "العودة إلى الموردين",

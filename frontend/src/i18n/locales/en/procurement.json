@@ -105,6 +105,7 @@
     "emptyHint": "Register the suppliers you buy materials from.",
     "createTitle": "New supplier",
     "editTitle": "Edit supplier",
+    "detailsSection": "Supplier details",
     "formSubtitle": "Numbered SUP-NNNN; pending until it is evaluated.",
     "suppliesPlaceholder": "e.g. PP homopolymer, masterbatch",
     "back": "Back to suppliers",

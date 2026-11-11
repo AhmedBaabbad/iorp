@@ -133,7 +133,7 @@ export function SupplierForm({ supplierId }: { supplierId?: string }) {
   return <PageFrame title={title} subtitle={t("suppliers.formSubtitle")} action={<Link href={back} className={s.button}>{t("back")}</Link>}>
     {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form onSubmit={submit} aria-label={title}>
       <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0 }}>
-        <FormSection title={title}>
+        <FormSection title={t("suppliers.detailsSection")}>
           {input("name", { required: true, maxLength: 255 })}
           <label className={s.field}>{t("fields.category")}
             <select value={category} onChange={e => setCategory(e.target.value)}>

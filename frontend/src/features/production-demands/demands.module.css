@@ -3,7 +3,8 @@
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: var(--form-gap); align-items: start; }
 .field { min-inline-size: 0; display: grid; gap: var(--field-gap); font-size: var(--label-size); font-weight: var(--label-weight); }
 .field input:not([type="checkbox"]):not([type="radio"]), .field select, .field textarea { min-inline-size: 0; width: 100%; box-sizing: border-box; padding: 10px var(--control-padding-inline); border: 1px solid var(--control-border); border-radius: var(--control-radius); background: var(--surface); color: var(--text); font: inherit; font-size: 1rem; font-weight: 400; outline-color: var(--focus); }
-.field input:not([type="checkbox"]):not([type="radio"]), .field select:not([multiple]) { block-size: var(--control-height); }
+.field input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="image"]):not([type="submit"]):not([type="reset"]):not([type="button"]), .field select:not([multiple]) { block-size: var(--control-height); }
+.field :is(small, [role="alert"], .muted, .error), :global([style*="gap: var(--field-gap)"]) :is(.muted, .error), .field > span ~ span, .field > :is(input, select, textarea) ~ span { font-weight: 400; }
 .field textarea { min-block-size: 90px; resize: vertical; }
 .tableWrap { overflow-x: auto; }
 .table { border-collapse: collapse; width: 100%; font-size: 14px; }

@@ -25,13 +25,47 @@ test("form tokens are defined once in the root and both styling systems consume 
   assert.match(demands, /min-block-size:\s*90px/);
 });
 
-test("fixed height excludes checkbox, radio and multiple select", () => {
+test("fixed height excludes native special inputs and multiple selects in both systems", () => {
   for (const css of [globals, demands]) {
-    assert.match(css, /input:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\)/);
-    assert.match(css, /select:not\(\[multiple\]\)[^{]*\{[^}]*block-size:\s*var\(--control-height\)/);
+    const rule = css.match(/([^{}]+)\{[^{}]*block-size:\s*var\(--control-height\)[^{}]*\}/);
+    assert.ok(rule);
+    for (const type of ["checkbox", "radio", "hidden", "file", "range", "color", "image", "submit", "reset", "button"]) {
+      assert.ok(rule[1].includes(`:not([type="${type}"])`), type);
+    }
+    assert.ok(rule[1].includes("select:not([multiple])"));
   }
   const row = read("../src/components/forms/control-row.module.css");
   assert.match(row, /display:\s*flex/);
   assert.match(row, /min-inline-size:\s*0/);
   assert.match(row, /block-size:\s*var\(--control-height\)/);
+});
+
+test("inline grid defaults respect explicit alignment and do not force inline gaps", () => {
+  const rule = globals.match(/\/\* Inline form grids[^]*?\*\/\s*([^{}]+)\{([^}]+)\}/);
+  assert.ok(rule);
+  assert.doesNotMatch(rule[0], /!important/);
+  const selectors = rule[1].split(",").map(s => s.trim());
+  assert.equal(selectors.length, 3);
+  for (const selector of selectors) assert.ok(selector.endsWith(':not([style*="align-items"])'));
+  assert.match(rule[2], /align-items:\s*start;/);
+  assert.match(rule[2], /gap:\s*var\(--form-gap\);/);
+  const defects = read("../src/features/quality-defects/components/QualityDefectForm.tsx");
+  assert.match(defects, /row:\s*\{[^}]*display:\s*"grid"[^}]*alignItems:\s*"end"/);
+});
+
+test("directory controls wrap independently from the ListSelect management row", () => {
+  const css = read("../src/components/forms/control-row.module.css");
+  const directory = css.match(/\.directoryRow\s*\{([^}]+)\}/)[1];
+  assert.match(directory, /flex-wrap:\s*wrap/);
+  assert.match(css, /div\.directoryRow > input, div\.directoryRow > select\s*\{[^}]*flex:\s*1 1 10rem;[^}]*min-inline-size:\s*min\(10rem, 100%\)/);
+  assert.doesNotMatch(css.match(/\.row\s*\{([^}]+)\}/)[1], /flex-wrap/);
+  assert.match(read("../src/features/reference-directory/RecordSelect.tsx"), /className=\{row.directoryRow\}/);
+});
+
+test("helpers have normal weight without changing field title weight", () => {
+  for (const css of [globals, demands]) {
+    assert.match(css, /:is\(small, \[role="alert"\], \.muted, \.error\)[^{}]*\{\s*font-weight:\s*400;/);
+    assert.match(css, /> span ~ span/);
+    assert.match(css, /font-weight:\s*var\(--label-weight\)/);
+  }
 });
