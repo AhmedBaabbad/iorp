@@ -474,7 +474,8 @@
       "signatureTitle": "المسمى",
       "termTitle": "العنوان",
       "termBody": "النص",
-      "notWritten": "غير مكتوب بهذه اللغة: لن يُطبع."
+      "notWritten": "غير مكتوب بهذه اللغة: لن يُطبع.",
+      "validityDays": "مدة صلاحية العرض (أيام)"
     },
     "lifecycle": {
       "title": "حالة عرض السعر",
@@ -514,6 +515,9 @@
       "subtotalBefore": "المجموع قبل الخصم",
       "total": "الخصم",
       "subtotalAfter": "المجموع بعد الخصم"
+    },
+    "errors": {
+      "validityExceeded": "يجب أن يكون تاريخ الصلاحية من تاريخ الإصدار وحتى {days} أيام بعده."
     }
   },
   "commercialOrders": {

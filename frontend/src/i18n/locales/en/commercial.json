@@ -474,7 +474,8 @@
       "signatureTitle": "Title",
       "termTitle": "Title",
       "termBody": "Text",
-      "notWritten": "Not written in this language: it will not be printed."
+      "notWritten": "Not written in this language: it will not be printed.",
+      "validityDays": "Quote validity (days)"
     },
     "lifecycle": {
       "title": "Quotation status",
@@ -514,6 +515,9 @@
       "subtotalBefore": "Subtotal before discount",
       "total": "Discount",
       "subtotalAfter": "Subtotal after discount"
+    },
+    "errors": {
+      "validityExceeded": "Validity must be between the issue date and {days} days after it."
     }
   },
   "commercialOrders": {

@@ -19,7 +19,7 @@ def get(client, headers, path):
 
 
 def quote(client, headers, customer, **extra):
-    body = {"issue_date": "2026-06-09T10:00:00Z", "valid_until": "2026-07-09T10:00:00Z", "currency": "SAR",
+    body = {"issue_date": "2026-06-09T10:00:00Z", "valid_until": "2026-06-19T10:00:00Z", "currency": "SAR",
             "items": [{"line_no": 1, "product_type": "pp_strap", "quantity": "10", "unit": "kg", "unit_price": "2"}], **extra}
     return client.post(f"{API}/customers/{customer}/quotes", json=body, headers=headers).json()
 

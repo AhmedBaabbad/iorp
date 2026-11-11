@@ -14,7 +14,7 @@ _BASE_CUSTOMER = {"customer_code": "CUST-QUOTE-001", "name": "Quote Corp"}
 _BASE_QUOTE = {
     "quote_number": "Q-001",
     "issue_date": "2026-06-09T10:00:00Z",
-    "valid_until": "2026-07-09T10:00:00Z",
+    "valid_until": "2026-06-19T10:00:00Z",
     "currency": "SAR",
     "discount_amount": "0.00",
     "tax_amount": "0.00",

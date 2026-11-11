@@ -26,6 +26,7 @@ class QuoteSettingsUpdate(BaseModel):
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
     # Every quotation is printed in this language, with the settings written in it.
     document_language: Literal['ar', 'en'] = 'ar'
+    quote_validity_days: int = Field(default=10, ge=1, le=365, strict=True)
     signature_title_ar: str | None = Field(default=None, max_length=255)
     signature_title_en: str | None = Field(default=None, max_length=255)
     show_preparer_name: bool = False

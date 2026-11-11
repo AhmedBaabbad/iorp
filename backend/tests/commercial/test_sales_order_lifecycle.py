@@ -45,7 +45,7 @@ def s(client, auth_headers, test_user, approver_headers):
 
 
 def quote(s, **extra):
-    body = {"issue_date": "2026-06-09T10:00:00Z", "valid_until": "2026-07-09T10:00:00Z", "currency": "USD",
+    body = {"issue_date": "2026-06-09T10:00:00Z", "valid_until": "2026-06-19T10:00:00Z", "currency": "USD",
             "items": [{"line_no": 1, "product_type": "pp_strap", "requested_spec_json": {"width_mm": 19}, "quantity": "1000",
                        "unit": "kg", "unit_price": "2.50"},
                       {"line_no": 2, "product_type": "pp_strap", "requested_spec_json": {"width_mm": 12}, "quantity": "500",

@@ -2,6 +2,10 @@
 final (a sales order is made from it); an issued, rejected or expired one goes back to a draft as a new revision, with a
 reason. Every step is written to the status history (SALES-001, commercial/domain/lifecycle.py)."""
 from decimal import Decimal
+from datetime import timedelta, timezone
+from app.commercial.application.quote_settings_service import QuoteSettingsService
+
+
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -26,6 +30,19 @@ from app.core.tenancy import TenantContext
 from app.core import numbering
 
 
+class QuoteValidityError(ValueError):
+    code = "QUOTE_VALIDITY_EXCEEDED"
+
+    def __init__(self, days):
+        super().__init__(self.code)
+        self.days = days
+
+
+def _utc(value):
+    # SQLite tests/legacy rows can return naive UTC; PostgreSQL returns aware UTC.
+    return value.replace(tzinfo=timezone.utc) if value is not None and value.tzinfo is None else value
+
+
 def _all(_action) -> bool:
     return True
 
@@ -42,6 +59,12 @@ class QuoteService:
         self.quotes.owner_user_id = owner_user_id
         self.customers.owner_user_id = owner_user_id
         self.orders.owner_user_id = owner_user_id
+
+    def _validate_validity(self, tenant, issue, until):
+        days = QuoteSettingsService(self.db, tenant.organization_id).validity_days()
+        issue, until = _utc(issue), _utc(until)
+        if issue is None or until is None or until < issue or until > issue + timedelta(days=days):
+            raise QuoteValidityError(days)
 
     @staticmethod
     def _build_quote_items(items: list[QuoteItemCreate]) -> list[QuoteItem]:
@@ -102,6 +125,8 @@ class QuoteService:
         customer = self.customers.get_by_id(tenant.organization_id, customer_id)
         if customer is None:
             return None
+
+        self._validate_validity(tenant, data.issue_date, data.valid_until)
 
         if data.sample_id is not None:
             sample = self.samples.get_by_id(tenant.organization_id, data.sample_id)
@@ -253,6 +278,10 @@ class QuoteService:
 
         payload = data.model_dump(exclude_unset=True)
         items_payload = payload.pop("items", None)
+        issue = payload.get("issue_date", quote.issue_date)
+        until = payload.get("valid_until", quote.valid_until)
+        if _utc(issue) != _utc(quote.issue_date) or _utc(until) != _utc(quote.valid_until):
+            self._validate_validity(tenant, issue, until)
 
         if "sample_id" in payload and payload["sample_id"] is not None:
             sample = self.samples.get_by_id(tenant.organization_id, payload["sample_id"])

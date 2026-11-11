@@ -97,6 +97,11 @@ export function QuoteSettingsPage() {
           </section>
 
           <section style={panel}>
+            <label style={sharedStyles.field}><span style={sharedStyles.label}>{t("validityDays")}</span>
+              <input style={sharedStyles.input} type="number" min={1} max={365} step={1} value={settings.quote_validity_days ?? 10} disabled={disabled}
+                onChange={e => setSettings({ ...settings, quote_validity_days: Number(e.target.value) })} /></label>
+          </section>
+          <section style={panel}>
             <h2 style={{ margin: 0, fontSize: "18px" }}>{t("signature")}</h2>
             <p style={{ margin: 0, color: "var(--text-muted)" }}>{t("signatureHint")}</p>
             <label style={{ ...sharedStyles.field, maxWidth: "420px" }}><span style={sharedStyles.label}>{t("signatureTitle")}</span>
@@ -149,7 +154,7 @@ export function QuoteSettingsPage() {
             })}
           </section>
 
-          {canUpdate ? <div><button type="button" style={sharedStyles.button} disabled={saving} onClick={() => void save()}>
+          {canUpdate ? <div><button type="button" style={sharedStyles.button} disabled={saving || !Number.isInteger(settings.quote_validity_days ?? 10) || (settings.quote_validity_days ?? 10) < 1 || (settings.quote_validity_days ?? 10) > 365} onClick={() => void save()}>
             {saving ? messages("loading.saving") : t("save")}</button></div> : null}
         </div>
       ) : null}

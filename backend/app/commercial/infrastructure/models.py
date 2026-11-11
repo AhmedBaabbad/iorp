@@ -391,6 +391,7 @@ class QuoteSettings(Base):
     organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_organizations.id"), primary_key=True)
     # ar | en: every quotation is printed in this language, with the settings written in it (nothing from the other one).
     document_language: Mapped[str] = mapped_column(String(2), nullable=False, default="ar", server_default="ar")
+    quote_validity_days: Mapped[int] = mapped_column(Integer, nullable=False, default=10, server_default="10")
     signature_title_ar: Mapped[str | None] = mapped_column(String(255), nullable=True)
     signature_title_en: Mapped[str | None] = mapped_column(String(255), nullable=True)
     show_preparer_name: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
