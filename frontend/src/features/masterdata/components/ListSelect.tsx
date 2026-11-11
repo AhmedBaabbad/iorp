@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import row from "@/components/forms/control-row.module.css";
 import { useLocale, useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
 
@@ -33,7 +34,7 @@ export function ListSelect({ id, list, value, onChange, parent, required = false
   }
   const choices = all.filter(i => i.active && (!parent || !i.parent_key || i.parent_key === parent));
   const current = value && !choices.some(i => i.key === value) ? all.find(i => i.key === value) : undefined;
-  return <span style={{ display: "grid", gap: 4 }}>
+  return <span className={row.row}>
     <select id={id} className={className} style={style} aria-label={ariaLabel} required={required} disabled={disabled} value={value}
       onChange={e => onChange(e.target.value, all.find(i => i.key === e.target.value))}>
       <option value="">{t("chooseItem")}</option>
@@ -41,6 +42,6 @@ export function ListSelect({ id, list, value, onChange, parent, required = false
       {value && !choices.some(i => i.key === value)
         ? <option value={value}>{current ? t("inactive", { name: name(current) }) : t("legacy", { value })}</option> : null}
     </select>
-    {canManage ? <small><Link href={`/master-data/lists?list=${list}`} target="_blank">{t("manageList")}</Link></small> : null}
+    {canManage ? <Link className={row.manage} href={`/master-data/lists?list=${list}`} target="_blank" rel="noopener noreferrer" title={t("manageList")} aria-label={t("manageList")}><span aria-hidden="true">&#9881;</span></Link> : null}
   </span>;
 }

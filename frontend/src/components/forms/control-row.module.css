@@ -1,0 +1,4 @@
+.row { display: flex; align-items: start; gap: var(--field-gap); min-inline-size: 0; inline-size: 100%; }
+.row > input, .row > select { flex: 1 1 0; min-inline-size: 0; inline-size: 0; }
+.manage { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 var(--control-height); block-size: var(--control-height); box-sizing: border-box; border: 1px solid var(--control-border); border-radius: var(--control-radius); background: var(--surface); color: var(--text); text-decoration: none; }
+.manage:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

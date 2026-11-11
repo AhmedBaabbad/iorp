@@ -1,9 +1,10 @@
 .panel { padding: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 20px; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 20px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
-.field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
-.field input, .field select, .field textarea { padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font: inherit; }
-.field textarea { min-height: 90px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: var(--form-gap); align-items: start; }
+.field { min-inline-size: 0; display: grid; gap: var(--field-gap); font-size: var(--label-size); font-weight: var(--label-weight); }
+.field input:not([type="checkbox"]):not([type="radio"]), .field select, .field textarea { min-inline-size: 0; width: 100%; box-sizing: border-box; padding: 10px var(--control-padding-inline); border: 1px solid var(--control-border); border-radius: var(--control-radius); background: var(--surface); color: var(--text); font: inherit; font-size: 1rem; font-weight: 400; outline-color: var(--focus); }
+.field input:not([type="checkbox"]):not([type="radio"]), .field select:not([multiple]) { block-size: var(--control-height); }
+.field textarea { min-block-size: 90px; resize: vertical; }
 .tableWrap { overflow-x: auto; }
 .table { border-collapse: collapse; width: 100%; font-size: 14px; }
 .table th, .table td { padding: 14px 10px; text-align: start; border-bottom: 1px solid var(--border); vertical-align: top; }
