@@ -4,10 +4,10 @@ import {afterEach,beforeAll,beforeEach,expect,it,vi} from "vitest";
 import type {ReactNode} from "react";
 import {loadMessages} from "@/i18n/messages";
 import {ApiClientError} from "@/lib/api-client";
-const mocks=vi.hoisted(()=>({allowed:true,remove:vi.fn(),list:vi.fn(),push:vi.fn(),success:vi.fn()}));
+const mocks=vi.hoisted(()=>({allowed:true,remove:vi.fn(),list:vi.fn(),push:vi.fn(),success:vi.fn(),error:vi.fn()}));
 vi.mock("@/features/auth",()=>({usePermission:()=>mocks.allowed,useAuth:()=>({user:null})}));
 vi.mock("next/navigation",()=>({useRouter:()=>({push:mocks.push,refresh:vi.fn()})}));
-vi.mock("@/components/notify/Notifications",()=>({useNotify:()=>({success:mocks.success})}));
+vi.mock("@/components/notify/Notifications",()=>({useNotify:()=>({success:mocks.success,error:mocks.error})}));
 vi.mock("@/components/layout/page-frame",()=>({PageFrame:({children}:{children:ReactNode})=><main>{children}</main>}));
 vi.mock("@/features/admin-users/api/admin-users-api",()=>({permanentlyDeleteAdminUser:mocks.remove,listAdminUsers:mocks.list,activateAdminUser:vi.fn(),lockAdminUser:vi.fn(),unlockAdminUser:vi.fn()}));
 import {UserPresence} from "@/features/admin-users/components/UserPresence";
@@ -43,14 +43,46 @@ function confirm(){
   fireEvent.change(screen.getByRole("textbox",{name:"Reason"}),{target:{value:"Created by mistake"}});
   fireEvent.change(screen.getByRole("textbox",{name:/Type the user/}),{target:{value:user.email}});
 }
-it("requires reason and exact email before deleting and returns to the list",async()=>{
+it("requires reason, accepts uppercase confirmation email and closes before returning to the list",async()=>{
   ui(<PermanentUserDelete user={user}/>);confirm();
   fireEvent.change(screen.getByRole("textbox",{name:/Type the user/}),{target:{value:"wrong@example.com"}});
   expect((screen.getAllByRole("button",{name:"Delete permanently"})[1] as HTMLButtonElement).disabled).toBe(true);
-  fireEvent.change(screen.getByRole("textbox",{name:/Type the user/}),{target:{value:user.email}});
+  fireEvent.change(screen.getByRole("textbox",{name:/Type the user/}),{target:{value:` ${user.email.toUpperCase()} `}});
+  expect((screen.getAllByRole("button",{name:"Delete permanently"})[1] as HTMLButtonElement).disabled).toBe(false);
   fireEvent.click(screen.getAllByRole("button",{name:"Delete permanently"})[1]);
   await waitFor(()=>expect(mocks.remove).toHaveBeenCalledWith(user.id,"Created by mistake"));
   expect(mocks.push).toHaveBeenCalledWith("/admin/users");expect(mocks.success).toHaveBeenCalled();
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+it.each([200,404])("removes the list row immediately on %s, before its refetch completes",async status=>{
+  const other={...user,id:"other",full_name:"Other user",email:"other@example.com",can_delete_permanently:false};
+  let finishReload!:(rows:Array<typeof user>)=>void;
+  mocks.list.mockResolvedValueOnce([user,other]).mockImplementationOnce(()=>new Promise(resolve=>{finishReload=resolve;}));
+  if(status===404)mocks.remove.mockRejectedValueOnce(new ApiClientError("Not found",404));
+  ui(<AdminUsersList/>);
+  await screen.findByRole("link",{name:"Pending"});confirm();
+  fireEvent.click(screen.getAllByRole("button",{name:"Delete permanently"})[1]);
+  await waitFor(()=>expect(screen.queryByRole("link",{name:"Pending"})).toBeNull());
+  expect(screen.getByRole("link",{name:"Other user"})).toBeTruthy();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(mocks.list).toHaveBeenCalledTimes(2);expect(mocks.push).not.toHaveBeenCalled();
+  if(status===404)expect(mocks.error).toHaveBeenCalledWith("This user no longer exists");
+  await act(async()=>{finishReload([other]);});
+});
+
+it.each(["ar","en"])("reports missing user in %s and returns from details to the list",async locale=>{
+  mocks.remove.mockRejectedValueOnce(new ApiClientError("Not found",404));
+  ui(<PermanentUserDelete user={user}/>,locale);
+  const dictionary=((locale==="ar"?ar:en).administration as {users:{permanentDelete:Record<string,string>}}).users.permanentDelete;
+  fireEvent.click(screen.getByRole("button",{name:dictionary.button}));
+  const dialog=screen.getByRole("dialog");
+  fireEvent.change(dialog.querySelector("textarea")!,{target:{value:"Created by mistake"}});
+  fireEvent.change(dialog.querySelector("input")!,{target:{value:user.email}});
+  fireEvent.submit(dialog);
+  await waitFor(()=>expect(mocks.error).toHaveBeenCalledWith(dictionary.notFound));
+  expect(screen.queryByRole("dialog")).toBeNull();expect(mocks.push).toHaveBeenCalledWith("/admin/users");
+  expect(mocks.success).not.toHaveBeenCalled();
 });
 it.each(["USER_DELETE_ROOT","USER_DELETE_SELF","USER_DELETE_ACTIVATED","USER_DELETE_HAS_HISTORY"])("explains 409 %s",async code=>{
   mocks.remove.mockRejectedValueOnce(new ApiClientError("Conflict",409,{code,details:{tables:["commercial_customers"]}}));

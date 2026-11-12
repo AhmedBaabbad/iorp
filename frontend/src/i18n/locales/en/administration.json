@@ -262,7 +262,8 @@
       "USER_DELETE_SELF": "You cannot delete your own account.",
       "USER_DELETE_ACTIVATED": "This account has been activated and cannot be permanently deleted.",
       "USER_DELETE_HAS_HISTORY": "This user has linked records and cannot be deleted.",
-      "FAILED": "Could not delete the account. Please try again."
+      "FAILED": "Could not delete the account. Please try again.",
+      "notFound": "This user no longer exists"
     }
   },
   "roles": {

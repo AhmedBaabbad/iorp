@@ -48,8 +48,11 @@ non-FK references: audit actors, role-removal subjects and notification actors.
 It reports the first five blocking table names in stable sorted order, without
 record contents. Even a malformed cross-organization reference blocks deletion.
 Only being the target inside security JSON does not block it; being its actor
-does. The UI uses server eligibility, requires the exact email and reason,
-translates conflicts and offers the existing deactivation flow for history.
+does. The UI uses server eligibility, requires a reason and matching email
+(case-insensitive after trimming), translates conflicts and offers the existing
+deactivation flow for history. Successful deletion closes the dialog; lists
+remove the row immediately and refetch, while details return to the list. A 404
+shows a localized missing-user notification and uses that same cleanup flow.
 
 ## Final disposable self-owned tables / الجداول الذاتية النهائية
 
