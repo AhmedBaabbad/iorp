@@ -17,7 +17,6 @@
       "relationshipStage": "Relationship Stage",
       "priority": "Priority",
       "opportunitySource": "Opportunity Source",
-      "estimatedConsumption": "Estimated Consumption",
       "salesOwner": "Sales Owner",
       "keyInfluencerName": "Key Influencer",
       "createdBy": "Added by",
@@ -25,11 +24,6 @@
       "updated": "Updated",
       "notes": "Notes",
       "actions": "Actions"
-    },
-    "sections": {
-      "contactInfo": "Contact Information",
-      "businessInfo": "Business Information",
-      "stageInfo": "Relationship and Status"
     },
     "labels": {
       "statusVsStageNote": "Status is the operational record state. Relationship stage is the commercial relationship progression."

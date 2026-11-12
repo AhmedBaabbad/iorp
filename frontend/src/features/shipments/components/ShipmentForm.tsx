@@ -14,6 +14,8 @@ import s from "@/features/production-demands/demands.module.css";
 import { createShipment, getShipment, getShippingCustomers, getShippingProductionOrders, updateShipment } from "../api";
 import { DECIMAL, shippingErrorMessage, todayIso } from "../shipping-errors";
 import { DELIVERY_METHODS, type CustomerOption, type DeliveryMethod, type ProductionOrderOption, type ShipmentHeader, type ShipmentLineInput } from "../types";
+import { MapLink } from "@/components/MapLink";
+import { useListName } from "@/features/masterdata";
 import { ListSelect } from "@/features/masterdata";
 
 // A line as edited (numbers as typed): description, width and thickness in mm, quantity and unit, one full weight, and
@@ -23,7 +25,7 @@ type Line = { description: string; width_mm: string; thickness_mm: string; quant
 const EMPTY_LINE: Line = { description: "", width_mm: "", thickness_mm: "", quantity: "", unit: "roll", weight: "", weight_unit: "kg", production_order_id: "" };
 type Header = { [K in keyof Omit<ShipmentHeader, "notify_consignee" | "customer_id" | "driver_id" | "vehicle_id" | "carrier_id" | "driver_affiliation" | "customer_contact_id" | "delivery_site_id">]: string };
 const EMPTY_HEADER: Header = { customer_name: "", customer_reference: "", consignee_name: "", consignee_phone: "", consignee_email: "", delivery_address: "",
-  delivery_city: "", location_url: "", driver_name: "", driver_phone: "", driver_id_no: "", vehicle_plate: "", vehicle_type: "", carrier_name: "", tracking_no: "", notes: "" };
+  delivery_city: "", delivery_country: "", location_url: "", driver_name: "", driver_phone: "", driver_id_no: "", vehicle_plate: "", vehicle_type: "", carrier_name: "", tracking_no: "", notes: "" };
 
 const blank = (v: string) => v.trim() || null;
 // Weights in their own units, totalled in kilograms like the server and the delivery note.
@@ -40,6 +42,8 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
   const editing = Boolean(shipmentId);
   const ar=useLocale()==="ar";
   const [transport,setTransport]=useState<TransportValues>({});
+  const location = useTranslations("common.location");
+  const cityName = useListName("city"), countryName = useListName("country");
   const [site,setSite]=useState<string|null>(null);
   const [contact,setContact]=useState<string|null>(null);
   const [method, setMethod] = useState<DeliveryMethod>("factory_delivery");
@@ -149,7 +153,7 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
             {registered ? <>
               <label className={s.field}>{t("searchCustomer")}<input value={query} onChange={e => setQuery(e.target.value)} placeholder={t("searchCustomerPlaceholder")} /></label>
               <label className={s.field}>{t("fields.customer")}
-                <select required value={customerId} onChange={e => {setCustomerId(e.target.value);setSite(null);setContact(null);setH(old=>({...old,customer_name:"",consignee_name:"",consignee_phone:"",consignee_email:"",delivery_address:"",delivery_city:"",location_url:""}));}}>
+                <select required value={customerId} onChange={e => {setCustomerId(e.target.value);setSite(null);setContact(null);setH(old=>({...old,customer_name:"",consignee_name:"",consignee_phone:"",consignee_email:"",delivery_address:"",delivery_country:"",delivery_city:"",location_url:""}));}}>
                   <option value="">{customers.length ? t("chooseCustomer") : t("noCustomers")}</option>
                   {customers.map(c => <option key={c.id} value={c.id}>{c.name}{c.customer_code ? ` — ${c.customer_code}` : ""}</option>)}
                 </select>
@@ -162,16 +166,19 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
 
         <section className={s.panel}>
           <h2 style={{ marginTop: 0 }}>{t("sections.recipient")}</h2>
-          {registered&&customerId&&<><DirectorySelect key={`site-${customerId}`} path={`/shipping/directory/customers/${customerId}/sites`} value={site} label={ar?"موقع التسليم المحفوظ":"Saved delivery site"} onChange={(id,row)=>{setSite(id||null);setContact(row?.contact_id??null);}}/><DirectorySelect key={`contact-${customerId}`} path={`/shipping/directory/customers/${customerId}/contacts`} value={contact} label={ar?"جهة الاتصال المحفوظة":"Saved contact"} onChange={id=>setContact(id||null)}/></>}
+          {registered&&customerId&&<><DirectorySelect key={`site-${customerId}`} path={`/shipping/directory/customers/${customerId}/sites`} value={site} label={ar?"موقع التسليم المحفوظ":"Saved delivery site"} onChange={(id,row)=>{setSite(id||null);setContact(row?.contact_id??null);setH(old=>({...old,delivery_address:String(row?.address??""),delivery_city:String(row?.city_other||row?.city||""),delivery_country:String(row?.country??""),location_url:String(row?.location_url??"")}));}}/><DirectorySelect key={`contact-${customerId}`} path={`/shipping/directory/customers/${customerId}/contacts`} value={contact} label={ar?"جهة الاتصال المحفوظة":"Saved contact"} onChange={id=>setContact(id||null)}/></>}
           <div className={s.grid}>
             {input("consignee_name", { disabled:!!contact, maxLength: 255, placeholder: t("recipientPlaceholder") })}
             {input("consignee_phone", { disabled:!!contact, maxLength: 30, dir: "ltr", inputMode: "tel", placeholder: "05xxxxxxxx" })}
             {input("consignee_email", { disabled:!!contact, maxLength: 255, dir: "ltr", type: "email" })}
-            <label className={s.field}>{t("fields.delivery_city")}<ListSelect list="city" ariaLabel={t("fields.delivery_city")} value={h.delivery_city}
-              disabled={busy || locked || !!site} onChange={key => set("delivery_city", key)} /></label>
+            <label className={s.field}>{location("country")}<ListSelect list="country" ariaLabel={location("country")} value={h.delivery_country || chosen?.country || ""}
+              disabled={busy || locked || !!site} onChange={key=>setH(old=>({...old,delivery_country:key,delivery_city:""}))}/></label>
+            <label className={s.field}>{t("fields.delivery_city")}{site?<input readOnly disabled value={h.delivery_city?cityName(h.delivery_city):""}/>:<ListSelect list="city" ariaLabel={t("fields.delivery_city")} value={h.delivery_city}
+              parent={h.delivery_country || chosen?.country || null} disabled={busy || locked || !(h.delivery_country || chosen?.country)} onChange={key => set("delivery_city", key)} />}</label>
             {input("location_url", { disabled:!!site, maxLength: 500, dir: "ltr", type: "url", placeholder: "https://maps.google.com/…" })}
           </div>
           <label className={s.field}>{t("fields.delivery_address")}<textarea disabled={!!site} maxLength={1000} value={h.delivery_address} onChange={e => set("delivery_address", e.target.value)} /></label>
+          <MapLink locationUrl={h.location_url} address={h.delivery_address} city={h.delivery_city ? cityName(h.delivery_city) : null} country={(h.delivery_country || customers.find(c=>c.id===customerId)?.country) ? countryName(h.delivery_country || customers.find(c=>c.id===customerId)?.country) : null} />
           <label style={{ display: "block", marginTop: 8 }}><input type="checkbox" checked={notify} onChange={e => setNotify(e.target.checked)} /> {t("fields.notify_consignee")}</label>
           <p className={s.muted} style={{ marginBottom: 0 }}>{t("notifyHint")}</p>
         </section>

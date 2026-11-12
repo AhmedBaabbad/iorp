@@ -45,6 +45,7 @@ class SupplierCreate(_Input):
     email: NormalizedEmail | None = None
     address: str | None = Field(default=None, max_length=1000)
     city: str | None = Field(default=None, max_length=120)
+    city_other: str | None = Field(default=None, max_length=120)
     country: str | None = Field(default=None, max_length=80)
     vat_number: str | None = Field(default=None, max_length=40)
     cr_number: str | None = Field(default=None, max_length=40)
@@ -127,6 +128,7 @@ class SupplierRead(BaseModel):
     email: str | None
     address: str | None
     city: str | None
+    city_other: str | None = None
     country: str | None
     vat_number: str | None
     cr_number: str | None

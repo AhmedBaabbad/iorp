@@ -259,5 +259,11 @@
     "acknowledge": "تم تسجيل تأكيد اطلاعك.",
     "withdraw": "تم السحب.",
     "readAll": "تم تعليم الكل كمقروء."
+  },
+  "location": {
+    "country": "البلد",
+    "city": "المدينة",
+    "cityName": "اسم المدينة",
+    "openGoogleMaps": "فتح في خرائط Google"
   }
 }

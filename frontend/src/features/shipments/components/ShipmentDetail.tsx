@@ -2,6 +2,7 @@
 
 import { TransportSelection, DriverAffiliation, type TransportValues } from "@/features/reference-directory/DirectorySelect";
 import Link from "next/link";
+import { MapLink } from "@/components/MapLink";
 import { useTranslations, useLocale } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 
@@ -39,7 +40,8 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
   const fmt = useFormatter();
   const units = useTranslations("common.units.units");
   const locale = useLocale();
-  const cityName = useListName("city");  // MD-002: the name, not the key
+  const cityName = useListName("city");
+  const countryName = useListName("country");  // MD-002: the name, not the key
   const vehicleTypeName = useListName("vehicle_type");  // MD-003
   // Units are codes from the shared catalogue, shown in the screen's language (older free text as written).
   const unit = (code: string) => (units.has(code) ? units(code) : code);
@@ -114,7 +116,7 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
         <Item label={label("consignee_phone")}><bdi dir="ltr">{x.consignee_phone ?? "—"}</bdi>{x.notify_consignee && <div className={s.muted}>{t("willNotify")}</div>}</Item>
         <Item label={label("consignee_email")}><bdi dir="ltr">{x.consignee_email ?? "—"}</bdi></Item>
         <Item label={label("delivery_city")}>{x.delivery_city ? cityName(x.delivery_city) : "—"}</Item>
-        <Item label={label("delivery_address")}>{x.delivery_address ?? "—"}{x.location_url && <div><a href={x.location_url} target="_blank" rel="noopener noreferrer">{t("openLocation")}</a></div>}</Item>
+        <Item label={label("delivery_address")}>{x.delivery_address ?? "—"}<div><MapLink locationUrl={x.location_url} address={x.delivery_address} city={x.delivery_city ? cityName(x.delivery_city) : null} country={x.delivery_country ? countryName(x.delivery_country) : null} /></div></Item>
       </dl>
     </section>
     <section className={s.panel} aria-label={t("sections.transport")}>

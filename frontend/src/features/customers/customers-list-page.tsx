@@ -28,12 +28,14 @@ const FILTERS = ["search", "status", "relationship_stage"] as const;
 
 const styles: Record<string, CSSProperties> = {
   panel: {
+    minWidth: 0, maxWidth: "100%",
     background: "var(--surface)",
     border: "1px solid var(--border-strong)",
     borderRadius: "8px",
     boxShadow: "0 16px 40px rgba(31, 41, 51, 0.06)",
   },
   tableWrap: {
+    minWidth: 0, maxWidth: "100%",
     overflowX: "auto",
   },
   table: {
@@ -49,6 +51,7 @@ const styles: Record<string, CSSProperties> = {
     whiteSpace: "nowrap",
   },
   td: {
+    maxWidth: "240px", overflowWrap: "anywhere",
     borderBottom: "1px solid var(--border)",
     padding: "14px 16px",
     verticalAlign: "middle",
@@ -60,7 +63,7 @@ const styles: Record<string, CSSProperties> = {
   },
   actions: {
     display: "flex",
-    flexWrap: "nowrap",
+    flexWrap: "wrap",
     gap: "8px",
     whiteSpace: "nowrap",
   },

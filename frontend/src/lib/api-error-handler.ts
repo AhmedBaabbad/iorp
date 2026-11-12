@@ -45,18 +45,37 @@ function normalizeApiError(error: unknown): ApiError {
   return {};
 }
 
+export function apiErrorCode(error: unknown): string | undefined {
+  return readErrorCode(error instanceof ApiClientError ? error.details : error);
+}
+
 function readErrorCode(details: unknown): string | undefined {
   if (!details || typeof details !== "object") {
     return undefined;
   }
 
-  const record = details as { error_code?: unknown; code?: unknown };
+  if (Array.isArray(details)) {
+    for (const entry of details) {
+      const code = readErrorCode(entry);
+      if (code) return code;
+    }
+    return undefined;
+  }
+  const record = details as { error_code?: unknown; code?: unknown; detail?: unknown; type?: unknown };
   const value = record.error_code ?? record.code;
-  return typeof value === "string" ? value : undefined;
+  if (typeof value === "string") return value;
+  const codes = ["CITY_OTHER_REQUIRED", "CITY_COUNTRY_MISMATCH", "LOCATION_URL_INVALID", "CONTACT_NAME_REQUIRED"];
+  if (typeof record.type === "string" && codes.includes(record.type)) return record.type;
+  if (typeof record.detail === "string" && codes.includes(record.detail)) return record.detail;
+  return readErrorCode(record.detail);
 }
 
 function mapErrorCode(code: string, t: (key: string) => string): string | null {
   const map: Record<string, string> = {
+    CITY_OTHER_REQUIRED: t("validation.cityOtherRequired"),
+    CITY_COUNTRY_MISMATCH: t("validation.cityCountryMismatch"),
+    LOCATION_URL_INVALID: t("validation.locationUrlInvalid"),
+    CONTACT_NAME_REQUIRED: t("validation.contactNameRequired"),
     NOT_FOUND: t("error.notFound"),
     FORBIDDEN: t("error.forbidden"),
     CONFLICT: t("error.conflict"),

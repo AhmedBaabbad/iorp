@@ -15,7 +15,7 @@ export function CustomerStatusBadge({ status }: { status: CustomerStatus }) {
   const tEnums = useTranslations();
 
   return (
-    <span style={{ ...sharedStyles.badge, ...customerStatusColors[status] }}>
+    <span style={{ ...sharedStyles.badge, whiteSpace: "normal", overflowWrap: "anywhere", maxWidth: "100%", minWidth: 0, ...customerStatusColors[status] }}>
       {getEnumLabel("customer", "status", status, tEnums)}
     </span>
   );
@@ -25,7 +25,7 @@ export function CustomerPriorityBadge({ priority }: { priority: PriorityLevel })
   const tEnums = useTranslations();
 
   return (
-    <span style={{ ...sharedStyles.badge, ...customerPriorityLevelColors[priority] }}>
+    <span style={{ ...sharedStyles.badge, whiteSpace: "normal", overflowWrap: "anywhere", maxWidth: "100%", minWidth: 0, ...customerPriorityLevelColors[priority] }}>
       {getEnumLabel("customer", "priorityLevel", priority, tEnums)}
     </span>
   );
@@ -35,7 +35,7 @@ export function CustomerRelationshipStageBadge({ stage }: { stage: RelationshipS
   const tEnums = useTranslations();
 
   return (
-    <span style={{ ...sharedStyles.badge, ...customerRelationshipStageColors[stage] }}>
+    <span style={{ ...sharedStyles.badge, whiteSpace: "normal", overflowWrap: "anywhere", maxWidth: "100%", minWidth: 0, ...customerRelationshipStageColors[stage] }}>
       {getEnumLabel("customer", "relationshipStage", stage, tEnums)}
     </span>
   );

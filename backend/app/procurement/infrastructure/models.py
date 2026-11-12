@@ -53,6 +53,7 @@ class Supplier(Base):
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    city_other: Mapped[str | None] = mapped_column(String(120), nullable=True)
     country: Mapped[str | None] = mapped_column(String(80), nullable=True)
     vat_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
     cr_number: Mapped[str | None] = mapped_column(String(40), nullable=True)

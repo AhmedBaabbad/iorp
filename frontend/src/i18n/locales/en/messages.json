@@ -19,7 +19,11 @@
     "notesRequired": "Notes are required",
     "defectCountMin": "Defect count must be greater than zero",
     "itemNameRequired": "Item name is required",
-    "issueDescriptionRequired": "Issue description is required"
+    "issueDescriptionRequired": "Issue description is required",
+    "cityOtherRequired": "Enter the city name when choosing Other.",
+    "cityCountryMismatch": "Choose a city belonging to the selected country.",
+    "locationUrlInvalid": "Use an https:// location link with a valid hostname.",
+    "contactNameRequired": "Enter a contact name when providing any contact details."
   },
   "success": {
     "created": "Created successfully",

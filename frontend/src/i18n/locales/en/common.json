@@ -259,5 +259,11 @@
     "acknowledge": "Your confirmation was recorded.",
     "withdraw": "Withdrawn.",
     "readAll": "All marked as read."
+  },
+  "location": {
+    "country": "Country",
+    "city": "City",
+    "cityName": "City name",
+    "openGoogleMaps": "Open in Google Maps"
   }
 }

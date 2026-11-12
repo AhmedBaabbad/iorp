@@ -51,3 +51,52 @@ def test_update_scope_does_not_inherit_broader_read_scope(env):
     e.ctx.tenant=replace(e.ctx.tenant,is_organization_root=False)
     # With no persisted organization-wide update grant, the scope resolver fails closed to own.
     assert e.client.post(base+'/contacts',json=dict(name='Not my customer')).status_code==404
+
+
+def test_site_other_city_and_country_are_snapshotted_and_https_is_enforced(env):
+    e=env;base=setup(e)
+    response=e.client.post(base+'/sites',json=dict(name='Synthetic site',address='Road 1',country='ae',
+        city='ae_other',city_other='New city',location_url='https://maps.example.test/site'))
+    assert response.status_code==201,response.text
+    site=response.json()
+    body=dict(customer_id=str(e.customer.id),delivery_site_id=site['id'],shipment_date='2026-10-13',
+        delivery_method='factory_delivery',lines=[dict(description='Product',quantity='1',unit='kg')])
+    response=e.client.post('/api/v1/shipping/shipments',json=body)
+    assert response.status_code==201,response.text
+    assert response.json()['delivery_city']=='New city' and response.json()['delivery_country']=='ae'
+    assert response.json()['location_url']=='https://maps.example.test/site'
+    selected=e.client.get(base+'/sites').json()[0]
+    assert selected['city_other']=='New city'
+    for url in ('javascript:alert(1)','http://maps.example.test','data:text/html,unsafe'):
+        bad=e.client.post(base+'/sites',json=dict(name='Unsafe',address='Road',location_url=url))
+        assert bad.status_code==422 and bad.json()['detail']=='LOCATION_URL_INVALID'
+        bad=e.client.patch('/api/v1/shipping/shipments/'+response.json()['id'],json=dict(location_url=url))
+        assert bad.status_code==422 and bad.json()['detail'][0]['type']=='LOCATION_URL_INVALID'
+    bad=e.client.post(base+'/sites',json=dict(name='Missing city',address='Road',country='ae',city='ae_other'))
+    assert bad.status_code==422 and bad.json()['detail']=='CITY_OTHER_REQUIRED'
+    # A pre-existing unsafe link must not bypass shipment validation via selection.
+    from app.commercial.infrastructure.contact_models import CustomerSite
+    stored=e.db.get(CustomerSite,UUID(site['id']))
+    stored.location_url='javascript:alert(1)';e.db.commit()
+    rejected=e.client.post('/api/v1/shipping/shipments',json=body)
+    assert rejected.status_code==422 and rejected.json()['detail']['code']=='LOCATION_URL_INVALID'
+    changed=e.client.put(base+'/sites/'+site['id'],json=dict(name='Site',address='Road',country='sa',city='riyadh',city_other='Discard',version=1))
+    assert changed.status_code==200 and changed.json()['city_other'] is None
+
+
+def test_default_contact_and_other_city_are_used_in_reports_and_shipping(env):
+    from tests.commercial.test_customer_reports import preview
+    from app.shipping.application.support import CustomerReads
+    e=env;base=setup(e)
+    e.customer.phone='5551111';e.customer.email='retired@example.test'
+    e.customer.country='ae';e.customer.city='ae_other';e.customer.city_other='Synthetic new city'
+    e.db.commit()
+    contact=e.client.post(base+'/contacts',json=dict(name='Current',phone='5552222',email='current@example.com',is_default=True))
+    assert contact.status_code==201,contact.text
+    read=CustomerReads(e.db,e.org.id).get(e.customer.id)
+    assert read['phone']=='5552222' and read['email']=='current@example.com' and read['city']=='Synthetic new city'
+    e.db.expire_all()
+    response=preview(e,sections=['information','contacts'],lang='en')
+    assert response.status_code==200,response.text
+    assert '5552222' in response.text and 'current@example.com' in response.text and 'Synthetic new city' in response.text
+    assert 'retired@example.test' not in response.text

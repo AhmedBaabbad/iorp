@@ -33,11 +33,12 @@ def items(e, name):
 
 def test_the_usual_values_and_a_citys_country(ml):
     added = ml.client.post(f"{ROOT}/lists/city/standard").json()
-    assert {"riyadh", "jeddah", "al_kharj"} <= {i["key"] for i in added} and all(i["parent_key"] == "sa" for i in added)
+    assert len(added) == 357
+    assert {"riyadh", "jeddah", "al_kharj"} <= {i["key"] for i in added if i["parent_key"] == "sa"}
     assert items(ml, "country")["sa"]["name_ar"] == "المملكة العربية السعودية"  # its country came with it
     assert ml.client.post(f"{ROOT}/lists/city/standard").json() == []  # nothing twice
     assert code(ml.client.post(f"{ROOT}/lists/city", json=dict(name_ar="العلا", name_en="AlUla"))) == "PARENT_REQUIRED"
-    assert code(ml.client.post(f"{ROOT}/lists/city", json=dict(name_ar="دبي", name_en="Dubai", parent_key="ae"))) == "PARENT_REQUIRED"
+    assert code(ml.client.post(f"{ROOT}/lists/city", json=dict(name_ar="مدينة", name_en="Unknown country city", parent_key="xx"))) == "PARENT_REQUIRED"
     city = ml.client.post(f"{ROOT}/lists/city", json=dict(name_ar="العلا", name_en="AlUla", parent_key="sa"))
     assert city.status_code == 201 and city.json()["key"] == "alula"
     assert code(ml.client.post(f"{ROOT}/lists/sector", json=dict(name_ar="التعدين", name_en="Mining", parent_key="sa"))) == "PARENT_NOT_ALLOWED"

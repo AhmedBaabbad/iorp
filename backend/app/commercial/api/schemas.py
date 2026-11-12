@@ -3,7 +3,9 @@ from decimal import Decimal
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import AliasChoices, AwareDatetime, BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator, StringConstraints
+from pydantic import AliasChoices, AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, computed_field, field_validator, model_validator, StringConstraints
+from pydantic_core import PydanticCustomError
+from app.core.contact_records import ContactInput
 
 from app.core.types import ISOAwareDatetime, ISODatetime
 
@@ -27,21 +29,46 @@ ListKey = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{1,59}$")]
 
 
 
+class CustomerContactInput(ContactInput):
+    phone: str | None = Field(None, max_length=50)
+
+
+class PrimaryContactInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    name: str = Field(min_length=1, max_length=200)
+    phone: str | None = Field(default=None, max_length=50)
+    email: EmailStr | None = None
+    role: str | None = Field(default=None, max_length=120)
+
+    @model_validator(mode="before")
+    @classmethod
+    def require_name(cls, data):
+        if isinstance(data, dict) and not str(data.get("name") or "").strip():
+            raise PydanticCustomError("CONTACT_NAME_REQUIRED", "CONTACT_NAME_REQUIRED")
+        return data
+
+
 class CustomerCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     sector: str | None = Field(default=None, max_length=120)
     city: str | None = Field(default=None, max_length=120)
     country: str | None = Field(default=None, max_length=120)
-    phone: str | None = Field(default=None, max_length=50)
-    email: str | None = Field(default=None, max_length=255)
+    city_other: str | None = Field(default=None, max_length=120)
+    primary_contact: PrimaryContactInput | None = None
     status: CustomerStatus = CustomerStatus.ACTIVE
     relationship_stage: RelationshipStage = RelationshipStage.LEAD
     opportunity_source: str | None = Field(default=None, max_length=120)
-    estimated_consumption: Decimal | None = None
     priority_level: PriorityLevel = PriorityLevel.MEDIUM
     sales_owner_user_id: UUID | None = None
     key_influencer_name: str | None = Field(default=None, max_length=255)
     notes: str | None = None
+
+    @field_validator("primary_contact", mode="before")
+    @classmethod
+    def empty_contact_is_optional(cls, data):
+        if isinstance(data, dict) and not any(str(value or "").strip() for value in data.values()):
+            return None
+        return data
 
 
 class CustomerUpdate(BaseModel):
@@ -49,12 +76,10 @@ class CustomerUpdate(BaseModel):
     sector: str | None = Field(default=None, max_length=120)
     city: str | None = Field(default=None, max_length=120)
     country: str | None = Field(default=None, max_length=120)
-    phone: str | None = Field(default=None, max_length=50)
-    email: str | None = Field(default=None, max_length=255)
+    city_other: str | None = Field(default=None, max_length=120)
     status: CustomerStatus | None = None
     relationship_stage: RelationshipStage | None = None
     opportunity_source: str | None = Field(default=None, max_length=120)
-    estimated_consumption: Decimal | None = None
     priority_level: PriorityLevel | None = None
     sales_owner_user_id: UUID | None = None
     key_influencer_name: str | None = Field(default=None, max_length=255)
@@ -115,12 +140,12 @@ class CustomerRead(BaseModel):
     sector: str | None
     city: str | None
     country: str | None
-    phone: str | None
-    email: str | None
+    city_other: str | None = None
+    phone: str | None = Field(validation_alias=AliasChoices("effective_phone", "phone"))
+    email: str | None = Field(validation_alias=AliasChoices("effective_email", "email"))
     status: CustomerStatus
     relationship_stage: RelationshipStage
     opportunity_source: str | None
-    estimated_consumption: Decimal | None
     priority_level: PriorityLevel
     sales_owner_user_id: UUID | None
     sales_owner: SalesOwnerSummary | None = None

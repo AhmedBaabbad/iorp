@@ -155,7 +155,7 @@ def test_customers_come_in_pages_newest_first_without_overlap(client, auth_heade
 
 
 def test_customers_are_searched_and_filtered_by_the_server(client, auth_headers, with_owner):
-    client.post("/api/v1/commercial/customers", json=with_owner({**_BASE_CUSTOMER, "name": "Gulf Packaging", "phone": "0551234567"}), headers=auth_headers)
+    client.post("/api/v1/commercial/customers", json=with_owner({**_BASE_CUSTOMER, "name": "Gulf Packaging", "primary_contact": {"name": "Main contact", "phone": "0551234567"}}), headers=auth_headers)
     client.post("/api/v1/commercial/customers", json=with_owner({**_BASE_CUSTOMER, "name": "Red Sea Foods", "status": "inactive"}), headers=auth_headers)
     names = lambda q: [c["name"] for c in client.get(f"/api/v1/commercial/customers?{q}", headers=auth_headers).json()["items"]]
     assert names("search=gulf") == ["Gulf Packaging"]

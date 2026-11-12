@@ -25,7 +25,7 @@ from .support import (CustomerReads, ProductionOrderReads, attachments, history,
                       user_names)
 
 HEADER = ("driver_id", "vehicle_id", "carrier_id", "driver_affiliation", "customer_contact_id", "delivery_site_id", "delivery_method", "shipment_date", "customer_reference", "consignee_name", "consignee_email", "notify_consignee",
-          "delivery_address", "delivery_city", "location_url", "driver_name", "driver_id_no", "vehicle_plate", "vehicle_type",
+          "delivery_address", "delivery_country", "delivery_city", "location_url", "driver_name", "driver_id_no", "vehicle_plate", "vehicle_type",
           "carrier_name", "tracking_no", "notes")
 PHONES = ("consignee_phone", "driver_phone")
 # What a rescheduled note may change: who carries it, and when (never its customer or its lines).
@@ -122,6 +122,12 @@ class ShipmentService:
         from app.core.interfaces.transport_directory import apply_transport
         values = apply_transport(self.db, self.org, shipment, values)
         self._delivery_selection(shipment, values)
+        if values.get("location_url"):
+            from app.core.location_fields import https_location
+            try:
+                https_location(values["location_url"])
+            except ValueError as exc:
+                raise ShippingError("LOCATION_URL_INVALID", 422) from exc
         if "customer_id" in values:
             shipment.customer_id = None
             if values["customer_id"]:
@@ -130,7 +136,7 @@ class ShipmentService:
                 if not (values.get("customer_name") or "").strip():
                     values["customer_name"] = customer["name"]
                 # A registered customer's contacts fill the recipient's when those are left empty.
-                for field, source in (("consignee_phone", "phone"), ("consignee_email", "email"), ("delivery_city", "city")):
+                for field, source in (("consignee_phone", "phone"), ("consignee_email", "email"), ("delivery_city", "city"), ("delivery_country", "country")):
                     if not values.get(field) and not getattr(shipment, field) and customer[source]:
                         values[field] = customer[source]
                         if field == "consignee_phone":
@@ -139,7 +145,7 @@ class ShipmentService:
                             except ShippingError:
                                 values[field] = None
         # MD-002: the delivery city is one of the organization's cities; the stored one (or the customer's) may stay.
-        if values.get("delivery_city") and unknown_list_values(self.db, self.org, "city", [values["delivery_city"]],
+        if values.get("delivery_city") and not values.get("delivery_site_id", shipment.delivery_site_id) and unknown_list_values(self.db, self.org, "city", [values["delivery_city"]],
                                                                [shipment.delivery_city, *([customer["city"]] if "customer_id" in values and values["customer_id"] else [])]):
             raise ShippingError("LIST_VALUE_UNKNOWN", 400, field="delivery_city", value=values["delivery_city"])
         if values.get("customer_name") is not None:
@@ -177,7 +183,7 @@ class ShipmentService:
         for key in ('delivery_site_id','customer_contact_id'):
             if changed and key not in values:values[key]=None
         for key,kind,mapping in (
-            ('delivery_site_id','sites',{'address':'delivery_address','city':'delivery_city','location_url':'location_url'}),
+            ('delivery_site_id','sites',{'address':'delivery_address','country':'delivery_country','city':'delivery_city','location_url':'location_url'}),
             ('customer_contact_id','contacts',{'name':'consignee_name','phone':'consignee_phone','email':'consignee_email'})):
             selected=values.get(key,getattr(shipment,key,None))
             if changed and not selected and getattr(shipment,key,None):

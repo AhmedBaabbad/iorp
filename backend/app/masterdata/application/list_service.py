@@ -28,7 +28,11 @@ class ListService:
             query = query.where(ListItem.list == list_name)
         if active_only:
             query = query.where(ListItem.active.is_(True))
-        return list(self.db.scalars(query.order_by(ListItem.list, ListItem.sort_order, ListItem.name_ar)))
+        items = list(self.db.scalars(query.order_by(ListItem.list, ListItem.sort_order, ListItem.name_ar)))
+        # Display the canonical country order without rewriting an organization's
+        # existing names, active flags or persisted ordering during the seed.
+        return sorted(items, key=lambda item: (item.list, *(L.country_sort_key(item.key, item.name_en)
+                      if item.list == L.COUNTRY else (0, item.sort_order, item.name_ar))))
 
     def _get(self, item_id) -> ListItem:
         found = self.db.scalar(select(ListItem).where(ListItem.id == item_id, ListItem.organization_id == self.org).with_for_update())

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { cityLabel } from "@/components/forms/CountryCityFields";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
@@ -26,15 +27,17 @@ import { useListName } from "@/features/masterdata";
 const styles: Record<string, CSSProperties> = {
   detailGrid: {
     display: "grid",
-    gap: "1px",
-    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-    background: "var(--border)",
+    gap: "var(--form-gap)",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(210px, 100%), 1fr))",
+    minWidth: 0,
     borderRadius: "8px",
-    overflow: "hidden",
   },
   detailItem: {
     background: "var(--surface)",
-    padding: "18px",
+    padding: "var(--form-gap)",
+    minWidth: 0,
+    border: "1px solid var(--border)",
+    borderRadius: "var(--control-radius)",
   },
   detailLabel: {
     color: "var(--text-muted)",
@@ -48,6 +51,7 @@ const styles: Record<string, CSSProperties> = {
   },
   relatedSections: {
     display: "grid",
+    minWidth: 0,
     gap: "24px",
   },
   overlay: {
@@ -351,7 +355,7 @@ export function CustomerDetailPage() {
             <DetailItem label={t("fields.customerCode")} value={customer.customer_code} />
             <DetailItem label={t("fields.name")} value={customer.name} />
             <DetailItem label={t("fields.sector")} value={customer.sector ? sectorName(customer.sector) : customer.sector} />
-            <DetailItem label={t("fields.city")} value={customer.city ? cityName(customer.city) : customer.city} />
+            <DetailItem label={t("fields.city")} value={customer.city ? cityLabel(customer.city, customer.city_other, cityName) : customer.city} />
             <DetailItem label={t("fields.country")} value={customer.country ? countryName(customer.country) : customer.country} />
             <DetailItem label={t("fields.phone")} value={customer.phone} />
             <DetailItem label={t("fields.email")} value={customer.email} />
@@ -373,7 +377,6 @@ export function CustomerDetailPage() {
               value={getEnumLabel("customer", "priorityLevel", customer.priority_level, tEnums)}
             />
             <DetailItem label={t("fields.opportunitySource")} value={customer.opportunity_source ? sourceName(customer.opportunity_source) : customer.opportunity_source} />
-            <DetailItem label={t("fields.estimatedConsumption")} value={customer.estimated_consumption} />
             <DetailItem
               label={t("fields.salesOwner")}
               value={customer.sales_owner ? formatSalesOwner(customer.sales_owner) : t("noOwner")}

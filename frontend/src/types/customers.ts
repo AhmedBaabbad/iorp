@@ -57,6 +57,7 @@ export type CustomerListItem = {
   name: string;
   sector: string | null;
   city: string | null;
+  city_other?: string | null;
   country: string | null;
   phone: string | null;
   email: string | null;
@@ -71,7 +72,6 @@ export type CustomerListItem = {
 export type CustomerDetail = CustomerListItem & {
   organization_id: string;
   opportunity_source: string | null;
-  estimated_consumption: string | null;
   key_influencer_name: string | null;
   notes: string | null;
   created_at: string;
@@ -80,15 +80,14 @@ export type CustomerDetail = CustomerListItem & {
 
 export type CustomerCreateRequest = {
   name: string;
+  primary_contact?: { name: string; phone?: string | null; email?: string | null; role?: string | null };
   sector?: string | null;
   city?: string | null;
+  city_other?: string | null;
   country?: string | null;
-  phone?: string | null;
-  email?: string | null;
   status: CustomerStatus;
   relationship_stage: RelationshipStage;
   opportunity_source?: string | null;
-  estimated_consumption?: string | null;
   priority_level: PriorityLevel;
   sales_owner_user_id?: string | null;
   key_influencer_name?: string | null;

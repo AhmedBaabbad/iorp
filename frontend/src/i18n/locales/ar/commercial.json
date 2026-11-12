@@ -17,7 +17,6 @@
       "relationshipStage": "مرحلة العلاقة",
       "priority": "الأولوية",
       "opportunitySource": "مصدر الفرصة",
-      "estimatedConsumption": "الاستهلاك المتوقع",
       "salesOwner": "مسؤول المبيعات",
       "keyInfluencerName": "المؤثر الرئيسي",
       "createdBy": "أُضيف بواسطة",
@@ -25,11 +24,6 @@
       "updated": "تاريخ التحديث",
       "notes": "ملاحظات",
       "actions": "الإجراءات"
-    },
-    "sections": {
-      "contactInfo": "معلومات التواصل",
-      "businessInfo": "معلومات الأعمال",
-      "stageInfo": "العلاقة والحالة"
     },
     "labels": {
       "statusVsStageNote": "الحالة تعبّر عن الوضع التشغيلي لسجل العميل، أما مرحلة العلاقة فتعبّر عن تقدم العلاقة التجارية."
