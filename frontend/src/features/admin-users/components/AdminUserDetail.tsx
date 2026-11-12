@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { UserPresence } from "./UserPresence";
+import { PermanentUserDelete } from "./PermanentUserDelete";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
@@ -77,6 +79,15 @@ export function AdminUserDetail() {
   }, [messages, params.id]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(()=>{
+    if(user && canDeactivate && new URLSearchParams(window.location.search).get("deactivate")==="1"){
+      window.history.replaceState(null,"",window.location.pathname);
+      void handleDeactivateClick();
+    }
+  // The URL is a one-time request; the existing handler checks the current impact.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[user?.id,canDeactivate]);
 
   async function handleDeactivateClick() {
     if (!user) return;
@@ -346,6 +357,7 @@ export function AdminUserDetail() {
                 {user.status === "locked" && !user.is_organization_root && canLock ? <button className={css.heroButton} onClick={() => void handleStatusAction("unlock")}>{t("actions.unlock")}</button> : null}
                 {user.status === "inactive" && !user.archived_at && !user.is_organization_root && canActivate ? <button className={css.heroButton} onClick={() => void handleStatusAction("activate")}>{t("actions.reactivate")}</button> : null}
                 {user.status === "inactive" && !user.is_organization_root && (user.archived_at ? canActivate : canDeactivate) ? <button className={css.heroButton} disabled={isSubmitting} onClick={() => void archiveAccount()}>{t(user.archived_at ? "accountPolicy.restore" : "accountPolicy.archive")}</button> : null}
+                <PermanentUserDelete user={user} className={css.heroButtonDanger} onDeactivate={canDeactivate?()=>void handleDeactivateClick():undefined}/>
                 {user.status !== "inactive" && !user.is_organization_root && canDeactivate ? <button type="button" className={css.heroButtonDanger} disabled={isCheckingImpact} onClick={() => void handleDeactivateClick()}>{isCheckingImpact ? t("deactivation.impactLoading") : t("deactivateButton")}</button> : null}
               </div>
             </div>
@@ -368,6 +380,7 @@ export function AdminUserDetail() {
                   <div className={css.detail}><dt>{t("fields.email")}</dt><dd>{user.email}</dd></div>
                   <div className={css.detail}><dt>{t("fields.phone")}</dt><dd>{user.phone ?? t("notAvailable")}</dd></div>
                   <div className={css.detail}><dt>{t("overview.preferredLanguage")}</dt><dd>{user.preferred_locale ? t(`overview.locales.${user.preferred_locale}`) : t("overview.organizationDefault")}</dd></div>
+                  <div className={css.detail}><dt>{t("presence.title")}</dt><dd><UserPresence user={user}/></dd></div>
                   <div className={css.detail}><dt>{t("fields.lastLoginAt")}</dt><dd>{user.last_login_at ? fmt.dateTime(user.last_login_at) : t("overview.neverLoggedIn")}</dd></div>
                   <div className={css.detail}><dt>{t("fields.createdAt")}</dt><dd>{fmt.dateTime(user.created_at)}</dd></div>
                   <div className={css.detail}><dt>{t("overview.updatedAt")}</dt><dd>{fmt.dateTime(user.updated_at)}</dd></div>

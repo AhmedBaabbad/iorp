@@ -15,6 +15,10 @@ import type {
 
 const BASE = "/admin/users";
 
+export function permanentlyDeleteAdminUser(id: string, reason: string) {
+  return apiClient<{deleted:boolean}>(`${BASE}/${id}/permanent`, {method:"DELETE",body:{reason},notify:false});
+}
+
 export function listAdminUsers() {
   return apiClient<AdminUserListItem[]>(BASE);
 }

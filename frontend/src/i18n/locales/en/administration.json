@@ -241,6 +241,28 @@
       "archived": "Archived",
       "showArchived": "Show archived accounts",
       "timezone": "Time zone"
+    },
+    "presence": {
+      "title": "Presence",
+      "online": "Online now",
+      "lastSeen": "Last seen: {time}",
+      "never": "Has not signed in yet"
+    },
+    "permanentDelete": {
+      "button": "Delete permanently",
+      "title": "Permanently delete account",
+      "warning": "This deletion cannot be undone.",
+      "reason": "Reason",
+      "confirmEmail": "Type the user’s email to confirm: {email}",
+      "cancel": "Cancel",
+      "success": "Account permanently deleted.",
+      "useDeactivation": "Deactivate the account instead.",
+      "deactivate": "Open deactivation",
+      "USER_DELETE_ROOT": "The organization root cannot be deleted.",
+      "USER_DELETE_SELF": "You cannot delete your own account.",
+      "USER_DELETE_ACTIVATED": "This account has been activated and cannot be permanently deleted.",
+      "USER_DELETE_HAS_HISTORY": "This user has linked records and cannot be deleted.",
+      "FAILED": "Could not delete the account. Please try again."
     }
   },
   "roles": {
