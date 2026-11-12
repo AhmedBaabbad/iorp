@@ -47,27 +47,39 @@ it("requires Other city name and clears both fields when the country changes", (
   fireEvent.change(city,{target:{value:"ae_other"}});
   expect((screen.getByRole("textbox",{name:"City name"}) as HTMLInputElement).value).toBe("");
 });
-function Customer({creating=true}:{creating?:boolean}) {
+function Customer({canAssignOwner=true}:{canAssignOwner?:boolean}) {
   const [values,setValues]=useState(defaultCustomerFormValues);
-  return <CustomerFields values={values} onChange={patch=>setValues(old=>({...old,...patch}))} disabled={false} canAssignOwner={false}
-    eligibleOwners={[]} loadingOwners={false} creating={creating} ownerName="Owner"/>;
+  return <form><CustomerFields values={values} onChange={patch=>setValues(old=>({...old,...patch}))} disabled={false} canAssignOwner={canAssignOwner}
+    eligibleOwners={[]} loadingOwners={false} ownerName="Owner"/></form>;
 }
-it("offers optional primary contact only on creation; any field makes its name required", () => {
-  const view=ui(<Customer/>);
-  const name=screen.getByRole("textbox",{name:"Contact name"}) as HTMLInputElement;
-  expect(name.required).toBe(false);
-  fireEvent.change(screen.getByRole("textbox",{name:"Mobile"}),{target:{value:"5551234"}});
-  expect(name.required).toBe(true);
-  view.unmount(); ui(<Customer creating={false}/>);
+it.each([true,false])("keeps the original single grid, field order and full-width notes (assign owner: %s)", canAssignOwner => {
+  const {container}=ui(<Customer canAssignOwner={canAssignOwner}/>);
+  expect(container.querySelector("legend, fieldset, h1, h2, h3, h4, h5, h6")).toBeNull();
+  const form=container.querySelector("form")!;
+  const grid=form.firstElementChild as HTMLElement;
+  expect(grid.style.display).toBe("grid"); expect(grid.style.gap).toBe("18px");
+  expect(grid.style.gridTemplateColumns).toBe("repeat(auto-fit, minmax(220px, 1fr))");
+  const labels=()=>Array.from(grid.children).map(label=>label.firstElementChild?.textContent?.replace(/\s*\*$/,"").trim());
+  const fields=(messages.commercial as {customers:{fields:Record<string,string>}}).customers.fields;
+  expect(labels()).toEqual([fields.name,fields.sector,"Country","City",fields.status,fields.relationshipStage,
+    fields.priority,fields.opportunitySource,fields.salesOwner,fields.keyInfluencerName]);
+  fireEvent.change(screen.getByRole("combobox",{name:"City"}),{target:{value:"sa_other"}});
+  expect(labels().slice(0,5)).toEqual([fields.name,fields.sector,"Country","City","City name"]);
+  expect((screen.getByRole("textbox",{name:"City name"}) as HTMLInputElement).required).toBe(true);
+  expect(form.children[1].tagName).toBe("P");
+  expect(form.children[2].querySelector("textarea")).toBe(screen.getByRole("textbox",{name:fields.notes}));
+  expect((screen.getByRole("textbox",{name:fields.notes}) as HTMLTextAreaElement).style.minHeight).toBe("110px");
   expect(screen.queryByRole("textbox",{name:"Contact name"})).toBeNull();
+  expect(screen.queryByRole("textbox",{name:"Mobile"})).toBeNull();
 });
-it("sends one nested contact and never writes legacy customer phone/email", () => {
+it("never sends inline contacts or legacy customer phone/email", () => {
   expect(defaultCustomerFormValues.country).toBe("sa");
-  const body=toCustomerCreateRequest({...defaultCustomerFormValues,name:" Client ",contact_name:" Buyer ",contact_phone:"555"},false);
-  expect(body.primary_contact).toEqual({name:"Buyer",phone:"555",email:undefined,role:undefined});
+  const body=toCustomerCreateRequest({...defaultCustomerFormValues,name:" Client "},false);
+  expect(body.name).toBe("Client");
   expect(body).not.toHaveProperty("phone"); expect(body).not.toHaveProperty("email");
   expect(toCustomerCreateRequest(defaultCustomerFormValues,false)).not.toHaveProperty("primary_contact");
-  expect(toCustomerCreateRequest({...defaultCustomerFormValues,contact_name:"Ignored on edit"},false,false)).not.toHaveProperty("primary_contact");
+  expect(body).not.toHaveProperty("primary_contact");
+  expect(Object.keys(defaultCustomerFormValues).some(key=>key.startsWith("contact_"))).toBe(false);
 });
 it("uses HTTPS explicit links or encoded address search and isolates the opened page", () => {
   expect(mapHref("https://maps.example.test/a","Ignored")).toBe("https://maps.example.test/a");

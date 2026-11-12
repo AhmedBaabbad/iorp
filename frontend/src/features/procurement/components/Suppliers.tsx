@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CountryCityFields, cityLabel } from "@/components/forms/CountryCityFields";
+import { cityLabel } from "@/components/forms/CountryCityFields";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
@@ -17,7 +17,7 @@ import { Q } from "@/lib/quality-permissions";
 import { createSupplier, getSupplier, getSuppliers, setSupplierStatus, updateSupplier, type SupplierFilters } from "../api";
 import { procurementErrorMessage } from "../procurement-errors";
 import { SUPPLIER_CATEGORIES, SUPPLIER_STATUSES, type Evaluation, type Supplier, type SupplierInput, type SupplierStatus } from "../types";
-import { useListChoices, useListName } from "@/features/masterdata";
+import { ListSelect, useListChoices, useListName } from "@/features/masterdata";
 
 import { joinList } from "@/lib/utils";
 import { Signatures } from "@/components/Signatures";
@@ -95,6 +95,7 @@ const EMPTY: Text = { name: "", supplies: "", contact_name: "", phone: "", email
 
 // A supplier: register one (pending evaluation), or edit its details.
 export function SupplierForm({ supplierId }: { supplierId?: string }) {
+  const location = useTranslations("common.location");
   const t = useTranslations("procurement");
   const supplierCategory = useListName("supplier_category", (k) => (t.has(`supplierCategories.${k}`) ? t(`supplierCategories.${k}`) : undefined));
   const errors = useTranslations("procurement.errors");
@@ -143,7 +144,12 @@ export function SupplierForm({ supplierId }: { supplierId?: string }) {
           {input("contact_name", { maxLength: 200 })}
           {input("phone", { maxLength: 30, dir: "ltr", inputMode: "tel", placeholder: "05xxxxxxxx" })}
           {input("email", { maxLength: 255, dir: "ltr", type: "email" })}
-          <CountryCityFields value={v} onChange={patch => setV(old => ({...old, ...patch}))} />
+          <label className={s.field}>{t("fields.country")}<ListSelect list="country" ariaLabel={t("fields.country")} value={v.country}
+            onChange={country => setV(old => ({...old, country, city: "", city_other: ""}))} /></label>
+          <label className={s.field}>{t("fields.city")}<ListSelect list="city" ariaLabel={t("fields.city")} value={v.city} parent={v.country || null}
+            disabled={!v.country} onChange={city => setV(old => ({...old, city, city_other: ""}))} /></label>
+          {v.city.endsWith("_other") && <label className={s.field}>{location("cityName")}<input required maxLength={120} value={v.city_other}
+            onChange={e => set("city_other", e.target.value)} /></label>}
           {input("vat_number", { maxLength: 40, dir: "ltr" })}
           {input("cr_number", { maxLength: 40, dir: "ltr" })}
           <label className={s.field}>{t("fields.address")}<textarea maxLength={1000} value={v.address} onChange={e => set("address", e.target.value)} /></label>

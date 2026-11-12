@@ -7,10 +7,6 @@ export type CustomerFormValues = {
   city: string;
   country: string;
   city_other: string;
-  contact_name: string;
-  contact_phone: string;
-  contact_email: string;
-  contact_role: string;
   status: CustomerCreateRequest["status"];
   relationship_stage: CustomerCreateRequest["relationship_stage"];
   opportunity_source: string;
@@ -26,10 +22,6 @@ export const defaultCustomerFormValues: CustomerFormValues = {
   city: "",
   country: "sa",
   city_other: "",
-  contact_name: "",
-  contact_phone: "",
-  contact_email: "",
-  contact_role: "",
   status: "active",
   relationship_stage: "lead",
   opportunity_source: "",
@@ -47,7 +39,6 @@ export const defaultCustomerFormValues: CustomerFormValues = {
 export function toCustomerCreateRequest(
   values: CustomerFormValues,
   includeSalesOwner: boolean,
-  includePrimaryContact = true,
 ): CustomerCreateRequest {
   return {
     name: values.name.trim(),
@@ -55,10 +46,6 @@ export function toCustomerCreateRequest(
     city: optionalText(values.city),
     country: optionalText(values.country),
     city_other: values.city.endsWith("_other") ? optionalText(values.city_other) : null,
-    ...(includePrimaryContact && hasPrimaryContact(values) ? { primary_contact: {
-      name: values.contact_name.trim(), phone: optionalText(values.contact_phone),
-      email: optionalText(values.contact_email), role: optionalText(values.contact_role),
-    } } : {}),
     status: values.status,
     relationship_stage: values.relationship_stage,
     opportunity_source: optionalText(values.opportunity_source),
@@ -76,10 +63,6 @@ export function toCustomerFormValues(customer: CustomerDetail): CustomerFormValu
     city: customer.city ?? "",
     country: customer.country ?? "",
     city_other: customer.city_other ?? "",
-    contact_name: "",
-    contact_phone: "",
-    contact_email: "",
-    contact_role: "",
     status: customer.status,
     relationship_stage: customer.relationship_stage,
     opportunity_source: customer.opportunity_source ?? "",
@@ -88,8 +71,4 @@ export function toCustomerFormValues(customer: CustomerDetail): CustomerFormValu
     key_influencer_name: customer.key_influencer_name ?? "",
     notes: customer.notes ?? "",
   };
-}
-
-export function hasPrimaryContact(values: CustomerFormValues): boolean {
-  return [values.contact_name, values.contact_phone, values.contact_email, values.contact_role].some(value => value.trim() !== "");
 }

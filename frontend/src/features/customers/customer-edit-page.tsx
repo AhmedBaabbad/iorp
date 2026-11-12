@@ -154,7 +154,7 @@ export function CustomerEditPage() {
     try {
       const updatedCustomer = await updateCustomer(
         customerId,
-        toCustomerCreateRequest(values, canAssignOwner, false),
+        toCustomerCreateRequest(values, canAssignOwner),
       );
       setSuccessRedirect(`/customers/${updatedCustomer.id}`);
     } catch (caughtError) {
@@ -201,7 +201,7 @@ export function CustomerEditPage() {
           <form style={styles.form} onSubmit={handleSubmit}>
             <CustomerFields values={values} onChange={patch => setValues(current => ({ ...current, ...patch }))}
             disabled={isSubmitting} canAssignOwner={canAssignOwner} eligibleOwners={eligibleOwners} loadingOwners={isLoadingOwners}
-            creating={false} ownerName={currentOwnerName} />
+            ownerName={currentOwnerName} />
 
           {error ? (
               <div style={sharedStyles.error} role="alert">

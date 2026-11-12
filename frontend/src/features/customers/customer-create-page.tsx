@@ -15,7 +15,6 @@ import type { EligibleSalesOwner } from "@/types/customers";
 import { createCustomer, getEligibleSalesOwners } from "./customer-api";
 import {
   defaultCustomerFormValues,
-  hasPrimaryContact,
   toCustomerCreateRequest,
   type CustomerFormValues,
 } from "./customer-form";
@@ -146,7 +145,7 @@ export function CustomerCreatePage() {
         <form style={styles.form} onSubmit={handleSubmit}>
           <CustomerFields values={values} onChange={patch => setValues(current => ({ ...current, ...patch }))}
             disabled={isSubmitting} canAssignOwner={canAssignOwner} eligibleOwners={eligibleOwners} loadingOwners={isLoadingOwners}
-            creating ownerName={user?.full_name} autoAssigned={isEligibleOwner} />
+            ownerName={user?.full_name} autoAssigned={isEligibleOwner} />
 
           {error ? (
             <div style={sharedStyles.error} role="alert">
@@ -155,7 +154,7 @@ export function CustomerCreatePage() {
           ) : null}
 
           <div style={styles.actions}>
-            <button style={sharedStyles.button} type="submit" disabled={isSubmitting || (hasPrimaryContact(values) && !values.contact_name.trim())}>
+            <button style={sharedStyles.button} type="submit" disabled={isSubmitting}>
               {isSubmitting ? `${common("actions.create")}...` : t("createButton")}
             </button>
             <Link href="/customers" style={sharedStyles.secondaryButton}>
