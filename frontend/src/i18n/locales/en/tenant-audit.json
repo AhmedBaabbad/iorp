@@ -58,7 +58,8 @@
     "user.archive_restored": "User account restored from archive",
     "user.email_change_requested": "Sign-in email change requested",
     "user.email_changed": "Sign-in email changed",
-    "user.auto_lock_cleared": "Automatic lock cleared"
+    "user.auto_lock_cleared": "Automatic lock cleared",
+    "user.deleted_permanently": "Unused account permanently deleted"
   },
   "entities": {
     "user": "User",

@@ -11,6 +11,10 @@
     "category": "tenant_resource_operation",
     "isolation_coverage": "requires_route_specific_evidence"
   },
+  "DELETE /api/v1/admin/users/{user_id}/permanent": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "tests/foundation/test_users_ux.py::test_other_tenant_and_missing_permission"
+  },
   "DELETE /api/v1/admin/users/{user_id}/roles/{role_id}": {
     "category": "tenant_resource_operation",
     "isolation_coverage": "requires_route_specific_evidence"

@@ -140,6 +140,7 @@ def _resource_permissions(module: str, definitions: dict[str, tuple[str, ...]]) 
     return [_permission(module, resource, action) for resource, actions in definitions.items() for action in actions]
 
 
+# USERS-UX-C: existing users:delete is reserved for guarded permanent deletion, never deactivation.
 FOUNDATION_PERMISSIONS = _resource_permissions("foundation", {
     "organization": ("read", "update", "branding"),
     "users": ("read", "write", "activate", "deactivate", "delete", "lock", "reset_password"),

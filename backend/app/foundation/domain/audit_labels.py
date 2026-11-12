@@ -2,6 +2,7 @@
 screens carry the same words (tenantAudit.actions / tenantAudit.entities); the CSV export uses these."""
 
 ACTIONS: dict[str, tuple[str, str]] = {
+    "user.deleted_permanently": ("حذف حساب غير مستخدم نهائيًا", "Unused account permanently deleted"),
     "user.created": ("إنشاء مستخدم", "User created"),
     "user.archived": ("أرشفة حساب مستخدم", "User account archived"),
     "user.archive_restored": ("استعادة حساب من الأرشيف", "User account restored from archive"),

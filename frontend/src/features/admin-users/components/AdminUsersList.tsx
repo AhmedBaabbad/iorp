@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { UserPresence } from "./UserPresence";
+import { PermanentUserDelete } from "./PermanentUserDelete";
 import { useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -118,6 +120,15 @@ export function AdminUsersList() {
     catch (caughtError) { setError(getApiErrorMessage(caughtError, messages)); }
   }
 
+  function handleDeleted(id: string) {
+    setUsers(rows => rows.filter(row => row.id !== id));
+    void listAdminUsers().then(rows => {
+      if (isMountedRef.current) setUsers(rows);
+    }).catch(caught => {
+      if (isMountedRef.current) setError(getApiErrorMessage(caught, messages));
+    });
+  }
+
   function statusBadge(status: AdminUserListItem["status"]): CSSProperties {
     if (status === "active") return { ...styles.badge, background: "var(--success-soft)", borderColor: "var(--success)", color: "var(--success)" };
     if (status === "locked") return { ...styles.badge, background: "var(--danger-soft)", borderColor: "color-mix(in srgb, var(--danger) 35%, var(--surface))", color: "var(--danger)" };
@@ -127,7 +138,17 @@ export function AdminUsersList() {
   useEffect(() => {
     isMountedRef.current = true;
     void loadUsers();
-    return () => { isMountedRef.current = false; };
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const refresh = () => { void listAdminUsers().then(rows=>{if(isMountedRef.current)setUsers(rows);}).catch(()=>{}); };
+    const visibility = () => {
+      if(timer)clearInterval(timer);
+      timer=undefined;
+      if(!document.hidden){timer=setInterval(refresh,60000);}
+    };
+    visibility();
+    const resume=()=>{visibility();if(!document.hidden)refresh();};
+    document.addEventListener("visibilitychange",resume);
+    return () => { isMountedRef.current = false;if(timer)clearInterval(timer);document.removeEventListener("visibilitychange",resume); };
   }, [loadUsers]);
 
   return (
@@ -152,6 +173,7 @@ export function AdminUsersList() {
                   <th style={styles.th}>{t("fields.fullName")}</th>
                   <th style={styles.th}>{t("fields.email")}</th>
                   <th style={styles.th}>{t("fields.status")}</th>
+                  <th style={styles.th}>{t("presence.title")}</th>
                   <th style={styles.th}>{t("fields.roles")}</th>
                   <th style={styles.th}>{t("fields.createdAt")}</th>
                   <th style={styles.th}>{t("fields.actions")}</th>
@@ -166,11 +188,13 @@ export function AdminUsersList() {
                     </td>
                     <td style={styles.td}>{user.email}</td>
                     <td style={styles.td}><span style={statusBadge(user.status)}>{user.archived_at ? t("accountPolicy.archived") : enumLabel("user", "status", user.status)}</span>{user.activation_pending ? <span style={{ ...styles.badge, marginInlineStart: 6, background: "var(--warning-soft, var(--surface-muted))", color: "var(--warning, var(--text-muted))" }}>{t("invitation.pending")}</span> : null}</td>
+                    <td style={styles.td}><UserPresence user={user}/></td>
                     <td style={styles.td}>{user.roles.length ? user.roles.map((role) => <span key={role.id} style={styles.badge}>{role.name}</span>) : t("notAvailable")}</td>
                     <td style={styles.td}>{fmt.date(user.created_at)}</td>
                     <td style={styles.td}>
                       <div style={styles.actions}>
                         <Link href={`/admin/users/${user.id}`} style={sharedStyles.secondaryButton}>{common("actions.view")}</Link>
+                        <PermanentUserDelete user={user} onDeleted={()=>handleDeleted(user.id)} onDeactivate={canDeactivate?()=>{window.location.assign(`/admin/users/${user.id}?deactivate=1`);}:undefined}/>
                         {!user.is_organization_root && user.status === "active" && canLock ? <button style={sharedStyles.secondaryButton} onClick={() => void runAction(async () => { const reason = window.prompt(t("accountPolicy.reason")); if (reason && reason.trim().length >= 3) await lockAdminUser(user.id, reason); })}>{t("actions.lock")}</button> : null}
                         {!user.is_organization_root && user.status === "locked" && canLock ? <button style={sharedStyles.secondaryButton} onClick={() => void runAction(async () => { const reason = window.prompt(t("accountPolicy.reason")); if (reason && reason.trim().length >= 3) await unlockAdminUser(user.id, reason); })}>{t("actions.unlock")}</button> : null}
                         {!user.is_organization_root && user.status !== "inactive" && canDeactivate ? <Link style={styles.deleteButton} href={`/admin/users/${user.id}`}>{t("actions.deactivate")}</Link> : null}
