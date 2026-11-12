@@ -161,8 +161,19 @@ def _transition_conflict(exc: InvalidUserStateTransitionError) -> JSONResponse:
     return JSONResponse(status_code=409, content={"code": "INVALID_USER_STATE_TRANSITION", "message": str(exc), "allowed_transitions": exc.allowed})
 
 
-def _user_to_list_item(user, roles: list) -> UserListItem:
+def _presence_fields(user, current, db):
+    from app.foundation.application.presence import is_online
+    from app.foundation.application.permanent_deletion import can_delete_permanently
+    result={'can_delete_permanently': can_delete_permanently(db,user,current.user.id)
+            if 'foundation:users:delete' in current.auth_user.permissions else False}
+    if 'foundation:users:read' in current.auth_user.permissions:
+        result.update(last_seen_at=user.last_seen_at,is_online=is_online(user))
+    return result
+
+
+def _user_to_list_item(user, roles: list, current, db) -> UserListItem:
     return UserListItem(
+        **_presence_fields(user, current, db),
         archived_at=user.archived_at,
         id=user.id,
         full_name=user.full_name,
@@ -177,9 +188,10 @@ def _user_to_list_item(user, roles: list) -> UserListItem:
     )
 
 
-def _user_to_detail(user, roles: list) -> UserDetailResponse:
+def _user_to_detail(user, roles: list, current, db) -> UserDetailResponse:
     service_roles = roles
     return UserDetailResponse(
+        **_presence_fields(user, current, db),
         timezone=user.timezone, archived_at=user.archived_at, account_change_reason=user.account_change_reason,
         id=user.id,
         organization_id=user.organization_id,
@@ -211,7 +223,7 @@ def list_users(
     result = []
     for user in users:
         roles = service.get_user_roles(user.id, current.tenant.organization_id)
-        result.append(_user_to_list_item(user, roles))
+        result.append(_user_to_list_item(user, roles, current, db))
     return result
 
 
@@ -234,7 +246,7 @@ def create_user(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     sent = service.send_activation_link(user)  # SEC-003: the user chooses their own password
     roles = service.get_user_roles(user.id, current.tenant.organization_id)
-    return _user_to_detail(user, roles).model_copy(update={"invitation_sent": sent})
+    return _user_to_detail(user, roles, current, db).model_copy(update={"invitation_sent": sent})
 
 
 @router.get("/users/{user_id}", response_model=UserDetailResponse)
@@ -248,7 +260,7 @@ def get_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
     roles = service.get_user_roles(user.id, current.tenant.organization_id)
-    response = _user_to_detail(user, roles)
+    response = _user_to_detail(user, roles, current, db)
     response.permissions = sorted(
         p.code
         for p in service.get_user_permissions(user.id, current.tenant.organization_id)
@@ -292,7 +304,7 @@ async def update_user(
         db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     roles = service.get_user_roles(user.id, current.tenant.organization_id)
-    return _user_to_detail(user, roles)
+    return _user_to_detail(user, roles, current, db)
 
 
 @router.get(
@@ -374,7 +386,7 @@ def delete_user(
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return _user_to_detail(user, service.get_user_roles(user.id, current.tenant.organization_id))
+    return _user_to_detail(user, service.get_user_roles(user.id, current.tenant.organization_id), current, db)
 
 
 def _status_action(user_id: UUID, target: UserStatus, current: CurrentUserContext, db: Session, payload: AccountActionRequest, *, clear_auto_lock: bool = False):
@@ -407,7 +419,7 @@ def _status_action(user_id: UUID, target: UserStatus, current: CurrentUserContex
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return _user_to_detail(user, service.get_user_roles(user.id, current.tenant.organization_id))
+    return _user_to_detail(user, service.get_user_roles(user.id, current.tenant.organization_id), current, db)
 
 
 @router.post("/users/{user_id}/lock", response_model=UserDetailResponse)
@@ -546,7 +558,7 @@ def archive_user(user_id: UUID, payload: AccountActionRequest, current: CurrentU
     log_tenant_audit(db, user.organization_id, "user.archived", "user", user.id, current.user.id, current.user.full_name, current.user.email, user.full_name, {"reason": payload.reason})
     db.commit()
     service = FoundationService(db)
-    return _user_to_detail(user, service.get_user_roles(user.id, user.organization_id))
+    return _user_to_detail(user, service.get_user_roles(user.id, user.organization_id), current, db)
 
 @router.post("/users/{user_id}/restore", response_model=UserDetailResponse)
 def restore_user(user_id: UUID, payload: AccountActionRequest, current: CurrentUserContext = Depends(require_permission("foundation:users:activate")), db: Session = Depends(get_db)):
@@ -563,4 +575,17 @@ def restore_user(user_id: UUID, payload: AccountActionRequest, current: CurrentU
     log_tenant_audit(db, user.organization_id, "user.archive_restored", "user", user.id, current.user.id, current.user.full_name, current.user.email, user.full_name, {"reason": payload.reason})
     db.commit()
     service = FoundationService(db)
-    return _user_to_detail(user, service.get_user_roles(user.id, user.organization_id))
+    return _user_to_detail(user, service.get_user_roles(user.id, user.organization_id), current, db)
+
+
+@router.delete('/users/{user_id}/permanent')
+def permanently_delete_user(user_id: UUID, payload: AccountActionRequest,
+    current: CurrentUserContext = Depends(require_permission('foundation:users:delete')), db: Session = Depends(get_db)):
+    from app.foundation.application.permanent_deletion import delete_permanently, UserDeletionConflict
+    try:
+        delete_permanently(db,current.tenant.organization_id,user_id,current.user,payload.reason)
+    except LookupError as exc:
+        raise HTTPException(404,'User not found.') from exc
+    except UserDeletionConflict as exc:
+        return JSONResponse(status_code=409,content={'code':exc.code,'details':{'tables':exc.tables}})
+    return {'deleted':True}

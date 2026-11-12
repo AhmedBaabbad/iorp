@@ -287,6 +287,8 @@ def get_current_user(
             detail={"code": "SESSION_ENDED", "message": "This session was ended. Please log in again."},
         )
 
+    from app.foundation.application.presence import touch_presence
+    touch_presence(db, user)
     try:
         profile = service.build_current_user_response(user)
     except ValueError as exc:

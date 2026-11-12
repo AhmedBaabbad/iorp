@@ -352,6 +352,7 @@ class FoundationService:
         if user is None:
             return None
 
+        user.last_seen_at = utc_now()
         record_successful_login(self.db, user)
         log_tenant_security(self.db, user.organization_id, TENANT_LOGIN_SUCCESS,
                             user.id, user.email, ip, user_agent)

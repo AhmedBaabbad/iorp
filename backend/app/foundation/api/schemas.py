@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator, model_serializer
 from pydantic_core import PydanticCustomError
 from typing import Literal
 
@@ -266,7 +266,19 @@ class RoleRef(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class UserListItem(BaseModel):
+class _PresenceResponse(BaseModel):
+    @model_serializer(mode='wrap')
+    def hide_unset_presence(self, handler):
+        result=handler(self)
+        for field in ('last_seen_at','is_online'):
+            if field not in self.model_fields_set:result.pop(field,None)
+        return result
+
+
+class UserListItem(_PresenceResponse):
+    last_seen_at: ISODatetime | None = None
+    is_online: bool | None = None
+    can_delete_permanently: bool = False
     archived_at: ISODatetime | None = None
     id: UUID
     full_name: str
@@ -282,7 +294,10 @@ class UserListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class AdminUserResponse(BaseModel):
+class AdminUserResponse(_PresenceResponse):
+    last_seen_at: ISODatetime | None = None
+    is_online: bool | None = None
+    can_delete_permanently: bool = False
     archived_at: ISODatetime | None = None
     account_change_reason: str | None = None
     timezone: str | None = Field(default=None, max_length=64)
