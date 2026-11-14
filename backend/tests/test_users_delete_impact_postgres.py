@@ -53,12 +53,14 @@ def test_activated_account_and_its_history_are_preserved(mailbox):
             permissions=frozenset({'foundation:users:read','foundation:users:delete'})
             current=SimpleNamespace(user=actor,auth_user=SimpleNamespace(permissions=permissions),tenant=TenantContext(actor.id,org.id,permissions=permissions))
             app.dependency_overrides[get_current_user]=lambda:current
+            before={row.id:(row.actor_id,row.actor_email) for row in db.scalars(sa.select(TenantSecurityEvent).where(TenantSecurityEvent.actor_id==target.id))}
             response=client.request('DELETE',f'/api/v1/admin/users/{target.id}/permanent',json={'reason':'No business history'})
             assert response.status_code==409 and response.json()['code']=='USER_DELETE_ACTIVATED'
             assert db.scalar(sa.select(User.id).where(User.id==target.id))==target.id
             assert db.scalar(sa.select(notifications.c.id).where(notifications.c.recipient_user_id==target.id)) is not None
-            events=list(db.scalars(sa.select(TenantSecurityEvent).where(TenantSecurityEvent.actor_email==target.email)))
+            events=list(db.scalars(sa.select(TenantSecurityEvent).where(TenantSecurityEvent.actor_id==target.id)))
             assert len(events)>=3 and all(row.actor_id==target.id for row in events)
+            assert {row.id:(row.actor_id,row.actor_email) for row in events}==before
             audit=db.scalar(sa.select(TenantSecurityEvent).where(TenantSecurityEvent.event_type=='user.deleted_permanently'))
             assert audit is None
     finally:
