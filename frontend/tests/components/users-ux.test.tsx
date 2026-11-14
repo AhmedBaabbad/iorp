@@ -4,12 +4,12 @@ import {afterEach,beforeAll,beforeEach,expect,it,vi} from "vitest";
 import type {ReactNode} from "react";
 import {loadMessages} from "@/i18n/messages";
 import {ApiClientError} from "@/lib/api-client";
-const mocks=vi.hoisted(()=>({allowed:true,remove:vi.fn(),list:vi.fn(),get:vi.fn(),push:vi.fn(),success:vi.fn(),error:vi.fn()}));
+const mocks=vi.hoisted(()=>({allowed:true,remove:vi.fn(),list:vi.fn(),get:vi.fn(),presence:vi.fn(),push:vi.fn(),success:vi.fn(),error:vi.fn()}));
 vi.mock("@/features/auth",()=>({usePermission:()=>mocks.allowed,useAuth:()=>({user:null})}));
 vi.mock("next/navigation",()=>({useParams:()=>({id:"pending"}),useRouter:()=>({push:mocks.push,refresh:vi.fn()})}));
 vi.mock("@/components/notify/Notifications",()=>({useNotify:()=>({success:mocks.success,error:mocks.error})}));
 vi.mock("@/components/layout/page-frame",()=>({PageFrame:({children}:{children:ReactNode})=><main>{children}</main>}));
-vi.mock("@/features/admin-users/api/admin-users-api",()=>({permanentlyDeleteAdminUser:mocks.remove,getAdminUser:mocks.get,listAdminUsers:mocks.list,archiveAdminUser:vi.fn(),deactivateAdminUser:vi.fn(),getUserDeactivationImpact:vi.fn(),resetAdminUserPassword:vi.fn(),getAdminUserSessions:vi.fn(),endAdminUserSessions:vi.fn(),activateAdminUser:vi.fn(),lockAdminUser:vi.fn(),unlockAdminUser:vi.fn()}));
+vi.mock("@/features/admin-users/api/admin-users-api",()=>({permanentlyDeleteAdminUser:mocks.remove,getAdminUser:mocks.get,getAdminUserPresence:mocks.presence,listAdminUsers:mocks.list,archiveAdminUser:vi.fn(),deactivateAdminUser:vi.fn(),getUserDeactivationImpact:vi.fn(),resetAdminUserPassword:vi.fn(),getAdminUserSessions:vi.fn(),endAdminUserSessions:vi.fn(),activateAdminUser:vi.fn(),lockAdminUser:vi.fn(),unlockAdminUser:vi.fn()}));
 vi.mock("@/features/admin-users/components/AdminUserRolesManager",()=>({AdminUserRolesManager:()=>null}));
 vi.mock("@/features/admin-users/components/EffectiveAccessPanel",()=>({EffectiveAccessPanel:()=>null}));
 vi.mock("@/hooks/useFormatter",()=>({useFormatter:()=>({date:(value:string)=>value,dateTime:(value:string)=>`Full date ${value}`})}));
@@ -19,7 +19,7 @@ import {PermanentUserDelete} from "@/features/admin-users/components/PermanentUs
 import {AdminUsersList} from "@/features/admin-users/components/AdminUsersList";
 let en:Record<string,unknown>,ar:Record<string,unknown>;
 beforeAll(async()=>{en=await loadMessages("en") as Record<string,unknown>;ar=await loadMessages("ar") as Record<string,unknown>;});
-beforeEach(()=>{vi.clearAllMocks();mocks.allowed=true;mocks.list.mockResolvedValue([]);mocks.remove.mockResolvedValue({deleted:true});mocks.get.mockResolvedValue(detail);});
+beforeEach(()=>{vi.clearAllMocks();mocks.allowed=true;mocks.list.mockResolvedValue([]);mocks.remove.mockResolvedValue({deleted:true});mocks.get.mockResolvedValue(detail);mocks.presence.mockResolvedValue({last_seen_at:detail.last_seen_at,is_online:true});});
 afterEach(()=>{cleanup();vi.useRealTimers();});
 const user={id:"pending",email:"pending@example.com",full_name:"Pending",status:"active" as const,phone:null,preferred_locale:null,is_organization_root:false,roles:[],created_at:"2026-11-12T10:00:00Z",can_delete_permanently:true};
 const detail={...user,organization_id:"org",last_login_at:"2026-11-12T10:00:00Z",last_seen_at:"2026-11-12T11:59:00Z",is_online:true,
@@ -61,20 +61,10 @@ it("requires reason, accepts uppercase confirmation email and closes before retu
   expect(screen.queryByRole("dialog")).toBeNull();
 });
 
-it.each([200,404])("removes the list row immediately on %s, before its refetch completes",async status=>{
-  const other={...user,id:"other",full_name:"Other user",email:"other@example.com",can_delete_permanently:false};
-  let finishReload!:(rows:Array<typeof user>)=>void;
-  mocks.list.mockResolvedValueOnce([user,other]).mockImplementationOnce(()=>new Promise(resolve=>{finishReload=resolve;}));
-  if(status===404)mocks.remove.mockRejectedValueOnce(new ApiClientError("Not found",404));
-  ui(<AdminUsersList/>);
-  await screen.findByRole("link",{name:"Pending"});confirm();
-  fireEvent.click(screen.getAllByRole("button",{name:"Delete permanently"})[1]);
-  await waitFor(()=>expect(screen.queryByRole("link",{name:"Pending"})).toBeNull());
-  expect(screen.getByRole("link",{name:"Other user"})).toBeTruthy();
-  expect(screen.queryByRole("dialog")).toBeNull();
-  expect(mocks.list).toHaveBeenCalledTimes(2);expect(mocks.push).not.toHaveBeenCalled();
-  if(status===404)expect(mocks.error).toHaveBeenCalledWith("This user no longer exists");
-  await act(async()=>{finishReload([other]);});
+it("never offers permanent deletion in the list",async()=>{
+  mocks.list.mockResolvedValue([user]);ui(<AdminUsersList/>);
+  await screen.findByRole("link",{name:"Pending"});
+  expect(screen.queryByRole("button",{name:"Delete permanently"})).toBeNull();
 });
 
 it.each(["ar","en"])("reports missing user in %s and returns from details to the list",async locale=>{
@@ -113,7 +103,7 @@ it("keeps presence and periodic refresh out of the users list",async()=>{
 
 it("polls presence in the hero only while details are visible, retaining an open dialog",async()=>{
   vi.useFakeTimers();vi.setSystemTime(new Date("2026-11-12T12:00:00Z"));
-  mocks.get.mockResolvedValueOnce(detail).mockResolvedValueOnce({...detail,is_online:false,last_seen_at:"2026-11-12T11:50:00Z"});
+  mocks.presence.mockResolvedValue({is_online:false,last_seen_at:"2026-11-12T11:50:00Z"});
   let hidden=false;const original=Object.getOwnPropertyDescriptor(document,"hidden");
   Object.defineProperty(document,"hidden",{configurable:true,get:()=>hidden});
   try{
@@ -123,14 +113,14 @@ it("polls presence in the hero only while details are visible, retaining an open
     expect(screen.getByText(`Full date ${detail.last_seen_at}`)).toBeTruthy();
     expect(screen.getAllByText(`Full date ${detail.last_login_at}`).length).toBeGreaterThan(0);
     confirm();
-    await act(async()=>{await vi.advanceTimersByTimeAsync(60000);});expect(mocks.get).toHaveBeenCalledTimes(2);
+    await act(async()=>{await vi.advanceTimersByTimeAsync(60000);});expect(mocks.presence).toHaveBeenCalledTimes(1);expect(mocks.get).toHaveBeenCalledTimes(1);
     expect(within(hero).getByText(/Last seen:/)).toBeTruthy();
     expect(screen.getByRole("dialog")).toBeTruthy();
     expect((screen.getByRole("textbox",{name:"Reason"}) as HTMLTextAreaElement).value).toBe("Created by mistake");
     hidden=true;fireEvent(document,new Event("visibilitychange"));
-    await act(async()=>{await vi.advanceTimersByTimeAsync(120000);});expect(mocks.get).toHaveBeenCalledTimes(2);
-    hidden=false;fireEvent(document,new Event("visibilitychange"));await act(async()=>{await Promise.resolve();});expect(mocks.get).toHaveBeenCalledTimes(3);
-    view.unmount();await vi.advanceTimersByTimeAsync(60000);expect(mocks.get).toHaveBeenCalledTimes(3);
+    await act(async()=>{await vi.advanceTimersByTimeAsync(120000);});expect(mocks.presence).toHaveBeenCalledTimes(1);expect(mocks.get).toHaveBeenCalledTimes(1);
+    hidden=false;fireEvent(document,new Event("visibilitychange"));await act(async()=>{await Promise.resolve();});expect(mocks.presence).toHaveBeenCalledTimes(2);expect(mocks.get).toHaveBeenCalledTimes(1);
+    view.unmount();await vi.advanceTimersByTimeAsync(60000);expect(mocks.presence).toHaveBeenCalledTimes(2);expect(mocks.get).toHaveBeenCalledTimes(1);
   }finally{if(original)Object.defineProperty(document,"hidden",original);else Reflect.deleteProperty(document,"hidden");}
 });
 

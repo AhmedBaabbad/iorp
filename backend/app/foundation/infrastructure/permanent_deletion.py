@@ -3,7 +3,8 @@
 Exemptions are owner rows, not entire tables: assigning somebody else's role
 remains history, even though the user's own role bindings are disposable.
 """
-from sqlalchemy import and_, delete, func, or_, select, update
+from sqlalchemy import and_, delete, false, func, not_, or_, select, update
+from sqlalchemy.dialects.postgresql import JSONB
 from app.core.db import Base
 
 SELF_OWNED = {
@@ -95,24 +96,26 @@ def self_owned_tables():
     return owners
 
 
-def security_is_personal(row, user_id, organization_id):
-    if row['organization_id'] != organization_id:
-        return False
-    details = row['details'] or {}
-    if not isinstance(details, dict):
-        return False
-    for key in ('target_user_id', 'user_id', 'account_id', 'subject_user_id', 'target_id'):
-        if details.get(key) is not None and str(details[key]) != str(user_id):
-            return False
-    if row['event_type'] == 'tenant.sessions_ended':
-        return details.get('reason') in {'ended_by_user', 'session_limit'}
-    return row['event_type'] in SELF_SECURITY_EVENTS
+def personal_security_condition(db, user_id, organization_id):
+    """A total SQL boolean shared by the blocking probe and bulk detachment.
 
-
-def personal_security_rows(db, user_id, organization_id):
+    PostgreSQL uses JSONB ->> operators; SQLite's JSON1 path is test-equivalent.
+    Null details mean no target; arrays/scalars and unknown events fail closed.
+    """
     table = Base.metadata.tables['foundation_security_events']
-    return [row for row in db.execute(select(table).where(table.c.actor_id == user_id)).mappings()
-            if security_is_personal(row, user_id, organization_id)]
+    details = table.c.details
+    postgres = db.get_bind().dialect.name == 'postgresql'
+    document = details.cast(JSONB) if postgres else details
+    kind = func.jsonb_typeof(document) if postgres else func.json_type(document)
+    def text(key):
+        return document.op('->>')(key) if postgres else func.json_extract(document, '$.' + key)
+    targets = [or_(text(key).is_(None), text(key) == str(user_id)) for key in
+               ('target_user_id', 'user_id', 'account_id', 'subject_user_id', 'target_id')]
+    personal_event = or_(table.c.event_type.in_(SELF_SECURITY_EVENTS),
+        and_(table.c.event_type == 'tenant.sessions_ended',
+             text('reason').in_(['ended_by_user', 'session_limit'])))
+    return func.coalesce(and_(table.c.organization_id == organization_id,
+        or_(details.is_(None), kind.in_(['object', 'null'])), personal_event, *targets), false())
 
 
 def reference_tables(db,user_id,organization_id,limit=5):
@@ -132,8 +135,8 @@ def reference_tables(db,user_id,organization_id,limit=5):
             condition=and_(condition,not_owned)
         # No organization filter: even a corrupt cross-tenant reference must block deletion.
         if table.name=='foundation_security_events':
-            blocking=any(not security_is_personal(row,user_id,organization_id)
-                for row in db.execute(select(table).where(condition)).mappings())
+            condition=and_(condition,not_(personal_security_condition(db,user_id,organization_id)))
+            blocking=db.scalar(select(1).select_from(table).where(condition).limit(1)) is not None
         else:blocking=db.scalar(select(1).select_from(table).where(condition).limit(1)) is not None
         if blocking:
             key=TABLE_KEYS.get(table.name,table.name)
@@ -144,11 +147,9 @@ def reference_tables(db,user_id,organization_id,limit=5):
 
 def detach_personal_security(db,user):
     table=Base.metadata.tables['foundation_security_events']
-    ids=[row['id'] for row in personal_security_rows(db,user.id,user.organization_id)]
-    count=0
-    for start in range(0,len(ids),500):
-        count+=db.execute(update(table).where(table.c.id.in_(ids[start:start+500]))
-            .values(actor_id=None,actor_email=func.coalesce(table.c.actor_email,user.email))).rowcount
+    count=db.execute(update(table).where(table.c.actor_id==user.id,
+        personal_security_condition(db,user.id,user.organization_id))
+        .values(actor_id=None,actor_email=func.coalesce(table.c.actor_email,user.email))).rowcount
     return {'foundation_security_events':count} if count else {}
 
 

@@ -298,6 +298,18 @@ class UserRoleRepository:
         )
         return self.db.scalar(statement) or 0
 
+    def list_roles_for_users(self, user_ids: list[UUID], organization_id: UUID) -> dict[UUID, list[Role]]:
+        if not user_ids:
+            return {}
+        rows = self.db.execute(select(UserRole.user_id, Role)
+            .join(Role, UserRole.role_id == Role.id)
+            .where(UserRole.user_id.in_(user_ids), Role.organization_id == organization_id)
+            .order_by(Role.created_at.desc()))
+        result = {}
+        for user_id, role in rows:
+            result.setdefault(user_id, []).append(role)
+        return result
+
     def list_roles_for_user(
         self,
         user_id: UUID,

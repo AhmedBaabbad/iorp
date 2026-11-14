@@ -21,6 +21,7 @@ import {
   lockAdminUser,
   unlockAdminUser,
   getAdminUser,
+  getAdminUserPresence,
   getUserDeactivationImpact,
   resetAdminUserPassword,
   getAdminUserSessions,
@@ -80,8 +81,8 @@ export function AdminUserDetail() {
 
   useEffect(() => {
     let live=true;
-    const refresh=()=>{void getAdminUser(params.id).then(next=>{
-      if(live)setUser(current=>current?.id===next.id?{...current,last_seen_at:next.last_seen_at,is_online:next.is_online}:current);
+    const refresh=()=>{void getAdminUserPresence(params.id).then(next=>{
+      if(live)setUser(current=>current?.id===params.id?{...current,last_seen_at:next.last_seen_at,is_online:next.is_online}:current);
     }).catch(()=>{});};
     load();
     let timer:ReturnType<typeof setInterval>|undefined;

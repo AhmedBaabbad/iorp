@@ -11,7 +11,7 @@ import { sharedStyles } from "@/styles/shared-styles";
 import { permanentlyDeleteAdminUser } from "../api/admin-users-api";
 import type { AdminUserListItem, UserDeleteBlock } from "../types";
 
-export function PermanentUserDelete({user,onDeleted,onDeactivate,className,style,showBlock=false}:{user:AdminUserListItem & {delete_block?:UserDeleteBlock|null};showBlock?:boolean;onDeleted?:()=>void;onDeactivate?:()=>void;className?:string;style?:CSSProperties}) {
+export function PermanentUserDelete({user,onDeleted,onDeactivate,className,style,showBlock=false}:{user:AdminUserListItem & {can_delete_permanently?:boolean;delete_block?:UserDeleteBlock|null};showBlock?:boolean;onDeleted?:()=>void;onDeactivate?:()=>void;className?:string;style?:CSSProperties}) {
   const allowed=usePermission("foundation:users:delete"),t=useTranslations("administration.users.permanentDelete");
   const router=useRouter(),notify=useNotify();
   const locale=useLocale();

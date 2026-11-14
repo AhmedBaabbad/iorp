@@ -215,6 +215,10 @@
     "category": "tenant_resource_operation",
     "isolation_coverage": "requires_route_specific_evidence"
   },
+  "GET /api/v1/admin/users/{user_id}/presence": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "tests/foundation/test_users_delete_performance.py::test_presence_is_one_scoped_query"
+  },
   "GET /api/v1/admin/users/{user_id}/roles": {
     "category": "tenant_resource_operation",
     "isolation_coverage": "requires_route_specific_evidence"

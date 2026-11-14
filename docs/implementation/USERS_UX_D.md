@@ -7,20 +7,21 @@ decide deletion. Organization root, self and business history remain blockers.
 
 ## Presence and UI
 
-Presence is removed from the list, together with its periodic poll. Immediate
-row removal/refetch (`handleDeleted`) remains unchanged. Details show presence
+Presence and permanent deletion are removed from the list, together with its
+periodic poll. Details show presence
 in the hero, a full localized last-seen timestamp and the existing last login.
-The 60-second detail refresh merges only last_seen_at/is_online, stops while
+The 60-second detail refresh calls the lightweight /presence endpoint and
+merges only last_seen_at/is_online, stops while
 hidden, resumes on visibility and clears on unmount; open dialogs and their
 drafts remain intact. Server presence/window/throttle behavior is unchanged.
 
 Details expose `delete_block` only to foundation:users:delete: null or a root,
 self or history code with up to five stable translated type keys. The list
-keeps only can_delete_permanently. Fast root/self checks precede metadata scans.
+does not compute eligibility or return can_delete_permanently. Fast root/self checks precede metadata scans.
 Current FK table types all have Arabic/English labels, verified by a test.
 Details show history-blocked deletion disabled, its reason/types and the existing
 deactivation handoff; root/self have no delete button. Confirmation, normalized
-email comparison, immediate removal and 404 behavior are retained.
+email comparison and 404 return-to-list behavior are retained.
 
 ## Tables deleted
 
@@ -71,9 +72,9 @@ adds deleted_rows/detached_rows totals and deleted_by_table/detached_by_table
 counts; deleted_rows includes the user itself. IntegrityError rolls back all
 detachment and cleanup and returns USER_DELETE_HAS_HISTORY.
 
-No migration is needed: security actor_id is already nullable and recipient
-notifications already use ON DELETE CASCADE. No presence model/schema behavior
-is changed. The PostgreSQL test proves real deletion with FK enforcement after
+Security actor_id is already nullable and recipient notifications already use
+ON DELETE CASCADE. Migration f6a1b2p2 adds the actor_id/event_type index for SQL
+history checks. No presence model/schema behavior is changed. The PostgreSQL test proves real deletion with FK enforcement after
 activation, login, multiple authenticated GETs, logout and an inbox notification;
 security events remain with null actor_id and preserved email. Other tests cover
 customer creation blocking, inactive accounts, administrative locks, root/self,
@@ -89,5 +90,6 @@ dialog preservation, disabled reason/types and enabled/protected deletion.
 النطاق المحدد. الفصل يخص actor_id لأحداث الحساب الشخصية المعروفة في
 foundation_security_events فقط، مع حفظ البريد والبيانات التاريخية. لا
 توجد جداول MFA للمستأجر ولا سجلات نشاط تنتج عن التصفح؛ ولا تُمس بيانات
-المنصة أو سجلات التدقيق والأعمال. لا توجد migration جديدة لأن العمود
-المفصول يقبل NULL بالفعل. تُثبت نتائج الأوامر النهائية في وصف PR.
+المنصة أو سجلات التدقيق والأعمال. العمود المفصول يقبل NULL بالفعل، وأضيفت
+migration f6a1b2p2 لفهرس فحص الأثر. الحذف من التفاصيل فقط وتحديث الحضور
+بمسار خفيف مستقل. تُثبت نتائج الأوامر النهائية في وصف PR.

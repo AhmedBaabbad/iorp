@@ -278,7 +278,6 @@ class _PresenceResponse(BaseModel):
 class UserListItem(_PresenceResponse):
     last_seen_at: ISODatetime | None = None
     is_online: bool | None = None
-    can_delete_permanently: bool = False
     archived_at: ISODatetime | None = None
     id: UUID
     full_name: str
@@ -292,6 +291,11 @@ class UserListItem(_PresenceResponse):
     activation_pending: bool = False  # SEC-003: the activation link not used yet
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserPresenceResponse(BaseModel):
+    last_seen_at: ISODatetime | None
+    is_online: bool
 
 
 class UserDeleteBlock(BaseModel):

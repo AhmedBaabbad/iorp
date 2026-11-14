@@ -2,6 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.interfaces.follow_up_queries import FollowUpQueryInterface
@@ -24,6 +25,7 @@ from app.foundation.api.schemas import (
     UserDetailResponse,
     UserDeactivationImpactResponse,
     UserListItem,
+    UserPresenceResponse,
     UserRoleAssignRequest,
     UserUpdateRequest,
     AssignedRoleResponse,
@@ -164,11 +166,11 @@ def _transition_conflict(exc: InvalidUserStateTransitionError) -> JSONResponse:
 def _presence_fields(user, current, db, detail=False):
     from app.foundation.application.presence import is_online
     from app.foundation.application.permanent_deletion import deletion_block
-    result={'can_delete_permanently':False}
-    if 'foundation:users:delete' in current.auth_user.permissions:
+    result={}
+    if detail and 'foundation:users:delete' in current.auth_user.permissions:
         block=deletion_block(db,user,current.user.id)
         result['can_delete_permanently']=block is None
-        if detail:result['delete_block']=block
+        result['delete_block']=block
     if 'foundation:users:read' in current.auth_user.permissions:
         result.update(last_seen_at=user.last_seen_at,is_online=is_online(user))
     return result
@@ -223,11 +225,27 @@ def list_users(
 ) -> list[UserListItem]:
     service = FoundationService(db)
     users = service.list_users(current.tenant.organization_id)
+    roles_by_user = service.user_roles.list_roles_for_users([user.id for user in users], current.tenant.organization_id)
     result = []
     for user in users:
-        roles = service.get_user_roles(user.id, current.tenant.organization_id)
+        roles = roles_by_user.get(user.id, [])
         result.append(_user_to_list_item(user, roles, current, db))
     return result
+
+
+@router.get("/users/{user_id}/presence", response_model=UserPresenceResponse)
+def get_user_presence(
+    user_id: UUID,
+    current: CurrentUserContext = Depends(require_permission("foundation:users:read")),
+    db: Session = Depends(get_db),
+) -> UserPresenceResponse:
+    from app.foundation.application.presence import is_online
+    from app.foundation.infrastructure.models import User
+    user = db.execute(select(User.last_seen_at, User.status).where(
+        User.id == user_id, User.organization_id == current.tenant.organization_id)).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found.")
+    return UserPresenceResponse(last_seen_at=user.last_seen_at, is_online=is_online(user))
 
 
 @router.post("/users", response_model=UserDetailResponse, status_code=status.HTTP_201_CREATED)
