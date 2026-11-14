@@ -147,35 +147,52 @@ def test_sixteen_accumulated_local_backups_keep_three_and_apply_remote_gfs(store
 def test_interruption_after_remote_prune_recovers_via_local_quarantine(store,monkeypatch):
     job, remote, publish=store
     folders=[publish(day) for day in range(1,17)]
-    removed=[]
-    def interrupted(*args):
-        if args[0]=='purge':
-            if removed:raise ops.Failure('interrupted')
-            removed.append(Path(args[1]).name)
-        return remote(*args)
-    monkeypatch.setattr(job,'rclone',interrupted)
-    with pytest.raises(ops.Failure,match='^interrupted$'):job.retention(folders[-1])
-    assert len(list(job.local.iterdir()))==16 and len(removed)==1
-    monkeypatch.setattr(job,'rclone',remote)
+    original=shutil.rmtree
+    def interrupted(path,*args,**kwargs):
+        if Path(path).parent==job.local:
+            raise KeyboardInterrupt()
+        return original(path,*args,**kwargs)
+    monkeypatch.setattr(shutil,'rmtree',interrupted)
+    with pytest.raises(KeyboardInterrupt):job.retention(folders[-1])
+    removed=set(p.name for p in folders)-set(p.name for p in remote.root.iterdir())
+    assert len(removed)==1 and len(list(job.local.iterdir()))==16
+    monkeypatch.setattr(shutil,'rmtree',original)
     job.retention(folders[-1])
-    assert list(job.quarantine.glob('*/'+removed[0]))
+    assert list(job.quarantine.glob('*/'+removed.pop()))
     assert {p.name for p in job.local.iterdir()}=={p.name for p in folders[-3:]}
 
 
-def test_normal_same_day_gfs_prune_cannot_poison_subsequent_daily_jobs(store):
+def test_manual_and_nightly_backup_then_next_day_never_quarantines(store):
     job, remote, publish=store
-    morning,noon,night=[publish(1,hour) for hour in [8,12,23]]
-    job.retention(night)
-    assert {p.name for p in job.local.iterdir()}=={morning.name,noon.name,night.name}
-    assert {p.name for p in remote.root.iterdir()}=={night.name}
-    # Old code raises local-receipt here, before it can ever prune local copies.
-    tomorrow=publish(2)
-    job.retention(tomorrow)
-    assert list(job.quarantine.glob('*/'+morning.name)) and list(job.quarantine.glob('*/'+noon.name))
+    morning=publish(1,8);job.retention(morning)
+    night=publish(1);job.retention(night)
+    assert not morning.exists() and not (remote.root/morning.name).exists()
+    tomorrow=publish(2);job.retention(tomorrow)
     assert {p.name for p in job.local.iterdir()}=={night.name,tomorrow.name}
-    next_day=publish(3)
-    job.retention(next_day)
-    assert {p.name for p in job.local.iterdir()}=={night.name,tomorrow.name,next_day.name}
+    assert not job.local_quarantined and not job.quarantine.exists()
+
+
+def test_ten_days_with_three_deployment_days_keep_only_healthy_gfs_copies(store):
+    job, remote, publish=store
+    for day in range(1,11):
+        for hour in ([8,23] if day in {2,5,9} else [23]):
+            newest=publish(day,hour);job.retention(newest)
+            assert not job.local_quarantined and not job.quarantine.exists()
+            assert len(list(job.local.iterdir()))<=3
+            keep=ops.retained([p.name for p in remote.root.iterdir()])
+            assert {p.name for p in job.local.iterdir()}==set(sorted(keep)[-3:])
+    assert len(list(job.local.iterdir()))==3
+
+
+def test_inherited_orphan_is_quarantined_once_only(store):
+    job, remote, publish=store
+    old=publish(1,8);night=publish(1)
+    shutil.rmtree(remote.root/old.name)  # State left by the old remote-only pruning.
+    job.retention(night)
+    assert job.local_quarantined and len(list(job.quarantine.iterdir()))==1
+    job.local_quarantined=False  # A fresh daily Job starts with no warning.
+    tomorrow=publish(2);job.retention(tomorrow)
+    assert not job.local_quarantined and len(list(job.quarantine.iterdir()))==1
 
 
 def test_entire_remote_catalog_must_validate_before_any_prune_or_quarantine(store):

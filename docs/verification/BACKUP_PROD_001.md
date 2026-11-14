@@ -18,15 +18,21 @@ catalog. A reproducible ordinary sequence violates that requirement:
    and raises local-receipt, before it can prune local backups. Each subsequent
    successful upload adds another local backup but hits the same old orphan.
 
-The regression test runs that sequence across three days. The fixed second
-round preserves the two orphaned copies in quarantine; later rounds proceed.
-This makes case (a), a local orphan, the strongest code-supported hypothesis,
-even without a crash. A crash after remote purge but before local pruning has
-the same effect and is tested separately. Unexpected local entries (case d)
-also deterministically trigger the old local-layout failure.
+The owner confirmed this operating sequence: a manual backup before migrations
+followed by the nightly backup on the same day. Local retention now follows
+remote GFS in the same run: after each successful remote purge, its healthy
+local copy is removed immediately. A failed purge retains that local copy and
+returns remote-prune. Keep the newest three healthy local members of remote
+keep, including the new backup. Normal deployment days never warn or accumulate
+quarantine.
 
-This is not a field diagnosis: previous logs omitted reason codes and no host
-inspection was authorized. Interrupted remote uploads (b), valid rclone text
+Regressions cover manual/nightly then next day, ten days with three double-backup
+days, remote purge failure, and legacy orphans quarantined once only. A crash
+after remote purge but before local deletion can still leave an abnormal orphan
+and is tested separately. Unexpected local entries also triggered the old
+local-layout failure. No server inspection was performed.
+
+Interrupted remote uploads (b), valid rclone text
 format (c) and more than seven otherwise valid local backups (e) do not alone
 explain the old failure. Corrupt/legacy remote metadata remains another possible
 failure with an explicit remote code; it must never be silently skipped.
@@ -42,8 +48,9 @@ is never purged.
 
 Invalid local entries are atomically renamed into a private sibling quarantine
 with a random envelope and original entry name. Contents and symlink targets
-are never deleted to resolve an error. Healthy copies continue through local
-three-copy and existing remote 7/4/6 retention. No automatic quarantine cleanup:
+are never deleted to resolve an error. Only abnormal entries are quarantined: corruption, symlinks, invalid names,
+unexpected items or orphans not explained by this run. Healthy copies follow
+local three-copy retention within remote keep and existing remote 7/4/6 retention. No automatic quarantine cleanup:
 it preserves evidence, consumes disk and requires owner review.
 
 ## rclone format verification
@@ -102,10 +109,8 @@ remote restore drills, RPO 24h and RTO 2h, and a separate deliberate emergency
 restore. No migration or application image/Compose change is part of this fix.
 Final commands, counts and CI result are recorded in the PR.
 
-## ملخص عربي
+## Owner review correction
 
-الفرضية الأرجح هي يتيم محلي: GFS البعيد يحذف نسخًا أقدم في اليوم نفسه بينما
-يبقي المحلي آخر ثلاث، فتفشل الجولة التالية بـlocal-receipt باستمرار. الاختبار
-يعيد ذلك دون انقطاع، ويعيد أيضًا انقطاع الحذف وبقية الحالات المطلوبة. العزل
-يحفظ العنصر ولا يحذفه، ويكمل احتفاظ السليم بعد التحقق البعيد الكامل. السبب
-يظهر كرمز آمن فقط، والإنتاج وحده مسموح؛ لم يُفحص السيرفر لإثبات السبب ميدانيًا.
+Same-day manual/nightly backups are normal. The runbook includes a read-only
+quarantine size check; quarantine remains reserved for abnormal evidence and
+is never automatically deleted. Tests and final CI results are recorded in PR.

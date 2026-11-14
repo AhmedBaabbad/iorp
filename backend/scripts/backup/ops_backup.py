@@ -488,10 +488,19 @@ class Job:
                 rejected.append(folder)
         for folder in rejected:
             self.quarantine_local(folder)
+        healthy = {folder.name: folder for folder in local}
         for name in sorted(set(catalog) - keep):
             # Exact generated paths only; never purge a parent or an unknown directory.
             self.catalog_command('remote-prune', 'purge', self.remote + '/' + name)
-        for folder in sorted(local, key=lambda p: p.name, reverse=True)[3:]:
+            # A policy deletion is not an orphan: remove its validated local copy
+            # only after this exact remote purge succeeds.
+            if name in healthy:
+                try:
+                    shutil.rmtree(healthy[name])
+                except Exception:
+                    raise Failure('local-prune') from None
+        kept_local = [folder for folder in local if folder.name in keep]
+        for folder in sorted(kept_local, key=lambda p: p.name, reverse=True)[3:]:
             if folder != newest:
                 try:
                     shutil.rmtree(folder)
