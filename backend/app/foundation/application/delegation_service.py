@@ -42,7 +42,7 @@ def holds_by_role(db, user: User, code: str) -> bool:
 
 
 def _active(user: User | None) -> bool:
-    return user is not None and user.status == UserStatus.ACTIVE
+    return user is not None and user.status == UserStatus.ACTIVE and user.archived_at is None
 
 
 def usable(db, delegation: ApprovalDelegation, on) -> bool:
@@ -177,7 +177,7 @@ class DelegationService:
 
     def options(self):
         """Holders: their own approvals. Managers: anyone's, on their behalf (the holder then agrees)."""
-        users = list(self.db.scalars(select(User).where(User.organization_id == self.org, User.status == UserStatus.ACTIVE).order_by(User.full_name)))
+        users = list(self.db.scalars(select(User).where(User.organization_id == self.org, User.status == UserStatus.ACTIVE, User.archived_at.is_(None)).order_by(User.full_name)))
         delegators = [u for u in users if self.manages or u.id == self.tenant.user_id]
         return dict(delegators=[dict(id=u.id, name=u.full_name, permissions=held) for u in delegators
                                 if (held := [c for c in D.DELEGABLE if holds_by_role(self.db, u, c)])],

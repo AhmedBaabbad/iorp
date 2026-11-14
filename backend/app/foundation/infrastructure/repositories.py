@@ -70,12 +70,14 @@ class UserRepository:
             statement = statement.where(User.id != exclude_user_id)
         return self.db.scalar(statement.limit(1))
 
-    def list_by_organization(self, organization_id: UUID) -> list[User]:
+    def list_by_organization(self, organization_id: UUID, *, active_only: bool = False) -> list[User]:
         statement = (
             select(User)
             .where(User.organization_id == organization_id)
             .order_by(User.created_at.desc())
         )
+        if active_only:
+            statement = statement.where(User.status == 'active', User.archived_at.is_(None))
         return list(self.db.scalars(statement))
 
     def count_organization_roots(

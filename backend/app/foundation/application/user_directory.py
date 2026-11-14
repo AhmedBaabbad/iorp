@@ -10,10 +10,10 @@ from app.foundation.infrastructure.models import Permission, Role, RolePermissio
 
 class FoundationUserDirectory:
     def active_users(self, db, organization_id):
-        return set(db.scalars(select(User.id).where(User.organization_id == organization_id, User.status == UserStatus.ACTIVE)))
+        return set(db.scalars(select(User.id).where(User.organization_id == organization_id, User.status == UserStatus.ACTIVE, User.archived_at.is_(None))))
 
     def holders(self, db, organization_id, permission):
-        active = User.organization_id == organization_id, User.status == UserStatus.ACTIVE
+        active = User.organization_id == organization_id, User.status == UserStatus.ACTIVE, User.archived_at.is_(None)
         by_role = db.scalars(select(User.id).join(UserRole, UserRole.user_id == User.id)
                              .join(RolePermission, RolePermission.role_id == UserRole.role_id)
                              .join(Permission, Permission.id == RolePermission.permission_id)
@@ -30,7 +30,7 @@ class FoundationUserDirectory:
 
     def role_members(self, db, organization_id, role_id):
         return set(db.scalars(select(User.id).join(UserRole, UserRole.user_id == User.id)
-                              .where(User.organization_id == organization_id, User.status == UserStatus.ACTIVE, UserRole.role_id == role_id)))
+                              .where(User.organization_id == organization_id, User.status == UserStatus.ACTIVE, User.archived_at.is_(None), UserRole.role_id == role_id)))
 
     def roles(self, db, organization_id):
         rows = db.execute(select(Role.id, Role.code, Role.name).where(Role.organization_id == organization_id).order_by(Role.name)).all()

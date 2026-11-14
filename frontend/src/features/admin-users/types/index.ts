@@ -27,11 +27,13 @@ export type AdminUserListItem = {
 
 export type UserPresence = {last_seen_at:string|null;is_online:boolean};
 
-export type UserDeleteBlock = {code:"USER_DELETE_ROOT"|"USER_DELETE_SELF"|"USER_DELETE_HAS_HISTORY";tables:string[]};
+export type UserDeleteBlock = {code:"USER_DELETE_ROOT"|"USER_DELETE_SELF"|"USER_DELETE_ACTIVATED"|"USER_DELETE_HAS_HISTORY";tables:string[]};
 
 export type AdminUserDetail = AdminUserListItem & {
   can_delete_permanently?: boolean;
   delete_block?: UserDeleteBlock | null;
+  archived_by_name?: string | null;
+  archived_reason?: string | null;
   organization_id: string;
   last_login_at: string | null;
   failed_login_attempts: number;
@@ -97,6 +99,7 @@ export type RoleAssignmentResponse = {
 export type RoleRemovalResponse = { message: string; user_id: string; role_id: string };
 
 export type UserDeactivationImpact = {
+  workforce_member_id?: string | null;
   user_id: string;
   user_full_name: string;
   can_deactivate: boolean;

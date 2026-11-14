@@ -2,43 +2,33 @@
 
 import Link from "next/link";
 import { UserPresence } from "./UserPresence";
+import { UserOffboarding } from "./UserOffboarding";
 import { PermanentUserDelete } from "./PermanentUserDelete";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
-import { usePermission } from "@/features/auth";
+import { useAuth, usePermission } from "@/features/auth";
 import { useFormatter } from "@/hooks/useFormatter";
 import { useNotify } from "@/components/notify/Notifications";
 import { useEnumLabel } from "@/i18n/enum-helpers";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { sharedStyles } from "@/styles/shared-styles";
 import {
-  archiveAdminUser,
-  deactivateAdminUser,
   activateAdminUser,
   lockAdminUser,
   unlockAdminUser,
   getAdminUser,
   getAdminUserPresence,
-  getUserDeactivationImpact,
   resetAdminUserPassword,
   getAdminUserSessions,
   endAdminUserSessions,
   type PasswordResetResult,
   type UserSession,
 } from "../api/admin-users-api";
-import {
-  getEligibleAssignees,
-  reassignFollowUpsByUser,
-} from "@/features/followups/followup-api";
-import type { EligibleFollowUpAssignee } from "@/types/followups";
-import { getEligibleSalesOwners, reassignCustomersByOwner } from "@/features/customers/customer-api";
-import type { EligibleSalesOwner } from "@/types/customers";
 import type {
   AdminUserDetail as AdminUserDetailType,
-  UserDeactivationImpact,
 } from "../types";
 import { AdminUserRolesManager } from "./AdminUserRolesManager";
 import { EffectiveAccessPanel } from "./EffectiveAccessPanel";
@@ -55,28 +45,21 @@ export function AdminUserDetail() {
   const fmt = useFormatter();
   const notify = useNotify();
   const enumLabel = useEnumLabel();
+  const {user:currentUser}=useAuth();
   const canActivate = usePermission("foundation:users:activate");
   const canDeactivate = usePermission("foundation:users:deactivate");
   const canLock = usePermission("foundation:users:lock");
   const canResetPassword = usePermission("foundation:users:reset_password");
   const [user, setUser] = useState<AdminUserDetailType | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [impact, setImpact] = useState<UserDeactivationImpact | null>(null);
-  const [eligibleAssignees, setEligibleAssignees] = useState<EligibleFollowUpAssignee[]>([]);
-  const [replacementUserId, setReplacementUserId] = useState("");
-  const [eligibleOwners, setEligibleOwners] = useState<EligibleSalesOwner[]>([]);
-  const [replacementOwnerId, setReplacementOwnerId] = useState("");
-  const [dialogMode, setDialogMode] = useState<"confirm" | "blocked" | null>(null);
-  const [isCheckingImpact, setIsCheckingImpact] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deactivationMessage, setDeactivationMessage] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetResult, setResetResult] = useState<PasswordResetResult | null>(null);
   const [resetEmailFailed, setResetEmailFailed] = useState(false);
   const [sessions, setSessions] = useState<UserSession[] | null>(null);
 
   const load = useCallback(() => {
-    getAdminUser(params.id).then(setUser).catch((caught) => setError(getApiErrorMessage(caught, messages)));
+    return getAdminUser(params.id).then(setUser).catch((caught) => setError(getApiErrorMessage(caught, messages)));
   }, [messages, params.id]);
 
   useEffect(() => {
@@ -92,49 +75,11 @@ export function AdminUserDetail() {
     return()=>{live=false;if(timer)clearInterval(timer);document.removeEventListener("visibilitychange",resume);};
   }, [load,params.id]);
 
-  useEffect(()=>{
-    if(user && canDeactivate && new URLSearchParams(window.location.search).get("deactivate")==="1"){
-      window.history.replaceState(null,"",window.location.pathname);
-      void handleDeactivateClick();
-    }
-  // The URL is a one-time request; the existing handler checks the current impact.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[user?.id,canDeactivate]);
-
-  async function handleDeactivateClick() {
-    if (!user) return;
-    setIsCheckingImpact(true);
-    setError(null);
-    setDeactivationMessage(null);
-    try {
-      const nextImpact = await getUserDeactivationImpact(user.id);
-      setImpact(nextImpact);
-      if (nextImpact.can_deactivate) {
-        setDialogMode("confirm");
-      } else {
-        const [assignees, owners] = await Promise.all([getEligibleAssignees(), getEligibleSalesOwners()]);
-        setEligibleAssignees(assignees.filter((assignee) => assignee.id !== user.id));
-        setEligibleOwners(owners.filter((owner) => owner.id !== user.id));
-        setDialogMode("blocked");
-      }
-    } catch (caught) {
-      setError(getApiErrorMessage(caught, messages));
-    } finally {
-      setIsCheckingImpact(false);
-    }
-  }
-
-  async function handleCustomerReassign() {
-    if (!user || !replacementOwnerId) return;
-    setIsSubmitting(true);
-    try {
-      const result = await reassignCustomersByOwner(user.id, replacementOwnerId);
-      setDeactivationMessage(t("deactivation.reassignSuccess", { count: result.reassigned_count }));
-      setImpact(await getUserDeactivationImpact(user.id));
-      setReplacementOwnerId("");
-    } catch (caught) { setError(getApiErrorMessage(caught, messages)); }
-    finally { setIsSubmitting(false); }
-  }
+  const showOffboarding=!!user&&!!currentUser&&canDeactivate&&!user.is_organization_root&&user.id!==currentUser.id&&user.delete_block?.code!=="USER_DELETE_SELF";
+  function openOffboarding(){document.getElementById("user-offboarding")?.scrollIntoView({behavior:"smooth",block:"start"});}
+  useEffect(()=>{if(showOffboarding&&new URLSearchParams(window.location.search).get("deactivate")==="1"){
+    window.history.replaceState(null,"",window.location.pathname);document.getElementById("user-offboarding")?.scrollIntoView({behavior:"smooth",block:"start"});
+  }},[showOffboarding]);
 
   async function handlePasswordReset() {
     if (!user) return;
@@ -161,16 +106,6 @@ export function AdminUserDetail() {
     } catch (caught) { setError(getApiErrorMessage(caught, messages)); }
   }
 
-  async function archiveAccount() {
-    if (!user) return;
-    const reason = window.prompt(t("accountPolicy.reason"));
-    if (!reason || reason.trim().length < 3) return;
-    setIsSubmitting(true);
-    try { await archiveAdminUser(user.id, reason, Boolean(user.archived_at)); await load(); }
-    catch (caught) { setError(getApiErrorMessage(caught, messages)); }
-    finally { setIsSubmitting(false); }
-  }
-
   async function handleStatusAction(kind: "lock" | "unlock" | "activate") {
     const reason = window.prompt(t("accountPolicy.reason"));
     if (!reason || reason.trim().length < 3) return;
@@ -186,44 +121,6 @@ export function AdminUserDetail() {
     finally { setIsSubmitting(false); }
   }
 
-  async function handleReassign() {
-    if (!user || !replacementUserId) return;
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      const result = await reassignFollowUpsByUser(user.id, replacementUserId);
-      setDeactivationMessage(
-        t("deactivation.reassignSuccess", { count: result.reassigned_count }),
-      );
-      const nextImpact = await getUserDeactivationImpact(user.id);
-      setImpact(nextImpact);
-      setReplacementUserId("");
-      if (nextImpact.can_deactivate) {
-        setDialogMode("confirm");
-      }
-    } catch (caught) {
-      setError(getApiErrorMessage(caught, messages));
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleConfirmDeactivate() {
-    if (!user) return;
-    const reason = window.prompt(t("accountPolicy.reason"));
-    if (!reason || reason.trim().length < 3) return;
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      await deactivateAdminUser(user.id, reason);
-      setDialogMode(null);
-      await load();
-    } catch (caught) {
-      setError(getApiErrorMessage(caught, messages));
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
 
   return (
     <PageFrame
@@ -243,108 +140,6 @@ export function AdminUserDetail() {
             <button type="button" style={sharedStyles.button} disabled={isSubmitting} onClick={() => void handlePasswordReset()}>{isSubmitting ? t("passwordReset.submitting") : t("passwordReset.sendLink")}</button></div>
         </>}
       </section></div> : null}
-      {dialogMode && user && impact ? (
-        <div style={sharedStyles.modalOverlay}>
-          <section style={sharedStyles.modal} role="dialog" aria-modal="true">
-            <h2 style={{ margin: 0 }}>
-              {dialogMode === "blocked"
-                ? t("deactivation.blockedTitle")
-                : t("deleteConfirmTitle")}
-            </h2>
-            <p>
-              {dialogMode === "blocked"
-                ? t("deactivation.blockedMessage", {
-                    count: impact.total_blocking_items,
-                    name: user.full_name,
-                  })
-                : t("deleteConfirmMessage", { name: user.full_name })}
-            </p>
-            {dialogMode === "blocked" ? (
-              <>
-                <p>
-                  {t("deactivation.openFollowUps", { count: impact.dependencies.open_follow_ups })}
-                </p>
-                {impact.dependencies.assigned_customers > 0 ? <p>{t("deactivation.assignedCustomers", { count: impact.dependencies.assigned_customers })}</p> : null}
-                {impact.dependencies.active_workforce_link ? <p>{t("deactivation.workforceLinked")} <Link href="/workforce">{t("deactivation.goToWorkforce")}</Link></p> : null}
-                {impact.can_deactivate ? (
-                  <div style={{ ...sharedStyles.state, background: "var(--success-soft)" }} role="status">
-                    {t("deactivation.nowCanDeactivate")}
-                  </div>
-                ) : (
-                  <>
-                    <label style={sharedStyles.field}>
-                      <span style={sharedStyles.label}>
-                        {t("deactivation.selectReplacement")}
-                      </span>
-                      <select
-                        style={sharedStyles.input}
-                        value={replacementUserId}
-                        onChange={(event) => setReplacementUserId(event.target.value)}
-                        disabled={isSubmitting}
-                      >
-                        <option value="">
-                          {t("deactivation.selectReplacement")}
-                        </option>
-                        {eligibleAssignees.map((assignee) => (
-                          <option key={assignee.id} value={assignee.id}>
-                            {assignee.full_name} ({assignee.email})
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    {eligibleAssignees.length === 0 ? (
-                      <p>{t("deactivation.noEligibleReplacements")}</p>
-                    ) : null}
-                    {impact.dependencies.assigned_customers > 0 ? <label style={sharedStyles.field}>
-                      <span style={sharedStyles.label}>{t("deactivation.reassignCustomers")}</span>
-                      <select style={sharedStyles.input} value={replacementOwnerId} onChange={(event) => setReplacementOwnerId(event.target.value)}>
-                        <option value="">{t("deactivation.selectReplacement")}</option>
-                        {eligibleOwners.map((owner) => <option key={owner.id} value={owner.id}>{owner.full_name} ({owner.email})</option>)}
-                      </select>
-                      <button type="button" style={sharedStyles.button} disabled={!replacementOwnerId || isSubmitting} onClick={() => void handleCustomerReassign()}>{t("deactivation.reassignCustomers")}</button>
-                    </label> : null}
-                  </>
-                )}
-              </>
-            ) : null}
-            {deactivationMessage ? (
-              <div style={{ ...sharedStyles.state, background: "var(--success-soft)" }} role="status">
-                {deactivationMessage}
-              </div>
-            ) : null}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                style={sharedStyles.secondaryButton}
-                disabled={isSubmitting}
-                onClick={() => setDialogMode(null)}
-              >
-                {t("deleteCancelButton")}
-              </button>
-              {dialogMode === "blocked" && !impact.can_deactivate ? (
-                <button
-                  type="button"
-                  style={sharedStyles.button}
-                  disabled={isSubmitting || !replacementUserId}
-                  onClick={() => void handleReassign()}
-                >
-                  {t("deactivation.reassignButton")}
-                </button>
-              ) : null}
-              {dialogMode === "confirm" ? (
-                <button
-                  type="button"
-                  style={sharedStyles.dangerButton}
-                  disabled={isSubmitting}
-                  onClick={() => void handleConfirmDeactivate()}
-                >
-                  {t("deleteConfirmButton")}
-                </button>
-              ) : null}
-            </div>
-          </section>
-        </div>
-      ) : null}
       {error ? <div style={sharedStyles.error} role="alert">{error}</div> : null}
       {!user ? <div className={css.loading}>{t("loadingDetail")}</div> : (
         <div className={css.page}>
@@ -369,9 +164,8 @@ export function AdminUserDetail() {
                 {user.status === "active" && !user.is_organization_root && canLock ? <button className={css.heroButton} onClick={() => void handleStatusAction("lock")}>{t("actions.lock")}</button> : null}
                 {user.status === "locked" && !user.is_organization_root && canLock ? <button className={css.heroButton} onClick={() => void handleStatusAction("unlock")}>{t("actions.unlock")}</button> : null}
                 {user.status === "inactive" && !user.archived_at && !user.is_organization_root && canActivate ? <button className={css.heroButton} onClick={() => void handleStatusAction("activate")}>{t("actions.reactivate")}</button> : null}
-                {user.status === "inactive" && !user.is_organization_root && (user.archived_at ? canActivate : canDeactivate) ? <button className={css.heroButton} disabled={isSubmitting} onClick={() => void archiveAccount()}>{t(user.archived_at ? "accountPolicy.restore" : "accountPolicy.archive")}</button> : null}
-                <PermanentUserDelete user={user} showBlock className={css.heroButtonDanger} onDeactivate={canDeactivate?()=>void handleDeactivateClick():undefined}/>
-                {user.status !== "inactive" && !user.is_organization_root && canDeactivate ? <button type="button" className={css.heroButtonDanger} disabled={isCheckingImpact} onClick={() => void handleDeactivateClick()}>{isCheckingImpact ? t("deactivation.impactLoading") : t("deactivateButton")}</button> : null}
+                <PermanentUserDelete user={user} showBlock className={css.heroButtonDanger} onDeactivate={showOffboarding?openOffboarding:undefined}/>
+                {showOffboarding?<button type="button" className={css.heroButtonDanger} onClick={openOffboarding}>{t("offboarding.title")}</button>:null}
               </div>
             </div>
           </section>
@@ -384,6 +178,8 @@ export function AdminUserDetail() {
             <div className={css.metric}><span className={css.metricLabel}>{t("fields.permissions")}</span><strong className={css.metricValue}>{user.permissions.length}</strong></div>
             <div className={css.metric}><span className={css.metricLabel}>{t("fields.createdAt")}</span><strong className={css.metricValue}>{fmt.date(user.created_at)}</strong></div>
           </section>
+
+          {(showOffboarding||user.archived_at)&&<UserOffboarding user={user} onChanged={setUser} onReload={load} allowOffboarding={showOffboarding}/>}
 
           <div className={css.layout}>
             <div className={css.mainColumn}>

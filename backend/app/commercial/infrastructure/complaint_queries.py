@@ -26,7 +26,7 @@ def eligible_users(db, tenant, customer, search='', user_id=None):
     def grant(code):
         return select(ur.c.user_id).join(roles, roles.c.id == ur.c.role_id).join(rp, rp.c.role_id == roles.c.id).join(p, p.c.id == rp.c.permission_id).where(
             roles.c.organization_id == tenant.organization_id, p.c.organization_id == tenant.organization_id, p.c.code == code)
-    query = select(u.c.id, u.c.full_name, u.c.is_organization_root).where(u.c.organization_id == tenant.organization_id, u.c.status == 'active',
+    query = select(u.c.id, u.c.full_name, u.c.is_organization_root).where(u.c.organization_id == tenant.organization_id, u.c.status == 'active', u.c.archived_at.is_(None),
         or_(u.c.is_organization_root.is_(True), u.c.id.in_(grant('commercial:complaints:read')) & u.c.id.in_(grant('commercial:complaints:update'))))
     if user_id:
         query = query.where(u.c.id == user_id)

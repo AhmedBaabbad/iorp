@@ -1,5 +1,6 @@
 from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
+from app.core.security import has_usable_password
 from app.foundation.infrastructure.models import User, TenantSecurityEvent
 from app.foundation.infrastructure.permanent_deletion import reference_tables,delete_owned_rows,detach_personal_security
 
@@ -13,6 +14,8 @@ class UserDeletionConflict(ValueError):
 def eligibility_code(user,actor_id):
     if user.is_organization_root:return 'USER_DELETE_ROOT'
     if user.id==actor_id:return 'USER_DELETE_SELF'
+    if has_usable_password(user.password_hash) or user.last_login_at or user.last_seen_at:
+        return 'USER_DELETE_ACTIVATED'
     return None
 
 

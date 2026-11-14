@@ -205,7 +205,7 @@ export function WorkforceMemberDetail() {
   }, [memberId]);
 
   const eligibleUsers = useMemo(
-    () => users.filter((user) => user.status === "active" && !linkedElsewhereUserIds.has(user.id)),
+    () => users.filter((user) => user.status === "active" && !user.archived_at && !linkedElsewhereUserIds.has(user.id)),
     [users, linkedElsewhereUserIds],
   );
 
