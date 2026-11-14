@@ -1,280 +1,329 @@
-# تشغيل النسخ الاحتياطي لـ IORP — المرحلة هـ
+# تشغيل النسخ الاحتياطي للإنتاج
 
-الحالة: تنفيذ للمراجعة؛ **production معطلة حتى اعتماد Claude**. لا تثبت هذه الوثيقة تنفيذ خطوات على VPS. تُنفّذ خطوات staging أدناه كلها بالترتيب، ثم تُرفق نتائج التشغيل اليدوي وموعد timer الفعلي واختبار الفشل بالمراجعة. لا يوجد timer أسبوعي: التحقق اليومي من نسخة منزّلة هو تمرين الاسترجاع.
+قرار المالك **2026-11-14**: **لا نسخ احتياطي لـstaging**. الجدولة والتمارين والمراقبة هنا للإنتاج فقط؛ المنسّق يرفض غير `production` قبل قراءة الأسرار أو إنشاء الموارد. هذه تعليمات للمالك بعد اعتماد الإصدار، وليست إجراءً نُفّذ على السيرفر أثناء إعداد المستودع.
 
-## حدود التشغيل المعتمدة
+أهداف التعافي: **RPO = 24 ساعة، RTO = ساعتان**. الجولة اليومية 23:30 UTC؛ فحص القرص كل 15 دقيقة. يُقاس RTO قبل الإطلاق ثم شهريًا على حجم مماثل للإنتاج؛ CI الاصطناعي ليس قياس أداء الإنتاج.
 
-- المسار اليومي تحت `flock` غير منتظر، مشترك بين البيئتين والتشغيل اليدوي: جمع مشفر → رفع → تنزيل → SHA-256 → استعادة إلى PostgreSQL مؤقت → receipt → احتفاظ → Push. لا socket أو Docker CLI في حاويات التطبيق/النسخ. Docker وrclone وPython coordinator على المضيف فقط.
-- جمع النسخة على شبكة `db` فقط وuploads للقراءة. verify على المضيف، إلى حاوية منفصلة على bridge مخصص (بلا انضمام لشبكات التطبيق)، label `backup-test` وID كامل ومنفذ loopback عشوائي وبلا bind mounts. لا تُمرر بيانات اعتماد الإنتاج إلى PostgreSQL المؤقت. تُحفظ حراسات `verify` كما هي.
-- **لا تجميد كتابة في v1.** لقطة DB أولًا، ثم inventory وأرشفة المرفقات. `referenced_but_missing` غير الفارغة تعني إعادة جمع واحدة فقط، ثم فشل وتنبيه؛ لا رفع أو اعتماد النسخة الناقصة. تغيّر الملفات بين inventory وtar قد يُفشل verify أيضًا. لا ضمان لقطة ذرية مشتركة أو PITR.
-- فحص `9134fd9`: `LocalFileStorage.delete` يحذف فعليًا. الشحن يحذف بعد commit، واستبدال الشعار يولّد مفتاح UUID جديدًا ثم يتخلص من القديم. `put` نفسه يستخدم `write_bytes` ويمكنه تقنيًا استبدال مفتاح قائم، لكن لم يوجد caller إنتاجي يعيد استخدام المفتاح في مسارات الرفع الحالية (`files.store` وprovisioning). إضافة caller يعيد استخدام مفتاح تستلزم إعادة مراجعة الاتساق قبل الاعتماد.
-- v1 تستخدم **حساب التطبيق** من نسخة env مستقلة تحوي `DATABASE_URL` فقط. دين تقني: reader مخصص بعد اختبار GRANT للموجود وALTER DEFAULT PRIVILEGES لكل مالك ينشئ الجداول وsequences المستقبلية. الجمع ينفّذ SELECT وpg_dump فقط؛ عدد جداول public في TOC للـdump يجب أن يساوي `pg_tables`، ويتحقق restore من الأعداد والمرفقات وAlembic.
-- scratch مجلد قرص خاص `700` يملكه root، حساب خدمة التنسيق الإدارية. مخرجات حاوية الجمع `700` بمالك `10001`. بيانات PostgreSQL على Docker volume مؤقت بلا bind mount، بصلاحيات PostgreSQL الخاصة. يُحذف scratch والحاوية والvolume والشبكة في `finally` عند النجاح والفشل وSIGTERM/SIGINT. لا ضمان trap عند انقطاع الكهرباء أو SIGKILL؛ وجود scratch قديم يمنع الجولة التالية حتى التحقيق. حذف SSD ليس مسحًا آمنًا. لا اشتراط swap مشفر: القاعدة الحية أصلًا غير مشفرة على القرص نفسه، حسب قرار المراجعة.
-- الحدود الافتراضية: جمع 512MiB/0.5CPU؛ PostgreSQL مؤقت 768MiB/0.5CPU دون swap؛ منسّق 768MiB/50% CPU وأولوية I/O منخفضة. scratch وPG كل منهما 8GiB، مساحة حرة دنيا 2GiB، مهلة 7200 ثانية، نقل 8MiB/s. فحص دوري للحجم أثناء العمليات؛ هذه حدود إيقاف مراقبة وليست filesystem quota ذرية، وقد تتجاوزها الكتابة بين فحصين. `LimitFSIZE=10G` حد إضافي لملفات عمليات المضيف، لا لحاويات Docker. تُقاس الأحجام على staging قبل إنتاج فعلي؛ لا تعدّل nexus أو cron التنظيف.
-- محليًا أحدث 3 نسخ ناجحة؛ خارجيًا اتحاد أحدث نسخة لكل 7 أيام و4 أسابيع ISO و6 أشهر UTC، مع حماية أحدث نسخة متحقق منها. كتالوج الاحتفاظ ينزّل فقط `complete.enc` و`manifest.json.enc` و`verification.json.enc` لكل نسخة، ويقارن MD5 للحمولات مع بصمات Drive الأصلية بواسطة `rclone hashsum MD5` دون `--download`. يسجل `complete.json` المشفّر MD5 وSHA-256 لكل ملف، ويربط SHA-256 للحمولات بالـmanifest وبـreceipt. MD5 لفحص سلامة النقل، والتشفير الموثق وSHA-256 يظلان حدود التحقق؛ النسخة الجديدة وحدها تُنزّل كاملة وتُستعاد يوميًا. غياب MD5 أو علامة الإتمام القديمة بلا البصمتين يمنع الحذف، ولا يؤدي إلى تنزيل الحمولات كحل بديل؛ لم تُفعّل هذه الخدمة بعد ولا يوجد ترحيل تلقائي للعلامة القديمة. لا حذف عند فشل الرفع/الاستعادة؛ قد يتجاوز العدد السياسة مؤقتًا. مجلد رفع بلا `complete.enc` غير معتمد، يُترك للتحقيق ولا يُحذف آليًا. لا `rclone sync` أو purge للمجلد الأب.
-- ملفات Drive الوحيدة: dump وuploads وmanifest وreceipt وعلامة الإتمام، كلها مشفرة. لا manifest واضح خارج المضيف. سجلات journal ثابتة بلا أسرار؛ لا `set -x`، ولا طباعة env أو `docker inspect` كاملًا أو stderr الخام. root/Docker وصول إداري؛ لا تمنح صلاحيات تعديل source أو config لمستخدمي التطبيق.
+## الضمانات والاحتفاظ
 
-## تسلسل التثبيت والتحقق على staging
+- التنسيق على المضيف تحت `flock` واحد، بلا docker.sock داخل التطبيق. يلزم نشر إنتاج قائم مع جامع `backup` معتمد وPostgreSQL 16. هذا الإصلاح لا يغيّر Compose أو صور التطبيق ولا يرقّي التطبيق.
+- الترتيب: snapshot القاعدة ثم المرفقات ثم رفع المشفّر وتنزيل النسخة الجديدة من Drive واسترجاعها في PostgreSQL مؤقت وكتابة receipt ثم retention ثم Push. ليست لقطة ذرية ولا PITR؛ لا تجميد كتابة في v1. `referenced_but_missing` يستلزم إعادة جمع واحدة ثم فشل إن استمر. إضافة استبدال ملف in-place لمفتاح قائم تستلزم مراجعة الاتساق.
+- مفتاح إنتاج جديد مستقل في ملف `600`، خارج Git وCI. الملفات البعيدة الخمسة مشفّرة، بما فيها manifest وreceipt وcompletion. يسجل `complete.enc` بصمتَي SHA-256 وMD5. لا رفع لبيانات وصفية واضحة.
+- لا حذف ولا عزل محلي قبل اكتمال التحقق من **الكتالوج البعيد كله**. تنزيل القديم يقتصر على `complete.enc` و`manifest.json.enc` و`verification.json.enc`؛ مقارنة الحمولة بـMD5 الأصلي دون `--download`، لا تنزيل الحمولات القديمة يوميًا.
+- البعيد: اتحاد 7 أيام و4 أسابيع ISO و6 أشهر مع حماية أحدث نسخة متحقق منها. المجلد المؤرّخ بلا `complete.enc` رفع منقطع يُترك ولا يُعتمد ولا يُحذف. مجلد بعيد مجهول أو تاريخ غير صالح أو عناصر زائدة داخل نسخة مكتملة يمنع الاحتفاظ بـ`remote-layout`. الملفات المنفردة بجذر البيئة لا تدخل `lsf --dirs-only` وتُترك. لا purge أو sync لجذر البيئة.
+- المحلي: أحدث **3 نسخ سليمة** مرتبطة بكتالوج متحقق منه. يتيم أو معطوب أو ملف مخفي أو عنصر مثل `manual-receipts` داخل `local` يُنقل دون حذفه إلى `backups/quarantine/<random-id>/<original-name>`، ثم يستمر احتفاظ السليم. symlink يُنقل بذاته دون لمس هدفه. تظهر `warning reason=local-quarantined` ورسالة Push `backup complete: local-quarantined`. النقل على القرص نفسه لا يحرر مساحة؛ يراجع المالك العزل يدويًا، ولا تنظيف آلي له. المكان الصحيح للتمارين هو `backups/manual-receipts` خارج `local`.
+- فساد أي نسخة بعيدة مكتملة يمنع كل الحذف، ولو نجحت النسخة الجديدة. العلامات القديمة غير المتوافقة تُحقق يدويًا ولا تُتجاوز. فشل عزل عنصر يمنع بقية الحذف برمز واضح.
+- scratch خاص `700` ويُمسح مع موارد PostgreSQL المؤقتة في النجاح والفشل. تبقى حراسات `APP_ENV=test` و`IORP_RESTORE_CONTAINER_ID` وlabel `iorp.purpose=backup-test` وloopback و`IORP_RESTORE_SCRATCH`، بلا bind mounts لقاعدة الإنتاج. انقطاع الكهرباء/SIGKILL يحتاج فحص البقايا يدويًا، لا global prune. لا اشتراط swap مشفر في v1 لأن القاعدة الحية أصلًا غير مشفرة على القرص نفسه.
+- حدود الذاكرة وCPU وI/O والمهلة والحجم القائمة باقية؛ راقب مساحة quarantine أيضًا. v1 تستخدم حساب التطبيق من ملف `DATABASE_URL` منفصل؛ القارئ المخصص دين تقني إلى حين اختبار GRANT/default privileges. لا تعديل لموارد التطبيقات الأخرى.
+- الفشل: `iorp-backup: failed stage=<stage> reason=<code>`. يقبل السبب فقط `^[a-z][a-z0-9-]{0,40}$` وإلا `unexpected`. لا نص استثناء أو traceback أو مسار أو URL أو stderr لـrclone في خرج المنسّق. لا `set -x` أو طباعة env أو Docker inspect كامل، ولا نشر journal الخام الذي قد يحمل بيانات مضيف من systemd.
 
-الأوامر Bash على VPS بحساب `rehanh` إلا حيث يذكر جهاز المالك. استبدل `VPS_HOST` بالعنوان المحفوظ خارج Git. توقف عند أي فشل. SHA أدناه إصدار راجعه Claude ونجح CI ونُشرت صوره في GHCR؛ نشر الصور الحالي يتم عند push إلى main فقط، لذلك لا تُفعّل هذه الخطوات بصورة فرع غير منشورة. تبقى production خارج هذا التسلسل.
+## التثبيت وتفعيل الإنتاج — نفّذ بالترتيب
 
-1. على VPS، عرّف المتغيرات وثبّت أدوات المضيف. لا تُغيّر تطبيقات الخادم الأخرى.
+كل القيم الحقيقية من مخزون المالك الخاص وتُكتب على المضيف فقط. `BASE` جذر نشر الإنتاج؛ ملف Compose env هو `env/project.env` تحته. أمثلة `/REPLACE` ليست إعدادًا جاهزًا. توقف عند أي فشل. لا تُفعّل timers قبل نجاح التحقق offline.
+
+1. في جلسة إدارية، أوقف staging دون حذف بياناتها أو مفاتيحها. masking يمنع إعادة تشغيل المثيلات القديمة عرضًا.
 
    ```bash
    set -euo pipefail
    umask 077
-   ENVIRONMENT=staging
-   BASE=/opt/apps/iorp/$ENVIRONMENT
-   read -rp 'Approved published release SHA (40 hex): ' RELEASE_SHA
-   [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+   if systemctl cat iorp-backup@.service >/dev/null 2>&1; then
+     sudo systemctl disable --now iorp-backup@staging.timer iorp-backup-disk@staging.timer
+     sudo systemctl stop iorp-backup@staging.service iorp-backup-disk@staging.service
+   fi
+   sudo systemctl mask iorp-backup@staging.timer iorp-backup-disk@staging.timer \
+     iorp-backup@staging.service iorp-backup-disk@staging.service
+   ```
+
+2. أدخل جذر الإنتاج ومالك النشر ومستودع المصدر العام بلا بيانات اعتماد. SHA لكود المضيف المراجع؛ صورة الجامع وCompose يظلان للنشر الحالي المعتمد، ولا تُشغّل migration هنا.
+
+   ```bash
+   read -rp 'Private production root, ending /production: ' BASE
+   [[ "$BASE" =~ ^/[A-Za-z0-9_./-]+/production$ ]]
+   [[ "$BASE" = "$(realpath -m -- "$BASE")" ]]
+   read -rp 'Deployment owner username: ' OWNER
+   id "$OWNER" >/dev/null
+   read -rp 'Public source repository URL, without credentials: ' SOURCE_REPOSITORY
+   read -rp 'Reviewed host-code commit SHA (40 hex): ' SOURCE_SHA
+   [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
    sudo apt-get update
    sudo apt-get install -y python3-venv rclone git
-   sudo install -d -m 700 "$BASE/backups" "$BASE/backup-runtime"
-   sudo install -d -m 700 -o rehanh -g rehanh "$BASE/env"
-   sudo install -d -m 700 "$BASE/env/rclone"
-   ```
-
-2. **رقِّ staging أولًا، قبل إعداد النسخ أو تفعيله.** صورة `backup` موجودة فقط من SHA الإصدار الجديد الذي يتضمن هذه المرحلة، ولا توجد لصورة `9134fd9`. هذا هو إجراء الترقية القياسي: source وCompose مطابقان للإصدار المنشور، ثم `pull`، ثم `migrate`، ثم `up -d`. ملف Compose الفعلي هو `/opt/apps/iorp/<env>/env/project.env` بصلاحية `600` وملكية `rehanh`؛ عدّل `IORP_IMAGE_TAG` فيه إلى SHA المعتمد، وأبقِ بقية إعدادات البيئة الفعلية. لا تنسخ أسرارًا إلى source.
-
-   ```bash
-   sudo git clone https://github.com/AhmedBaabbad/iorp.git "$BASE/backup-runtime/source"
-   sudo git -C "$BASE/backup-runtime/source" checkout --detach "$RELEASE_SHA"
+   sudo install -d -m 700 "$BASE/backups" "$BASE/backup-runtime" "$BASE/env/rclone" "$BASE/env/docker"
+   sudo git clone "$SOURCE_REPOSITORY" "$BASE/backup-runtime/source"
    SOURCE=$BASE/backup-runtime/source
-   sudo install -m 644 "$SOURCE/deploy/compose.yaml" "$BASE/compose.yaml"
-   nano "$BASE/env/project.env"
-   chmod 600 "$BASE/env/project.env"
-   grep -qx "IORP_IMAGE_TAG=$RELEASE_SHA" "$BASE/env/project.env"
-   docker compose --env-file "$BASE/env/project.env" -f "$BASE/compose.yaml" --profile migrate pull
-   docker compose --env-file "$BASE/env/project.env" -f "$BASE/compose.yaml" --profile migrate run --rm migrate
-   docker compose --env-file "$BASE/env/project.env" -f "$BASE/compose.yaml" up -d
-   docker compose --env-file "$BASE/env/project.env" -f "$BASE/compose.yaml" ps
+   sudo git -C "$SOURCE" checkout --detach "$SOURCE_SHA"
    sudo python3 -m venv "$BASE/backup-runtime/venv"
-   sudo "$BASE/backup-runtime/venv/bin/pip" install --require-hashes --no-deps -r "$SOURCE/backend/requirements.lock"
    PY=$BASE/backup-runtime/venv/bin/python
    OPS=$SOURCE/backend/scripts/backup/ops_backup.py
-   sudo install -o root -g root -m 600 "$SOURCE/deploy/env/backup-ops.env.example" "$BASE/env/backup-ops.env"
-   sudo install -o rehanh -g rehanh -m 600 "$SOURCE/deploy/env/backup-database.env.example" "$BASE/env/backup-database.env"
-   sudo install -o rehanh -g rehanh -m 600 "$SOURCE/deploy/env/backup-push.env.example" "$BASE/env/backup-push.env"
+   sudo "$PY" -m pip install --require-hashes --no-deps -r "$SOURCE/backend/requirements.lock"
    ```
 
-   سحب الترقية يشمل التطبيق وmigrate فقط؛ لا تفعّل profile النسخ قبل إنشاء ملفي `backup-database.env` و`backup-key.env`. المنسّق يسحب صورة `backup` بنفس SHA عند النسخة اليدوية الأولى في الخطوة 8، بعد تجهيز الأسرار. التحقق المحلي من Compose يؤكد أن profile `migrate` يعمل قبل وجود هذين الملفين.
-
-3. أدخل الرابط من backend.env إلى `backup-database.env` فقط، وضع **ثلاثة** Push URLs في الملف المخصص. في Kuma: daily وrestore مهلة 93600 ثانية (26 ساعة)، وdisk مهلة 1200 ثانية؛ فعّل قنوات التنبيه واختبر وصولها. افتح إعدادات غير سرية واضبط المسارات الفعلية لملف Compose env، ويجب أن يحمل `IORP_IMAGE_TAG` نفس SHA. اترك `PRODUCTION_APPROVED=no`، واضبط `ENABLED=yes` لـstaging فقط. لا تطبع الملفات.
+3. جهّز الملفات الخاصة وافتحها بالمحرر دون عرض محتواها. `backup-database.env` نسخة مستقلة من `DATABASE_URL` فقط. اضبط **ثلاثة** Push monitors للإنتاج: daily وrestore بمهلة 26 ساعة، وdisk بمهلة 20 دقيقة وتنبيه عند تجاوز 80%؛ اختبر قنوات التنبيه. اعتماد سحب الصور منفصل لخدمة النسخ في `env/docker`، لا home مستخدم معلوم، ولا token في argv.
 
    ```bash
-   nano "$BASE/env/backup-database.env"
-   nano "$BASE/env/backup-push.env"
-   sudoedit "$BASE/env/backup-ops.env"
-   chmod 600 "$BASE/env/backup-database.env" "$BASE/env/backup-push.env"
+   sudo install -m 600 "$SOURCE/deploy/env/backup-database.env.example" "$BASE/env/backup-database.env"
+   sudo install -m 600 "$SOURCE/deploy/env/backup-push.env.example" "$BASE/env/backup-push.env"
+   sudoedit "$BASE/env/backup-database.env" "$BASE/env/backup-push.env"
+   read -rp 'Container registry from private inventory: ' REGISTRY
+   sudo env DOCKER_CONFIG="$BASE/env/docker" docker login "$REGISTRY"
    ```
 
-4. على VPS، أنشئ rclone remote باسم `iorpdrive`: اختر Drive وscope **drive.file** فقط، وOAuth client ثابت يملكه المالك (حالة نشر تسمح بتفويض طويل العمر)، وأجب No للمتصفح. عند طلب التفويض، انتقل للخطوة 5 واترك الجلسة مفتوحة. لا توسّع scope لحل خطأ وصول.
+4. أنشئ remote مستقلًا للإنتاج بـ**drive.file** فقط. أجب No للمتصفح على المضيف. على **جهاز المالك** شغّل أمر `rclone authorize` الذي تعرضه جلسة الإعداد بنفس OAuth client وscope blob، وأكمل المتصفح هناك، ثم أعد الناتج إلى prompt الخاص فقط، لا Git أو سجل أو محادثة. استخدم client يملكه المالك ويسمح بتفويض طويل العمر؛ لا توسّع scope لحل خطأ وصول.
 
    ```bash
    sudo rclone config --config "$BASE/env/rclone/rclone.conf"
-   ```
-
-5. على **جهاز المالك** المثبت عليه rclone، شغّل أمر `rclone authorize` الذي عرضته جلسة الإعداد، بنفس client ID وscope blob، وأكمل الدخول بالمتصفح؛ انقل الناتج إلى prompt الجلسة في الخطوة 4 دون حفظه في سجل/محادثة. ثم على VPS أكمل:
-
-   ```bash
    sudo chmod 600 "$BASE/env/rclone/rclone.conf"
-   sudo rclone --config "$BASE/env/rclone/rclone.conf" mkdir "iorpdrive:iorp-backups/staging"
+   read -rp 'Private production rclone remote name: ' REMOTE
+   [[ "$REMOTE" =~ ^[A-Za-z0-9_-]+$ ]]
+   sudo rclone --config "$BASE/env/rclone/rclone.conf" mkdir "$REMOTE:iorp-backups/production"
    ```
 
-6. على VPS ولّد المفتاح مباشرة إلى ملف، وجهّز مواد التعافي دون عرضها. ملفات env هنا بصيغة `NAME=value`؛ لا shell expansion أو multiline. لا تدوّر المفتاح بحذف القديم؛ النسخ السابقة تحتاجه طوال مدة الاحتفاظ.
+5. ولّد مفتاح إنتاج **جديدًا** بكتابة حصرية. لا تستخدم مفتاح staging ولا تستبدل مفتاحًا موجودًا؛ النسخ القديمة تحتاجه طوال الاحتفاظ. حزمة التعافي تشمل `IORP_BACKUP_KEY` و`SECRET_KEY` و`PLATFORM_MFA_KEYS` للإنتاج، دون عرضها.
 
    ```bash
-   sudo "$PY" - "$BASE" "$SOURCE" <<'PY'
-   import os, sys
+   sudo "$PY" - "$BASE" "$SOURCE" "$OWNER" <<'PY'
+   import os, sys, pwd
    from pathlib import Path
-   sys.path.insert(0, sys.argv[2] + '/backend/scripts/backup')
-   from ops_backup import read_env
    from cryptography.fernet import Fernet
+   sys.path.insert(0, sys.argv[2] + '/backend/scripts/backup')
+   from ops_backup import read_env
    base = Path(sys.argv[1]); os.umask(0o077)
-   keyfile = base / 'env/backup-key.env'
-   with keyfile.open('x') as f:
-       f.write('IORP_BACKUP_KEY=' + Fernet.generate_key().decode() + '\n')
    app = read_env(base / 'env/backend.env')
-   recovery = read_env(keyfile)
-   for name in ('SECRET_KEY', 'PLATFORM_MFA_KEYS'):
-       if not app.get(name):
-           raise SystemExit('Missing recovery material')
-       recovery[name] = app[name]
-   with (base / 'env/recovery.env').open('x') as f:
-       f.write(''.join(k + '=' + v + '\n' for k, v in recovery.items()))
+   if any(not app.get(k) for k in ('SECRET_KEY', 'PLATFORM_MFA_KEYS')):
+       raise SystemExit('Recovery material unavailable')
+   recovery = {'IORP_BACKUP_KEY': Fernet.generate_key().decode(),
+               'SECRET_KEY': app['SECRET_KEY'], 'PLATFORM_MFA_KEYS': app['PLATFORM_MFA_KEYS']}
+   with (base / 'env/backup-key.env').open('x') as stream:
+       stream.write('IORP_BACKUP_KEY=' + recovery['IORP_BACKUP_KEY'] + '\n')
+   bundle = base / 'env/recovery.env'
+   with bundle.open('x') as stream:
+       stream.write(''.join(k + '=' + v + '\n' for k, v in recovery.items()))
+   owner = pwd.getpwnam(sys.argv[3]); os.chown(bundle, owner.pw_uid, owner.pw_gid)
    PY
-   sudo chown rehanh:rehanh "$BASE/env/backup-key.env" "$BASE/env/recovery.env"
-   chmod 600 "$BASE/env/backup-key.env" "$BASE/env/recovery.env"
+   sudo chmod 600 "$BASE/env/backup-key.env" "$BASE/env/recovery.env"
    ```
 
-7. على **جهاز المالك**، احفظ `recovery.env` في مخزن offline مشفر مستقل عن VPS وDrive، باسم يحدد البيئة. يشمل `IORP_BACKUP_KEY` و`SECRET_KEY` و`PLATFORM_MFA_KEYS` لكل بيئة. احتفظ أيضًا بإعدادات الإصدار وطريقة الوصول الطارئ. اختبر فتح المخزن، ثم استخرج منه نسخة الاختبار وأعدها للخادم باسم مختلف؛ لا تعتمد على نسخة لا تزال في cache أو في Downloads فقط.
+6. على **جهاز المالك** انقل حزمة التعافي إلى مخزن offline مشفر مستقل عن المضيف وDrive. أغلق المخزن وافتحه واستخرج نسخته المحفوظة فعليًا ثم أعدها باسم مختلف؛ cache وDownloads ليسا دليل حفظ. أدخل بيانات SSH من المخزون الخاص، لا في المستودع.
 
    ```bash
    umask 077
-   scp rehanh@VPS_HOST:/opt/apps/iorp/staging/env/recovery.env ./iorp-staging-recovery.env
-   # احفظ الملف في مخزنك offline المشفر ثم استخرج النسخة المحفوظة فعليًا إلى هذا المسار.
-   scp ./iorp-staging-recovery.env rehanh@VPS_HOST:/opt/apps/iorp/staging/env/recovered-offline.env
+   read -rp 'SSH destination from private inventory: ' SSH_DESTINATION
+   read -rp 'Same private production root: ' BASE
+   scp "$SSH_DESTINATION:$BASE/env/recovery.env" ./production-recovery.env
+   # احفظه في offline وأغلق المخزن وافتحه، ثم استخرج إلى offline-recovered.env.
+   scp ./offline-recovered.env "$SSH_DESTINATION:$BASE/env/offline-recovered.env"
    ```
 
-8. على VPS، نفّذ النسخة اليدوية الأولى بالمفتاح الأصلي، ثم استخرج مفتاح النسخة المحفوظة offline إلى ملف خاص، واستخدمه في **تمرين منفصل على النسخة الموجودة أصلًا في Drive**. نجاح جمع نسخة جديدة بالمفتاح المستعاد وحده لا يثبت فك النسخة السابقة.
+7. بعد اعتماد المالك تفعيل الإنتاج، أنشئ `backup-ops.env` الخاص. المطلوب صراحةً: `ENVIRONMENT=production` و`ENABLED=yes` و`PRODUCTION_APPROVED=yes` و`STATE_DIR` للإنتاج. لا تنسخ env التطبيق كله ولا أسرارًا إلى source.
 
    ```bash
-   sudo "$PY" "$OPS" daily --config "$BASE/env/backup-ops.env"
+   sudo "$PY" - "$BASE" "$SOURCE" "$REMOTE" <<'PY'
+   import os, sys
+   from pathlib import Path
+   sys.path.insert(0, sys.argv[2] + '/backend/scripts/backup')
+   from ops_backup import read_env
+   base = Path(sys.argv[1]); os.umask(0o077)
+   values = read_env(Path(sys.argv[2]) / 'deploy/env/backup-ops.env.example')
+   values.update(ENVIRONMENT='production', ENABLED='yes', PRODUCTION_APPROVED='yes',
+       STATE_DIR=str(base / 'backups'), COMPOSE_FILE=str(base / 'compose.yaml'),
+       COMPOSE_ENV_FILE=str(base / 'env/project.env'),
+       DATABASE_ENV_FILE=str(base / 'env/backup-database.env'), KEY_ENV_FILE=str(base / 'env/backup-key.env'),
+       PUSH_ENV_FILE=str(base / 'env/backup-push.env'), RCLONE_CONFIG=str(base / 'env/rclone/rclone.conf'),
+       RCLONE_REMOTE=sys.argv[3])
+   with (base / 'env/backup-ops.env').open('x') as stream:
+       stream.write(''.join(k + '=' + v + '\n' for k, v in values.items()))
+   PY
+   ```
+
+8. نفّذ نسخة يدوية ثم أثبت أن **المفتاح المستخرج من offline** يفك النسخة الموجودة أصلًا في Drive؛ نجاح الجمع بمفتاح أصلي وحده لا يثبت الحفظ. عدم تطابق مواد التعافي يوقف التفعيل دون طباعة أسماء أو قيم الأسرار.
+
+   ```bash
+   sudo env DOCKER_CONFIG="$BASE/env/docker" "$PY" "$OPS" daily --config "$BASE/env/backup-ops.env"
    sudo "$PY" - "$BASE" "$SOURCE" <<'PY'
    import os, sys
    from pathlib import Path
    sys.path.insert(0, sys.argv[2] + '/backend/scripts/backup')
    from ops_backup import read_env
    base = Path(sys.argv[1]); os.umask(0o077)
-   recovered = read_env(base / 'env/recovered-offline.env')
-   original = read_env(base / 'env/recovery.env')
-   if any(recovered.get(k) != original[k] for k in original):
-       raise SystemExit('Offline recovery material does not match')
-   (base / 'env/recovered-key.env').write_text('IORP_BACKUP_KEY=' + recovered['IORP_BACKUP_KEY'] + '\n')
-   config = (base / 'env/backup-ops.env').read_text()
-   config = config.replace('KEY_ENV_FILE=' + str(base / 'env/backup-key.env'), 'KEY_ENV_FILE=' + str(base / 'env/recovered-key.env'))
-   (base / 'env/backup-offline-test.env').write_text(config)
+   saved = read_env(base / 'env/offline-recovered.env')
+   if saved != read_env(base / 'env/recovery.env'):
+       raise SystemExit('Offline recovery check failed')
+   with (base / 'env/offline-key.env').open('x') as stream:
+       stream.write('IORP_BACKUP_KEY=' + saved['IORP_BACKUP_KEY'] + '\n')
+   values = read_env(base / 'env/backup-ops.env')
+   values['KEY_ENV_FILE'] = str(base / 'env/offline-key.env')
+   with (base / 'env/offline-probe.env').open('x') as stream:
+       stream.write(''.join(k + '=' + v + '\n' for k, v in values.items()))
    PY
-   sudo "$PY" "$OPS" drill --config "$BASE/env/backup-offline-test.env"
-   sudo test -n "$(sudo find "$BASE/backups/manual-receipts" -name '*.json' -print -quit)"
-   rm -- "$BASE/env/recovery.env" "$BASE/env/recovered-offline.env"
+   sudo env DOCKER_CONFIG="$BASE/env/docker" "$PY" "$OPS" drill --config "$BASE/env/offline-probe.env"
    ```
 
-9. ثبّت وحدات systemd وفعّل **staging فقط**. انتظر التشغيل الفعلي التالي 23:30 UTC، وليس `start service` بديلًا عنه. افحص الوقت والنتيجة وreceipt ووصول Push وسلامة nexus. لا تبدأ production.
+9. ثبّت وحدات النسخ بعد ضبط مساراتها إلى جذر النشر المُدخل، ثم فعّل **production فقط**. راقب أول تشغيل timer فعلي 23:30 UTC. لا تغيّر وحدات التطبيقات الأخرى أو Compose أو صورها.
 
    ```bash
-   for unit in iorp-backup@.service iorp-backup@.timer iorp-backup-disk@.service iorp-backup-disk@.timer; do
-     sudo install -m 644 "$SOURCE/deploy/backup/$unit" /etc/systemd/system/
-   done
+   sudo "$PY" - "$SOURCE" "$BASE" <<'PY'
+   import sys
+   from pathlib import Path
+   source, base = Path(sys.argv[1]), Path(sys.argv[2])
+   for name in ('iorp-backup@.service', 'iorp-backup@.timer', 'iorp-backup-disk@.service', 'iorp-backup-disk@.timer'):
+       text = (source / 'deploy/backup' / name).read_text()
+       text = text.replace('/opt/apps/iorp/%i', str(base.parent) + '/%i')
+       target = Path('/etc/systemd/system') / name
+       target.write_text(text); target.chmod(0o644)
+   PY
    sudo systemctl daemon-reload
-   sudo systemctl enable --now iorp-backup@staging.timer iorp-backup-disk@staging.timer
+   sudo systemctl enable --now iorp-backup@production.timer iorp-backup-disk@production.timer
    systemctl list-timers 'iorp-backup*'
-   # بعد موعد التشغيل الفعلي التالي:
-   sudo systemctl show iorp-backup@staging.service -p Result -p ExecMainStatus -p ExecMainStartTimestamp
-   sudo journalctl -u iorp-backup@staging.service --since yesterday --no-pager
+   sudo systemctl show iorp-backup@production.service -p Result -p ExecMainStatus
    ```
 
-10. اختبر الفشل المقصود عبر config مستقل بremote غير موجود، دون تغيير إعداد الجولة السليمة. يجب أن يفشل، ويصل daily=down فورًا، ولا يُضاف receipt أو تُحذف أي نسخة معتمدة. قارن قائمة معرفات النسخ قبل/بعد (لا تطبع محتواها).
+بعد نجاح التحقق احذف **نسخ النقل المؤقتة فقط** بإجراء التعامل مع الأسرار المعتمد على المضيف وجهاز المالك؛ أبقِ المفتاح التشغيلي وحزمة offline. لا أوامر حذف عامة في التثبيت، ولا حذف لنسخ تحقق لم تنجح بعد.
 
-    ```bash
-    sudo "$PY" - "$BASE" <<'PY'
-    import os, sys
-    from pathlib import Path
-    base = Path(sys.argv[1]); os.umask(0o077)
-    text = (base / 'env/backup-ops.env').read_text()
-    (base / 'env/backup-failure.env').write_text(text.replace('RCLONE_REMOTE=iorpdrive', 'RCLONE_REMOTE=deliberately_missing'))
-    PY
-    sudo find "$BASE/backups/local" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort > /tmp/iorp-before.txt
-    if sudo "$PY" "$OPS" daily --config "$BASE/env/backup-failure.env"; then
-      echo 'Unexpected success; staging gate failed'; exit 1
-    fi
-    sudo find "$BASE/backups/local" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort > /tmp/iorp-after.txt
-    diff /tmp/iorp-before.txt /tmp/iorp-after.txt
-    sudo test ! -e "$BASE/backups/scratch"
-    ```
+## نسخة قبل كل migration في الإنتاج
 
-11. استعد حالة المراقبة بتشغيل يدوي ناجح، وسجّل الدليل: SHA، الزمن، الحجم، سلامة المرفقات وAlembic، receipts، وقت timer الفعلي، down عند remote الخطأ، وتنبيه القرص (>80% يُغطى باختبار وحدات؛ لا تملأ قرص VPS عمدًا). ارفع الأدلة بعد حذف أي أسرار لمراجعة Claude. توقف هنا: **لا enable لـproduction قبل الاعتماد**.
+استخدم متغيرات التثبيت الخاصة في جلسة الصيانة. إن كانت جولة أخرى تعمل، انتظر نهايتها ثم اطلب جولة جديدة. لا تتجاوز فشل retention أو Push لمجرد وجود dump.
 
-    ```bash
-    sudo "$PY" "$OPS" daily --config "$BASE/env/backup-ops.env"
-    sudo "$PY" "$OPS" disk --config "$BASE/env/backup-ops.env"
-    sudo journalctl -u iorp-backup@staging.service --since yesterday --no-pager
-    ```
-
-## التفعيل الإنتاجي بعد اعتماد منفصل
-
-ينفّذ المالك التسلسل السابق بمسارات production ومفاتيح وDrive ومراقبات مستقلة، بعد نجاح أدلة staging واعتماد Claude. في config الإنتاج يظل `ENABLED=no` و`PRODUCTION_APPROVED=no` حتى ذلك القرار؛ لا توجد مهمة تثبيت تفعّلهما. عند الاعتماد فقط يغيّر المالك القيمتين إلى yes، ويثبت الوحدات ويفعّل مثيلي production. لا تعمل staging بالتوازي معها؛ القفل مشترك. لا تنسخ بيانات production الحقيقية إلى staging.
-
-## الاسترجاع الفعلي إلى production — إجراء طوارئ متعمد مستقل
-
-هذا إجراء منفصل لا ينفّذه timer أو `verify`. يحتاج قرار المالك بقبول فقد كتابات ما بعد النسخة ونافذة صيانة. لا تستخدم `--clean` أو DROP على القاعدة الحالية. الهدف موارد **جديدة** ثم تحويل التشغيل بعد التحقق. يجب توفر نسخة source وCompose وأسرار التطبيق والمفتاح من المخزن offline.
-
-1. أوقف الكتابات والمهام عبر إجراء النشر المعتمد، وحدد مع المالك معرف النسخة المكتملة على Drive وهدف PostgreSQL 16 جديدًا وvolume uploads جديدًا. قبل أي استرجاع، نفّذ `drill` أعلاه بالمفتاح المستعاد وconfig البيئة المعتمدة؛ احتفظ بالreceipt. الأوامر المتبقية في جلسة root إدارية خاصة حتى تكون ملكية ملفات التعافي وملفات اتصال PostgreSQL واحدة.
+1. شغّل الخدمة وانتظر نجاحها وخروج المنسّق بصفر، قبل `migrate`.
 
    ```bash
-   sudo -i
-   set -euo pipefail
-   umask 077
-   apt-get update
-   apt-get install -y postgresql-client-16
+   sudo systemctl start iorp-backup@production.service
+   test "$(systemctl show iorp-backup@production.service -p Result --value)" = success
+   test "$(systemctl show iorp-backup@production.service -p ExecMainStatus --value)" = 0
    ```
-2. نزّل المجلد المحدد إلى مساحة تعافٍ خاصة، وافك الشيفرة وافحص **كل** بصمات completion والmanifest قبل استخراج البيانات. ملف `recovery.env` الآتي مستعاد offline بصلاحية 600. غيّر `BACKUP_ID` إلى المعرف الذي اعتمده المالك.
+
+2. تحقق من receipt أحدث نسخة محلية سليمة ومن وصول daily/restore Push. الجولة تكون قد نزّلت النسخة من Drive واستعادتها؛ لا تعرض manifest أو أسماء الملفات.
 
    ```bash
-   umask 077
-   RECOVERY=/opt/apps/iorp/production/recovery
-   read -rp 'Owner-approved completed backup ID: ' BACKUP_ID
-   [[ "$BACKUP_ID" =~ ^iorp-[0-9]{8}T[0-9]{6}Z$ ]]
-   mkdir -m 700 "$RECOVERY"
-   sudo rclone --config /opt/apps/iorp/production/env/rclone/rclone.conf copy "iorpdrive:iorp-backups/production/$BACKUP_ID" "$RECOVERY/sealed"
-   sudo /opt/apps/iorp/production/backup-runtime/venv/bin/python - "$RECOVERY" <<'PY'
+   sudo "$PY" - "$BASE" "$SOURCE" <<'PY'
+   import sys
+   from pathlib import Path
+   sys.path.insert(0, sys.argv[2] + '/backend/scripts/backup')
+   from ops_backup import backup_name, matching_receipt
+   local = Path(sys.argv[1]) / 'backups/local'
+   folders = [p for p in local.iterdir() if p.is_dir() and not p.is_symlink() and backup_name(p.name)]
+   if not folders or not matching_receipt(max(folders, key=lambda p: p.name)):
+       raise SystemExit('Verified receipt unavailable')
+   print('verified receipt ok=true')
+   PY
+   ```
+
+3. بعد نجاح الفحوص فقط نفّذ migration بإجراء النشر المعتمد. احفظ إصدار وأسرار ما قبل الترحيل في المخزن الخاص. لا migration تلقائيًا ضمن النسخ الاحتياطي.
+
+## تجربة الاسترجاع: قبل الإطلاق ثم شهريًا
+
+إضافةً للتحقق اليومي، ينفّذ المالك `drill` مستقلًا **قبل الإطلاق ثم مرة كل شهر**، بمفتاح مستخرج من offline وconfig تحقق خاص كما في الخطوة 8، ومن Drive لا القرص المحلي. لا يجمع نسخة جديدة ولا يطبّق retention أو يكتب على قاعدة الإنتاج.
+
+1. قِس الزمن من بداية التنزيل لنهاية التحقق، وراجع معه وقت تجهيز موارد التعافي والتحويل وفحوص التطبيق ضمن هدف الساعتين.
+
+   ```bash
+   START=$(date -u +%s)
+   sudo env DOCKER_CONFIG="$BASE/env/docker" "$PY" "$OPS" drill --config "$BASE/env/offline-probe.env"
+   ELAPSED=$(( $(date -u +%s) - START ))
+   test "$ELAPSED" -le 7200
+   ```
+
+2. النجاح يعني exit صفر و`iorp-backup: success`، وreceipt **جديد** في `backups/manual-receipts` يحوي `ok=true` وبصمة manifest المطابقة. `verify` يفحص الأعداد وAlembic والمرفقات. افحص RESTORE Push واختفاء scratch والحاوية والvolume والشبكة الخاصة بالجولة. احفظ الوقت والنتيجة في سجل المالك الخاص، لا receipt أو عناوين أو أسرار في PR.
+
+   ```bash
+   sudo "$PY" - "$BASE" <<'PY'
    import json, sys
    from pathlib import Path
-   sys.path.insert(0, '/opt/apps/iorp/production/backup-runtime/source/backend/scripts/backup')
-   import iorp_backup as tool
-   from ops_backup import read_env, check_manifest, matching_receipt, PAYLOADS
-   root = Path(sys.argv[1]); folder = root / 'sealed'
-   key = read_env(Path('/opt/apps/iorp/production/env/recovery.env'))['IORP_BACKUP_KEY']
-   tool.decrypt_file(folder / 'complete.enc', folder / 'complete.json', key)
-   expected = json.loads((folder / 'complete.json').read_text())
-   if set(expected) != {*PAYLOADS, 'verification.json.enc'}:
-       raise SystemExit('Invalid completion record')
-   if any(tool.sha256_file(folder / name) != expected[name] for name in expected):
-       raise SystemExit('Ciphertext checksum mismatch')
-   for name in ('manifest.json', 'verification.json'):
-       tool.decrypt_file(folder / (name + '.enc'), folder / name, key)
-   check_manifest(folder)
-   if not matching_receipt(folder):
-       raise SystemExit('Missing verified recovery receipt')
-   manifest = json.loads((folder / 'manifest.json').read_text())
-   for name in ('database.dump', 'uploads.tar.gz'):
-       tool.decrypt_file(folder / (name + '.enc'), root / name, key)
-       if tool.sha256_file(root / name) != manifest['artifacts'][name]['sha256']:
-           raise SystemExit('Plaintext checksum mismatch')
-   tool.safe_extract(root / 'uploads.tar.gz', root / 'restored-files')
-   if tool.upload_inventory(root / 'restored-files/uploads') != manifest['uploads']['files']:
-       raise SystemExit('Uploads mismatch')
+   root = Path(sys.argv[1]) / 'backups'
+   receipts = list((root / 'manual-receipts').glob('*.json'))
+   if not receipts or json.loads(max(receipts, key=lambda p: p.stat().st_mtime_ns).read_text()).get('ok') is not True:
+       raise SystemExit('Restore receipt unavailable')
+   if (root / 'scratch').exists():
+       raise SystemExit('Restore cleanup incomplete')
+   print('drill receipt ok=true; scratch absent')
    PY
    ```
 
-3. جهّز خدمة `iorp_recovery_admin` على **خادم PostgreSQL الجديد** بحساب مالك/ترحيل معتمد، وخدمة `iorp_recovery_new` على الخادم نفسه بقاعدة `iorp_recovered_new`؛ اكتب الاتصال في `/root/.pg_service.conf` وكلمات المرور في `/root/.pgpass`. تأكد يدويًا أن host مختلف عن خادم القاعدة الحالية. إنشاء القاعدة التالية يجب أن يفشل إن كانت موجودة؛ لا تعالج ذلك بحذفها. لا تغيّر `verify` ليستهدف production.
+إذا تجاوز الزمن ساعتين أو فشل التحقق أو بقيت موارد التمرين فلا تعتمد جاهزية الإطلاق؛ حقق وأعد القياس. انقطاع daily أكثر من 26 ساعة يعني أن هدف RPO لم يعد متحققًا: عالج تنبيه Kuma فورًا. quarantine يستلزم مراجعة مساحة، ولا يبرر حذفًا آليًا.
+
+## الاسترجاع الفعلي — إجراء طوارئ منفصل ومتعمد
+
+ليس `drill` ولا timer. يوافق المالك على نقطة التعافي وفقد الكتابات اللاحقة، ويوقف الكتابات والمهام بإجراء الصيانة. يلزم مصدر الإصدار وأسرار الإنتاج من offline وخادم PostgreSQL 16 وvolume uploads **جديدان**، لا الموارد الحالية. لا DROP ولا `--clean` على الإنتاج الحالي.
+
+1. نفّذ التمرين السابق أولًا. من جلسة التعافي الإدارية أدخل معرف النسخة وجذر مساحة جديدة وremote من السجل الخاص. نزّل الملفات المشفّرة الخمسة فقط.
 
    ```bash
-   nano /root/.pg_service.conf
-   nano /root/.pgpass
-   chmod 600 /root/.pg_service.conf /root/.pgpass
-   createdb --maintenance-db=service=iorp_recovery_admin iorp_recovered_new
-   pg_restore --dbname=service=iorp_recovery_new --no-owner --exit-on-error --single-transaction "$RECOVERY/database.dump"
+   read -rp 'Owner-approved completed backup ID: ' BACKUP_ID
+   [[ "$BACKUP_ID" =~ ^iorp-[0-9]{8}T[0-9]{6}Z$ ]]
+   read -rp 'New absolute recovery workspace: ' RECOVERY
+   [[ "$RECOVERY" =~ ^/[A-Za-z0-9_./-]+$ && "$RECOVERY" != / ]]
+   sudo mkdir -m 700 "$RECOVERY"
+   sudo mkdir -m 700 "$RECOVERY/sealed"
+   for name in database.dump.enc uploads.tar.gz.enc manifest.json.enc verification.json.enc complete.enc; do
+     sudo rclone --config "$BASE/env/rclone/rclone.conf" copyto \
+       "$REMOTE:iorp-backups/production/$BACKUP_ID/$name" "$RECOVERY/sealed/$name"
+   done
    ```
 
-4. انقل `restored-files/uploads` إلى volume **جديد** بملكية `10001:10001`. الصورة من SHA النسخة المعتمدة والمحفوظ offline، ولا تضم socket. افحص Alembic ثم طابق أعداد الجداول والمرفقات ومواد MFA واختبر التطبيق مع البريد والمهام الخارجية معطلة. لا تُحوّل الزيارات حتى نجاح فحوص الأعمال والمالك. حدّث إعداد DB وuploads إلى الموارد الجديدة عبر إجراء النشر، ثم readiness وsmoke وفتح الكتابات والمراقبة. احتفظ بالموارد السابقة وفق قرار الحادث؛ لا تنظيف تلقائي لها.
+2. بمفتاح الإنتاج المستعاد من offline افحص completion والبصمتين والmanifest والreceipt، ثم فك الحمولات إلى مساحة التعافي الخاصة. لا تطبع البيانات الوصفية.
 
    ```bash
-   read -rp 'Approved recovery image SHA (40 hex): ' RECOVERY_SHA
-   [[ "$RECOVERY_SHA" =~ ^[0-9a-f]{40}$ ]]
-   read -rp 'New uploads volume name (iorp-recovery-...): ' NEW_UPLOADS
-   [[ "$NEW_UPLOADS" =~ ^iorp-recovery-[a-z0-9-]+$ ]]
-   if docker volume inspect "$NEW_UPLOADS" >/dev/null 2>&1; then
-     echo 'Volume already exists; stop'; exit 1
-   fi
-   docker volume create "$NEW_UPLOADS"
-   docker run --rm --network none --user 0 --entrypoint sh \
-     --mount "type=bind,src=$RECOVERY/restored-files/uploads,dst=/from,readonly" \
-     --mount "type=volume,src=$NEW_UPLOADS,dst=/to" \
-     "ghcr.io/ahmedbaabbad/iorp/backup:$RECOVERY_SHA" \
-     -c 'cp -a /from/. /to/ && chown -R 10001:10001 /to'
+   sudo "$PY" - "$BASE" "$SOURCE" "$RECOVERY" <<'PY'
+   import json, sys
+   from pathlib import Path
+   sys.path.insert(0, sys.argv[2] + '/backend/scripts/backup')
+   import iorp_backup as tool
+   from ops_backup import read_env, checksums, check_manifest, matching_receipt, PAYLOADS
+   base, root = Path(sys.argv[1]), Path(sys.argv[3]); folder = root / 'sealed'
+   key = read_env(base / 'env/offline-key.env')['IORP_BACKUP_KEY']
+   tool.decrypt_file(folder / 'complete.enc', folder / 'complete.json', key)
+   expected = json.loads((folder / 'complete.json').read_text())
+   if set(expected) != {*PAYLOADS, 'verification.json.enc'} or any(checksums(folder / n) != expected[n] for n in expected):
+       raise SystemExit('Recovery checksum verification failed')
+   for n in ('manifest.json', 'verification.json'):
+       tool.decrypt_file(folder / (n + '.enc'), folder / n, key)
+   manifest = check_manifest(folder)
+   if not matching_receipt(folder):
+       raise SystemExit('Recovery receipt invalid')
+   for n in ('database.dump', 'uploads.tar.gz'):
+       tool.decrypt_file(folder / (n + '.enc'), root / n, key)
+       if tool.sha256_file(root / n) != manifest['artifacts'][n]['sha256']:
+           raise SystemExit('Recovery plaintext verification failed')
+   tool.safe_extract(root / 'uploads.tar.gz', root / 'files')
+   if tool.upload_inventory(root / 'files/uploads') != manifest['uploads']['files']:
+       raise SystemExit('Recovery uploads verification failed')
+   print('recovery artifacts verified')
+   PY
+   ```
+
+3. جهّز `.pg_service.conf` و`.pgpass` خاصين `600` في جلسة التعافي بخدمتي صيانة وهدف **للخادم الجديد** من المخزون الخاص؛ لا DSN في argv. أنشئ قاعدة جديدة وتوقف إن وجدت. أكد أن خدمة الهدف تشير إليها وللخادم الجديد قبل الكتابة.
+
+   ```bash
+   read -rp 'New recovery database name (recovery_...): ' NEW_DATABASE
+   [[ "$NEW_DATABASE" =~ ^recovery_[a-z0-9_]+$ ]]
+   createdb --maintenance-db=service=iorp_recovery_admin "$NEW_DATABASE"
+   pg_restore --dbname=service=iorp_recovery_new --no-owner --exit-on-error --single-transaction "$RECOVERY/database.dump"
    psql service=iorp_recovery_new -X -v ON_ERROR_STOP=1 -c 'SELECT version_num FROM alembic_version'
    ```
 
-## التراجع والتنظيف الطارئ — خارج التسلسل أعلاه
+4. انقل uploads إلى volume **جديد فقط**. أدخل صورة أدوات الاستعادة المعتمدة من السجل الخاص؛ لا socket. لا تغيّر صورة أو Compose النشر الحاليين بهذا المثال.
 
-إيقاف الجدولة لا يحذف نسخًا أو بيانات:
+   ```bash
+   read -rp 'Approved backup tools image reference from private inventory: ' BACKUP_IMAGE
+   read -rp 'New uploads volume name (iorp-recovery-...): ' NEW_UPLOADS
+   [[ "$NEW_UPLOADS" =~ ^iorp-recovery-[a-z0-9-]+$ ]]
+   if docker volume inspect "$NEW_UPLOADS" >/dev/null 2>&1; then
+     echo 'Recovery volume already exists; stop'; exit 1
+   fi
+   docker volume create "$NEW_UPLOADS"
+   docker run --rm --network none --user 0 --entrypoint sh \
+     --mount "type=bind,src=$RECOVERY/files/uploads,dst=/from,readonly" \
+     --mount "type=volume,src=$NEW_UPLOADS,dst=/to" "$BACKUP_IMAGE" \
+     -c 'cp -a /from/. /to/ && chown -R 10001:10001 /to'
+   ```
+
+5. افحص الأعداد والمرفقات وAlembic وأسرار التطبيق وMFA، واختبر التطبيق مع البريد والمهام الخارجية معطلة. تحويل التشغيل للموارد الجديدة وفتح الكتابات قرار مستقل للمالك ضمن إجراء التعافي المعتمد. احفظ الموارد السابقة؛ لا تنظيف تلقائيًا لقاعدة أو volume أو quarantine.
+
+## التراجع وإيقاف الجدولة — خارج التسلسلات السابقة
+
+إيقاف الإنتاج لا يحذف أي نسخ أو أسرار أو بيانات تطبيق:
 
 ```bash
-sudo systemctl disable --now iorp-backup@staging.timer iorp-backup-disk@staging.timer
-sudo systemctl stop iorp-backup@staging.service
+sudo systemctl disable --now iorp-backup@production.timer iorp-backup-disk@production.timer
+sudo systemctl stop iorp-backup@production.service iorp-backup-disk@production.service
 ```
 
-عند بقايا power loss: أوقف الخدمة، وافحص فقط الأسماء `iorp-backup-verify-*` و`iorp-backup-collect-*` المسجلة في Docker والتوقيت، وتأكد من label `iorp.purpose=backup-test` قبل حذف موارد التمرين بأسمائها الدقيقة. لا global prune ولا حذف volume للقاعدة الحية. تحقق من عدم وجود مهمة شغالة قبل حذف مجلد scratch المحدد؛ لا تمس `local` أو Drive. نجاح تنظيف الخدمة شرط للـdaily Push؛ تحقق يدويًا عند انقطاع daemon.
-
-تعطيل production بعد تفعيلها، إن لزم، يستخدم مثيلي production بالأسماء نفسها في إجراء تراجع مستقل معتمد. لا تعيد ملف Compose قديمًا فوق نشر حي دون مراجعة توافقه. عند فقد المفتاح لا تدوّر فوق النسخ القديمة: استرجع المفتاح offline أولًا. أسرار Drive قابلة للتجديد؛ مفتاح تشفير نسخة مفقود غير قابل للتعويض.
+لا تُفعّل staging كبديل. بعد power loss افحص الأسماء الدقيقة وlabel `iorp.purpose=backup-test` قبل تنظيف موارد الجولة بإجراء حادث منفصل؛ لا global prune ولا حذف scratch أو quarantine أثناء عملية قائمة. عند فقد المفتاح استعده من offline؛ مفتاح جديد لا يفك نسخة قديمة.
