@@ -59,7 +59,7 @@ export function AdminUserDetail() {
   const [sessions, setSessions] = useState<UserSession[] | null>(null);
 
   const load = useCallback(() => {
-    getAdminUser(params.id).then(setUser).catch((caught) => setError(getApiErrorMessage(caught, messages)));
+    return getAdminUser(params.id).then(setUser).catch((caught) => setError(getApiErrorMessage(caught, messages)));
   }, [messages, params.id]);
 
   useEffect(() => {

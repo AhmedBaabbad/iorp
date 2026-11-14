@@ -49,6 +49,16 @@ it("transfers follow-ups through their module API and reloads impact",async()=>{
   await waitFor(()=>expect(mocks.impact).toHaveBeenCalledTimes(2));
 });
 
+it("keeps deactivation locked until the transfer's detail refresh finishes",async()=>{
+  mocks.impact.mockResolvedValueOnce(blocked).mockResolvedValue(clear);
+  let finish!:()=>void;const reload=vi.fn(()=>new Promise<void>(resolve=>{finish=resolve;}));
+  render(ui(user,vi.fn(),reload));await screen.findByText("Assigned customers: 1");
+  fireEvent.change(screen.getByRole("combobox",{name:"To user"}),{target:{value:candidate.id}});fireEvent.click(screen.getByRole("button",{name:"Transfer"}));
+  await waitFor(()=>expect(reload).toHaveBeenCalledTimes(1));
+  expect((screen.getByRole("button",{name:"Deactivate"}) as HTMLButtonElement).disabled).toBe(true);
+  finish();await waitFor(()=>expect((screen.getByRole("button",{name:"Deactivate"}) as HTMLButtonElement).disabled).toBe(false));
+});
+
 it("explains absent transfer permissions and links to the employee record without moving the link",async()=>{
   mocks.denied.add("commercial:customers:assign_owner");
   mocks.impact.mockResolvedValue({...blocked,workforce_member_id:"employee",dependencies:{...blocked.dependencies,active_workforce_link:true},total_blocking_items:2});

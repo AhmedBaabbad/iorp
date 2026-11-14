@@ -14,7 +14,7 @@ import type {AdminUserDetail,UserDeactivationImpact} from "../types";
 import css from "./admin-user-detail.module.css";
 
 type Option={id:string;full_name:string;email:string};
-export function UserOffboarding({user,onChanged,onReload,allowOffboarding=true}:{user:AdminUserDetail;onChanged:(user:AdminUserDetail)=>void;onReload:()=>void;allowOffboarding?:boolean}){
+export function UserOffboarding({user,onChanged,onReload,allowOffboarding=true}:{user:AdminUserDetail;onChanged:(user:AdminUserDetail)=>void;onReload:()=>void|Promise<void>;allowOffboarding?:boolean}){
   const t=useTranslations("administration.users.offboarding"),messages=useTranslations("messages"),fmt=useFormatter();
   const assignCustomers=usePermission("commercial:customers:assign_owner"),readCustomers=usePermission("commercial:customers:read");
   const assignFollowUps=usePermission("commercial:follow_ups:assign"),readFollowUps=usePermission("commercial:follow_ups:read");
@@ -39,7 +39,7 @@ export function UserOffboarding({user,onChanged,onReload,allowOffboarding=true}:
   async function transfer(kind:"customers"|"followUps"){
     if(busy||archived||(kind==="customers"?(!canCustomers||!owner):(!canFollowUps||!assignee)))return;
     setBusy(true);setError(null);
-    try{if(kind==="customers"){await reassignCustomersByOwner(user.id,owner);setOwner("");}else{await reassignFollowUpsByUser(user.id,assignee);setAssignee("");}await refresh();onReload();}
+    try{if(kind==="customers"){await reassignCustomersByOwner(user.id,owner);setOwner("");}else{await reassignFollowUpsByUser(user.id,assignee);setAssignee("");}await refresh();await onReload();}
     catch(e){setError(getApiErrorMessage(e,messages));}finally{setBusy(false);}
   }
   async function submit(e:FormEvent){
@@ -65,7 +65,7 @@ export function UserOffboarding({user,onChanged,onReload,allowOffboarding=true}:
     {canOffboard&&!impact&&<p role="status">{t("loading")}</p>}
     {archived&&<div role="status"><p>{t("archivedSummary",{date:fmt.dateTime(user.archived_at!),name:user.archived_by_name??t("unknown"),reason:user.archived_reason??t("unknown")})}</p>{canRestore&&<button type="button" style={s.secondaryButton} disabled={busy} onClick={()=>start("restore")}>{t("restore")}</button>}</div>}
     {canOffboard&&<ol role="list" style={{display:"grid",gap:"var(--form-gap, 18px)",paddingInlineStart:0,listStyle:"none"}}>
-      <li aria-current={!clear&&!archived?"step":undefined}><h3>{t("step1")} — {clear||archived?"✓ ":""}{state(clear||archived,true)}</h3>
+      <li aria-current={!clear&&!archived?"step":undefined}><h3>{t("step1")} — {clear?"✓ ":""}{state(clear,!archived)}</h3>
         {impact&&<><p>{t("customers",{count:impact.dependencies.assigned_customers})}</p>{impact.dependencies.assigned_customers>0&&!archived&&transferControls("customers",canCustomers,owners,owner,setOwner)}
           <p>{t("followUps",{count:impact.dependencies.open_follow_ups})}</p>{impact.dependencies.open_follow_ups>0&&!archived&&transferControls("followUps",canFollowUps,assignees,assignee,setAssignee)}
           {impact.dependencies.active_workforce_link&&<p>{t("workforceHint")} {impact.workforce_member_id?<Link href={`/workforce/${impact.workforce_member_id}`}>{t("workforceRecord")}</Link>:<Link href="/workforce">{t("workforceRecord")}</Link>}</p>}
