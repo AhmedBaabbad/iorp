@@ -352,7 +352,8 @@
       "confirmAction": "Confirm this account action with a reason.",
       "reason": "Reason",
       "confirm": "Confirm",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "archiveDetails": "Archive details"
     }
   },
   "roles": {

@@ -352,7 +352,8 @@
       "confirmAction": "أكّد الإجراء على الحساب مع ذكر السبب.",
       "reason": "السبب",
       "confirm": "تأكيد",
-      "cancel": "إلغاء"
+      "cancel": "إلغاء",
+      "archiveDetails": "بيانات الأرشفة"
     }
   },
   "roles": {

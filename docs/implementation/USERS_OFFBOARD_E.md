@@ -37,6 +37,10 @@ completed/current/locked steps:
    and reason. Restore uses the existing activate permission and archive restore
    API; restoring the archive leaves the account inactive.
 
+Archive details/restoration remain available to readers/restorers without the
+deactivation permission. In that mode no impact or transfer-options endpoint
+is called, and the three offboarding steps are not shown.
+
 The existing hero, detail layout and shared form styles/tokens are reused. The
 old parallel blocked-deactivation modal/transfer workflow is replaced by this
 single section. The light presence timer does not reload impact or dialogs.

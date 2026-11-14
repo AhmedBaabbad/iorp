@@ -179,7 +179,7 @@ export function AdminUserDetail() {
             <div className={css.metric}><span className={css.metricLabel}>{t("fields.createdAt")}</span><strong className={css.metricValue}>{fmt.date(user.created_at)}</strong></div>
           </section>
 
-          {showOffboarding&&<UserOffboarding user={user} onChanged={setUser} onReload={load}/>}
+          {(showOffboarding||user.archived_at)&&<UserOffboarding user={user} onChanged={setUser} onReload={load} allowOffboarding={showOffboarding}/>}
 
           <div className={css.layout}>
             <div className={css.mainColumn}>

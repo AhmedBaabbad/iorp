@@ -68,3 +68,13 @@ it("shows archive author and reason, and restores through the existing API",asyn
 it("hides restoration without activate permission",()=>{
   mocks.denied.add("foundation:users:activate");render(ui({...user,status:"inactive",archived_at:"2026-11-14T13:00:00Z"}));expect(screen.queryByRole("button",{name:"Restore"})).toBeNull();
 });
+
+it("allows archive restoration without deactivation permission and makes no impact request",async()=>{
+  mocks.denied.add("foundation:users:deactivate");
+  render(ui({...user,status:"inactive",archived_at:"2026-11-14T13:00:00Z",archived_by_name:"Admin",archived_reason:"Employment ended"}));
+  expect(screen.getByRole("heading",{name:"Archive details"})).toBeTruthy();
+  expect(screen.queryByRole("button",{name:"Deactivate"})).toBeNull();
+  expect(mocks.impact).not.toHaveBeenCalled();expect(mocks.owners).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button",{name:"Restore"}));confirm();
+  await waitFor(()=>expect(mocks.archive).toHaveBeenCalledWith(user.id,"Employment ended",true));
+});
