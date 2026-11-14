@@ -250,7 +250,7 @@
       "lastSeenAt": "آخر ظهور"
     },
     "permanentDelete": {
-      "button": "حذف نهائي",
+      "button": "حذف نهائي (إلغاء الدعوة)",
       "title": "حذف الحساب نهائيًا",
       "warning": "لا يمكن التراجع عن هذا الحذف.",
       "reason": "السبب",
@@ -319,7 +319,40 @@
         "shipmentHistory": "تاريخ الشحنات",
         "productionDemands": "طلبات إنتاج",
         "productionAllocations": "تخصيصات إنتاج"
-      }
+      },
+      "USER_DELETE_ACTIVATED": "الحسابات المفعّلة لا تُحذف للحفاظ على سجل التدقيق؛ استخدم إنهاء الخدمة والأرشفة.",
+      "transferFirst": "انقل الملكية أولًا.",
+      "offboarding": "إنهاء الخدمة"
+    },
+    "offboarding": {
+      "title": "إنهاء الخدمة",
+      "step1": "1. نقل الملكية",
+      "step2": "2. التعطيل",
+      "step3": "3. الأرشفة",
+      "completed": "مكتملة",
+      "current": "الحالية",
+      "locked": "مقفلة",
+      "toUser": "إلى مستخدم",
+      "chooseUser": "اختر مستخدمًا نشطًا مؤهلًا",
+      "transfer": "نقل",
+      "noCandidates": "لا يوجد مستخدمون نشطون مؤهلون حاليًا.",
+      "noTransferPermission": "تحتاج صلاحيتَي النقل والقراءة لهذه الفئة لنقل السجلات. اطلب المساعدة من مدير مخوّل.",
+      "loading": "جارٍ تحميل أثر التعطيل…",
+      "customers": "العملاء المسندون: {count}",
+      "followUps": "المتابعات المفتوحة: {count}",
+      "workforceHint": "أنهِ الربط من الموارد البشرية؛ لا يمكن نقله من هنا.",
+      "workforceRecord": "فتح سجل الموظف",
+      "refreshImpact": "تحديث الأثر",
+      "deactivate": "تعطيل",
+      "archive": "أرشفة",
+      "restore": "استعادة",
+      "deactivateHint": "انقل الملكية وأنهِ ربط الموظف أولًا. التعطيل يُنهي جميع الجلسات.",
+      "archivedSummary": "مؤرشف في {date} بواسطة {name}، السبب: {reason}",
+      "unknown": "غير مسجل",
+      "confirmAction": "أكّد الإجراء على الحساب مع ذكر السبب.",
+      "reason": "السبب",
+      "confirm": "تأكيد",
+      "cancel": "إلغاء"
     }
   },
   "roles": {

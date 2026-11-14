@@ -88,5 +88,5 @@ export function unlinkUserFromMember(memberId: string, token?: string | null) {
 }
 
 export function getUsers(token?: string | null) {
-  return apiClient<AdminUserListItem[]>("/admin/users", { token });
+  return apiClient<AdminUserListItem[]>("/admin/users?selection=true", { token });
 }

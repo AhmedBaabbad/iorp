@@ -17,7 +17,7 @@ export function PermanentUserDelete({user,onDeleted,onDeactivate,className,style
   const locale=useLocale();
   const [open,setOpen]=useState(false),[email,setEmail]=useState(""),[reason,setReason]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState("");
   const block=user.delete_block;
-  if(!allowed || (showBlock?(user.is_organization_root||block===undefined||block?.code==="USER_DELETE_ROOT"||block?.code==="USER_DELETE_SELF"):!user.can_delete_permanently))return null;
+  if(!allowed || (showBlock?(block===undefined):!user.can_delete_permanently))return null;
   const emailMatches=email.trim().toLowerCase()===user.email.toLowerCase();
   function finishDeletion(){
     setOpen(false);
@@ -37,8 +37,9 @@ export function PermanentUserDelete({user,onDeleted,onDeactivate,className,style
     <button type="button" className={className} style={style??sharedStyles.dangerButton} disabled={showBlock&&!!block} onClick={()=>{setOpen(true);setEmail("");setReason("");setError("");}}>{t("button")}</button>
     {showBlock&&block&&<div role="note" style={{color:"inherit",flexBasis:"100%",overflowWrap:"anywhere"}}>
       <p>{t(block.code)}</p>
+      {block.code==="USER_DELETE_ACTIVATED"&&onDeactivate&&<button type="button" style={sharedStyles.secondaryButton} onClick={onDeactivate}>{t("offboarding")}</button>}
       {block.tables.length>0&&<p>{joinList(block.tables.map(key=>t.has(`tableTypes.${key}`)?t(`tableTypes.${key}`):t("linkedRecords")),locale)}</p>}
-      {block.code==="USER_DELETE_HAS_HISTORY"&&<p>{t("useDeactivation")}{onDeactivate&&<button type="button" style={sharedStyles.secondaryButton} onClick={onDeactivate}>{t("deactivate")}</button>}</p>}
+      {block.code==="USER_DELETE_HAS_HISTORY"&&<p>{t("transferFirst")}{onDeactivate&&<button type="button" style={sharedStyles.secondaryButton} onClick={onDeactivate}>{t("offboarding")}</button>}</p>}
     </div>}
     {open&&<div style={sharedStyles.modalOverlay} onKeyDown={e=>{if(e.key==="Escape"&&!busy)setOpen(false);}}>
       <form role="dialog" aria-modal="true" aria-labelledby={`delete-user-${user.id}`} style={{...sharedStyles.modal,width:"min(460px, 100%)",display:"grid",gap:18}} onSubmit={submit}>

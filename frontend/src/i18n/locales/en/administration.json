@@ -250,7 +250,7 @@
       "lastSeenAt": "Last seen"
     },
     "permanentDelete": {
-      "button": "Delete permanently",
+      "button": "Delete permanently (cancel invitation)",
       "title": "Permanently delete account",
       "warning": "This deletion cannot be undone.",
       "reason": "Reason",
@@ -319,7 +319,40 @@
         "shipmentHistory": "Shipment history",
         "productionDemands": "Production demands",
         "productionAllocations": "Production allocations"
-      }
+      },
+      "USER_DELETE_ACTIVATED": "Activated accounts cannot be deleted, preserving the audit trail. Use offboarding and archiving.",
+      "transferFirst": "Transfer ownership first.",
+      "offboarding": "Offboarding"
+    },
+    "offboarding": {
+      "title": "Offboarding",
+      "step1": "1. Transfer ownership",
+      "step2": "2. Deactivate",
+      "step3": "3. Archive",
+      "completed": "Completed",
+      "current": "Current",
+      "locked": "Locked",
+      "toUser": "To user",
+      "chooseUser": "Choose an eligible active user",
+      "transfer": "Transfer",
+      "noCandidates": "No eligible active users are available.",
+      "noTransferPermission": "You need the category’s transfer and read permissions to move these records. Ask an authorized administrator.",
+      "loading": "Loading deactivation impact…",
+      "customers": "Assigned customers: {count}",
+      "followUps": "Open follow-ups: {count}",
+      "workforceHint": "End the user link from Human Resources; it cannot be transferred here.",
+      "workforceRecord": "Open employee record",
+      "refreshImpact": "Refresh impact",
+      "deactivate": "Deactivate",
+      "archive": "Archive",
+      "restore": "Restore",
+      "deactivateHint": "Transfer all ownership and end the employee link first. Deactivation ends all sessions.",
+      "archivedSummary": "Archived on {date} by {name}. Reason: {reason}",
+      "unknown": "Not recorded",
+      "confirmAction": "Confirm this account action with a reason.",
+      "reason": "Reason",
+      "confirm": "Confirm",
+      "cancel": "Cancel"
     }
   },
   "roles": {
