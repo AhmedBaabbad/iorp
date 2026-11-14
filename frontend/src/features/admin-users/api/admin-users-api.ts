@@ -2,6 +2,7 @@ import { apiClient } from "@/lib/api-client";
 import type {
   AdminUserCreateRequest,
   AdminUserDetail,
+  UserPresence,
   AdminUserListItem,
   AdminUserRoleAssignRequest,
   AdminUserUpdateRequest,
@@ -21,6 +22,10 @@ export function permanentlyDeleteAdminUser(id: string, reason: string) {
 
 export function listAdminUsers() {
   return apiClient<AdminUserListItem[]>(BASE);
+}
+
+export function getAdminUserPresence(id: string) {
+  return apiClient<UserPresence>(`${BASE}/${id}/presence`, {notify:false});
 }
 
 export function getAdminUser(id: string) {

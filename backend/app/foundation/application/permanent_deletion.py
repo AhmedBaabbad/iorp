@@ -1,8 +1,7 @@
 from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
-from app.core.security import has_usable_password
 from app.foundation.infrastructure.models import User, TenantSecurityEvent
-from app.foundation.infrastructure.permanent_deletion import reference_tables,delete_owned_rows
+from app.foundation.infrastructure.permanent_deletion import reference_tables,delete_owned_rows,detach_personal_security
 
 
 class UserDeletionConflict(ValueError):
@@ -14,12 +13,18 @@ class UserDeletionConflict(ValueError):
 def eligibility_code(user,actor_id):
     if user.is_organization_root:return 'USER_DELETE_ROOT'
     if user.id==actor_id:return 'USER_DELETE_SELF'
-    if has_usable_password(user.password_hash) or user.last_login_at or user.last_seen_at:return 'USER_DELETE_ACTIVATED'
     return None
 
 
 def can_delete_permanently(db,user,actor_id):
-    return not eligibility_code(user,actor_id) and not reference_tables(db,user.id,user.organization_id)
+    return deletion_block(db,user,actor_id) is None
+
+
+def deletion_block(db,user,actor_id):
+    code=eligibility_code(user,actor_id)
+    if code:return {'code':code,'tables':[]}
+    tables=reference_tables(db,user.id,user.organization_id)
+    return {'code':'USER_DELETE_HAS_HISTORY','tables':tables} if tables else None
 
 
 def delete_permanently(db,organization_id,user_id,actor,reason):
@@ -32,8 +37,12 @@ def delete_permanently(db,organization_id,user_id,actor,reason):
         tables=reference_tables(db,user.id,user.organization_id)
         if tables:raise UserDeletionConflict('USER_DELETE_HAS_HISTORY',tables)
         details={'email':user.email,'full_name':user.full_name,'reason':reason}
-        delete_owned_rows(db,user.id,organization_id)
+        detached=detach_personal_security(db,user)
+        deleted=delete_owned_rows(db,user.id,organization_id)
         db.execute(delete(User.__table__).where(User.id==user.id,User.organization_id==organization_id))
+        deleted['foundation_users']=1
+        details.update(deleted_rows=sum(deleted.values()),detached_rows=sum(detached.values()),
+            deleted_by_table=deleted,detached_by_table=detached)
         # Mandatory audit belongs to this transaction; do not use best-effort logging.
         db.add(TenantSecurityEvent(organization_id=organization_id,event_type='user.deleted_permanently',
             actor_id=actor.id,actor_email=actor.email,details=details))

@@ -9,7 +9,6 @@ export type AdminUserRoleRef = {
 export type AdminUserListItem = {
   last_seen_at?: string | null;
   is_online?: boolean | null;
-  can_delete_permanently?: boolean;
   archived_at?: string | null;
   account_change_reason?: string | null;
   timezone?: string | null;
@@ -26,7 +25,13 @@ export type AdminUserListItem = {
   activation_pending?: boolean;
 };
 
+export type UserPresence = {last_seen_at:string|null;is_online:boolean};
+
+export type UserDeleteBlock = {code:"USER_DELETE_ROOT"|"USER_DELETE_SELF"|"USER_DELETE_HAS_HISTORY";tables:string[]};
+
 export type AdminUserDetail = AdminUserListItem & {
+  can_delete_permanently?: boolean;
+  delete_block?: UserDeleteBlock | null;
   organization_id: string;
   last_login_at: string | null;
   failed_login_attempts: number;

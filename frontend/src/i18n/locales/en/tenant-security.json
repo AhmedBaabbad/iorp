@@ -15,7 +15,7 @@
     "tenant.all_sessions_revoked": "All sessions ended",
     "tenant.token_validation_failed": "Invalid session rejected",
     "tenant.sessions_ended": "Sessions ended",
-    "user.deleted_permanently": "Unused account permanently deleted"
+    "user.deleted_permanently": "User permanently deleted"
   },
   "loading": "Loading…",
   "empty": "No security events",

@@ -322,6 +322,7 @@ class TenantSecurityEvent(Base):
         Index("ix_foundation_security_org_event", "organization_id", "event_type"),
         Index("ix_foundation_security_org_created", "organization_id", "created_at"),
         Index("ix_foundation_security_actor_id", "actor_id"),
+        Index("ix_foundation_security_actor_event", "actor_id", "event_type"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

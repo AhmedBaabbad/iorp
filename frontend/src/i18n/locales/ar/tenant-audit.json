@@ -59,7 +59,7 @@
     "user.email_change_requested": "طلب تغيير بريد الدخول",
     "user.email_changed": "تغيير بريد الدخول",
     "user.auto_lock_cleared": "إزالة القفل التلقائي",
-    "user.deleted_permanently": "حذف حساب غير مستخدم نهائيًا"
+    "user.deleted_permanently": "حذف مستخدم نهائيًا"
   },
   "entities": {
     "user": "مستخدم",

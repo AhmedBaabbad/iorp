@@ -22,7 +22,7 @@ LABELS: dict[str, tuple[str, str, str, str]] = {
     "foundation:users:deactivate": ("تعطيل حساب مستخدم", "Deactivate a user account",
                                     "يمنع المستخدم من الدخول مع بقاء سجله وتاريخه.", "Stops the user signing in; the account and its history stay."),
     "foundation:users:delete": ("حذف مستخدم نهائياً", "Delete a user permanently",
-                                "يحذف فقط حسابًا لم يُفعّل ولا يرتبط بأي تاريخ؛ ولا يمكن التراجع.", "Deletes only an unused account with no history; it cannot be undone."),
+                                "يحذف حسابًا لا يرتبط بأي أثر عمل؛ ولا يمكن التراجع.", "Deletes an account with no business history; it cannot be undone."),
     "foundation:users:lock": ("قفل حساب مستخدم أو فتحه", "Lock or unlock a user account",
                               "يقفل الحساب مؤقتاً أو يفتحه بعد القفل.", "Locks an account for a while, or unlocks it."),
     "foundation:users:reset_password": ("إعادة تعيين كلمة مرور مستخدم", "Reset a user's password",

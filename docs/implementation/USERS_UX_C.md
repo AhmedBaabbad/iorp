@@ -1,5 +1,8 @@
 # USERS-UX-C
 
+The activation restriction and list-presence behavior below are superseded by
+[USERS-UX-D](USERS_UX_D.md); this file records the earlier implementation.
+
 Base: `89bc18b483d2c96391919003846f7132575ab14a`; migration `f6a1b2p1`
 after `f6a1b2p0`. No deployment or operational user deletion is performed.
 
