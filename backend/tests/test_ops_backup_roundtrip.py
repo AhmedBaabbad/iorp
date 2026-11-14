@@ -64,7 +64,7 @@ def test_complete_daily_job_with_local_remote(tmp_path, monkeypatch):
         monkeypatch.setenv('IORP_BACKUP_KEY', ops.read_env(tmp_path / 'key.env')['IORP_BACKUP_KEY'])
         monkeypatch.delenv('DOCKER_HOST', raising=False)
         monkeypatch.delenv('DOCKER_CONTEXT', raising=False)
-        remote = tmp_path / 'offsite' / 'iorp-backups' / 'staging'
+        remote = tmp_path / 'offsite' / 'iorp-backups' / 'production'
         class SyntheticJob(ops.Job):
             def collect(self):
                 self.stage = 'backup'

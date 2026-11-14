@@ -6,12 +6,21 @@ import shutil
 from pathlib import Path
 import sys
 from unittest.mock import Mock
+from types import SimpleNamespace
 
 import pytest
 from cryptography.fernet import Fernet
 
 sys.path.insert(0, str(Path(__file__).parents[2] / 'scripts/backup'))
 import ops_backup as ops
+
+
+@pytest.fixture
+def isolated_lock(tmp_path, monkeypatch):
+    # main() must never open a real host lock or change pytest's signal handlers.
+    monkeypatch.setitem(sys.modules, 'fcntl', SimpleNamespace(LOCK_EX=1, LOCK_NB=2, flock=lambda *_: None))
+    monkeypatch.setattr(ops, 'open', lambda *_: (tmp_path / 'synthetic.lock').open('a'), raising=False)
+    monkeypatch.setattr(ops.signal, 'signal', lambda *_: None)
 
 
 def config(tmp_path):
@@ -24,7 +33,7 @@ def config(tmp_path):
         path = tmp_path / name
         path.write_text(value)
         path.chmod(0o600)
-    return dict(ENVIRONMENT='staging', ENABLED='yes', PRODUCTION_APPROVED='no',
+    return dict(ENVIRONMENT='production', ENABLED='yes', PRODUCTION_APPROVED='yes',
                 STATE_DIR=str(tmp_path / 'state'), KEY_ENV_FILE=str(tmp_path / 'key.env'),
                 DATABASE_ENV_FILE=str(tmp_path / 'db.env'), PUSH_ENV_FILE=str(tmp_path / 'push.env'),
                 RCLONE_CONFIG=str(tmp_path / 'rclone.conf'), RCLONE_REMOTE='test',
@@ -44,9 +53,11 @@ def artifact(folder, missing=False):
         manifest_sha256=ops.digest(folder / 'manifest.json'))))
 
 
-def test_production_requires_two_explicit_switches(tmp_path):
+@pytest.mark.parametrize('enabled,approved', [('no','yes'),('yes','no'),('no','no')])
+def test_production_requires_two_explicit_switches(tmp_path,enabled,approved):
     c = config(tmp_path)
     c['ENVIRONMENT'] = 'production'
+    c.update(ENABLED=enabled,PRODUCTION_APPROVED=approved)
     job = ops.Job(c)
     with pytest.raises(ops.Failure, match='disabled'):
         job.execute()
@@ -178,7 +189,7 @@ def test_missing_references_retry_exactly_once(tmp_path, monkeypatch):
     assert len(count) == 2
 
 
-def test_no_deletion_if_remote_or_local_receipt_is_invalid(tmp_path, monkeypatch):
+def test_invalid_local_receipt_is_preserved_in_quarantine(tmp_path, monkeypatch):
     job = ops.Job(config(tmp_path))
     newest = job.local / 'iorp-20261104T233000Z'
     artifact(newest)
@@ -188,10 +199,11 @@ def test_no_deletion_if_remote_or_local_receipt_is_invalid(tmp_path, monkeypatch
     monkeypatch.setattr(job, 'remote_catalog', lambda: {newest.name: newest, old.name: old})
     rclone = Mock()
     monkeypatch.setattr(job, 'rclone', rclone)
-    with pytest.raises(ops.Failure, match='local-receipt'):
-        job.retention(newest)
+    job.retention(newest)
     rclone.assert_not_called()
-    assert old.exists() and newest.exists()
+    assert not old.exists() and newest.exists()
+    assert list(job.quarantine.glob('*/' + old.name))
+    assert job.local_quarantined
 
 
 def test_latest_recovery_point_is_always_retained():
@@ -249,7 +261,7 @@ def test_push_rejects_insecure_urls_without_network():
     assert ops.push('https://user:secret@example.invalid/', True, 'ok') is False
 
 
-def test_failure_log_never_contains_exception_or_credentials(tmp_path, monkeypatch, capsys):
+def test_failure_log_never_contains_exception_or_credentials(tmp_path, monkeypatch, capsys, isolated_lock):
     c = config(tmp_path)
     file = tmp_path / 'ops.env'
     file.write_text('\n'.join(k + '=' + v for k, v in c.items()))
@@ -264,7 +276,7 @@ def test_failure_log_never_contains_exception_or_credentials(tmp_path, monkeypat
         os.umask(mask)
     output = capsys.readouterr()
     assert output.err == ''
-    assert output.out == 'iorp-backup: failed stage=preflight\n'
+    assert output.out == 'iorp-backup: failed stage=preflight reason=unexpected\n'
 
 
 def test_dump_table_count_uses_actual_toc(tmp_path, monkeypatch):

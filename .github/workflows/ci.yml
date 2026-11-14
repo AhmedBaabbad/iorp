@@ -90,7 +90,7 @@ jobs:
       - run: pip install --require-hashes --no-deps -r requirements-dev.lock
       - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends rclone
       - run: docker build --target backup -t "$BACKUP_TEST_IMAGE" .
-      - run: python -m pytest -q -p no:cacheprovider tests/test_ops_backup_roundtrip.py tests/test_backup_roundtrip_isolated.py
+      - run: python -m pytest -q -p no:cacheprovider tests/core/test_ops_backup_retention.py tests/test_ops_backup_roundtrip.py tests/test_backup_roundtrip_isolated.py
 
   postgres:
     name: PostgreSQL migrations and integration

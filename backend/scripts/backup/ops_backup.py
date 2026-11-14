@@ -1,7 +1,7 @@
 """Host-only operational backup coordinator. Never mount Docker's socket in an image.
 
 All subprocess output is private and discarded on failure; journal messages are fixed
-stage names. Importing this module performs no I/O and requires no production secrets.
+stage/reason codes. Importing this module performs no I/O or production access.
 """
 from __future__ import annotations
 
@@ -33,6 +33,38 @@ PG_IMAGE = 'postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10
 
 class Failure(Exception):
     pass
+
+
+def failure_reason(exc: BaseException) -> str:
+    if (isinstance(exc, Failure) and len(exc.args) == 1 and isinstance(exc.args[0], str)
+            and re.fullmatch(r'[a-z][a-z0-9-]{0,40}', exc.args[0])):
+        return exc.args[0]
+    return 'unexpected'
+
+
+def backup_name(name: str) -> bool:
+    if not STAMP.fullmatch(name):
+        return False
+    try:
+        datetime.strptime(name[5:], '%Y%m%dT%H%M%SZ')
+        return True
+    except ValueError:
+        return False
+
+
+def md5_listing(text: str) -> dict[str, str]:
+    """rclone's default text format: 32 hex digits, two spaces, relative path.
+
+    Preserve paths exactly, including subdirectories. The catalog's separate
+    flat-file allowlist rejects unexpected paths before any deletion.
+    """
+    result = {}
+    for line in text.splitlines():
+        match = re.fullmatch(r'([0-9a-fA-F]{32})  (.+)', line)
+        if not match or match[2] in result:
+            raise Failure('remote-hash-format')
+        result[match[2]] = match[1].lower()
+    return result
 
 
 def read_env(path: Path, private: bool = True) -> dict[str, str]:
@@ -128,14 +160,16 @@ class Job:
     def __init__(self, config: dict[str, str]):
         self.c = config
         self.env = config['ENVIRONMENT']
-        if self.env not in ('staging', 'production'):
-            raise Failure('environment')
+        if self.env != 'production':
+            raise Failure('production-only')
         raw_root = Path(config['STATE_DIR']).absolute()
         self.root = raw_root.resolve()
         if self.root == Path('/') or self.root != raw_root:
             raise Failure('state-directory')
         self.scratch = self.root / 'scratch'
         self.local = self.root / 'local'
+        self.quarantine = self.root / 'quarantine'
+        self.local_quarantined = False
         self.stage = 'preflight'
         self.container = 'iorp-backup-verify-' + uuid4().hex
         self.collector = 'iorp-backup-collect-' + uuid4().hex
@@ -328,42 +362,57 @@ class Job:
         shutil.move(str(source), destination)
         return destination
 
+    def catalog_command(self, code: str, *args) -> str:
+        try:
+            return self.rclone(*args)
+        except Failure as exc:
+            if failure_reason(exc) in {'interrupted', 'timeout', 'free-space', 'scratch-size', 'postgres-size', 'output-size'}:
+                raise
+            raise Failure(code) from None
+        except (Exception, SystemExit):
+            raise Failure(code) from None
+
     def remote_catalog(self) -> dict[str, Path]:
+        try:
+            return self._remote_catalog()
+        except Failure:
+            raise
+        except (Exception, SystemExit):
+            raise Failure('remote-catalog-read') from None
+
+    def _remote_catalog(self) -> dict[str, Path]:
         catalog = {}
-        names = self.rclone('lsf', self.remote, '--dirs-only').splitlines()
+        seen = set()
+        names = self.catalog_command('remote-list', 'lsf', self.remote, '--dirs-only', '--max-depth', '1').splitlines()
         if len(names) > 1000:
             raise Failure('catalog-size')
         for raw in names:
             name = raw.rstrip('/')
-            if not STAMP.fullmatch(name):
+            if not backup_name(name) or name in seen:
                 raise Failure('remote-layout')
+            seen.add(name)
             remote = self.remote + '/' + name
-            entries = self.rclone('lsf', remote).splitlines()
+            entries = self.catalog_command('remote-entries', 'lsf', remote, '--max-depth', '1').splitlines()
             if 'complete.enc' not in entries:
                 continue  # interrupted uploads are never recovery points or deletion candidates
-            if set(entries) != {*PAYLOADS, 'verification.json.enc', 'complete.enc'}:
+            if len(entries) != 5 or set(entries) != {*PAYLOADS, 'verification.json.enc', 'complete.enc'}:
                 raise Failure('remote-layout')
             folder = self.scratch / 'catalog' / name
             private_dir(folder)
             # Historical payloads stay remote. Never pass --download to hashsum:
             # unsupported/missing native hashes must fail closed, not fetch data.
             for item in ('complete.enc', 'manifest.json.enc', 'verification.json.enc'):
-                self.rclone('copyto', remote + '/' + item, str(folder / item))
+                self.catalog_command('remote-metadata-read', 'copyto', remote + '/' + item, str(folder / item))
             tool.decrypt_file(folder / 'complete.enc', folder / 'complete.json', self.key_env['IORP_BACKUP_KEY'])
             expected = json.loads((folder / 'complete.json').read_text())
-            if set(expected) != {*PAYLOADS, 'verification.json.enc'}:
+            if not isinstance(expected, dict) or set(expected) != {*PAYLOADS, 'verification.json.enc'}:
                 raise Failure('remote-completion')
             for hashes in expected.values():
                 if (not isinstance(hashes, dict) or set(hashes) != {'sha256', 'md5'}
                         or not re.fullmatch(r'[0-9a-f]{64}', str(hashes['sha256']))
                         or not re.fullmatch(r'[0-9a-f]{32}', str(hashes['md5']))):
                     raise Failure('remote-completion')
-            native = {}
-            for line in self.rclone('hashsum', 'MD5', remote).splitlines():
-                match = re.fullmatch(r'([0-9a-fA-F]{32})  (.+)', line)
-                if not match or match[2] in native:
-                    raise Failure('remote-checksum')
-                native[match[2]] = match[1].lower()
+            native = md5_listing(self.catalog_command('remote-hashes', 'hashsum', 'MD5', remote))
             if set(native) != set(entries) or any(native[n] != expected[n]['md5'] for n in expected):
                 raise Failure('remote-checksum')
             if any(digest(folder / n) != expected[n]['sha256']
@@ -387,8 +436,28 @@ class Job:
             shutil.rmtree(folder)
         return catalog
 
+    def quarantine_local(self, entry: Path):
+        try:
+            private_dir(self.quarantine)
+            target = self.quarantine / uuid4().hex
+            private_dir(target)
+            # Atomic same-filesystem rename: preserve the entry, including a
+            # symlink itself, without following it or deleting its contents.
+            entry.rename(target / entry.name)
+            self.local_quarantined = True
+        except (Exception, SystemExit):
+            raise Failure('local-quarantine') from None
+
     def retention(self, newest: Path):
         self.stage = 'retention'
+        try:
+            self._retention(newest)
+        except Failure:
+            raise
+        except (Exception, SystemExit):
+            raise Failure('retention-plan') from None
+
+    def _retention(self, newest: Path):
         if not matching_receipt(newest):
             raise Failure('receipt')
         # Validate every remote candidate before deleting anything, including local files.
@@ -396,20 +465,47 @@ class Job:
         if not catalog or max(catalog) != newest.name:
             raise Failure('newest-remote')
         keep = retained(list(catalog))
-        local = []
-        for folder in self.local.iterdir():
-            if folder.is_symlink() or not folder.is_dir() or not STAMP.fullmatch(folder.name):
-                raise Failure('local-layout')
-            check_manifest(folder)
-            if not matching_receipt(folder) or folder.name not in catalog:
-                raise Failure('local-receipt')
-            local.append(folder)
+        local, rejected = [], []
+        try:
+            entries = list(self.local.iterdir())
+        except Exception:
+            raise Failure('local-scan') from None
+        for folder in entries:
+            try:
+                if folder.is_symlink() or not folder.is_dir() or not backup_name(folder.name) or folder.name not in catalog:
+                    rejected.append(folder)
+                    continue
+                check_manifest(folder)
+                if not matching_receipt(folder):
+                    rejected.append(folder)
+                    continue
+                local.append(folder)
+            except Failure as exc:
+                if failure_reason(exc) not in {'manifest', 'missing-files'}:
+                    raise
+                rejected.append(folder)
+            except (Exception, SystemExit):
+                rejected.append(folder)
+        for folder in rejected:
+            self.quarantine_local(folder)
+        healthy = {folder.name: folder for folder in local}
         for name in sorted(set(catalog) - keep):
             # Exact generated paths only; never purge a parent or an unknown directory.
-            self.rclone('purge', self.remote + '/' + name)
-        for folder in sorted(local, key=lambda p: p.name, reverse=True)[3:]:
+            self.catalog_command('remote-prune', 'purge', self.remote + '/' + name)
+            # A policy deletion is not an orphan: remove its validated local copy
+            # only after this exact remote purge succeeds.
+            if name in healthy:
+                try:
+                    shutil.rmtree(healthy[name])
+                except Exception:
+                    raise Failure('local-prune') from None
+        kept_local = [folder for folder in local if folder.name in keep]
+        for folder in sorted(kept_local, key=lambda p: p.name, reverse=True)[3:]:
             if folder != newest:
-                shutil.rmtree(folder)
+                try:
+                    shutil.rmtree(folder)
+                except Exception:
+                    raise Failure('local-prune') from None
 
     def cleanup(self):
         self.active_db = False
@@ -460,7 +556,8 @@ class Job:
         if not push(self.monitors.get('RESTORE_PUSH_URL', ''), True, 'restore verified'):
             raise Failure('restore-push')
         self.stage = 'daily-push'
-        if not push(self.monitors.get('DAILY_PUSH_URL', ''), True, 'backup complete'):
+        message = 'backup complete: local-quarantined' if self.local_quarantined else 'backup complete'
+        if not push(self.monitors.get('DAILY_PUSH_URL', ''), True, message):
             raise Failure('daily-push')
 
     def drill(self):
@@ -495,6 +592,8 @@ class Job:
 
 
 def disk(config):
+    if config.get('ENVIRONMENT') != 'production':
+        raise Failure('production-only')
     monitors = read_env(Path(config['PUSH_ENV_FILE']))
     usage = shutil.disk_usage(config['STATE_DIR'])
     healthy = (usage.total - usage.free) / usage.total <= 0.80
@@ -518,10 +617,12 @@ def main():
     signal.signal(signal.SIGINT, interrupted)
     try:
         config = read_env(args.config)
+        if config.get('ENVIRONMENT') != 'production':
+            raise Failure('production-only')
         if args.command == 'disk':
             disk(config)
         else:
-            # Linux host, same lock for manual and systemd executions, both environments.
+            # Linux host, same lock for manual and systemd executions.
             import fcntl
             with open('/run/lock/iorp-backup.lock', 'a') as lock:
                 try:
@@ -530,18 +631,23 @@ def main():
                     raise Failure('busy') from None
                 job = Job(config)
                 job.execute() if args.command == 'daily' else job.drill()
+        if job and job.local_quarantined:
+            print('iorp-backup: warning reason=local-quarantined', flush=True)
         print('iorp-backup: success', flush=True)
         return 0
-    except BaseException:
+    except BaseException as exc:
         # Never print the exception, argv, URLs, DB details or library traceback.
         stage = job.stage if job else 'configuration'
-        if config and args.command in ('daily', 'drill'):
+        if not isinstance(stage, str) or not re.fullmatch(r'[a-z][a-z0-9-]{0,40}', stage):
+            stage = 'unexpected'
+        reason = failure_reason(exc)
+        if config and config.get('ENVIRONMENT') == 'production' and args.command in ('daily', 'drill'):
             with contextlib.suppress(Exception):
                 monitors = read_env(Path(config['PUSH_ENV_FILE']))
-                push(monitors.get('DAILY_PUSH_URL', ''), False, 'backup failed')
+                push(monitors.get('DAILY_PUSH_URL', ''), False, 'backup failed: ' + reason)
                 if stage == 'restore':
-                    push(monitors.get('RESTORE_PUSH_URL', ''), False, 'restore failed')
-        print('iorp-backup: failed stage=' + stage, flush=True)
+                    push(monitors.get('RESTORE_PUSH_URL', ''), False, 'restore failed: ' + reason)
+        print('iorp-backup: failed stage=' + stage + ' reason=' + reason, flush=True)
         return 1
 
 
