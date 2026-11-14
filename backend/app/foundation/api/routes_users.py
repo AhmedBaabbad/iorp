@@ -161,11 +161,14 @@ def _transition_conflict(exc: InvalidUserStateTransitionError) -> JSONResponse:
     return JSONResponse(status_code=409, content={"code": "INVALID_USER_STATE_TRANSITION", "message": str(exc), "allowed_transitions": exc.allowed})
 
 
-def _presence_fields(user, current, db):
+def _presence_fields(user, current, db, detail=False):
     from app.foundation.application.presence import is_online
-    from app.foundation.application.permanent_deletion import can_delete_permanently
-    result={'can_delete_permanently': can_delete_permanently(db,user,current.user.id)
-            if 'foundation:users:delete' in current.auth_user.permissions else False}
+    from app.foundation.application.permanent_deletion import deletion_block
+    result={'can_delete_permanently':False}
+    if 'foundation:users:delete' in current.auth_user.permissions:
+        block=deletion_block(db,user,current.user.id)
+        result['can_delete_permanently']=block is None
+        if detail:result['delete_block']=block
     if 'foundation:users:read' in current.auth_user.permissions:
         result.update(last_seen_at=user.last_seen_at,is_online=is_online(user))
     return result
@@ -191,7 +194,7 @@ def _user_to_list_item(user, roles: list, current, db) -> UserListItem:
 def _user_to_detail(user, roles: list, current, db) -> UserDetailResponse:
     service_roles = roles
     return UserDetailResponse(
-        **_presence_fields(user, current, db),
+        **_presence_fields(user, current, db, detail=True),
         timezone=user.timezone, archived_at=user.archived_at, account_change_reason=user.account_change_reason,
         id=user.id,
         organization_id=user.organization_id,

@@ -75,10 +75,11 @@ def test_pending_deletion_cleans_only_owned_rows_and_audits_actor(users):
     for table,column in ((token,'user_id'),(pending,'user_id'),(sessions,'account_id')):
         assert e.db.scalar(select(table.c[column]).where(table.c[column]==identifier)) is None
     audit=e.db.scalar(select(TenantSecurityEvent).where(TenantSecurityEvent.event_type=='user.deleted_permanently'))
-    assert audit.actor_id==e.actor.id and audit.details=={'email':'mistake@example.com','full_name':'Created by mistake','reason':'Created by mistake'}
+    assert audit.actor_id==e.actor.id and {key:audit.details[key] for key in ('email','full_name','reason')}=={'email':'mistake@example.com','full_name':'Created by mistake','reason':'Created by mistake'}
+    assert audit.details['deleted_rows']==5 and audit.details['detached_rows']==0
 
 
-@pytest.mark.parametrize('state,code',[('root','USER_DELETE_ROOT'),('self','USER_DELETE_SELF'),('password','USER_DELETE_ACTIVATED'),('login','USER_DELETE_ACTIVATED'),('seen','USER_DELETE_ACTIVATED')])
+@pytest.mark.parametrize('state,code',[('root','USER_DELETE_ROOT'),('self','USER_DELETE_SELF')])
 def test_deletion_guards(users,state,code):
     e=users
     if state=='root':e.target.is_organization_root=True
@@ -97,7 +98,7 @@ def test_any_module_fk_and_security_actor_block_deletion(users):
     e.db.add(row);e.db.commit()
     response=remove(e)
     assert response.status_code==409 and response.json()['code']=='USER_DELETE_HAS_HISTORY'
-    assert 'commercial_customers' in response.json()['details']['tables']
+    assert 'customers' in response.json()['details']['tables']
     assert not e.client.get(f'{BASE}/{e.target.id}').json()['can_delete_permanently']
     assert e.db.get(Customer,row.id) is not None
 
@@ -107,7 +108,7 @@ def test_security_actor_blocks_without_deleting_history(users):
     row=TenantSecurityEvent(organization_id=e.org.id,event_type='synthetic.actor',actor_id=e.target.id)
     e.db.add(row);e.db.commit()
     response=remove(e)
-    assert response.status_code==409 and 'foundation_security_events' in response.json()['details']['tables']
+    assert response.status_code==409 and 'securityEvents' in response.json()['details']['tables']
     assert e.db.get(TenantSecurityEvent,row.id) is not None
 
 
@@ -118,7 +119,7 @@ def test_assigning_someone_elses_role_is_history_not_disposable_ownership(users)
     assignment=UserRole(user_id=e.actor.id,role_id=role.id,assigned_by=e.target.id)
     e.db.add(assignment);e.db.commit()
     response=remove(e)
-    assert response.status_code==409 and 'foundation_user_roles' in response.json()['details']['tables']
+    assert response.status_code==409 and 'roleAssignments' in response.json()['details']['tables']
     assert e.db.get(UserRole,assignment.id) is not None
 
 
@@ -134,7 +135,7 @@ def test_other_tenant_and_missing_permission(users):
     e.db.execute(token.insert().values(user_id=e.target.id,organization_id=other_org.id,token_hash='foreign-malformed',expires_at=utc_now()+timedelta(hours=1)))
     e.db.commit()
     malformed=remove(e)
-    assert malformed.status_code==409 and 'foundation_password_reset_tokens' in malformed.json()['details']['tables']
+    assert malformed.status_code==409 and 'accountTokens' in malformed.json()['details']['tables']
     assert e.db.scalar(select(token.c.user_id).where(token.c.organization_id==other_org.id))==e.target.id
     e.current.auth_user.permissions.discard('foundation:users:delete')
     assert remove(e).status_code==403

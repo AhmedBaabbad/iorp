@@ -270,7 +270,7 @@ class _PresenceResponse(BaseModel):
     @model_serializer(mode='wrap')
     def hide_unset_presence(self, handler):
         result=handler(self)
-        for field in ('last_seen_at','is_online'):
+        for field in ('last_seen_at','is_online','delete_block'):
             if field not in self.model_fields_set:result.pop(field,None)
         return result
 
@@ -294,7 +294,13 @@ class UserListItem(_PresenceResponse):
     model_config = ConfigDict(from_attributes=True)
 
 
+class UserDeleteBlock(BaseModel):
+    code: Literal['USER_DELETE_ROOT','USER_DELETE_SELF','USER_DELETE_HAS_HISTORY']
+    tables: list[str] = Field(default_factory=list)
+
+
 class AdminUserResponse(_PresenceResponse):
+    delete_block: UserDeleteBlock | None = None
     last_seen_at: ISODatetime | None = None
     is_online: bool | None = None
     can_delete_permanently: bool = False
