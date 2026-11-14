@@ -145,7 +145,10 @@
    from ops_backup import read_env
    base = Path(sys.argv[1]); os.umask(0o077)
    saved = read_env(base / 'env/offline-recovered.env')
-   if saved != read_env(base / 'env/recovery.env'):
+   app = read_env(base / 'env/backend.env')
+   expected = {'IORP_BACKUP_KEY': read_env(base / 'env/backup-key.env')['IORP_BACKUP_KEY'],
+               'SECRET_KEY': app['SECRET_KEY'], 'PLATFORM_MFA_KEYS': app['PLATFORM_MFA_KEYS']}
+   if saved != expected:
        raise SystemExit('Offline recovery check failed')
    with (base / 'env/offline-key.env').open('x') as stream:
        stream.write('IORP_BACKUP_KEY=' + saved['IORP_BACKUP_KEY'] + '\n')
@@ -176,7 +179,12 @@
    sudo systemctl show iorp-backup@production.service -p Result -p ExecMainStatus
    ```
 
-بعد نجاح التحقق احذف **نسخ النقل المؤقتة فقط** بإجراء التعامل مع الأسرار المعتمد على المضيف وجهاز المالك؛ أبقِ المفتاح التشغيلي وحزمة offline. لا أوامر حذف عامة في التثبيت، ولا حذف لنسخ تحقق لم تنجح بعد.
+10. بعد نجاح التحقق احذف **نسخ النقل والتحقق المؤقتة فقط**؛ هذه خطوة تعامل مع الأسرار، وليست تراجعًا. أبقِ `backup-key.env` التشغيلي وحزمة offline. على جهاز المالك تخلّص من نسختَي النقل الواضحتين بإجراء الأسرار المعتمد، بعد التأكد من حفظ المخزن المشفر. لا تنفّذ هذه الخطوة إذا فشل التحقق.
+
+    ```bash
+    sudo rm -- "$BASE/env/recovery.env" "$BASE/env/offline-recovered.env" \
+      "$BASE/env/offline-key.env" "$BASE/env/offline-probe.env"
+    ```
 
 ## نسخة قبل كل migration في الإنتاج
 
@@ -210,7 +218,7 @@
 
 ## تجربة الاسترجاع: قبل الإطلاق ثم شهريًا
 
-إضافةً للتحقق اليومي، ينفّذ المالك `drill` مستقلًا **قبل الإطلاق ثم مرة كل شهر**، بمفتاح مستخرج من offline وconfig تحقق خاص كما في الخطوة 8، ومن Drive لا القرص المحلي. لا يجمع نسخة جديدة ولا يطبّق retention أو يكتب على قاعدة الإنتاج.
+إضافةً للتحقق اليومي، ينفّذ المالك `drill` مستقلًا **قبل الإطلاق ثم مرة كل شهر**، بمفتاح مستخرج حديثًا من offline، ومن Drive لا القرص المحلي. استخرج الحزمة وأعد `offline-recovered.env` الخاص كما في الخطوة 6. أعد تنفيذ **مقطع Python فقط** من الخطوة 8 لتحضير `offline-key.env` و`offline-probe.env` ومقارنتهما بالإعداد التشغيلي؛ لا تكرر أمر `daily`. لا يجمع `drill` نسخة جديدة ولا يطبّق retention أو يكتب على قاعدة الإنتاج.
 
 1. قِس الزمن من بداية التنزيل لنهاية التحقق، وراجع معه وقت تجهيز موارد التعافي والتحويل وفحوص التطبيق ضمن هدف الساعتين.
 
@@ -237,15 +245,30 @@
    PY
    ```
 
+3. بعد نجاح التمرين وحفظ دليله الخاص، أزل نسخ التحقق المؤقتة لتكون الجولة الشهرية التالية مستندة إلى استخراج جديد من offline.
+
+   ```bash
+   sudo rm -- "$BASE/env/offline-recovered.env" "$BASE/env/offline-key.env" "$BASE/env/offline-probe.env"
+   ```
+
 إذا تجاوز الزمن ساعتين أو فشل التحقق أو بقيت موارد التمرين فلا تعتمد جاهزية الإطلاق؛ حقق وأعد القياس. انقطاع daily أكثر من 26 ساعة يعني أن هدف RPO لم يعد متحققًا: عالج تنبيه Kuma فورًا. quarantine يستلزم مراجعة مساحة، ولا يبرر حذفًا آليًا.
 
 ## الاسترجاع الفعلي — إجراء طوارئ منفصل ومتعمد
 
 ليس `drill` ولا timer. يوافق المالك على نقطة التعافي وفقد الكتابات اللاحقة، ويوقف الكتابات والمهام بإجراء الصيانة. يلزم مصدر الإصدار وأسرار الإنتاج من offline وخادم PostgreSQL 16 وvolume uploads **جديدان**، لا الموارد الحالية. لا DROP ولا `--clean` على الإنتاج الحالي.
 
-1. نفّذ التمرين السابق أولًا. من جلسة التعافي الإدارية أدخل معرف النسخة وجذر مساحة جديدة وremote من السجل الخاص. نزّل الملفات المشفّرة الخمسة فقط.
+1. نفّذ التمرين السابق أولًا. تُنفّذ بقية خطوات الطوارئ من **جلسة root واحدة** حتى تتطابق ملكية الملفات وأدوات PostgreSQL. أعد استخراج حزمة offline إلى `env/offline-recovered.env` الخاص كما في الخطوة 6، ثم أدخل المسارات وremote من السجل الخاص. عند فقد المضيف يلزم تجهيز runtime وrclone من مخزون التعافي؛ لا تولّد مفتاحًا جديدًا بدل المحفوظ. نزّل الملفات المشفّرة الخمسة فقط.
 
    ```bash
+   sudo -i
+   set -euo pipefail
+   umask 077
+   read -rp 'Private production deployment root: ' BASE
+   [[ "$BASE" =~ ^/[A-Za-z0-9_./-]+/production$ ]]
+   SOURCE=$BASE/backup-runtime/source
+   PY=$BASE/backup-runtime/venv/bin/python
+   read -rp 'Private production rclone remote name: ' REMOTE
+   [[ "$REMOTE" =~ ^[A-Za-z0-9_-]+$ ]]
    read -rp 'Owner-approved completed backup ID: ' BACKUP_ID
    [[ "$BACKUP_ID" =~ ^iorp-[0-9]{8}T[0-9]{6}Z$ ]]
    read -rp 'New absolute recovery workspace: ' RECOVERY
@@ -268,7 +291,7 @@
    import iorp_backup as tool
    from ops_backup import read_env, checksums, check_manifest, matching_receipt, PAYLOADS
    base, root = Path(sys.argv[1]), Path(sys.argv[3]); folder = root / 'sealed'
-   key = read_env(base / 'env/offline-key.env')['IORP_BACKUP_KEY']
+   key = read_env(base / 'env/offline-recovered.env')['IORP_BACKUP_KEY']
    tool.decrypt_file(folder / 'complete.enc', folder / 'complete.json', key)
    expected = json.loads((folder / 'complete.json').read_text())
    if set(expected) != {*PAYLOADS, 'verification.json.enc'} or any(checksums(folder / n) != expected[n] for n in expected):
@@ -292,6 +315,8 @@
 3. جهّز `.pg_service.conf` و`.pgpass` خاصين `600` في جلسة التعافي بخدمتي صيانة وهدف **للخادم الجديد** من المخزون الخاص؛ لا DSN في argv. أنشئ قاعدة جديدة وتوقف إن وجدت. أكد أن خدمة الهدف تشير إليها وللخادم الجديد قبل الكتابة.
 
    ```bash
+   apt-get update
+   apt-get install -y postgresql-client-16
    read -rp 'New recovery database name (recovery_...): ' NEW_DATABASE
    [[ "$NEW_DATABASE" =~ ^recovery_[a-z0-9_]+$ ]]
    createdb --maintenance-db=service=iorp_recovery_admin "$NEW_DATABASE"

@@ -608,6 +608,8 @@ def main():
     signal.signal(signal.SIGINT, interrupted)
     try:
         config = read_env(args.config)
+        if config.get('ENVIRONMENT') != 'production':
+            raise Failure('production-only')
         if args.command == 'disk':
             disk(config)
         else:
@@ -630,7 +632,7 @@ def main():
         if not isinstance(stage, str) or not re.fullmatch(r'[a-z][a-z0-9-]{0,40}', stage):
             stage = 'unexpected'
         reason = failure_reason(exc)
-        if config and args.command in ('daily', 'drill'):
+        if config and config.get('ENVIRONMENT') == 'production' and args.command in ('daily', 'drill'):
             with contextlib.suppress(Exception):
                 monitors = read_env(Path(config['PUSH_ENV_FILE']))
                 push(monitors.get('DAILY_PUSH_URL', ''), False, 'backup failed: ' + reason)

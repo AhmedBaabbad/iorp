@@ -319,6 +319,24 @@ def test_nonproduction_jobs_and_disk_checks_are_rejected_before_io(environment,t
     with pytest.raises(ops.Failure,match='^production-only$'):ops.disk({'ENVIRONMENT':environment})
 
 
+def test_main_rejects_staging_before_lock_secrets_or_push(tmp_path,monkeypatch,capsys,isolated_lock):
+    file=tmp_path/'ops.env';file.write_text('ENVIRONMENT=staging\n');file.chmod(0o600)
+    monkeypatch.setattr(sys,'argv',['ops_backup.py','daily','--config',str(file)])
+    original=ops.read_env;reads=[]
+    def read(path,*args,**kwargs):
+        reads.append(path);assert path==file
+        return original(path,*args,**kwargs)
+    monkeypatch.setattr(ops,'read_env',read)
+    lock=Mock(side_effect=AssertionError('Nonproduction must not acquire a host lock'))
+    monkeypatch.setattr(ops,'open',lock)
+    pushed=Mock();monkeypatch.setattr(ops,'push',pushed)
+    mask=os.umask(0o077)
+    try:assert ops.main()==1
+    finally:os.umask(mask)
+    assert reads==[file];lock.assert_not_called();pushed.assert_not_called()
+    assert capsys.readouterr().out=='iorp-backup: failed stage=configuration reason=production-only\n'
+
+
 @pytest.mark.parametrize('failure,reason', [
     (ops.Failure('local-scan'),'local-scan'),(ops.Failure('a'+'0'*40),'a'+'0'*40),
     (ops.Failure('a'+'0'*41),'unexpected'),(ops.Failure('Invalid'),'unexpected'),
