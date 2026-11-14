@@ -37,6 +37,7 @@ class FollowUpAssigneeEligibilityService:
             .where(
                 User.organization_id == organization_id,
                 User.status == UserStatus.ACTIVE,
+                User.archived_at.is_(None),
                 Permission.code.in_(REQUIRED_ASSIGNEE_PERMISSIONS),
             )
             .group_by(User.id)
@@ -52,7 +53,7 @@ class FollowUpAssigneeEligibilityService:
         ))
         if user is None:
             return False
-        if user.status != UserStatus.ACTIVE:
+        if user.status != UserStatus.ACTIVE or user.archived_at is not None:
             return False
 
         permissions = PermissionRepository(self.db).get_permissions_for_user(user_id, organization_id)

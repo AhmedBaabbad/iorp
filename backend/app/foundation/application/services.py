@@ -208,8 +208,8 @@ class FoundationService:
     ) -> User | None:
         return self.users.get_for_organization(organization_id, user_id)
 
-    def list_users(self, organization_id: UUID) -> list[User]:
-        return self.users.list_by_organization(organization_id)
+    def list_users(self, organization_id: UUID, *, active_only: bool = False) -> list[User]:
+        return self.users.list_by_organization(organization_id, active_only=active_only)
 
     def list_users_for_tenant(self, tenant: TenantContext) -> list[User]:
         return self.users.list_by_organization(tenant.organization_id)

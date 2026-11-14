@@ -228,7 +228,8 @@ class NCRService:
 
     def user_options(self, search="") -> list[dict]:
         users = _t("foundation_users")
-        query = select(users.c.id, users.c.full_name).where(users.c.organization_id == self.org)
+        query = select(users.c.id, users.c.full_name).where(users.c.organization_id == self.org,
+            users.c.status == 'active', users.c.archived_at.is_(None))
         if search:
             query = query.where(users.c.full_name.icontains(search, autoescape=True))
         return [dict(id=r.id, name=r.full_name) for r in self.db.execute(query.order_by(users.c.full_name).limit(50)).all()]

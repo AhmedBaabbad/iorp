@@ -33,28 +33,20 @@ def signed_in_and_browsed(e,activate):
     e.db.commit()
 
 
-def test_activated_browsing_logged_out_user_with_notifications_can_be_deleted(users,activate):
+def test_activated_browsing_logged_out_user_is_preserved(users,activate):
     e=users;signed_in_and_browsed(e,activate)
-    identifier=e.target.id;email=e.target.email
+    identifier=e.target.id
     response=e.client.get(f'{BASE}/{identifier}')
-    assert response.json()['delete_block'] is None and response.json()['can_delete_permanently']
-    assert 'delete_block' not in e.client.get(BASE).json()[0]
-    result=remove(e);assert result.status_code==200,result.text
-    e.db.expire_all();assert e.db.get(User,identifier) is None
-    events=list(e.db.scalars(select(TenantSecurityEvent).where(TenantSecurityEvent.event_type.in_(
-        ['tenant.login_success','tenant.password_reset_via_email','tenant.session_revoked']))))
-    assert {'tenant.login_success','tenant.password_reset_via_email','tenant.session_revoked'} <= {row.event_type for row in events}
-    assert all(row.actor_id is None and row.actor_email==email for row in events)
-    table=Base.metadata.tables['notifications_items']
-    assert e.db.scalar(select(table.c.id).where(table.c.recipient_user_id==identifier)) is None
-    audit=e.db.scalar(select(TenantSecurityEvent).where(TenantSecurityEvent.event_type=='user.deleted_permanently'))
-    assert audit.details['detached_rows']>=3
-    assert audit.details['deleted_by_table']['notifications_items']>=1
+    assert response.json()['delete_block']=={'code':'USER_DELETE_ACTIVATED','tables':[]}
+    result=remove(e)
+    assert result.status_code==409 and result.json()['code']=='USER_DELETE_ACTIVATED'
+    assert e.db.get(User,identifier) is not None
+    assert e.db.scalar(select(TenantSecurityEvent.id).where(TenantSecurityEvent.actor_id==identifier)) is not None
 
 
 def test_same_activity_with_customer_creation_is_business_history(users,activate):
     from app.commercial.infrastructure.models import Customer
-    e=users;signed_in_and_browsed(e,activate)
+    e=users
     row=Customer(organization_id=e.org.id,customer_code='IMPACT',name='Work',created_by_user_id=e.target.id)
     e.db.add(row);e.db.commit()
     response=remove(e)
@@ -64,10 +56,11 @@ def test_same_activity_with_customer_creation_is_business_history(users,activate
 
 
 @pytest.mark.parametrize('status',['active','inactive','locked'])
-def test_activation_and_account_status_alone_never_block(users,status):
+def test_activated_accounts_are_blocked_in_every_status(users,status):
     e=users;e.target.status=status;e.target.password_hash=hash_password('AlreadyUsed123!')
     e.target.last_login_at=utc_now()-timedelta(days=10);e.target.last_seen_at=utc_now();e.db.commit()
-    assert remove(e).status_code==200
+    result=remove(e)
+    assert result.status_code==409 and result.json()['code']=='USER_DELETE_ACTIVATED'
 
 
 def test_administrative_lock_of_other_user_stays_blocking(users):

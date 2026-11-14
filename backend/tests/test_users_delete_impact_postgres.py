@@ -1,4 +1,4 @@
-"""Actual PostgreSQL FK deletion after real activation/login/browsing/logout."""
+"""Activated PostgreSQL accounts and all their account history are preserved."""
 import os
 from types import SimpleNamespace
 from uuid import uuid4
@@ -18,7 +18,7 @@ from app.foundation.application.services import FoundationService
 pytestmark=pytest.mark.skipif(os.environ.get('RUN_POSTGRES_TESTS')!='1',reason='Isolated PostgreSQL opt-in')
 
 
-def test_real_fk_delete_of_account_only_history(mailbox):
+def test_activated_account_and_its_history_are_preserved(mailbox):
     schema='test_user_impact_'+uuid4().hex
     with engine.begin() as c:c.execute(sa.text(f'CREATE SCHEMA "{schema}"'))
     isolated=sa.create_engine(engine.url,connect_args={'options':f'-csearch_path={schema}'})
@@ -54,13 +54,13 @@ def test_real_fk_delete_of_account_only_history(mailbox):
             current=SimpleNamespace(user=actor,auth_user=SimpleNamespace(permissions=permissions),tenant=TenantContext(actor.id,org.id,permissions=permissions))
             app.dependency_overrides[get_current_user]=lambda:current
             response=client.request('DELETE',f'/api/v1/admin/users/{target.id}/permanent',json={'reason':'No business history'})
-            assert response.status_code==200,response.text
-            assert db.scalar(sa.select(User.id).where(User.id==target.id)) is None
-            assert db.scalar(sa.select(notifications.c.id).where(notifications.c.recipient_user_id==target.id)) is None
+            assert response.status_code==409 and response.json()['code']=='USER_DELETE_ACTIVATED'
+            assert db.scalar(sa.select(User.id).where(User.id==target.id))==target.id
+            assert db.scalar(sa.select(notifications.c.id).where(notifications.c.recipient_user_id==target.id)) is not None
             events=list(db.scalars(sa.select(TenantSecurityEvent).where(TenantSecurityEvent.actor_email==target.email)))
-            assert len(events)>=3 and all(row.actor_id is None for row in events)
+            assert len(events)>=3 and all(row.actor_id==target.id for row in events)
             audit=db.scalar(sa.select(TenantSecurityEvent).where(TenantSecurityEvent.event_type=='user.deleted_permanently'))
-            assert audit.actor_id==actor.id and audit.details['detached_rows']>=3 and audit.details['deleted_rows']>=3
+            assert audit is None
     finally:
         if client:client.close()
         app.dependency_overrides.clear();app.dependency_overrides.update(original)

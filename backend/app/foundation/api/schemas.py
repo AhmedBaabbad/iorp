@@ -299,11 +299,13 @@ class UserPresenceResponse(BaseModel):
 
 
 class UserDeleteBlock(BaseModel):
-    code: Literal['USER_DELETE_ROOT','USER_DELETE_SELF','USER_DELETE_HAS_HISTORY']
+    code: Literal['USER_DELETE_ROOT','USER_DELETE_SELF','USER_DELETE_ACTIVATED','USER_DELETE_HAS_HISTORY']
     tables: list[str] = Field(default_factory=list)
 
 
 class AdminUserResponse(_PresenceResponse):
+    archived_by_name: str | None = None
+    archived_reason: str | None = None
     delete_block: UserDeleteBlock | None = None
     last_seen_at: ISODatetime | None = None
     is_online: bool | None = None
@@ -340,6 +342,7 @@ UserUpdateRequest = AdminUserUpdate
 
 
 class UserDeactivationImpactResponse(BaseModel):
+    workforce_member_id: UUID | None = None
     user_id: UUID
     user_full_name: str
     can_deactivate: bool

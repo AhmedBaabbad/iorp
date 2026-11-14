@@ -194,8 +194,17 @@ def _user_to_list_item(user, roles: list, current, db) -> UserListItem:
 
 
 def _user_to_detail(user, roles: list, current, db) -> UserDetailResponse:
+    archive = None
+    if user.archived_at:
+        from app.foundation.infrastructure.models import TenantAuditEntry
+        archive = db.scalar(select(TenantAuditEntry).where(
+            TenantAuditEntry.organization_id == user.organization_id,
+            TenantAuditEntry.entity_id == str(user.id), TenantAuditEntry.entity_type == 'user',
+            TenantAuditEntry.action == 'user.archived').order_by(TenantAuditEntry.created_at.desc()).limit(1))
     service_roles = roles
     return UserDetailResponse(
+        archived_by_name=archive.actor_name if archive else None,
+        archived_reason=(archive.details or {}).get('reason') if archive else user.account_change_reason if user.archived_at else None,
         **_presence_fields(user, current, db, detail=True),
         timezone=user.timezone, archived_at=user.archived_at, account_change_reason=user.account_change_reason,
         id=user.id,
@@ -220,11 +229,12 @@ def _user_to_detail(user, roles: list, current, db) -> UserDetailResponse:
 
 @router.get("/users", response_model=list[UserListItem])
 def list_users(
+    selection: bool = False,
     current: CurrentUserContext = Depends(require_permission("foundation:users:read")),
     db: Session = Depends(get_db),
 ) -> list[UserListItem]:
     service = FoundationService(db)
-    users = service.list_users(current.tenant.organization_id)
+    users = service.list_users(current.tenant.organization_id, active_only=selection)
     roles_by_user = service.user_roles.list_roles_for_users([user.id for user in users], current.tenant.organization_id)
     result = []
     for user in users:
@@ -346,6 +356,7 @@ def get_user_deactivation_impact(
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return UserDeactivationImpactResponse(
+        workforce_member_id=getattr(workforce_queries, 'linked_member_id', lambda *_: None)(user_id, current.tenant.organization_id),
         user_id=impact.user_id, user_full_name=impact.user_full_name,
         can_deactivate=impact.can_deactivate,
         dependencies={"open_follow_ups": impact.open_follow_ups, "assigned_customers": impact.assigned_customers, "active_workforce_link": impact.active_workforce_link},

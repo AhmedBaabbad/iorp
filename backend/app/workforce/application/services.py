@@ -161,7 +161,7 @@ class WorkforceService:
         user = self.foundation.get_user_by_id_in_organization(user_id, organization_id)
         if user is None:
             raise ValueError("User must belong to the current organization.")
-        if user.status.value != "active":
+        if user.status.value != "active" or user.archived_at is not None:
             raise ValueError("Only active users can be linked to a workforce member.")
 
         linked_member = self.workforce.get_by_user_id(user_id, organization_id)
