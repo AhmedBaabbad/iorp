@@ -15,7 +15,7 @@
     "tenant.all_sessions_revoked": "إنهاء كل الجلسات",
     "tenant.token_validation_failed": "رفض جلسة غير صالحة",
     "tenant.sessions_ended": "إنهاء جلسات",
-    "user.deleted_permanently": "حذف حساب غير مستخدم نهائيًا"
+    "user.deleted_permanently": "حذف مستخدم نهائيًا"
   },
   "loading": "جارٍ التحميل…",
   "empty": "لا توجد أحداث أمنية",

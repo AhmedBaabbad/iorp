@@ -26,7 +26,10 @@ export type AdminUserListItem = {
   activation_pending?: boolean;
 };
 
+export type UserDeleteBlock = {code:"USER_DELETE_ROOT"|"USER_DELETE_SELF"|"USER_DELETE_HAS_HISTORY";tables:string[]};
+
 export type AdminUserDetail = AdminUserListItem & {
+  delete_block?: UserDeleteBlock | null;
   organization_id: string;
   last_login_at: string | null;
   failed_login_attempts: number;

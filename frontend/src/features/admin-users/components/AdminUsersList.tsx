@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { UserPresence } from "./UserPresence";
 import { PermanentUserDelete } from "./PermanentUserDelete";
 import { useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
@@ -138,17 +137,7 @@ export function AdminUsersList() {
   useEffect(() => {
     isMountedRef.current = true;
     void loadUsers();
-    let timer: ReturnType<typeof setInterval> | undefined;
-    const refresh = () => { void listAdminUsers().then(rows=>{if(isMountedRef.current)setUsers(rows);}).catch(()=>{}); };
-    const visibility = () => {
-      if(timer)clearInterval(timer);
-      timer=undefined;
-      if(!document.hidden){timer=setInterval(refresh,60000);}
-    };
-    visibility();
-    const resume=()=>{visibility();if(!document.hidden)refresh();};
-    document.addEventListener("visibilitychange",resume);
-    return () => { isMountedRef.current = false;if(timer)clearInterval(timer);document.removeEventListener("visibilitychange",resume); };
+    return () => { isMountedRef.current = false; };
   }, [loadUsers]);
 
   return (
@@ -173,7 +162,6 @@ export function AdminUsersList() {
                   <th style={styles.th}>{t("fields.fullName")}</th>
                   <th style={styles.th}>{t("fields.email")}</th>
                   <th style={styles.th}>{t("fields.status")}</th>
-                  <th style={styles.th}>{t("presence.title")}</th>
                   <th style={styles.th}>{t("fields.roles")}</th>
                   <th style={styles.th}>{t("fields.createdAt")}</th>
                   <th style={styles.th}>{t("fields.actions")}</th>
@@ -188,7 +176,6 @@ export function AdminUsersList() {
                     </td>
                     <td style={styles.td}>{user.email}</td>
                     <td style={styles.td}><span style={statusBadge(user.status)}>{user.archived_at ? t("accountPolicy.archived") : enumLabel("user", "status", user.status)}</span>{user.activation_pending ? <span style={{ ...styles.badge, marginInlineStart: 6, background: "var(--warning-soft, var(--surface-muted))", color: "var(--warning, var(--text-muted))" }}>{t("invitation.pending")}</span> : null}</td>
-                    <td style={styles.td}><UserPresence user={user}/></td>
                     <td style={styles.td}>{user.roles.length ? user.roles.map((role) => <span key={role.id} style={styles.badge}>{role.name}</span>) : t("notAvailable")}</td>
                     <td style={styles.td}>{fmt.date(user.created_at)}</td>
                     <td style={styles.td}>

@@ -78,7 +78,18 @@ export function AdminUserDetail() {
     getAdminUser(params.id).then(setUser).catch((caught) => setError(getApiErrorMessage(caught, messages)));
   }, [messages, params.id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    let live=true;
+    const refresh=()=>{void getAdminUser(params.id).then(next=>{
+      if(live)setUser(current=>current?.id===next.id?{...current,last_seen_at:next.last_seen_at,is_online:next.is_online}:current);
+    }).catch(()=>{});};
+    load();
+    let timer:ReturnType<typeof setInterval>|undefined;
+    const visibility=()=>{if(timer)clearInterval(timer);timer=undefined;if(!document.hidden)timer=setInterval(refresh,60000);};
+    const resume=()=>{visibility();if(!document.hidden)refresh();};
+    visibility();document.addEventListener("visibilitychange",resume);
+    return()=>{live=false;if(timer)clearInterval(timer);document.removeEventListener("visibilitychange",resume);};
+  }, [load,params.id]);
 
   useEffect(()=>{
     if(user && canDeactivate && new URLSearchParams(window.location.search).get("deactivate")==="1"){
@@ -345,6 +356,7 @@ export function AdminUserDetail() {
                   <h1 className={css.name}>{user.full_name}</h1>
                   <a className={css.email} href={`mailto:${user.email}`}>{user.email}</a>
                   <div className={css.badges}>
+                    <span className={css.badge}><UserPresence user={user}/></span>
                     <span className={`${css.badge} ${user.status === "active" ? css.badgeActive : user.status === "locked" ? css.badgeLocked : css.badgeInactive}`}>{enumLabel("user", "status", user.status)}</span>
                     {user.is_organization_root ? <span className={css.badge}>{t("rootBadge")}</span> : null}
                     {user.activation_pending ? <span className={`${css.badge} ${css.badgeLocked}`}>{t("invitation.pending")}</span> : null}
@@ -357,7 +369,7 @@ export function AdminUserDetail() {
                 {user.status === "locked" && !user.is_organization_root && canLock ? <button className={css.heroButton} onClick={() => void handleStatusAction("unlock")}>{t("actions.unlock")}</button> : null}
                 {user.status === "inactive" && !user.archived_at && !user.is_organization_root && canActivate ? <button className={css.heroButton} onClick={() => void handleStatusAction("activate")}>{t("actions.reactivate")}</button> : null}
                 {user.status === "inactive" && !user.is_organization_root && (user.archived_at ? canActivate : canDeactivate) ? <button className={css.heroButton} disabled={isSubmitting} onClick={() => void archiveAccount()}>{t(user.archived_at ? "accountPolicy.restore" : "accountPolicy.archive")}</button> : null}
-                <PermanentUserDelete user={user} className={css.heroButtonDanger} onDeactivate={canDeactivate?()=>void handleDeactivateClick():undefined}/>
+                <PermanentUserDelete user={user} showBlock className={css.heroButtonDanger} onDeactivate={canDeactivate?()=>void handleDeactivateClick():undefined}/>
                 {user.status !== "inactive" && !user.is_organization_root && canDeactivate ? <button type="button" className={css.heroButtonDanger} disabled={isCheckingImpact} onClick={() => void handleDeactivateClick()}>{isCheckingImpact ? t("deactivation.impactLoading") : t("deactivateButton")}</button> : null}
               </div>
             </div>
@@ -380,7 +392,7 @@ export function AdminUserDetail() {
                   <div className={css.detail}><dt>{t("fields.email")}</dt><dd>{user.email}</dd></div>
                   <div className={css.detail}><dt>{t("fields.phone")}</dt><dd>{user.phone ?? t("notAvailable")}</dd></div>
                   <div className={css.detail}><dt>{t("overview.preferredLanguage")}</dt><dd>{user.preferred_locale ? t(`overview.locales.${user.preferred_locale}`) : t("overview.organizationDefault")}</dd></div>
-                  <div className={css.detail}><dt>{t("presence.title")}</dt><dd><UserPresence user={user}/></dd></div>
+                  <div className={css.detail}><dt>{t("presence.lastSeenAt")}</dt><dd>{user.last_seen_at?fmt.dateTime(user.last_seen_at):t("presence.never")}</dd></div>
                   <div className={css.detail}><dt>{t("fields.lastLoginAt")}</dt><dd>{user.last_login_at ? fmt.dateTime(user.last_login_at) : t("overview.neverLoggedIn")}</dd></div>
                   <div className={css.detail}><dt>{t("fields.createdAt")}</dt><dd>{fmt.dateTime(user.created_at)}</dd></div>
                   <div className={css.detail}><dt>{t("overview.updatedAt")}</dt><dd>{fmt.dateTime(user.updated_at)}</dd></div>
