@@ -173,7 +173,7 @@ class QuoteService:
         quotes, total = self.quotes.page(tenant.organization_id, filters, params)
         labels = customer_labels(self.db, tenant.organization_id, [q.customer_id for q in quotes])
         for quote in quotes:
-            quote.customer_name, quote.customer_code = labels.get(quote.customer_id, (None, None))
+            quote.customer_name, quote.customer_code, quote.customer_name_ar, quote.customer_name_en = labels.get(quote.customer_id, (None, None, None, None))
         return quotes, total
 
     def list_quotes_for_customer(

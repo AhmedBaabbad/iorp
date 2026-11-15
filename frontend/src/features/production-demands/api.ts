@@ -2,7 +2,7 @@ import { apiClient } from "@/lib/api-client";
 
 export type DemandStatus = "draft" | "ready_for_planning" | "partially_planned" | "planned" | "cancelled";
 export type DemandPriority = "low" | "normal" | "high" | "urgent";
-export type Customer = { id: string; code: string; name: string };
+export type Customer = { id: string; code: string; name: string; name_ar?: string | null; name_en?: string | null };
 export type Quote = { id: string; number: string; status: string };
 export type AllocationStatus = "active" | "released";
 export type DemandItemAllocation = { id: string; production_order_id: string; production_order_number: string; production_order_status: string; allocated_quantity: string; status: AllocationStatus; created_at: string; released_at: string | null; release_reason: string | null };

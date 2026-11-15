@@ -40,6 +40,8 @@ export type QuoteListItem = {
   currency: string;
   /** On a list page: the customer, read once for the page. */
   customer_name?: string | null;
+  customer_name_ar?: string | null;
+  customer_name_en?: string | null;
   customer_code?: string | null;
   subtotal_amount: string;
   discount_amount: string;

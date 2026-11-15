@@ -50,7 +50,7 @@ export type Shipment = ShipmentListItem & ShipmentHeader & {
   history: HistoryEntry[]; updated_at: string;
 };
 
-export type CustomerOption = { country?: string | null; id: string; customer_code: string; name: string; phone: string | null; email: string | null; city: string | null };
+export type CustomerOption = { country?: string | null; id: string; customer_code: string; name: string; name_ar?: string | null; name_en?: string | null; phone: string | null; email: string | null; city: string | null };
 export type ProductionOrderOption = { id: string; number: string; product_type: string; status: string; planned_quantity: string; unit: string };
 
 export type ShippingSettings = { note_prefix: string; return_prefix: string; return_window_days: number; weight_tolerance_pct: string };

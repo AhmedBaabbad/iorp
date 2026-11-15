@@ -171,6 +171,8 @@ class CustomerOption(BaseModel):
     id: UUID
     customer_code: str
     name: str
+    name_ar: str | None = None
+    name_en: str | None = None
     phone: str | None
     email: str | None
     city: str | None

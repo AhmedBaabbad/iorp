@@ -7,6 +7,8 @@ export type FollowUpCustomerSummary = {
   id: string;
   customer_code: string;
   customer_name: string;
+  name_ar?: string | null;
+  name_en?: string | null;
 };
 
 export type FollowUpAssignedUser = {

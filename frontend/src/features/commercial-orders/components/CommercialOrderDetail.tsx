@@ -1,8 +1,9 @@
 "use client";
+import { customerDisplayName } from "@/lib/customer-name";
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
@@ -33,6 +34,7 @@ import { Signatures } from "@/components/Signatures";
 export function CommercialOrderDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const locale = useLocale();
   const t = useTranslations("commercial.commercialOrders");
   const errors = useTranslations("commercial.salesErrors");
   const messages = useTranslations("messages");
@@ -55,13 +57,13 @@ export function CommercialOrderDetail() {
     try {
       const found = await getCommercialOrderById(id);
       setOrder(found);
-      getCustomer(found.customer_id).then((c) => setCustomerName(c.name)).catch(() => undefined);
+      getCustomer(found.customer_id).then((c) => setCustomerName(customerDisplayName(c, locale))).catch(() => undefined);
       if (found.quote_id) getQuoteById(found.quote_id).then((q) => setQuoteNumber(q.quote_number)).catch(() => undefined);
     } catch (e) {
       if (e instanceof ApiClientError && e.status === 404) setMissing(true);
       else setError(salesErrorMessage(e, errors, messages));
     } finally { setLoading(false); }
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id, locale]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { void load(); }, [load]);
 
   async function run(key: string, action: () => Promise<CommercialOrderData | void>) {

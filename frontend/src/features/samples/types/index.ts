@@ -18,6 +18,8 @@ export type SampleListItem = {
   customer_id: string;
   /** On a list page: the customer, read once for the page. */
   customer_name?: string | null;
+  customer_name_ar?: string | null;
+  customer_name_en?: string | null;
   customer_code?: string | null;
   sample_code: string;
   product_type: string;

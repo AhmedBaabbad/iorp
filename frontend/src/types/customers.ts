@@ -49,12 +49,14 @@ export type EligibleSalesOwner = {
 };
 
 /** A customer as a picker or a name on another list shows it (GET /customers/lookup). */
-export type CustomerOption = { id: string; customer_code: string; name: string; status: CustomerStatus };
+export type CustomerOption = { id: string; customer_code: string; name: string; name_ar?: string | null; name_en?: string | null; status: CustomerStatus };
 
 export type CustomerListItem = {
   id: string;
   customer_code: string;
   name: string;
+  name_ar?: string | null;
+  name_en?: string | null;
   sector: string | null;
   city: string | null;
   city_other?: string | null;
@@ -79,7 +81,8 @@ export type CustomerDetail = CustomerListItem & {
 };
 
 export type CustomerCreateRequest = {
-  name: string;
+  name_ar?: string | null;
+  name_en?: string | null;
   primary_contact?: { name: string; phone?: string | null; email?: string | null; role?: string | null };
   sector?: string | null;
   city?: string | null;

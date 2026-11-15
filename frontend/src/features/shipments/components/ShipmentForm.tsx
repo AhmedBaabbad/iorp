@@ -1,4 +1,5 @@
 "use client";
+import { customerDisplayName } from "@/lib/customer-name";
 
 import { TransportSelection, DirectorySelect, type TransportValues } from "@/features/reference-directory/DirectorySelect";
 import { useLocale } from "next-intl";
@@ -40,7 +41,8 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
   const messages = useTranslations("messages");
   const router = useRouter();
   const editing = Boolean(shipmentId);
-  const ar=useLocale()==="ar";
+  const locale = useLocale();
+  const ar=locale==="ar";
   const [transport,setTransport]=useState<TransportValues>({});
   const location = useTranslations("common.location");
   const cityName = useListName("city"), countryName = useListName("country");
@@ -155,7 +157,7 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
               <label className={s.field}>{t("fields.customer")}
                 <select required value={customerId} onChange={e => {setCustomerId(e.target.value);setSite(null);setContact(null);setH(old=>({...old,customer_name:"",consignee_name:"",consignee_phone:"",consignee_email:"",delivery_address:"",delivery_country:"",delivery_city:"",location_url:""}));}}>
                   <option value="">{customers.length ? t("chooseCustomer") : t("noCustomers")}</option>
-                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}{c.customer_code ? ` — ${c.customer_code}` : ""}</option>)}
+                  {customers.map(c => <option key={c.id} value={c.id}>{customerDisplayName(c, locale)}{c.customer_code ? ` — ${c.customer_code}` : ""}</option>)}
                 </select>
               </label>
             </> : input("customer_name", { required: true, maxLength: 255 })}

@@ -396,8 +396,8 @@ class ComplaintService:
         """Rows as the screens show them; customers and people are read once for all the rows (no query per row)."""
         if not rows:
             return []
-        customers = dict(self.db.execute(select(Customer.id, Customer.name).where(Customer.organization_id == self.org,
-                                                                                  Customer.id.in_({r.customer_id for r in rows}))).all())
+        customers = {r.id: r for r in self.db.execute(select(Customer.id, Customer.name, Customer.name_ar, Customer.name_en).where(
+            Customer.organization_id == self.org, Customer.id.in_({r.customer_id for r in rows})))}
         names = user_names(self.db, self.org, list({x for r in rows for x in (r.owner_user_id, r.created_by, r.closed_by) if x}))
         today = organization_today(self.db, self.org)
         return [self._view(r, can, detail, customers, names, today) for r in rows]
@@ -407,7 +407,10 @@ class ComplaintService:
 
     def _view(self, row, can, detail, customers, names, today):
         result = {c.name: getattr(row, c.name) for c in Complaint.__table__.columns}
-        result.update(customer_name=customers.get(row.customer_id), owner_name=names.get(row.owner_user_id), created_by_name=names.get(row.created_by),
+        customer = customers.get(row.customer_id)
+        result.update(customer_name=customer.name if customer else None,
+                      customer_name_ar=customer.name_ar if customer else None,
+                      customer_name_en=customer.name_en if customer else None, owner_name=names.get(row.owner_user_id), created_by_name=names.get(row.created_by),
                       closed_by_name=names.get(row.closed_by), actions=allowed(row.status, can))
         if row.status not in LOCKED:
             operations = (('assign', 'assign'), ('investigate', 'investigate'), ('resolve', 'resolve'), ('items', 'update'), ('communicate', 'update'),

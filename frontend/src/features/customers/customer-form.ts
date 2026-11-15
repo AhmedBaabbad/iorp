@@ -2,7 +2,8 @@ import { optionalText } from "@/lib/utils";
 import type { CustomerCreateRequest, CustomerDetail } from "@/types/customers";
 
 export type CustomerFormValues = {
-  name: string;
+  name_ar: string;
+  name_en: string;
   sector: string;
   city: string;
   country: string;
@@ -17,7 +18,8 @@ export type CustomerFormValues = {
 };
 
 export const defaultCustomerFormValues: CustomerFormValues = {
-  name: "",
+  name_ar: "",
+  name_en: "",
   sector: "",
   city: "",
   country: "sa",
@@ -41,7 +43,8 @@ export function toCustomerCreateRequest(
   includeSalesOwner: boolean,
 ): CustomerCreateRequest {
   return {
-    name: values.name.trim(),
+    name_ar: optionalText(values.name_ar),
+    name_en: optionalText(values.name_en),
     sector: optionalText(values.sector),
     city: optionalText(values.city),
     country: optionalText(values.country),
@@ -58,7 +61,8 @@ export function toCustomerCreateRequest(
 
 export function toCustomerFormValues(customer: CustomerDetail): CustomerFormValues {
   return {
-    name: customer.name,
+    name_ar: customer.name_ar ?? "",
+    name_en: customer.name_en ?? "",
     sector: customer.sector ?? "",
     city: customer.city ?? "",
     country: customer.country ?? "",
@@ -71,4 +75,8 @@ export function toCustomerFormValues(customer: CustomerDetail): CustomerFormValu
     key_influencer_name: customer.key_influencer_name ?? "",
     notes: customer.notes ?? "",
   };
+}
+
+export function hasCustomerName(values: Pick<CustomerFormValues, "name_ar" | "name_en">): boolean {
+  return Boolean(values.name_ar.trim() || values.name_en.trim());
 }

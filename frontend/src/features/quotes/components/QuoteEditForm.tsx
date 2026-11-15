@@ -15,6 +15,7 @@ import { optionalText, toDatetimeLocalValue } from "@/lib/utils";
 import { sharedStyles } from "@/styles/shared-styles";
 import { getQuoteById, listSamplesForQuoteCustomer, updateQuote } from "../api/quotes-api";
 import type { CreateQuoteItemRequest, QuoteItem, QuoteSampleOption, QuoteStatus, UpdateQuoteRequest } from "../types";
+import { CustomerNameLanguageHint } from "./CustomerNameLanguageHint";
 import { QuoteItemsTable } from "./QuoteItemsTable";
 import { QuoteTotals } from "./QuoteTotals";
 import { DiscountAllField, LineDiscountField } from "./QuoteLineFields";
@@ -124,7 +125,7 @@ export function QuoteEditForm() {
   const [savedRate, setSavedRate] = useState<number | null>(null);
   const vatRate = savedRate ?? organizationRate;
 
-  const { days: validityDays, loaded: validityLoaded, error: validityLoadError } = useQuoteValidity();
+  const { days: validityDays, loaded: validityLoaded, error: validityLoadError, documentLanguage } = useQuoteValidity();
   const [validityManual, setValidityManual] = useState(false);
   const [datesTouched, setDatesTouched] = useState({ issue: false, valid: false });
   const [values, setValues] = useState<QuoteEditValues>({
@@ -430,6 +431,7 @@ export function QuoteEditForm() {
               </div>
             </div>
 
+            <CustomerNameLanguageHint customerId={customerId} language={documentLanguage} />
             <QuoteHeadingFields attention={values.attention} subject={values.subject} disabled={isSubmitting || !validityLoaded}
               onChange={(field, value) => updateField(field, value)} />
 

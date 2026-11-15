@@ -1,9 +1,10 @@
 "use client";
+import { customerDisplayName } from "@/lib/customer-name";
 import Link from "next/link";
 import { PlanningAllocation } from "./planning-allocation";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth/permission-hooks";
 import { demandsApi, type Customer, type Demand, type Page, type DemandStatus } from "./api";
@@ -16,6 +17,7 @@ import { P } from "@/lib/production-permissions";
 import { downloadFile, DownloadError } from "@/lib/download";
 
 export function DemandList({ planning = false }: { planning?: boolean }) {
+  const locale = useLocale();
   const t = useTranslations("production.demands");
   const p = useTranslations("production.planning");
   const canCreate = usePermission(P.DEMANDS_CREATE);
@@ -98,7 +100,7 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
     <section className={s.panel}>
       <div className={s.toolbar}>
         <label className={s.field}>{t("search")}<input value={filters.search ?? ""} onChange={e => filter("search", e.target.value)} /></label>
-        <label className={s.field}>{t("customer")}<select value={filters.customer_id ?? ""} onChange={e => filter("customer_id", e.target.value)}><option value="">{t("all")}</option>{customers.map(c => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}</select></label>
+        <label className={s.field}>{t("customer")}<select value={filters.customer_id ?? ""} onChange={e => filter("customer_id", e.target.value)}><option value="">{t("all")}</option>{customers.map(c => <option key={c.id} value={c.id}>{c.code} · {customerDisplayName(c, locale)}</option>)}</select></label>
         <label className={s.field}>{t("priority")}<select value={filters.priority ?? ""} onChange={e => filter("priority", e.target.value)}><option value="">{t("all")}</option>{priorities.map(v => <option key={v} value={v}>{t(`priorities.${v}`)}</option>)}</select></label>
         <StatusVisibilityPicker value={visible} defaults={config.defaults} onChange={changeVisible} />
         {planning && <><label className={s.field}>{t("productType")}<input value={filters.product_type ?? ""} onChange={e => filter("product_type", e.target.value)} /></label><label className={s.field}>{t("deliveryFrom")}<input type="date" value={filters.requested_delivery_from ?? ""} onChange={e => filter("requested_delivery_from", e.target.value)} /></label><label className={s.field}>{t("deliveryTo")}<input type="date" value={filters.requested_delivery_to ?? ""} onChange={e => filter("requested_delivery_to", e.target.value)} /></label></>}
@@ -119,7 +121,7 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
         const overdue = planning && !!d.requested_delivery_date && d.requested_delivery_date < today();
         const position = (page - 1) * 20 + index + 1;
         return <tr key={d.id} className={overdue ? s.overdue : ""}>
-          {planning && <td>{d.planning_sequence ?? position}</td>}<td>{canRead ? <Link href={`/production/demands/${d.id}`}>{d.demand_number}</Link> : d.demand_number}</td><td>{d.customer.name}<div className={s.muted}>{d.customer.code}</div></td>
+          {planning && <td>{d.planning_sequence ?? position}</td>}<td>{canRead ? <Link href={`/production/demands/${d.id}`}>{d.demand_number}</Link> : d.demand_number}</td><td>{customerDisplayName(d.customer, locale)}<div className={s.muted}>{d.customer.code}</div></td>
           {planning ? <><td>{d.items?.map(i => i.product_type).filter(Boolean).join(", ")}</td>{["width_mm", "thickness_mm", "color", "roll_weight_kg"].map(k => <td key={k}>{String(d.spec_summary?.[k] ?? "")}</td>)}<td><Specs value={d.spec_summary ?? null} /></td><PlanningQuantities demand={d} /></> : <><td>{d.quote?.number ?? t("none")}</td><td>{d.request_date}</td><td>{t("itemCount", { count: d.item_count })}</td></>}
           {!planning && <><td>{Object.entries(d.quantities_by_unit ?? {}).map(([unit, quantity]) => <div key={unit}>{quantity} {unit}</div>)}</td><td>{new Date(d.created_at).toLocaleDateString()}</td></>}
           <td>{d.requested_delivery_date ?? t("none")}{overdue && <div>{p("overdue")}</div>}</td><td><Badge value={d.priority} priority /></td><td><Badge value={d.status} /></td>

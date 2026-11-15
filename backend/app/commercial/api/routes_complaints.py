@@ -34,8 +34,8 @@ def listing(search:str=Query('',max_length=120),status:str|None=None,customer_id
 @router.get('/customers')
 def customers(search:str=Query('',max_length=120),id:UUID|None=None,s=Depends(service)):
     q=s.customers()
-    q=q.where(Customer.id==id) if id else q.where(Customer.name.icontains(search,autoescape=True))
-    return [dict(id=c.id,name=c.name) for c in s.db.scalars(q.order_by(Customer.name,Customer.id).limit(30))]
+    q=q.where(Customer.id==id) if id else q.where((Customer.name_ar.icontains(search,autoescape=True) | Customer.name_en.icontains(search,autoescape=True)))
+    return [dict(id=c.id,name=c.name,name_ar=c.name_ar,name_en=c.name_en) for c in s.db.scalars(q.order_by(Customer.name,Customer.id).limit(30))]
 
 @router.get('/summary')
 def summary(customer_id:UUID|None=None,department:str|None=None,s=Depends(service)):

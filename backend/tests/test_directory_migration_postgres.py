@@ -40,7 +40,7 @@ def test_directory_upgrade_downgrade_and_legacy_baseline():
             c.execute(sa.text("INSERT INTO foundation_organizations(id,name,code,status,timezone,default_locale,created_at,updated_at) VALUES (:id,'Test','DIRECTORY','active','UTC','ar',now(),now())"),dict(id=org))
             customer=uuid4();quote=uuid4();user=uuid4()
             c.execute(Base.metadata.tables['foundation_users'].insert().values(id=user,organization_id=org,email='test@example.test',full_name='Tester',password_hash='unused',status='active',is_organization_root=False))
-            c.execute(Base.metadata.tables['commercial_customers'].insert().values(id=customer,organization_id=org,customer_code='C1',name='Customer'))
+            c.execute(Base.metadata.tables['commercial_customers'].insert().values(id=customer,organization_id=org,customer_code='C1',name='Customer',name_en='Customer'))
             c.execute(Base.metadata.tables['commercial_quotes'].insert().values(id=quote,organization_id=org,customer_id=customer,created_by_user_id=user,quote_number='Q1',issue_date=sa.func.now(),valid_until=sa.func.now(),status='issued',revision=1,currency='SAR',subtotal_amount=0,tax_amount=0,discount_amount=0,total_amount=0))
             c.execute(Base.metadata.tables['commercial_quote_terms'].insert().values(organization_id=org,title_en='Payment',body_en='Original migration baseline',is_active=True))
             migration.upgrade()

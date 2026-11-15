@@ -48,8 +48,25 @@ class PrimaryContactInput(BaseModel):
         return data
 
 
-class CustomerCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=255)
+class CustomerNamesInput(BaseModel):
+    # `name` accepts legacy callers; explicit bilingual fields always take precedence.
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    name_ar: str | None = Field(default=None, max_length=255)
+    name_en: str | None = Field(default=None, max_length=255)
+
+    @field_validator("name", "name_ar", "name_en", mode="before")
+    @classmethod
+    def trim_name(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+
+class CustomerCreate(CustomerNamesInput):
+    @model_validator(mode="after")
+    def require_customer_name(self):
+        if not (self.name_ar or self.name_en or (self.name and not {'name_ar', 'name_en'} & self.model_fields_set)):
+            raise PydanticCustomError("CUSTOMER_NAME_REQUIRED", "CUSTOMER_NAME_REQUIRED")
+        return self
+
     sector: str | None = Field(default=None, max_length=120)
     city: str | None = Field(default=None, max_length=120)
     country: str | None = Field(default=None, max_length=120)
@@ -71,8 +88,7 @@ class CustomerCreate(BaseModel):
         return data
 
 
-class CustomerUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=255)
+class CustomerUpdate(CustomerNamesInput):
     sector: str | None = Field(default=None, max_length=120)
     city: str | None = Field(default=None, max_length=120)
     country: str | None = Field(default=None, max_length=120)
@@ -137,6 +153,8 @@ class CustomerRead(BaseModel):
     organization_id: UUID
     customer_code: str
     name: str
+    name_ar: str | None = None
+    name_en: str | None = None
     sector: str | None
     city: str | None
     country: str | None
@@ -172,6 +190,8 @@ class CustomerLookupItem(BaseModel):
     id: UUID
     customer_code: str
     name: str
+    name_ar: str | None = None
+    name_en: str | None = None
     status: CustomerStatus
 
     model_config = ConfigDict(from_attributes=True)
@@ -271,6 +291,8 @@ class FollowUpCustomerSummary(BaseModel):
     id: UUID
     customer_code: str
     customer_name: str
+    name_ar: str | None = None
+    name_en: str | None = None
 
 
 class FollowUpAssignedUser(BaseModel):
@@ -373,6 +395,8 @@ class SampleListItem(BaseModel):
     updated_at: ISODatetime
     # On a list page only: the customer, read once for the whole page.
     customer_name: str | None = None
+    customer_name_ar: str | None = None
+    customer_name_en: str | None = None
     customer_code: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -529,6 +553,8 @@ class QuoteListItem(BaseModel):
     updated_at: ISODatetime
 
     customer_name: str | None = None
+    customer_name_ar: str | None = None
+    customer_name_en: str | None = None
     customer_code: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -648,6 +674,8 @@ class CommercialOrderListItem(BaseModel):
     updated_at: ISODatetime
 
     customer_name: str | None = None
+    customer_name_ar: str | None = None
+    customer_name_en: str | None = None
     customer_code: str | None = None
     quote_number: str | None = None
 

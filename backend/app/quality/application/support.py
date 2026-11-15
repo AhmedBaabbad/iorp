@@ -159,7 +159,7 @@ class CommercialReads:
         query = select(samples.c.id, samples.c.sample_code, samples.c.product_type, samples.c.unit, customers.c.name).join(
             customers, customers.c.id == samples.c.customer_id).where(customers.c.organization_id == self.org)
         if search:
-            query = query.where(samples.c.sample_code.icontains(search, autoescape=True) | customers.c.name.icontains(search, autoescape=True))
+            query = query.where(samples.c.sample_code.icontains(search, autoescape=True) | (customers.c.name_ar.icontains(search, autoescape=True) | customers.c.name_en.icontains(search, autoescape=True)))
         return [dict(id=r.id, code=r.sample_code, product_type=r.product_type, unit=r.unit, customer=r.name)
                 for r in self.db.execute(query.order_by(samples.c.created_at.desc()).limit(limit)).all()]
 

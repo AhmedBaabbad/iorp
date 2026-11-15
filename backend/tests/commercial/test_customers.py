@@ -170,7 +170,7 @@ def test_customer_lookup_for_pickers(client, auth_headers, with_owner):
     ids = [client.post("/api/v1/commercial/customers", json=with_owner({**_BASE_CUSTOMER, "name": name}), headers=auth_headers).json()["id"]
            for name in ("Alpha Films", "Beta Bags", "Alpha Rolls")]
     found = client.get("/api/v1/commercial/customers/lookup?search=alpha", headers=auth_headers).json()
-    assert [c["name"] for c in found] == ["Alpha Films", "Alpha Rolls"] and set(found[0]) == {"id", "customer_code", "name", "status"}
+    assert [c["name"] for c in found] == ["Alpha Films", "Alpha Rolls"] and set(found[0]) == {"id", "customer_code", "name", "name_ar", "name_en", "status"}
     named = client.get(f"/api/v1/commercial/customers/lookup?ids={ids[1]}", headers=auth_headers).json()
     assert [c["name"] for c in named] == ["Beta Bags"]
     assert len(client.get("/api/v1/commercial/customers/lookup?limit=2", headers=auth_headers).json()) == 2

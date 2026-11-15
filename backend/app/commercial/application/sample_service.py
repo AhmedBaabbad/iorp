@@ -128,7 +128,7 @@ class SampleService:
             people[user_id] = user.full_name if user is not None else None
         definitions = product_catalog.products(self.db, tenant.organization_id, {s.product_type for s in samples})
         for sample in samples:
-            sample.customer_name, sample.customer_code = labels.get(sample.customer_id, (None, None))
+            sample.customer_name, sample.customer_code, sample.customer_name_ar, sample.customer_name_en = labels.get(sample.customer_id, (None, None, None, None))
             sample.created_by_name = people.get(sample.created_by_user_id)
             definition = definitions.get(sample.product_type)
             sample.product_definition = self.product_view(definition) if definition else None

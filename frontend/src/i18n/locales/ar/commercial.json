@@ -1,5 +1,6 @@
 {
   "customers": {
+    "nameRequired": "أدخل اسم العميل بالعربية أو بالإنجليزية (واحدًا على الأقل).",
     "complaints": "شكاوى هذا العميل",
     "listTitle": "العملاء",
     "createTitle": "إنشاء عميل جديد",
@@ -8,6 +9,8 @@
     "fields": {
       "customerCode": "رمز العميل",
       "name": "الاسم",
+      "nameAr": "الاسم بالعربي",
+      "nameEn": "الاسم بالإنجليزي",
       "sector": "القطاع",
       "city": "المدينة",
       "country": "البلد",
@@ -344,6 +347,9 @@
     "searchHint": "رمز العينة أو المنتج أو اسم العميل"
   },
   "quotes": {
+    "missingArabicCustomerName": "لا يوجد اسم عربي لهذا العميل؛ سيُطبع الاسم الإنجليزي.",
+    "missingEnglishCustomerName": "لا يوجد اسم إنجليزي لهذا العميل؛ سيُطبع الاسم العربي.",
+    "customerCard": "بطاقة العميل",
     "listTitle": "عروض الأسعار",
     "createTitle": "إنشاء عرض سعر",
     "editTitle": "تعديل عرض السعر",

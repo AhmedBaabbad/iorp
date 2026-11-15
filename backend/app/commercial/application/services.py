@@ -1,3 +1,4 @@
+from app.commercial.domain.customer_names import normalized_names
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -96,12 +97,14 @@ class CustomerService:
         else:
             raise PermissionError("You are not eligible to create customers.")
 
+        payload = normalize_city(data.model_dump(exclude={"sales_owner_user_id", "primary_contact"}))
+        payload.update(normalized_names(data.model_dump(include={"name", "name_ar", "name_en"}, exclude_unset=True)))
         customer = Customer(
             organization_id=tenant.organization_id,
             created_by_user_id=tenant.user_id,
             sales_owner_user_id=sales_owner_user_id,
             customer_code=self._generate_customer_code(tenant),
-            **normalize_city(data.model_dump(exclude={"sales_owner_user_id", "primary_contact"})),
+            **payload,
         )
         try:
             self.customers.add(customer)
@@ -480,7 +483,7 @@ class CustomerService:
             follow_up.customer = FollowUpCustomerSummary(
                 id=customer.id,
                 customer_code=customer.customer_code,
-                customer_name=customer.name,
+                customer_name=customer.name, name_ar=customer.name_ar, name_en=customer.name_en,
             )
 
         follow_up.is_overdue = (
@@ -564,7 +567,7 @@ class CustomerService:
         if customer is None:
             return None
 
-        payload = normalize_city(data.model_dump(exclude_unset=True), customer)
+        payload = normalized_names(normalize_city(data.model_dump(exclude_unset=True), customer), customer)
         assert_city_country(self.db, tenant.organization_id, payload, customer)
 
         if payload.get("status") is not None and payload["status"] != "active" and self.demand_count and self.demand_count.count_demands_for_customer(self.db, customer_id, tenant.organization_id, active_only=True):

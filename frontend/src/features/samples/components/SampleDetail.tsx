@@ -1,4 +1,5 @@
 "use client";
+import { customerDisplayName } from "@/lib/customer-name";
 
 import Link from "next/link";
 import { SamplePropertyValues } from "./SampleProperties";
@@ -80,7 +81,7 @@ export function SampleDetail({ sampleId }: SampleDetailProps) {
         try {
           const customer = await getCustomer(response.customer_id);
           if (isMounted) {
-            setCustomerName(customer.name);
+            setCustomerName(customerDisplayName(customer, locale));
           }
         } catch {
           // Non-critical: the customer UUID fallback is already shown.
@@ -108,7 +109,7 @@ export function SampleDetail({ sampleId }: SampleDetailProps) {
     return () => {
       isMounted = false;
     };
-  }, [sampleId, messages]);
+  }, [sampleId, messages, locale]);
 
   const productName = sample?.product_definition
     ? (locale === 'ar' ? sample.product_definition.name_ar : sample.product_definition.name_en)

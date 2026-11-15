@@ -1,8 +1,9 @@
 "use client";
+import { customerDisplayName } from "@/lib/customer-name";
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -189,6 +190,7 @@ function isTabKey(value: string | null): value is TabKey {
 }
 
 export function FollowUpsListPage() {
+  const locale = useLocale();
   const t = useTranslations("commercial.followUps");
   const common = useTranslations("common");
   const messages = useTranslations("messages");
@@ -463,7 +465,7 @@ export function FollowUpsListPage() {
                         href={`/customers/${followUp.customer.id}#follow-ups-title`}
                         style={styles.link}
                       >
-                        {followUp.customer.customer_code} - {followUp.customer.customer_name}
+                        {followUp.customer.customer_code} - {customerDisplayName(followUp.customer, locale)}
                       </Link>
                     </td>
                     <td style={styles.td}>{followUp.reason}</td>

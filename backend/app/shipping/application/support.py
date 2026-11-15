@@ -28,7 +28,7 @@ class CustomerReads:
     def _query(self):
         customers = _t("commercial_customers")
         contact = effective_contact_columns(customers, _t("commercial_customer_contacts"))
-        return customers, select(customers.c.id, customers.c.customer_code, customers.c.name,
+        return customers, select(customers.c.id, customers.c.customer_code, customers.c.name, customers.c.name_ar, customers.c.name_en,
             contact['phone'].label('phone'), contact['email'].label('email'),
             city_expression(customers.c.city, customers.c.city_other).label('city'), customers.c.country
         ).where(customers.c.organization_id == self.org)
@@ -43,7 +43,7 @@ class CustomerReads:
     def search(self, text: str = "", limit: int = 30) -> list[dict]:
         customers, query = self._query()
         if text:
-            query = query.where(customers.c.name.icontains(text, autoescape=True) | customers.c.customer_code.icontains(text, autoescape=True))
+            query = query.where((customers.c.name_ar.icontains(text, autoescape=True) | customers.c.name_en.icontains(text, autoescape=True)) | customers.c.customer_code.icontains(text, autoescape=True))
         return [dict(r._mapping) for r in self.db.execute(query.order_by(customers.c.name).limit(limit)).all()]
 
 

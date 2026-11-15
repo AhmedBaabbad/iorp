@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 import uuid
 
-from sqlalchemy import Boolean, CheckConstraint, JSON, DateTime, Enum as SqlEnum, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import event, Boolean, CheckConstraint, JSON, DateTime, Enum as SqlEnum, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, column_property
 
@@ -28,6 +28,7 @@ class Customer(Base):
     __tablename__ = "commercial_customers"
     __table_args__ = (
         UniqueConstraint("organization_id", "customer_code", name="uq_commercial_customers_org_code"),
+        CheckConstraint("coalesce(length(trim(name_ar)), 0) > 0 OR coalesce(length(trim(name_en)), 0) > 0", name="ck_commercial_customers_name_required"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -42,7 +43,10 @@ class Customer(Base):
         index=True,
     )
     customer_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    # Compatibility display for other modules: name_ar when present, otherwise name_en.
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    name_ar: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    name_en: Mapped[str | None] = mapped_column(String(255), nullable=True)
     sector: Mapped[str | None] = mapped_column(String(120), nullable=True)
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
     city_other: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -641,3 +645,13 @@ from app.core.location_fields import effective_contact_columns
 _contact_columns = effective_contact_columns(Customer.__table__, CustomerContact.__table__)
 Customer.effective_phone = column_property(_contact_columns["phone"])
 Customer.effective_email = column_property(_contact_columns["email"])
+
+
+@event.listens_for(Customer, "before_insert")
+def customer_legacy_name_on_insert(mapper, connection, target):
+    from app.commercial.domain.customer_names import normalized_names
+    values = normalized_names(dict(name=target.name, **{
+        key: getattr(target, key) for key in ('name_ar', 'name_en') if getattr(target, key) is not None
+    }))
+    for key in ('name', 'name_ar', 'name_en'):
+        setattr(target, key, values[key])

@@ -1,8 +1,9 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState, type CSSProperties } from "react";
 
+import { customerDisplayName } from "@/lib/customer-name";
 import { sharedStyles } from "@/styles/shared-styles";
 import type { CustomerOption } from "@/types/customers";
 import { customersByIds, lookupCustomers } from "./customer-api";
@@ -15,6 +16,7 @@ export function CustomerPicker({ value, onChange, disabled, required = true, sty
   value: string; onChange: (id: string, customer?: CustomerOption) => void; disabled?: boolean; required?: boolean;
   style?: CSSProperties; ariaLabel?: string;
 }) {
+  const locale = useLocale();
   const t = useTranslations("commercial.customers.picker");
   const [search, setSearch] = useState("");
   const [options, setOptions] = useState<CustomerOption[]>([]);
@@ -50,7 +52,7 @@ export function CustomerPicker({ value, onChange, disabled, required = true, sty
       <select style={{ ...sharedStyles.input, ...style }} value={value} required={required} disabled={disabled} aria-label={ariaLabel}
         onChange={(e) => onChange(e.target.value, shown.find((o) => o.id === e.target.value))}>
         <option value="">{loading ? t("loading") : shown.length ? t("choose") : t("none")}</option>
-        {shown.map((o) => <option key={o.id} value={o.id}>{o.name} ({o.customer_code})</option>)}
+        {shown.map((o) => <option key={o.id} value={o.id}>{customerDisplayName(o, locale)} ({o.customer_code})</option>)}
       </select>
     </span>
   );
