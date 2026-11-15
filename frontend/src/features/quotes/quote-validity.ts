@@ -9,16 +9,17 @@ export function quoteValidUntil(issue: string, days: number): string {
 }
 export function useQuoteValidity() {
   const [days, setDays] = useState(10);
+  const [documentLanguage, setDocumentLanguage] = useState<"ar" | "en" | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     let live = true;
-    apiClient<{ quote_validity_days: number }>("/commercial/quote-settings/validity").then(data => {
-      if (live) { setDays(data.quote_validity_days ?? 10); setLoaded(true); }
+    apiClient<{ quote_validity_days: number; document_language: "ar" | "en" }>("/commercial/quote-settings/validity").then(data => {
+      if (live) { setDays(data.quote_validity_days ?? 10); setDocumentLanguage(data.document_language); setLoaded(true); }
     }).catch(error => { if (live) setError(error); });
     return () => { live = false; };
   }, []);
-  return { days, error, loaded };
+  return { days, error, loaded, documentLanguage };
 }
 export function quoteValidityError(error: unknown): number | null {
   if (!(error instanceof ApiClientError)) return null;

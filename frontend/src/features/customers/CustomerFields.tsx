@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import type { CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { CountryCityFields } from "@/components/forms/CountryCityFields";
 import { ListSelect } from "@/features/masterdata";
 import { getEnumLabel } from "@/i18n/enum-helpers";
@@ -21,7 +21,18 @@ export function CustomerFields({ values, onChange, disabled, canAssignOwner, eli
 }) {
   const t = useTranslations("commercial.customers");
   const enums = useTranslations();
-  const text = (field: "name" | "key_influencer_name", label: string, required = false) => <label style={sharedStyles.field}>
+  const names = useRef<Partial<Record<"name_ar" | "name_en", HTMLInputElement>>>({});
+  const needsName = !values.name_ar.trim() && !values.name_en.trim();
+  useEffect(() => {
+    for (const input of Object.values(names.current)) input?.setCustomValidity(needsName ? t("nameRequired") : "");
+  }, [needsName, t]);
+  const nameField = (field: "name_ar" | "name_en", label: string) => <label style={sharedStyles.field}>
+    <span style={sharedStyles.label}>{label}</span>
+    <input ref={input => { if (input) names.current[field] = input; }} style={sharedStyles.input}
+      dir={field === "name_ar" ? "rtl" : "ltr"} value={values[field]} maxLength={255}
+      required={needsName} disabled={disabled} onChange={event => onChange({ [field]: event.target.value })} />
+  </label>;
+  const text = (field: "key_influencer_name", label: string, required = false) => <label style={sharedStyles.field}>
     <span style={sharedStyles.label}>{label}{required && <span style={styles.required} aria-hidden="true"> *</span>}</span>
     <input style={sharedStyles.input} value={values[field]} maxLength={255} required={required} disabled={disabled}
       onChange={event => onChange({ [field]: event.target.value })} />
@@ -35,7 +46,8 @@ export function CustomerFields({ values, onChange, disabled, canAssignOwner, eli
     </label>;
   return <>
     <div style={styles.formGrid}>
-      {text("name", t("fields.name"), true)}
+      {nameField("name_ar", t("fields.nameAr"))}
+      {nameField("name_en", t("fields.nameEn"))}
       <label style={sharedStyles.field}><span style={sharedStyles.label}>{t("fields.sector")}</span>
         <ListSelect style={sharedStyles.input} list="sector" value={values.sector} disabled={disabled} ariaLabel={t("fields.sector")}
           onChange={sector => onChange({ sector })} />

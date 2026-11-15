@@ -16,6 +16,7 @@ import { optionalText, toDatetimeLocalValue } from "@/lib/utils";
 import { sharedStyles } from "@/styles/shared-styles";
 import { createQuote, listSamplesForQuoteCustomer } from "../api/quotes-api";
 import type { CreateQuoteRequest, QuoteItem, QuoteSampleOption } from "../types";
+import { CustomerNameLanguageHint } from "./CustomerNameLanguageHint";
 import { QuoteItemsTable } from "./QuoteItemsTable";
 import { LineDescriptionFields, QuoteHeadingFields, UnitSelect } from "./QuoteLineFields";
 import { SpecEditor } from "@/components/forms/SpecEditor";
@@ -118,7 +119,7 @@ export function QuoteForm() {
   // MD-001: the organization's VAT rate and default currency, and its products with their specification templates.
   const { vatRate, currency: defaultCurrency, loaded: settingsLoaded } = useBusinessSettings();
   const products = useProducts();
-  const { days: validityDays, loaded: validityLoaded, error: validityLoadError } = useQuoteValidity();
+  const { days: validityDays, loaded: validityLoaded, error: validityLoadError, documentLanguage } = useQuoteValidity();
   const [validityManual, setValidityManual] = useState(false);
   const [values, setValues] = useState<QuoteFormValues>(createDefaultValues);
   useEffect(() => {
@@ -391,6 +392,7 @@ export function QuoteForm() {
             </div>
           </div>
 
+          <CustomerNameLanguageHint customerId={values.customer_id} language={documentLanguage} />
           <QuoteHeadingFields attention={values.attention} subject={values.subject} disabled={isSubmitting || !validityLoaded}
             onChange={(field, value) => updateField(field, value)} />
 

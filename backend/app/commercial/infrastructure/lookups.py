@@ -8,7 +8,7 @@ from app.commercial.infrastructure.models import Customer, Quote, QuoteItem
 class CommercialCustomerLookup:
     @staticmethod
     def _summary(row):
-        return CustomerSummary(row.id, row.customer_code, row.name, row.organization_id)
+        return CustomerSummary(row.id, row.customer_code, row.name, row.organization_id, row.name_ar, row.name_en)
 
     def get_customer_summary(self, db, customer_id, organization_id):
         row = db.scalar(select(Customer).where(Customer.id == customer_id, Customer.organization_id == organization_id))
@@ -19,7 +19,7 @@ class CommercialCustomerLookup:
         if active_only:
             query = query.where(Customer.status == "active")
         if search:
-            query = query.where(or_(Customer.name.icontains(search, autoescape=True), Customer.customer_code.icontains(search, autoescape=True)))
+            query = query.where(or_((Customer.name_ar.icontains(search, autoescape=True) | Customer.name_en.icontains(search, autoescape=True)), Customer.customer_code.icontains(search, autoescape=True)))
         return [self._summary(row) for row in db.scalars(query.order_by(Customer.name, Customer.id))]
 
 

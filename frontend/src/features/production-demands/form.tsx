@@ -1,4 +1,5 @@
 "use client";
+import { customerDisplayName } from "@/lib/customer-name";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
@@ -111,7 +112,7 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
     {loading ? <p>{t("loading")}</p> : !editable ? <ErrorMessage code="demand_not_editable" /> : <form onSubmit={save}>
       <fieldset disabled={busy} className={s.panel}><legend>{t("details")}</legend><div className={s.grid}>
         <label className={s.field}>{t("searchCustomer")}<input disabled={status !== "draft"} value={search} onChange={e => setSearch(e.target.value)} /></label>
-        <label className={s.field}>{t("customer")}<select required disabled={status !== "draft" || !!salesOrder} value={customerId} onChange={e => { setCustomer(e.target.value); setSelectedCustomer(customers.find(c => c.id === e.target.value) ?? null); }}><option value="">{t("selectCustomer")}</option>{customerOptions.map(c => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}</select></label>
+        <label className={s.field}>{t("customer")}<select required disabled={status !== "draft" || !!salesOrder} value={customerId} onChange={e => { setCustomer(e.target.value); setSelectedCustomer(customers.find(c => c.id === e.target.value) ?? null); }}><option value="">{t("selectCustomer")}</option>{customerOptions.map(c => <option key={c.id} value={c.id}>{c.code} · {customerDisplayName(c, locale)}</option>)}</select></label>
         {salesOrder && <div className={s.field}>{t("fromSalesOrder.salesOrder")}<a href={`/commercial-orders/${salesOrder.id}`}><bdi>{salesOrder.number}</bdi></a></div>}
         <label className={s.field}>{t("requestDate")}<input type="date" required value={requestDate} onChange={e => setRequestDate(e.target.value)} /></label>
         <label className={s.field}>{t("requestedDeliveryDate")}<input type="date" value={delivery} onChange={e => setDelivery(e.target.value)} /></label>

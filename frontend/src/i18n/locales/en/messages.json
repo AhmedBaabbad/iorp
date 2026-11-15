@@ -1,5 +1,6 @@
 {
   "validation": {
+    "customerNameRequired": "Enter the customer's Arabic or English name (at least one).",
     "required": "This field is required",
     "requiredField": "{field} is required",
     "invalidEmail": "Enter a valid email address",

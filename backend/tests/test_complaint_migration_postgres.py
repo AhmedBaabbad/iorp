@@ -45,7 +45,7 @@ def test_complaints_upgrade_downgrade_round_trip():
             user,customer,complaint=uuid4(),uuid4(),uuid4()
             connection.execute(sa.text("INSERT INTO foundation_users(id,organization_id,email,full_name,password_hash,status,is_organization_root,created_at,updated_at) "
                                        "VALUES (:u,:o,'c@example.test','Owner','x','active',false,now(),now())"),dict(u=user,o=org))
-            connection.execute(Base.metadata.tables['commercial_customers'].insert().values(id=customer,organization_id=org,customer_code='C1',name='Customer'))
+            connection.execute(Base.metadata.tables['commercial_customers'].insert().values(id=customer,organization_id=org,customer_code='C1',name='Customer',name_en='Customer'))
             connection.execute(sa.text("INSERT INTO commercial_complaints(id,organization_id,customer_id,number,title,statement,channel,received_date,category,priority,department,status,finding,"
                                        "created_by,version,created_at,updated_at) VALUES (:i,:o,:c,'CMP-1','T','S','email','2026-10-11','quality','medium','commercial','new','pending',:u,1,now(),now())"),
                                dict(i=complaint,o=org,c=customer,u=user))

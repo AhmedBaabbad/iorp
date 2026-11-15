@@ -1,7 +1,8 @@
 "use client";
+import { customerDisplayName } from "@/lib/customer-name";
 
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -150,6 +151,7 @@ const styles: Record<string, CSSProperties> = {
 };
 
 export function CommercialOrdersList() {
+  const locale = useLocale();
   const messages = useTranslations("messages");
   const common = useTranslations("common");
   const t = useTranslations("commercial.commercialOrders");
@@ -360,7 +362,7 @@ export function CommercialOrdersList() {
                         </Link>
                       </td>
                       <td style={styles.td}>
-                        {displayValue(order.customer_name ?? order.customer_id)}
+                        {displayValue(customerDisplayName(order, locale) || order.customer_id)}
                       </td>
                       <td style={styles.td}>
                         {displayValue(

@@ -33,6 +33,8 @@ export type CommercialOrderListItem = {
   revision?: number;
   /** On a list page: the customer and the quotation's number, read once for the page. */
   customer_name?: string | null;
+  customer_name_ar?: string | null;
+  customer_name_en?: string | null;
   customer_code?: string | null;
   quote_number?: string | null;
   created_by_user_id: string;

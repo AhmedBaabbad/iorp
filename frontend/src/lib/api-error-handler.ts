@@ -64,7 +64,7 @@ function readErrorCode(details: unknown): string | undefined {
   const record = details as { error_code?: unknown; code?: unknown; detail?: unknown; type?: unknown };
   const value = record.error_code ?? record.code;
   if (typeof value === "string") return value;
-  const codes = ["CITY_OTHER_REQUIRED", "CITY_COUNTRY_MISMATCH", "LOCATION_URL_INVALID", "CONTACT_NAME_REQUIRED"];
+  const codes = ["CUSTOMER_NAME_REQUIRED", "CITY_OTHER_REQUIRED", "CITY_COUNTRY_MISMATCH", "LOCATION_URL_INVALID", "CONTACT_NAME_REQUIRED"];
   if (typeof record.type === "string" && codes.includes(record.type)) return record.type;
   if (typeof record.detail === "string" && codes.includes(record.detail)) return record.detail;
   return readErrorCode(record.detail);
@@ -72,6 +72,7 @@ function readErrorCode(details: unknown): string | undefined {
 
 function mapErrorCode(code: string, t: (key: string) => string): string | null {
   const map: Record<string, string> = {
+    CUSTOMER_NAME_REQUIRED: t("validation.customerNameRequired"),
     CITY_OTHER_REQUIRED: t("validation.cityOtherRequired"),
     CITY_COUNTRY_MISMATCH: t("validation.cityCountryMismatch"),
     LOCATION_URL_INVALID: t("validation.locationUrlInvalid"),

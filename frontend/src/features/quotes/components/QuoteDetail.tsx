@@ -1,4 +1,5 @@
 "use client";
+import { customerDisplayName } from "@/lib/customer-name";
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -86,7 +87,7 @@ export function QuoteDetail() {
           getCustomer(response.customer_id)
             .then((customer) => {
               if (isMounted) {
-                setCustomerName(customer.name);
+                setCustomerName(customerDisplayName(customer, locale));
               }
             })
             .catch(() => undefined),
@@ -128,7 +129,7 @@ export function QuoteDetail() {
     return () => {
       isMounted = false;
     };
-  }, [quoteId]);
+  }, [quoteId, locale]);
 
   return (
     <PageFrame

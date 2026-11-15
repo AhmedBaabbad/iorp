@@ -40,7 +40,7 @@ def test_existing_organizations_contacts_upgrade_downgrade_and_rerun():
             ids = [uuid4() for _ in range(6)]
             for i, customer in enumerate(ids):
                 c.execute(customers.insert().values(id=customer, organization_id=ar_org if i == 5 else org,
-                    customer_code=f"C{i}", name="Synthetic", phone="9" * 50 if i == 4 else f"555{i}",
+                    customer_code=f"C{i}", name="Synthetic", name_en="Synthetic", phone="9" * 50 if i == 4 else f"555{i}",
                     email=f"legacy{i}@example.test", status="active", relationship_stage="lead", priority_level="medium",
                     created_by_user_id=None if i in (4, 5) else user, country="sa", estimated_consumption=99,
                     created_at=sa.func.now(), updated_at=sa.func.now()))

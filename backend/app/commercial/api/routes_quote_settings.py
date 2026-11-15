@@ -10,8 +10,9 @@ router = APIRouter(prefix="/quote-settings", tags=["commercial-quote-settings"])
 
 @router.get("/validity")
 def quote_validity(current=Depends(require_any_permission(["commercial:quotes:create", "commercial:quotes:update", "commercial:quote_settings:read"])), db: Session = Depends(get_db)):
-    """The policy needed to edit a quotation, without exposing document administration settings."""
-    return {"quote_validity_days": QuoteSettingsService(db, current.tenant.organization_id).validity_days()}
+    """Validity and document language needed by editors; no private document administration settings."""
+    service = QuoteSettingsService(db, current.tenant.organization_id)
+    return {"quote_validity_days": service.validity_days(), "document_language": service.language()}
 
 
 @router.get("", response_model=QuoteSettingsRead)

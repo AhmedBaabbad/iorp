@@ -214,7 +214,7 @@ class OrderService:
         numbers = dict(self.db.execute(select(Quote.id, Quote.quote_number).where(
             Quote.organization_id == tenant.organization_id, Quote.id.in_(quote_ids))).all()) if quote_ids else {}
         for order in orders:
-            order.customer_name, order.customer_code = labels.get(order.customer_id, (None, None))
+            order.customer_name, order.customer_code, order.customer_name_ar, order.customer_name_en = labels.get(order.customer_id, (None, None, None, None))
             order.quote_number = numbers.get(order.quote_id)
         return orders, total
 

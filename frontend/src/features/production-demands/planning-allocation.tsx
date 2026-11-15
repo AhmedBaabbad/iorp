@@ -1,7 +1,8 @@
 "use client";
+import { customerDisplayName } from "@/lib/customer-name";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { usePermission } from "@/features/auth/permission-hooks";
 import { getWorkCenters } from "@/features/work-centers";
 import { apiClient, ApiClientError } from "@/lib/api-client";
@@ -23,6 +24,7 @@ type PreviewLine = { line_no: number; target_spec_json: Record<string, unknown> 
 type Selection = { demand: Demand; item: Item; quantity: string };
 
 export function PlanningAllocation({ demands, busy, onRefresh }: { demands: Demand[]; busy: boolean; onRefresh: () => void }) {
+  const locale = useLocale();
   const t = useTranslations("production.allocation");
   const d = useTranslations("production.demands");
   const p = useTranslations("production.productionOrders");
@@ -94,7 +96,7 @@ export function PlanningAllocation({ demands, busy, onRefresh }: { demands: Dema
     <div className={s.tableWrap}><table className={s.table}><thead><tr><th>{t("select")}</th><th>{d("customer")}</th><th>{d("demandNumber")}</th><th>{d("lineNo")}</th><th>{d("productType")}</th><th>{d("specifications")}</th><th>{t("required")}</th><th>{t("allocated")}</th><th>{t("remaining")}</th><th>{t("quantity")}</th></tr></thead>
       <tbody>{demands.flatMap(demand => demand.items.map(item => { const id = item.id!; return <tr key={id}>
         <td><input type="checkbox" aria-label={`${t("select")} ${demand.demand_number} ${item.line_no}`} disabled={busy || sending || Number(item.remaining_quantity) <= 0 || !item.product_type} checked={!!selected[id]} onChange={e => setSelected(old => { const next = { ...old }; if (e.target.checked) next[id] = { demand, item, quantity: item.remaining_quantity ?? "0" }; else delete next[id]; return next; })} /></td>
-        <td>{demand.customer.name}</td><td>{demand.demand_number}</td><td>{item.line_no}</td><td>{item.product_type || <span role="alert">{t("missingProductType")}</span>}</td><td><Specs value={item.target_spec_json} /></td><td>{item.required_quantity} {item.unit}</td><td>{item.allocated_quantity} {item.unit}</td><td>{item.remaining_quantity} {item.unit}</td>
+        <td>{customerDisplayName(demand.customer, locale)}</td><td>{demand.demand_number}</td><td>{item.line_no}</td><td>{item.product_type || <span role="alert">{t("missingProductType")}</span>}</td><td><Specs value={item.target_spec_json} /></td><td>{item.required_quantity} {item.unit}</td><td>{item.allocated_quantity} {item.unit}</td><td>{item.remaining_quantity} {item.unit}</td>
         <td>{selected[id] && <input aria-label={`${t("quantity")} ${demand.demand_number} ${item.line_no}`} type="number" min="0.001" max={item.remaining_quantity} step="0.001" value={selected[id].quantity} disabled={sending} onChange={e => setSelected(old => ({ ...old, [id]: { ...old[id], quantity: e.target.value } }))} />}</td>
       </tr>; }))}</tbody></table></div>
     {rows.length > 0 && <div className={s.panel} style={{ position: "sticky", bottom: 0, zIndex: 2 }}>

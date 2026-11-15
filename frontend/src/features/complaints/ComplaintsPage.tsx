@@ -1,4 +1,5 @@
 "use client";
+import { customerDisplayName } from "@/lib/customer-name";
 import Link from 'next/link';
 import { useEffect, useState, useCallback, type FormEvent, type ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
@@ -71,6 +72,7 @@ function Frame({ children }: { children: ReactNode }) {
 }
 
 export function ComplaintsList() {
+  const locale = useLocale();
   const { t } = useWords(), fmt = useFormatter();
   const list = useListQuery(['search', 'status', 'department', 'customer_id', 'overdue'] as const), query = list.apiQuery();
   const [data, setData] = useState<Page<Complaint> | null>(null), [error, setError] = useState(''), [loading, setLoading] = useState(true);
@@ -113,7 +115,7 @@ export function ComplaintsList() {
         <thead><tr>{(['number', 'customerSubject', 'status', 'priority', 'owner', 'due'] as const).map(k => <th key={k}>{t(`columns.${k}`)}</th>)}</tr></thead>
         <tbody>{data.items.map(r => <tr key={r.id}>
           <td><Link href={'/complaints/' + r.id}>{r.number}</Link></td>
-          <td>{r.customer_name}<br />{r.title}</td>
+          <td>{customerDisplayName(r, locale)}<br />{r.title}</td>
           <td><span className={s.badge}>{t(`statuses.${r.status}`)}</span></td>
           <td>{t(`priorities.${r.priority}`)}</td>
           <td>{r.owner_name || t('unassigned')}<br />{t(`departments.${r.department}`)}</td>
@@ -125,9 +127,10 @@ export function ComplaintsList() {
   </Frame>;
 }
 
-type Option = { id: string; name?: string; label?: string };
+type Option = { id: string; name?: string; name_ar?: string | null; name_en?: string | null; label?: string };
 function SearchSelect({ endpoint, value, onChange, title }: { endpoint: string; value: string; onChange: (s: string) => void; title: string }) {
   const { t } = useWords();
+  const locale = useLocale();
   const [search, setSearch] = useState(''), [options, setOptions] = useState<Option[]>([]), [chosen, setChosen] = useState<Option | null>(null), [error, setError] = useState(false);
   useEffect(() => {
     let live = true;
@@ -147,7 +150,7 @@ function SearchSelect({ endpoint, value, onChange, title }: { endpoint: string; 
   return <Field name={title}>
     <input aria-label={t('picker.search', { title })} placeholder={t('picker.placeholder')} value={search} onChange={e => setSearch(e.target.value)} />
     <select required value={value} onChange={e => { onChange(e.target.value); setChosen(options.find(o => o.id === e.target.value) || null); }}>
-      <option value="">{t('picker.choose')}</option>{shown.map(o => <option key={o.id} value={o.id}>{o.name || o.label}</option>)}
+      <option value="">{t('picker.choose')}</option>{shown.map(o => <option key={o.id} value={o.id}>{customerDisplayName(o, locale) || o.label}</option>)}
     </select>
     {error && <small role="alert">{t('picker.unavailable')}</small>}
   </Field>;
@@ -282,6 +285,7 @@ export function ComplaintCreate({ customerId = '' }: { customerId?: string }) {
 type Findings = Record<string, { confirmed: string; measured: Record<string, string> }>;
 
 export function ComplaintDetail({ id }: { id: string }) {
+  const locale = useLocale();
   const { t, ar, unit, named } = useWords(), fmt = useFormatter();
   const categoryName = useListName('complaint_category', k => (t.has(`categories.${k}`) ? t(`categories.${k}`) : undefined));
   const [row, setRow] = useState<Complaint | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false), [operation, setOperation] = useState('');
@@ -354,7 +358,7 @@ export function ComplaintDetail({ id }: { id: string }) {
     {error && <p role="alert" className={s.error}>{error}</p>}
     {!row ? <p>{t('loading')}</p> : <>
       <div className={s.header}>
-        <div><h1>{row.number} · {row.title}</h1><p>{row.customer_name} · <span className={s.badge}>{t(`statuses.${row.status}`)}</span> · {t(`priorities.${row.priority}`)} · {categoryName(row.category)}</p></div>
+        <div><h1>{row.number} · {row.title}</h1><p>{customerDisplayName(row, locale)} · <span className={s.badge}>{t(`statuses.${row.status}`)}</span> · {t(`priorities.${row.priority}`)} · {categoryName(row.category)}</p></div>
         <RecordReportButton module="customers" reportKey="customers.complaints" field="complaint_id" id={row.id} permission={prefix + 'report'} label={t('pdf')} />
       </div>
       <div className={s.grid}>

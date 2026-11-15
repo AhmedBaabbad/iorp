@@ -50,17 +50,17 @@ class ListFilters:
 def _customers_matching(organization_id: UUID, text: str):
     like = f"%{text}%"
     return select(Customer.id).where(Customer.organization_id == organization_id,
-                                     or_(Customer.name.ilike(like), Customer.customer_code.ilike(like)))
+                                     or_((Customer.name_ar.ilike(like) | Customer.name_en.ilike(like)), Customer.customer_code.ilike(like)))
 
 
 def customer_labels(db: Session, organization_id: UUID, ids) -> dict:
-    """{customer id: (name, code)} for the customers on one page, in one query."""
+    """{customer id: (name, code, Arabic name, English name)} for the customers on one page, in one query."""
     wanted = {i for i in ids if i}
     if not wanted:
         return {}
-    rows = db.execute(select(Customer.id, Customer.name, Customer.customer_code).where(
+    rows = db.execute(select(Customer.id, Customer.name, Customer.customer_code, Customer.name_ar, Customer.name_en).where(
         Customer.organization_id == organization_id, Customer.id.in_(wanted)))
-    return {row.id: (row.name, row.customer_code) for row in rows}
+    return {row.id: (row.name, row.customer_code, row.name_ar, row.name_en) for row in rows}
 
 
 class CustomerRepository:
@@ -114,7 +114,7 @@ class CustomerRepository:
         statement = self._visible(organization_id, policy, auth_context)
         if filters.search:
             like = f"%{filters.search.strip()}%"
-            statement = statement.where(or_(Customer.customer_code.ilike(like), Customer.name.ilike(like),
+            statement = statement.where(or_(Customer.customer_code.ilike(like), (Customer.name_ar.ilike(like) | Customer.name_en.ilike(like)),
                 Customer.effective_phone.ilike(like), Customer.effective_email.ilike(like),
                 select(CustomerContact.id).where(CustomerContact.customer_id == Customer.id,
                     CustomerContact.organization_id == Customer.organization_id,
@@ -137,7 +137,7 @@ class CustomerRepository:
             statement = statement.where(Customer.id.in_(ids))
         elif search:
             like = f"%{search.strip()}%"
-            statement = statement.where(or_(Customer.customer_code.ilike(like), Customer.name.ilike(like)))
+            statement = statement.where(or_(Customer.customer_code.ilike(like), (Customer.name_ar.ilike(like) | Customer.name_en.ilike(like))))
         return list(self.db.scalars(statement.order_by(Customer.name, Customer.id).limit(limit)))
 
     def list_by_organization(
@@ -429,7 +429,7 @@ class FollowUpRepository:
         if filters.search:
             pattern = f"%{filters.search}%"
             statement = statement.where(
-                or_(FollowUp.reason.ilike(pattern), Customer.name.ilike(pattern)),
+                or_(FollowUp.reason.ilike(pattern), (Customer.name_ar.ilike(pattern) | Customer.name_en.ilike(pattern))),
             )
         return statement
 
@@ -607,7 +607,7 @@ class SampleRepository:
         if filters.search:
             like = f"%{filters.search.strip()}%"
             statement = statement.where(or_(Sample.sample_code.ilike(like), Sample.product_type.ilike(like),
-                                            Customer.name.ilike(like), Customer.customer_code.ilike(like)))
+                                            (Customer.name_ar.ilike(like) | Customer.name_en.ilike(like)), Customer.customer_code.ilike(like)))
         if filters.status:
             statement = statement.where(Sample.status == filters.status)
         if filters.customer_id:

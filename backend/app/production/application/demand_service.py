@@ -319,7 +319,7 @@ class ProductionDemandService:
         name = self.db.scalar(select(users.c.full_name).where(users.c.id == row.created_by_user_id, users.c.organization_id == self.org_id)) if row.created_by_user_id else None
         result = {key: getattr(row, key) for key in ("id", "demand_number", "request_date", "requested_delivery_date", "priority", "status", "planning_sequence", "notes", "created_at", "updated_at")}
         result.update(sales_order={"id": row.source_order_id, "number": row.source_order_number} if row.source_order_id else None)
-        result.update(customer={"id": customer.id, "code": customer.customer_code, "name": customer.customer_name}, quote={"id": quote.id, "number": quote.quote_number, "status": quote.status} if quote else None, item_count=len(row.items), created_by=name)
+        result.update(customer={"id": customer.id, "code": customer.customer_code, "name": customer.customer_name, "name_ar": customer.name_ar, "name_en": customer.name_en}, quote={"id": quote.id, "number": quote.quote_number, "status": quote.status} if quote else None, item_count=len(row.items), created_by=name)
         totals = {}
         for item in row.items:
             totals[item.unit] = totals.get(item.unit, Decimal(0)) + item.required_quantity

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { cityLabel } from "@/components/forms/CountryCityFields";
 import { useParams, useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 
@@ -14,6 +14,7 @@ import { getEnumLabel } from "@/i18n/enum-helpers";
 import { ApiClientError } from "@/lib/api-client";
 import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { displayValue } from "@/lib/utils";
+import { customerDisplayName } from "@/lib/customer-name";
 import { sharedStyles } from "@/styles/shared-styles";
 import type { CustomerDeletionImpact, CustomerDetail, SalesOwnerSummary } from "@/types/customers";
 import { deleteCustomer, getCustomer, getCustomerDeletionImpact } from "./customer-api";
@@ -133,6 +134,7 @@ function formatSalesOwner(owner: SalesOwnerSummary): string {
 
 export function CustomerDetailPage() {
   const params = useParams<{ id: string }>();
+  const locale = useLocale();
   const t = useTranslations("commercial.customers");
   const tEnums = useTranslations();
   const messages = useTranslations("messages");
@@ -228,7 +230,7 @@ export function CustomerDetailPage() {
 
   return (
     <PageFrame
-      title={customer?.name ?? t("detailTitle")}
+      title={customer ? customerDisplayName(customer, locale) : t("detailTitle")}
       subtitle={customer ? customer.customer_code : t("detailSubtitle")}
       action={
         <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
@@ -353,7 +355,8 @@ export function CustomerDetailPage() {
         <div style={styles.relatedSections}>
           <section style={styles.detailGrid} aria-label={t("detailsAria")}>
             <DetailItem label={t("fields.customerCode")} value={customer.customer_code} />
-            <DetailItem label={t("fields.name")} value={customer.name} />
+            <DetailItem label={t("fields.nameAr")} value={customer.name_ar ?? null} />
+            <DetailItem label={t("fields.nameEn")} value={customer.name_en ?? null} />
             <DetailItem label={t("fields.sector")} value={customer.sector ? sectorName(customer.sector) : customer.sector} />
             <DetailItem label={t("fields.city")} value={customer.city ? cityLabel(customer.city, customer.city_other, cityName) : customer.city} />
             <DetailItem label={t("fields.country")} value={customer.country ? countryName(customer.country) : customer.country} />

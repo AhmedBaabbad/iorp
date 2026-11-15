@@ -24,7 +24,7 @@ export type ItemDraft = { id?: string; product_key: string; source_kind: 'order'
 /** A decision: its facts by name (`details`) and what the person wrote (`notes`). */
 export type ComplaintEvent = { id: string; action: string; notes: string; details: Record<string, unknown>; actor_name: string | null; created_at: string };
 
-export type Complaint = { id: string; number: string; title: string; statement: string; customer_id: string; customer_name: string;
+export type Complaint = { id: string; number: string; title: string; statement: string; customer_id: string; customer_name: string; customer_name_ar?: string | null; customer_name_en?: string | null;
   contact: string | null; channel: string; category: string; priority: string; status: string; version: number; department: string;
   owner_name: string | null; owner_user_id: string | null; received_date: string; due_date: string | null; response_due_date: string | null;
   external_reference: string | null; finding: string; investigation: string | null; containment: string | null;

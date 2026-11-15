@@ -52,7 +52,7 @@ lookup_access = Depends(require_any_permission([P.DEMANDS_CREATE, P.DEMANDS_UPDA
 
 @router.get("/demand-lookups/customers", dependencies=[lookup_access])
 def customers(search: str = Query(default="", max_length=255), svc=Depends(service)):
-    return [{"id": c.id, "code": c.customer_code, "name": c.customer_name} for c in svc.customers.find_customers(svc.db, svc.org_id, search)]
+    return [{"id": c.id, "code": c.customer_code, "name": c.customer_name, "name_ar": c.name_ar, "name_en": c.name_en} for c in svc.customers.find_customers(svc.db, svc.org_id, search)]
 
 
 @router.get("/demand-lookups/quotes", dependencies=[lookup_access])

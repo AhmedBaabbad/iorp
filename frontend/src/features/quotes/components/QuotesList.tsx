@@ -1,4 +1,5 @@
 "use client";
+import { customerDisplayName } from "@/lib/customer-name";
 
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
@@ -392,7 +393,7 @@ export function QuotesList() {
                       </Link>
                     </td>
                     <td style={styles.td}>
-                      {displayValue(quote.customer_name ?? quote.customer_id)}
+                      {displayValue(customerDisplayName(quote, locale) || quote.customer_id)}
                     </td>
                     <td style={styles.td}>
                       <QuoteStatusBadge status={quote.status} />

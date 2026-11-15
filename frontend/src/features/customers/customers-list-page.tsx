@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getApiErrorMessage } from "@/lib/api-error-handler";
 import { displayValue } from "@/lib/utils";
+import { customerDisplayName } from "@/lib/customer-name";
 import { sharedStyles } from "@/styles/shared-styles";
 import type { CustomerDeletionImpact, CustomerListItem } from "@/types/customers";
 import { deleteCustomer, getCustomerDeletionImpact, listCustomers } from "./customer-api";
@@ -163,6 +164,7 @@ const styles: Record<string, CSSProperties> = {
 };
 
 export function CustomersListPage() {
+  const locale = useLocale();
   const t = useTranslations("commercial.customers");
   const common = useTranslations("common");
   const messages = useTranslations("messages");
@@ -449,7 +451,7 @@ export function CustomersListPage() {
                     <td style={styles.td}>{customer.customer_code}</td>
                     <td style={styles.td}>
                       <Link href={`/customers/${customer.id}`} style={styles.link}>
-                        {customer.name}
+                        {customerDisplayName(customer, locale)}
                       </Link>
                     </td>
                     <td style={styles.td}>{displayValue(customer.sector ? sectorName(customer.sector) : customer.sector)}</td>

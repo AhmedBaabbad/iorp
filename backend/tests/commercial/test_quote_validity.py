@@ -35,7 +35,7 @@ def test_custom_policy_and_unchanged_legacy_dates(client, db, test_org, auth_hea
 def test_settings_default_range_and_editor_access(client, auth_headers):
     response = client.get("/api/v1/commercial/quote-settings/validity", headers=auth_headers)
     assert response.status_code == 200
-    assert response.json() == {"quote_validity_days": 10}
+    assert response.json() == {"quote_validity_days": 10, "document_language": "ar"}
     from app.commercial.api.quote_settings_schemas import QuoteSettingsUpdate
     from pydantic import ValidationError
     for days in [0, 366, 1.5]:
@@ -47,9 +47,9 @@ def test_validity_policy_is_tenant_scoped(client, db, test_org, auth_headers):
     from app.foundation.infrastructure.models import Organization
     other = Organization(name="Other organization", code="other-validity")
     db.add(other); db.flush()
-    db.add_all([QuoteSettings(organization_id=test_org.id, quote_validity_days=17, signature_title_ar="Private signature"),
+    db.add_all([QuoteSettings(organization_id=test_org.id, quote_validity_days=17, document_language="en", signature_title_ar="Private signature"),
                 QuoteSettings(organization_id=other.id, quote_validity_days=29)])
     db.commit()
     response = client.get(f"/api/v1/commercial/quote-settings/validity?organization_id={other.id}", headers=auth_headers)
     assert response.status_code == 200
-    assert response.json() == {"quote_validity_days": 17}
+    assert response.json() == {"quote_validity_days": 17, "document_language": "en"}

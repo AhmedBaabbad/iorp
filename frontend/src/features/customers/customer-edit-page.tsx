@@ -19,6 +19,7 @@ import {
   toCustomerFormValues,
   type CustomerFormValues,
 } from "./customer-form";
+import { hasCustomerName } from "./customer-form";
 import { PageFrame } from "@/components/layout/page-frame";
 import { CustomerFields } from "./CustomerFields";
 
@@ -149,6 +150,7 @@ export function CustomerEditPage() {
   async function handleSubmit(event: { preventDefault(): void }) {
     event.preventDefault();
     setError(null);
+    if (!hasCustomerName(values)) { setError(t("nameRequired")); return; }
     setIsSubmitting(true);
 
     try {

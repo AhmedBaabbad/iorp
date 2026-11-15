@@ -45,13 +45,13 @@ def lookups(kind:str,q:str=Query('',max_length=120),current=Depends(get_current_
         service=ComplaintService(db,current.tenant)
         if kind=='complaints':
             return [dict(id=str(c.id),label=f'{c.number} — {c.title}') for c in db.scalars(service.filtered(search=q).limit(50))]
-        return [dict(id=str(c.id),label=c.name) for c in db.scalars(service.customers().where(Customer.name.icontains(q,autoescape=True)).order_by(Customer.name,Customer.id).limit(50))]
+        return [dict(id=str(c.id),label=c.name) for c in db.scalars(service.customers().where((Customer.name_ar.icontains(q,autoescape=True) | Customer.name_en.icontains(q,autoescape=True))).order_by(Customer.name,Customer.id).limit(50))]
     if not can(READ) or not any(can(p) for p in PERMISSIONS if not p.endswith('internal_audience')):
         raise HTTPException(403,'REPORT_PERMISSION_DENIED')
     query=scoped(db,current.tenant)
     if kind=='customers':
         return [dict(id=str(c.id),label=f'{c.customer_code} — {c.name}') for c in db.scalars(query.where(
-            Customer.name.icontains(q,autoescape=True) | Customer.customer_code.icontains(q,autoescape=True)).limit(50))]
+            (Customer.name_ar.icontains(q,autoescape=True) | Customer.name_en.icontains(q,autoescape=True)) | Customer.customer_code.icontains(q,autoescape=True)).limit(50))]
     if kind=='sales_owners':
         ids=db.scalars(query.with_only_columns(Customer.sales_owner_user_id).distinct()).all()
         return [dict(id=str(i),label=name) for i,name in providers.identity_factory(db,current.tenant).user_names(ids,q).items()]

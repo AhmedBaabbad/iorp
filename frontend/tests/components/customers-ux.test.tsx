@@ -52,6 +52,20 @@ function Customer({canAssignOwner=true}:{canAssignOwner?:boolean}) {
   return <form><CustomerFields values={values} onChange={patch=>setValues(old=>({...old,...patch}))} disabled={false} canAssignOwner={canAssignOwner}
     eligibleOwners={[]} loadingOwners={false} ownerName="Owner"/></form>;
 }
+it("accepts either name and keeps Arabic RTL and English LTR", () => {
+  ui(<Customer/>);
+  const ar=screen.getByRole("textbox",{name:"Name in Arabic"}) as HTMLInputElement;
+  const en=screen.getByRole("textbox",{name:"Name in English"}) as HTMLInputElement;
+  expect(ar.dir).toBe("rtl"); expect(en.dir).toBe("ltr");
+  expect(ar.checkValidity()).toBe(false); expect(en.checkValidity()).toBe(false);
+  expect(ar.validationMessage).toContain("at least one");
+  fireEvent.change(en,{target:{value:"Customer"}});
+  expect(ar.checkValidity()).toBe(true); expect(en.checkValidity()).toBe(true);
+  fireEvent.change(en,{target:{value:" "}});
+  expect(en.checkValidity()).toBe(false);
+  fireEvent.change(ar,{target:{value:"عميل"}});
+  expect(ar.checkValidity()).toBe(true); expect(en.checkValidity()).toBe(true);
+});
 it.each([true,false])("keeps the original single grid, field order and full-width notes (assign owner: %s)", canAssignOwner => {
   const {container}=ui(<Customer canAssignOwner={canAssignOwner}/>);
   expect(container.querySelector("legend, fieldset, h1, h2, h3, h4, h5, h6")).toBeNull();
@@ -61,10 +75,10 @@ it.each([true,false])("keeps the original single grid, field order and full-widt
   expect(grid.style.gridTemplateColumns).toBe("repeat(auto-fit, minmax(220px, 1fr))");
   const labels=()=>Array.from(grid.children).map(label=>label.firstElementChild?.textContent?.replace(/\s*\*$/,"").trim());
   const fields=(messages.commercial as {customers:{fields:Record<string,string>}}).customers.fields;
-  expect(labels()).toEqual([fields.name,fields.sector,"Country","City",fields.status,fields.relationshipStage,
+  expect(labels()).toEqual([fields.nameAr,fields.nameEn,fields.sector,"Country","City",fields.status,fields.relationshipStage,
     fields.priority,fields.opportunitySource,fields.salesOwner,fields.keyInfluencerName]);
   fireEvent.change(screen.getByRole("combobox",{name:"City"}),{target:{value:"sa_other"}});
-  expect(labels().slice(0,5)).toEqual([fields.name,fields.sector,"Country","City","City name"]);
+  expect(labels().slice(0,6)).toEqual([fields.nameAr,fields.nameEn,fields.sector,"Country","City","City name"]);
   expect((screen.getByRole("textbox",{name:"City name"}) as HTMLInputElement).required).toBe(true);
   expect(form.children[1].tagName).toBe("P");
   expect(form.children[2].querySelector("textarea")).toBe(screen.getByRole("textbox",{name:fields.notes}));
@@ -74,8 +88,8 @@ it.each([true,false])("keeps the original single grid, field order and full-widt
 });
 it("never sends inline contacts or legacy customer phone/email", () => {
   expect(defaultCustomerFormValues.country).toBe("sa");
-  const body=toCustomerCreateRequest({...defaultCustomerFormValues,name:" Client "},false);
-  expect(body.name).toBe("Client");
+  const body=toCustomerCreateRequest({...defaultCustomerFormValues,name_en:" Client "},false);
+  expect(body.name_en).toBe("Client");
   expect(body).not.toHaveProperty("phone"); expect(body).not.toHaveProperty("email");
   expect(toCustomerCreateRequest(defaultCustomerFormValues,false)).not.toHaveProperty("primary_contact");
   expect(body).not.toHaveProperty("primary_contact");

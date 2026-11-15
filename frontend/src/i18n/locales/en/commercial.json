@@ -1,5 +1,6 @@
 {
   "customers": {
+    "nameRequired": "Enter the customer's Arabic or English name (at least one).",
     "complaints": "Customer complaints",
     "listTitle": "Customers",
     "createTitle": "Create Customer",
@@ -8,6 +9,8 @@
     "fields": {
       "customerCode": "Customer Code",
       "name": "Name",
+      "nameAr": "Name in Arabic",
+      "nameEn": "Name in English",
       "sector": "Sector",
       "city": "City",
       "country": "Country",
@@ -344,6 +347,9 @@
     "searchHint": "Sample code, product or customer"
   },
   "quotes": {
+    "missingArabicCustomerName": "This customer has no Arabic name; the English name will be printed.",
+    "missingEnglishCustomerName": "This customer has no English name; the Arabic name will be printed.",
+    "customerCard": "Customer details",
     "listTitle": "Quotes",
     "createTitle": "Create Quote",
     "editTitle": "Edit Quote",

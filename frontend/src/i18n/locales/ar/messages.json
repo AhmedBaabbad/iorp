@@ -1,5 +1,6 @@
 {
   "validation": {
+    "customerNameRequired": "أدخل اسم العميل بالعربية أو بالإنجليزية (واحدًا على الأقل).",
     "required": "هذا الحقل مطلوب",
     "requiredField": "حقل {field} مطلوب",
     "invalidEmail": "البريد الإلكتروني غير صالح",

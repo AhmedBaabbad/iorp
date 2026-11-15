@@ -11,6 +11,8 @@ class CustomerSummary:
     customer_code: str
     customer_name: str
     organization_id: UUID
+    name_ar: str | None = None
+    name_en: str | None = None
 
 
 @dataclass(frozen=True)

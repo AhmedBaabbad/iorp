@@ -4,6 +4,7 @@ Reads the quote and its customer within the caller's customer scope and the orga
 settings (signature and terms). The corporate header and footer (identity, legal data, bank accounts)
 are the reporting core's external variant. Amounts come from the saved quote; nothing is recalculated here.
 """
+from app.commercial.domain.customer_names import document_customer_name
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -127,7 +128,7 @@ def build(db, tenant, p, selected) -> ReportData:
     document = dict(
         terms_source=terms_source(db,quote),
         number=quote.quote_number, date=day(quote.issue_date), valid_until=day(quote.valid_until),
-        customer=customer.name, attention=quote.attention or "", subject=quote.subject or "",
+        customer=document_customer_name(customer, p.lang), attention=quote.attention or "", subject=quote.subject or "",
         currency=currency,
         items=[dict(no=i.line_no, description=describe(i, ar, known.get(i.product_type)), quantity=quantity(i.quantity), unit=unit_label(i.unit, p.lang),
                     unit_price=amount(i.unit_price), total=amount(i.line_total),
@@ -137,4 +138,4 @@ def build(db, tenant, p, selected) -> ReportData:
         totals=totals, notes=quote.notes or "", terms=terms,
         signature_title=settings["signature_title_ar"] if ar else settings["signature_title_en"], preparer=preparer or "",
     )
-    return ReportData(sections=[], subject=quote.quote_number, prepared_for=customer.name, document=document)
+    return ReportData(sections=[], subject=quote.quote_number, prepared_for=document_customer_name(customer, p.lang), document=document)
