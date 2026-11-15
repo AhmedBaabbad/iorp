@@ -32,12 +32,18 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const ui = (node: ReactNode) => render(<NextIntlClientProvider locale="ar" messages={ar} timeZone="UTC">{node}</NextIntlClientProvider>);
 
+async function waitForListReady() {
+  // The customer lookup starts first; it does not mean the demands list is ready.
+  await waitFor(() => expect(api.apiClient.mock.calls.some(([path]) => /\/demands\?/.test(String(path)))).toBe(true));
+  await waitFor(() => expect((screen.getByRole("button", { name: "تصدير Excel" }) as HTMLButtonElement).disabled).toBe(false));
+}
+
 describe("demands export", () => {
   it("downloads the screen's demands with its filters and without the page", async () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     fetchMock.mockResolvedValue(new Response(new Blob(["xlsx"]), { status: 200, headers: { "content-disposition": "attachment; filename*=UTF-8''%D8%B7%D9%84%D8%A8%D8%A7%D8%AA.xlsx" } }));
     ui(<DemandList />);
-    await waitFor(() => expect(api.apiClient).toHaveBeenCalled());
+    await waitForListReady();
     fireEvent.change(screen.getByLabelText("بحث"), { target: { value: "PD-7" } });
     const button = screen.getByRole("button", { name: "تصدير Excel" }) as HTMLButtonElement;
     await waitFor(() => expect(button.disabled).toBe(false));  // the list reloads first
@@ -56,7 +62,7 @@ describe("demands export", () => {
   it("explains when the result is too large for one file", async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail: { code: "export_too_large" } }), { status: 422 }));
     ui(<DemandList />);
-    await waitFor(() => expect(api.apiClient).toHaveBeenCalled());
+    await waitForListReady();
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "تصدير Excel" })); });
     expect((await screen.findByRole("alert")).textContent).toContain("ضيّق الفلاتر");
   });
@@ -65,7 +71,7 @@ describe("demands export", () => {
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     fetchMock.mockResolvedValue(new Response(new Blob(["xlsx"]), { status: 200 }));
     ui(<DemandList planning />);
-    await waitFor(() => expect(api.apiClient).toHaveBeenCalled());
+    await waitForListReady();
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "تصدير Excel" })); });
     expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/production/planning/demands/export.xlsx?");
   });
