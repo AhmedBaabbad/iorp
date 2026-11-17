@@ -106,7 +106,7 @@ class OrderService:
         previous: lines already written (on this order, or on its quotation); a product and specification carried from
         them as they are is not re-checked, so a quotation written before the product list still becomes an order.
         """
-        product_catalog.validate_specification_values(self.db, tenant.organization_id, items)
+        product_catalog.validate_specification_values(self.db, tenant.organization_id, items, ranges_only=True)
         lines = [i.line_no for i in items]
         if len(lines) != len(set(lines)):
             raise ValueError("ORDER_DUPLICATE_LINE")

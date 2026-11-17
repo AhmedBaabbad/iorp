@@ -81,11 +81,12 @@ def business_settings(db: Session, organization_id: UUID) -> BusinessSettings:
     return _provider.settings(db, organization_id) if _provider else BusinessSettings()
 
 
-def validate_specification_values(db, organization_id, items, spec_attr='requested_spec_json'):
+def validate_specification_values(db, organization_id, items, spec_attr='requested_spec_json', *, ranges_only=False):
     """Validate numeric fields/ranges on document writes, retaining free-text legacy specs.
 
     The product catalogue is read once for the document. Only the owning module
     validates all required/text/choice rules; this shared boundary protects ranges.
+    Existing owners can retain their scalar validation and error contract with ranges_only.
     """
     from app.core.specifications import normalize_numeric, SpecificationValueError
     get = lambda item, key: item.get(key) if isinstance(item, dict) else getattr(item, key, None)
@@ -97,7 +98,7 @@ def validate_specification_values(db, organization_id, items, spec_attr='request
         for key, value in (get(item, spec_attr) or {}).items():
             prop = props.get(key)
             is_range = isinstance(value, dict) and ('min' in value or 'max' in value)
-            if value in (None, '') or not (is_range or (prop and prop.kind == 'number')):
+            if value in (None, '') or not (is_range or (not ranges_only and prop and prop.kind == 'number')):
                 continue
             try:
                 get(item, spec_attr)[key] = normalize_numeric(value, bool(prop and prop.kind == 'number' and prop.allows_range))

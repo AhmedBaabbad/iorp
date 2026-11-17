@@ -223,6 +223,8 @@ def test_a_catalogue_product_line_follows_its_specification_template(s):
     body = {"order_date": "2026-06-09T10:00:00Z", "customer_reference": "PO-1",
             "items": [{"line_no": 1, "product_type": "pp_strap", "requested_spec_json": {"width_mm": "wide"}, "quantity": "10", "unit": "kg"}]}
     assert s.post(f"{API}/customers/{s.customer}/orders", body).json()["detail"] == "ORDER_SPEC_INVALID:width_mm"
+    body["items"][0]["requested_spec_json"] = {"width_mm": {"min": 12, "max": 19}}
+    assert s.post(f"{API}/customers/{s.customer}/orders", body).json()["detail"] == "SPEC_RANGE_NOT_ALLOWED"
     body["items"][0]["requested_spec_json"] = {"width_mm": 19}
     assert s.post(f"{API}/customers/{s.customer}/orders", body).status_code == 201
 
