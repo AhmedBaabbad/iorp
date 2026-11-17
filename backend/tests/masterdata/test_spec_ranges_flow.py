@@ -29,6 +29,35 @@ def test_non_numeric_property_cannot_enable_range(md):
     assert response.status_code == 400 and response.json()['detail']['code'] == 'RANGE_ONLY_FOR_NUMBER'
 
 
+def test_quote_free_text_interval_is_preserved_on_create_and_update(md):
+    definition = product(md)
+    item = dict(line_no=1, product_type=definition['key'], quantity='1', unit='roll', unit_price='2',
+                requested_spec_json={'legacy': '10-20'})
+    quote = create_quote(md, items=[item])
+    assert quote['items'][0]['requested_spec_json'] == {'legacy': '10-20'}
+    response = md.client.patch(f"/api/v1/commercial/quotes/{quote['id']}", json=dict(items=[item]))
+    assert response.status_code == 200, response.text
+    assert response.json()['items'][0]['requested_spec_json'] == {'legacy': '10-20'}
+
+
+def test_quote_legacy_nonnumeric_template_value_can_still_be_edited(md):
+    from app.commercial.infrastructure.models import Quote
+    definition = product(md)
+    item = dict(line_no=1, product_type=definition['key'], quantity='1', unit='roll', unit_price='2',
+                requested_spec_json={'width_mm': 12})
+    quote = create_quote(md, items=[item])
+    # Seed a pre-existing value without relying on the current write validator.
+    stored = md.db.get(Quote, UUID(quote['id']))
+    stored.items[0].requested_spec_json = {'width_mm': 'legacy width'}
+    md.db.commit()
+    item['requested_spec_json'] = {'width_mm': 'legacy width'}
+    response = md.client.patch(f"/api/v1/commercial/quotes/{quote['id']}", json=dict(items=[item]))
+    assert response.status_code == 200, response.text
+    assert response.json()['items'][0]['requested_spec_json'] == {'width_mm': 'legacy width'}
+    # Creation retains the same historical scalar contract as modification.
+    assert create_quote(md, items=[item])['items'][0]['requested_spec_json'] == {'width_mm': 'legacy width'}
+
+
 def test_range_survives_quote_sales_order_demand_and_planning(md):
     from app.commercial.infrastructure.models import Quote, CommercialOrder
     from app.commercial.domain.enums import QuoteStatus, CommercialOrderStatus

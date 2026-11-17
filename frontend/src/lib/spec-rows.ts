@@ -5,7 +5,8 @@ export type Row = { key: string; value: string };
 /** A specification value as typed: numbers and true/false keep their type (production reads e.g. width_mm as a number). */
 export function parseSpecValue(text: string): unknown {
   const value = text.trim();
-  const numeric = numericSpecOrText(value, true);
+  // Free rows have no template opt-in: interval-looking text must stay text.
+  const numeric = numericSpecOrText(value, false);
   if (typeof numeric !== "string") return numeric;
   if (/^-?\d+(\.\d+)?$/.test(value)) return Number(value);
   if (value === "true" || value === "false") return value === "true";

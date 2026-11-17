@@ -5,7 +5,7 @@ import { afterEach, beforeAll, expect, it } from "vitest";
 import { loadMessages } from "@/i18n/messages";
 import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
 import { formatSpecValue, parseNumericSpec, thicknessFields } from "@/lib/spec-value";
-import { rowsToSpec, specToRows, templateSpec } from "@/lib/spec-rows";
+import { parseSpecValue, rowsToSpec, specToRows, templateSpec } from "@/lib/spec-rows";
 
 let messages: Awaited<ReturnType<typeof loadMessages>>;
 beforeAll(async () => { messages = await loadMessages("en"); });
@@ -24,12 +24,21 @@ it("rejects reversed, nonnumeric and non-opt-in ranges, and normalizes equal end
   expect(formatSpecValue(.55)).toBe("0.55");
   expect(thicknessFields("0.55-0.60")).toEqual({ thickness_mm: "0.55", thickness_max_mm: "0.6" });
 });
-it("roundtrips stored objects through editable rows and respects template opt-in", () => {
-  const json = rowsToSpec([{ key: "thickness", value: "٠٫٥٥-٠٫٦٠" }]);
-  expect(JSON.parse(json)).toEqual({ thickness: { min: .55, max: .6 } });
-  expect(specToRows(json)[0].value).toBe("0.55 – 0.60");
+it("preserves free-text intervals and legacy text while still parsing scalar digits", () => {
+  expect(parseSpecValue("10-20")).toBe("10-20");
+  expect(parseSpecValue("٠٫٥٥")).toBe(.55);
+  const rows = [{ key: "legacy", value: "10-20" }];
+  expect(JSON.parse(rowsToSpec(rows))).toEqual({ legacy: "10-20" });
+  expect(specToRows(rowsToSpec(rows))).toEqual(rows);
+  expect(JSON.parse(templateSpec([], {}, rows))).toEqual({ legacy: "10-20" });
+});
+it("creates range objects only for opted-in numeric template properties", () => {
   const template = [{ key: "thickness", name_ar: "السماكة", name_en: "Thickness", kind: "number" as const, unit: "mm", required: false, allows_range: true, options: null }];
-  expect(JSON.parse(templateSpec(template, { thickness: "0.55-0.60" }, []))).toEqual(JSON.parse(json));
+  const json = templateSpec(template, { thickness: "0.55-0.60" }, [{ key: "legacy", value: "10-20" }]);
+  expect(JSON.parse(json)).toEqual({ thickness: { min: .55, max: .6 }, legacy: "10-20" });
+  expect(specToRows(json)[0].value).toBe("0.55 – 0.60");
+  expect(templateSpec(template, { thickness: specToRows(json)[0].value }, [])).toBe('{"thickness":{"min":0.55,"max":0.6}}');
+  expect(JSON.parse(templateSpec([{ ...template[0], allows_range: false }], { thickness: "0.55-0.60" }, []))).toEqual({ thickness: "0.55-0.60" });
 });
 function Input() {
   const [value, setValue] = useState("");
