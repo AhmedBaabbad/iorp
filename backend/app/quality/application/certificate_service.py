@@ -135,7 +135,7 @@ class CertificateService:
         product_key, values = self.production.lot_spec(check.production_order_id, check.production_order_item_id) if check.production_order_id else (None, {})
         definition = products(self.db, self.org, [product_key]).get(product_key)
         frozen_spec = dict(product=asdict(definition) if definition else None,
-                           key=product_key, values=deepcopy({**(check.lot_values or {}), **values}))
+                           key=product_key, values=deepcopy(MeasurementService._effective(check, values)))
         certificate = QualityCertificate(
             organization_id=self.org, status=rules.DRAFT, quality_check_id=check.id, production_order_id=check.production_order_id,
             production_order_item_id=check.production_order_item_id, customer_id=data.customer_id,

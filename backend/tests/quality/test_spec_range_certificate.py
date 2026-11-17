@@ -1,14 +1,17 @@
 """A ranged production lot stays an object through inspection and a frozen COA."""
 from uuid import UUID
+import pytest
 
 from tests.quality.test_quality_certificates import cq, COA  # noqa: F401
 from tests.quality.test_quality_specifications import sq, strap_order  # noqa: F401
 from tests.quality.test_quality_inspections import q, result_env  # noqa: F401
 from app.masterdata.infrastructure.models import Product, ProductProperty
-from app.quality.infrastructure.models import QualityCertificate
+from app.quality.infrastructure.models import QualityCertificate, QualityCheck
+from app.production.infrastructure.models import ProductionOrderItem
 
 
-def test_range_acceptance_and_certificate_columns_are_frozen(cq):
+@pytest.mark.parametrize('inspector_fallback', [False, True])
+def test_range_acceptance_and_certificate_columns_are_frozen(cq, inspector_fallback):
     product = Product(organization_id=cq.org.id, created_by_user_id=cq.user.id, code='PRD-RANGE', key='film', name_ar='منتج اختباري', name_en='Synthetic product', kind='finished')
     product.properties = [
         ProductProperty(line_no=1, key='width_mm', name_ar='العرض', name_en='Width', kind='number', unit='mm'),
@@ -24,6 +27,14 @@ def test_range_acceptance_and_certificate_columns_are_frozen(cq):
     check = cq.measure(check, 'COLOR', result='conforming')
     closed = cq.close_check(check, '120', '120', '0', 'accepted')
     assert closed.status_code == 200, closed.text
+    if inspector_fallback:
+        # A missing source value must not replace the inspector's effective range
+        # with null when the already measured inspection is frozen into a COA.
+        inspection = cq.db.get(QualityCheck, UUID(check['id']))
+        line = cq.db.get(ProductionOrderItem, inspection.production_order_item_id)
+        line.target_spec_json = {**line.target_spec_json, 'thickness_mm': None}
+        inspection.lot_values = {**(inspection.lot_values or {}), 'thickness_mm': {'min': .55, 'max': .6}}
+        cq.db.commit()
     draft = cq.draft(closed.json())
     frozen = cq.db.get(QualityCertificate, UUID(draft['id'])).product_specification
     assert frozen['values']['thickness_mm'] == {'min': .55, 'max': .6}
