@@ -28,5 +28,5 @@ def register_quotation():
         audiences=("customer",), required_permissions=("commercial:customers:read",),
         # The corporate header and footer are the core's shared external variant (DOC-IDENTITY-001).
         layout_templates=("quote_document.html", "header.html", "footer.html"),
-        listed=False, classification="external",
+        default_orientation="landscape", listed=False, classification="external",
     ))

@@ -135,6 +135,8 @@ class QuoteService:
 
         assert_known_products(self.db, tenant.organization_id, [item.product_type for item in data.items])
         assert_vat_rate(self.db, tenant.organization_id, data.tax_rate)
+        from app.core.interfaces.product_catalog import validate_specification_values
+        validate_specification_values(self.db, tenant.organization_id, data.items)
         items = self._build_quote_items(data.items)
         if data.tax_rate is not None:
             data = data.model_copy(update={"tax_amount": self._tax_from_rate(items, data.tax_rate)})
@@ -296,6 +298,8 @@ class QuoteService:
         if items_payload is not None:
             assert_known_products(self.db, tenant.organization_id, [item["product_type"] for item in items_payload],
                                   keep=[item.product_type for item in quote.items])
+            from app.core.interfaces.product_catalog import validate_specification_values
+            validate_specification_values(self.db, tenant.organization_id, items_payload)
             quote.items = self._build_quote_items(
                 [QuoteItemCreate(**item) for item in items_payload]
             )

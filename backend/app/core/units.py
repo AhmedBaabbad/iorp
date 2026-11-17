@@ -122,5 +122,6 @@ def spec_text(spec, separator: str = " × ") -> str:
     A row written without a value (a whole description typed as the property) prints its property text in its place."""
     if not isinstance(spec, dict):
         return ""
-    parts = [str(value) if value not in (None, "") else str(key).strip() for key, value in spec.items()]
+    from app.core.specifications import format_spec_value
+    parts = [format_spec_value(value) if value not in (None, "") else str(key).strip() for key, value in spec.items()]
     return separator.join(part for part in parts if part)

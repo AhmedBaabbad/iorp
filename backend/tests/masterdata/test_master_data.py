@@ -80,8 +80,10 @@ def test_the_quotation_prints_the_product_name_and_labelled_specification(md):
     product(md)
     q = create_quote(md, items=[dict(line_no=1, product_type="pp_strap", requested_spec_json={"width_mm": 19, "thickness_mm": 0.85, "color": "white"},
                                      quantity="10", unit="roll", unit_price="5")])
-    assert "شريط تربيط PP — 19 مم × 0.85 مم × أبيض" in html(md, q, "ar")  # the name, then the template's order and labels
-    assert "PP Strap — 19 mm × 0.85 mm × White" in html(md, q, "en")
+    ar, en = html(md, q, "ar"), html(md, q, "en")
+    assert "شريط تربيط PP" in ar and "العرض (مم)" in ar and "السماكة (مم)" in ar
+    assert ">19</bdi>" in ar and ">0.85</bdi>" in ar and ">أبيض</bdi>" in ar
+    assert "PP Strap" in en and "Width (mm)" in en and "Thickness (mm)" in en and ">White</bdi>" in en
 
 
 def test_legacy_product_types_are_mapped_by_each_module(md):

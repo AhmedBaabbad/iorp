@@ -38,3 +38,7 @@
 .q-sign span{display:block}
 .q-sign-line{margin-top:28px;border-top:1px solid var(--muted);width:70%}
 
+
+.q-items .q-manual{display:block;font-size:8pt;white-space:pre-wrap;margin-top:4px;color:var(--muted)}
+.q-items th{white-space:normal;overflow-wrap:anywhere}
+.q-items td{overflow-wrap:anywhere}

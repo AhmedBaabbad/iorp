@@ -1,3 +1,4 @@
+from typing import Any
 """Quality check and rejection API (QUAL-001). Errors answer {"code": ...} like production."""
 from typing import Annotated
 from datetime import date, datetime
@@ -182,7 +183,7 @@ class QualityCheckRead(QualityCheckListItem):
     specification_id: UUID | None = None
     specification_code: str | None = None
     specification_revision: int | None = None
-    lot_values: dict[str, str] | None = None
+    lot_values: dict[str, Any] | None = None
     history: list[HistoryEntry] = []
     rejections: list[CheckRejectionSummary] = []
     measurements: list[MeasurementRead] = []
@@ -191,7 +192,7 @@ class QualityCheckRead(QualityCheckListItem):
 class PlanInput(_Input):
     specification_id: UUID
     # Values the order line lacks, e.g. {"width_mm": "5", "thickness_mm": "0.35"}; the order line's own values win.
-    lot_values: dict[str, str] | None = Field(default=None, max_length=20)
+    lot_values: dict[str, Any] | None = Field(default=None, max_length=20)
 
 
 class PlanCandidate(BaseModel):
@@ -352,6 +353,7 @@ class AwaitingReturnLine(BaseModel):
     description: str
     width_mm: Decimal | None
     thickness_mm: Decimal | None
+    thickness_max_mm: Decimal | None = None
     unit: str
     production_order_id: UUID | None
     production_order_no: str | None

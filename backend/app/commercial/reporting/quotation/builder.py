@@ -15,6 +15,8 @@ from app.commercial.application.quote_settings_service import QuoteSettingsServi
 from app.commercial.application.quote_terms import document_terms
 from app.commercial.domain.units import unit_label
 from app.core.units import spec_text
+from app.core.specifications import format_spec_value
+from app.core.interfaces.specification_columns import specification_columns
 from app.commercial.infrastructure.models import Customer, Quote
 from app.commercial.reporting.customers import providers
 from app.commercial.reporting.customers.queries import scoped
@@ -46,7 +48,7 @@ def spec_in(product: ProductInfo | None, spec, lang: str) -> str:
             continue
         if prop.kind == "choice":
             value = next((o[1] if ar else o[2] for o in prop.options if o[0] == str(value)), value)
-        parts.append(f"{value} {unit_label(prop.unit, lang)}" if prop.unit else str(value))
+        parts.append(format_spec_value(value, prop.unit, lang))
     rest = spec_text({k: v for k, v in spec.items() if k not in known})
     return " × ".join([*parts, *([rest] if rest else [])])
 
@@ -107,6 +109,7 @@ def build(db, tenant, p, selected) -> ReportData:
     rate = vat_rate(quote)
     items = sorted(quote.items, key=lambda i: i.line_no)
     known = catalog_products(db, tenant.organization_id, {i.product_type for i in items})
+    columns = specification_columns(items, known, p.lang)
     # Discount first (a percentage of the lines), then VAT on what remains (domain/pricing.py).
     discounted = any(i.discount_amount for i in items)
     if discounted:
@@ -130,12 +133,15 @@ def build(db, tenant, p, selected) -> ReportData:
         number=quote.quote_number, date=day(quote.issue_date), valid_until=day(quote.valid_until),
         customer=document_customer_name(customer, p.lang), attention=quote.attention or "", subject=quote.subject or "",
         currency=currency,
-        items=[dict(no=i.line_no, description=describe(i, ar, known.get(i.product_type)), quantity=quantity(i.quantity), unit=unit_label(i.unit, p.lang),
+        spec_headers=columns.headers,
+        items=[dict(no=i.line_no, product=known[i.product_type].name(p.lang) if i.product_type in known else i.product_type,
+                    description=((i.description_ar or i.description_en) if ar else (i.description_en or i.description_ar)) or "",
+                    specs=columns.rows[index], quantity=quantity(i.quantity), unit=unit_label(i.unit, p.lang),
                     unit_price=amount(i.unit_price), total=amount(i.line_total),
                     discount=(f"{percent(i.discount_percent)} = {amount(i.discount_amount)}" if i.discount_amount else "—"),
-                    net=amount(i.net_total)) for i in items],
+                    net=amount(i.net_total)) for index, i in enumerate(items)],
         discounted=discounted,
         totals=totals, notes=quote.notes or "", terms=terms,
         signature_title=settings["signature_title_ar"] if ar else settings["signature_title_en"], preparer=preparer or "",
     )
-    return ReportData(sections=[], subject=quote.quote_number, prepared_for=document_customer_name(customer, p.lang), document=document)
+    return ReportData(sections=[], orientation="landscape", subject=quote.quote_number, prepared_for=document_customer_name(customer, p.lang), document=document)

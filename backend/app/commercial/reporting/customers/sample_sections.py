@@ -1,3 +1,5 @@
+from app.core.interfaces.specification_columns import specification_columns
+from app.core.specifications import format_spec_value
 """Read-only commercial sample sections, bounded by the report's authorized customer set."""
 from collections import Counter, defaultdict
 from datetime import datetime, time, timedelta, timezone
@@ -32,6 +34,7 @@ def build_sample_sections(db, tenant, params, selected, customers, tz):
     def readable(v):
         if v is None: return '—'
         if isinstance(v, bool): return tr('نعم', 'Yes') if v else tr('لا', 'No')
+        if isinstance(v, dict) and set(v) == {'min', 'max'}: return format_spec_value(v)
         if isinstance(v, dict): return '\n'.join(f'{k}: {readable(x)}' for k,x in v.items())
         if isinstance(v, list): return '\n'.join(readable(x) for x in v)
         return str(v)
@@ -73,23 +76,14 @@ def build_sample_sections(db, tenant, params, selected, customers, tz):
         tr('النطاق حسب تاريخ طلب العينة. الحالات والقرارات حالية ومستقلة. الكميات المطلوبة تشمل الملغاة وليست كميات مسلّمة؛ لا تجمع الوحدات المختلفة.',
            'Period uses sample request date. Status and decision are current and independent. Requested quantities include cancelled samples and are not delivered quantities; different units are never combined.'), cards)
     if 'sample_properties' in selected:
-        rows = []
-        for s in samples:
-            specifications = []
-            definition = definitions.get(s.product_type)
-            props = {p.key:p for p in definition.properties} if definition else {}
-            for k,v in (s.requested_spec_json or {}).items():
-                prop = props.get(k)
-                title = (prop.name_ar if ar else prop.name_en) if prop else k
-                if prop and prop.unit: title += ' ('+unit(prop.unit)+')'
-                options = {o[0]:o[1 if ar else 2] for o in prop.options} if prop else {}
-                rendered = options.get(v, readable(v)) if isinstance(v, str) else readable(v)
-                specifications.append(f'{title}: {rendered}')
-            if params.audience == 'internal' and s.notes:
-                specifications.append(tr('ملاحظات داخلية','Internal notes')+': '+s.notes)
-            specification_text = (' ؛ ' if ar else '; ').join(specifications) or '—'
-            rows.append((names[s.customer_id],s.sample_code,specification_text))
-        table('sample_properties',('مواصفات العينات','Sample properties'),[customer,sample_col,('المواصفات','Specifications')],rows)
+        columns = specification_columns(samples, definitions, params.lang)
+        rows = [(names[s.customer_id], s.sample_code, *columns.rows[n]) for n, s in enumerate(samples)]
+        headers = [customer, sample_col, *[(h, h) for h in columns.headers]]
+        if params.audience == 'internal':
+            headers.append(('ملاحظات داخلية', 'Internal notes'))
+            rows = [(*row, s.notes or '') for row, s in zip(rows, samples)]
+        table('sample_properties', ('مواصفات العينات', 'Sample properties'), headers, rows)
+        sections[-1].specification_columns = len(columns.headers)
     if 'sample_evaluations' in selected and params.audience == 'internal':
         by_id = {s.id:s for s in samples}
         evaluations = bounded(db.scalars(select(SampleEvaluation).join(Sample, Sample.id == SampleEvaluation.sample_id)

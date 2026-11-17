@@ -30,7 +30,7 @@ it('loads arbitrary Master Data fields and emits typed numbers and choice values
   await screen.findByRole('option', { name: 'Custom product' });
   fireEvent.change(screen.getByRole('combobox'), { target: { value: 'custom' } });
   const size = screen.getByLabelText('Size') as HTMLInputElement;
-  expect(size.type).toBe('number'); expect(size.required).toBe(true);
+  expect(size.type).toBe('text'); expect(size.inputMode).toBe('decimal'); expect(size.required).toBe(true);
   fireEvent.change(size, { target: { value: '12.5' } });
   fireEvent.change(screen.getByLabelText('Finish'), { target: { value: 'smooth' } });
   fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Trial' } });

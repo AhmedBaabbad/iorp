@@ -61,6 +61,8 @@ def assert_template(properties) -> None:
                 raise MasterDataError("OPTIONS_INVALID", 400, key=prop.key)
         elif options:
             raise MasterDataError("OPTIONS_ONLY_FOR_CHOICE", 400, key=prop.key)
+        if getattr(prop, "allows_range", False) and prop.kind != "number":
+            raise MasterDataError("RANGE_ONLY_FOR_NUMBER", 400, key=prop.key)
         if prop.unit and prop.kind != "number":
             raise MasterDataError("UNIT_ONLY_FOR_NUMBER", 400, key=prop.key)
 
@@ -95,8 +97,11 @@ def assert_property_values(properties, values, preserved=None):
                 raise ProductSpecificationError('SAMPLE_PROPERTY_REQUIRED',prop.key)
             continue
         if prop.kind=='number':
-            if isinstance(value,bool) or not isinstance(value,(int,float,Decimal)) or not Decimal(str(value)).is_finite():
-                raise ProductSpecificationError('SAMPLE_PROPERTY_NUMBER',prop.key)
+            from app.core.specifications import normalize_numeric, SpecificationValueError
+            try:
+                values[prop.key] = normalize_numeric(value, getattr(prop, 'allows_range', False))
+            except SpecificationValueError as exc:
+                raise ProductSpecificationError(exc.code if isinstance(value, dict) else 'SAMPLE_PROPERTY_NUMBER', prop.key) from None
         elif prop.kind=='text':
             if not isinstance(value,str):
                 raise ProductSpecificationError('SAMPLE_PROPERTY_TEXT',prop.key)

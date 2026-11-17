@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { NumericSpecInput } from "./NumericSpecInput";
 import s from "./spec-editor.module.css";
 import { useEffect, useRef, useState } from "react";
 import { sharedStyles } from "@/styles/shared-styles";
@@ -65,10 +66,11 @@ export function SpecEditor({ value, onChange, disabled, template }: {
                   {(p.options ?? []).map(o => <option key={o.value} value={o.value}>{locale === "ar" ? o.label_ar : o.label_en}</option>)}
                 </select>
               ) : (
+                p.kind === "number" ? <NumericSpecInput style={sharedStyles.input} value={values[p.key] ?? ""}
+                  disabled={disabled} required={p.required} allowsRange={p.allows_range}
+                  onValueChange={text => emit({ ...values, [p.key]: text }, rows)} /> :
                 <input style={sharedStyles.input} value={values[p.key] ?? ""} disabled={disabled} required={p.required} maxLength={200}
-                  inputMode={p.kind === "number" ? "decimal" : undefined} dir={p.kind === "number" ? "ltr" : undefined}
-                  pattern={p.kind === "number" ? "-?\\d+(\\.\\d+)?" : undefined}
-                  onChange={(e) => emit({ ...values, [p.key]: e.target.value }, rows)} />
+                  onChange={e => emit({ ...values, [p.key]: e.target.value }, rows)} />
               )}
             </label>
           ))}

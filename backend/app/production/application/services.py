@@ -1,3 +1,4 @@
+from app.core.interfaces.product_catalog import validate_specification_values
 import logging
 from datetime import time
 from decimal import Decimal
@@ -360,6 +361,7 @@ class ProductionOrderService:
                 raise ValueError(f"Production order number '{production_order_number}' already exists.")
 
         payload = data.model_dump(exclude={"production_order_number"})
+        validate_specification_values(self.db, tenant.organization_id, [payload], "target_spec_json")
         if data.planned_end_date < data.planned_start_date:
             raise ValueError("Invalid date range.")
         production_order = ProductionOrder(
@@ -424,6 +426,8 @@ class ProductionOrderService:
             return None
 
         payload = data.model_dump(exclude_unset=True)
+        if "target_spec_json" in payload:
+            validate_specification_values(self.db, tenant.organization_id, [{**payload, "product_type": payload.get("product_type", production_order.product_type)}], "target_spec_json")
         if production_order.status in (ProductionOrderStatus.CLOSED, ProductionOrderStatus.CANCELLED):
             raise ValueError("A closed or cancelled production order cannot be edited.")
         if production_order.allocations:
@@ -494,6 +498,7 @@ class ProductionOrderItemService:
             raise ValueError(f"Production order item line_no '{line_no}' already exists.")
 
         payload = data.model_dump(exclude={"line_no"})
+        validate_specification_values(self.db, tenant.organization_id, [{**payload, "product_type": production_order.product_type}], "target_spec_json")
         item = ProductionOrderItem(
             production_order_id=production_order.id,
             line_no=line_no,
@@ -549,6 +554,8 @@ class ProductionOrderItemService:
             return None
 
         payload = data.model_dump(exclude_unset=True)
+        if "target_spec_json" in payload:
+            validate_specification_values(self.db, tenant.organization_id, [{**payload, "product_type": production_order.product_type}], "target_spec_json")
         new_line_no = payload.get("line_no")
         if new_line_no is not None and new_line_no != item.line_no:
             existing = self.items.get_by_line_no(tenant.organization_id, production_order.id, new_line_no)

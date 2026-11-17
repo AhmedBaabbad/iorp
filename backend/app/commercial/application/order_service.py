@@ -106,6 +106,7 @@ class OrderService:
         previous: lines already written (on this order, or on its quotation); a product and specification carried from
         them as they are is not re-checked, so a quotation written before the product list still becomes an order.
         """
+        product_catalog.validate_specification_values(self.db, tenant.organization_id, items)
         lines = [i.line_no for i in items]
         if len(lines) != len(set(lines)):
             raise ValueError("ORDER_DUPLICATE_LINE")
@@ -123,6 +124,8 @@ class OrderService:
                                                            existing_key=item.product_type if same is not None else None,
                                                            existing_values=same)
             except product_catalog.ProductSpecificationError as exc:
+                if exc.code.startswith("SPEC_RANGE_"):
+                    raise ValueError(exc.code) from exc
                 raise ValueError(f"ORDER_SPEC_INVALID:{exc.property_key or ''}") from exc
 
     @staticmethod

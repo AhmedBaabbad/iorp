@@ -125,11 +125,17 @@ class ReportingService:
                     raise HTTPException(403, 'SECTION_PERMISSION_DENIED')
             selected = {s.key for s in candidates} & set(requested)
             data = self._build(definition, params, selected)
+            counts = [s.specification_columns for s in data.sections if s.specification_columns]
+            if data.orientation:
+                params.orientation = data.orientation
+            elif counts:
+                params.orientation = 'landscape' if max(counts) > 6 else 'portrait'
+
             branding = providers.branding(self.db, self.tenant.organization_id)
             title = definition.title_ar if params.lang == 'ar' else definition.title_en
             classification = classification_for(definition, audience)
             department = definition.department[0 if params.lang == 'ar' else 1] if definition.department else ''
-            context = dict(data=data, branding=branding, lang=params.lang, title=title, classification=classification, department=department,
+            context = dict(data=data, orientation=params.orientation, branding=branding, lang=params.lang, title=title, classification=classification, department=department,
                            audience=audience, watermark=definition.watermark(data, params.lang) if definition.watermark else '',
                            generated_at=now.strftime('%Y-%m-%d %H:%M %Z'), generated_by=self.actor_name,
                            filters=data.applied_filters, body_template=definition.body_template)

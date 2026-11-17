@@ -4,7 +4,8 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic_core import PydanticCustomError
+from pydantic import model_validator, BaseModel, ConfigDict, Field, field_validator
 
 from app.core.types import ISODatetime, NormalizedEmail
 from app.core.location_fields import LocationURL
@@ -29,6 +30,17 @@ class LineInput(_Input):
     description: str = Field(min_length=1, max_length=255)
     width_mm: Decimal | None = Field(default=None, ge=0, max_digits=10, decimal_places=3)
     thickness_mm: Decimal | None = Field(default=None, ge=0, max_digits=10, decimal_places=3)
+    thickness_max_mm: Decimal | None = Field(default=None, ge=0, max_digits=10, decimal_places=3)
+
+    @model_validator(mode="after")
+    def thickness_range(self):
+        if self.thickness_max_mm is not None:
+            if self.thickness_mm is None or self.thickness_max_mm < self.thickness_mm:
+                raise PydanticCustomError("SPEC_RANGE_REVERSED", "SPEC_RANGE_REVERSED")
+            if self.thickness_max_mm == self.thickness_mm:
+                self.thickness_max_mm = None
+        return self
+
     quantity: Quantity = Field(gt=0, max_digits=14, decimal_places=3)
     unit: str = Field(min_length=1, max_length=32)
     # The full weight of the line's units (one weight: no net / gross split).
@@ -185,6 +197,7 @@ class LineRead(BaseModel):
     description: str
     width_mm: Decimal | None
     thickness_mm: Decimal | None
+    thickness_max_mm: Decimal | None = None
     quantity: Decimal
     unit: str
     weight: Decimal | None
@@ -377,6 +390,7 @@ class ReturnLineRead(BaseModel):
     description: str
     width_mm: Decimal | None
     thickness_mm: Decimal | None
+    thickness_max_mm: Decimal | None = None
     unit: str
     weight_unit: str
     production_order_no: str | None

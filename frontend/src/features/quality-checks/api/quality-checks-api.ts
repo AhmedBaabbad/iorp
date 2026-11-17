@@ -54,7 +54,7 @@ export function getPlanCandidates(id: string) {
   return apiClient<PlanCandidate[]>(`${PATH}/${id}/specifications`);
 }
 
-export function applyPlan(id: string, specificationId: string, lotValues?: Record<string, string>) {
+export function applyPlan(id: string, specificationId: string, lotValues?: Record<string, unknown>) {
   return apiClient<QualityCheckData>(`${PATH}/${id}/plan`, { method: "POST",
     body: { specification_id: specificationId, lot_values: lotValues && Object.keys(lotValues).length ? lotValues : null } });
 }

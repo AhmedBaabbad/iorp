@@ -1,3 +1,4 @@
+from app.core.specifications import format_spec_value, thickness_value
 """The return note (SHIP-004): goods coming back against a delivery note, rendered by the reporting core with the
 company's external identity. Nothing is stored."""
 from decimal import Decimal
@@ -70,7 +71,7 @@ def build(db, tenant, params, selected) -> ReportData:
         cause.append((say("بعد مهلة الإرجاع", "After the return window"), say("نعم", "Yes")))
     received = r.status == R.RECEIVED
     lines = [dict(no=line.line_no, description=line.description, batch=line.production_order_no, width=_num(line.width_mm) or "—",
-                  thickness=_num(line.thickness_mm) or "—", unit=unit(line.unit), quantity=_num(line.quantity),
+                  thickness=format_spec_value(thickness_value(line.thickness_mm, line.thickness_max_mm)) or "—", unit=unit(line.unit), quantity=_num(line.quantity),
                   received=_num(line.received_quantity) if received else "—",
                   weight=weight(line.received_weight if received and line.received_weight is not None else line.weight, line.weight_unit))
              for line in r.lines]
@@ -82,7 +83,7 @@ def build(db, tenant, params, selected) -> ReportData:
         decision_note=r.decision_note, receipt_notes=r.receipt_notes, cancel_reason=r.cancel_reason, status=r.status,
         prepared_by=names.get(r.created_by_user_id) or "", decided_by=approvals.signed_name(approved, names.get(r.decided_by_user_id), params.lang) if approved else names.get(r.decided_by_user_id) or "",
         received_by=names.get(r.received_by_user_id) or "", received_at=moment(r.received_at) if received else "")
-    return ReportData(sections=[], subject=r.return_no, document=document)
+    return ReportData(sections=[], orientation="portrait", subject=r.return_no, document=document)
 
 
 def watermark(data, lang):

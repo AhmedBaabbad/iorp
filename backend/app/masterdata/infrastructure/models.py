@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 import uuid
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import false, CheckConstraint, JSON, Boolean, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -55,7 +55,7 @@ class Product(Base):
 class ProductProperty(Base):
     """One property of a product's specification template: a number (with its unit), a text, or a choice."""
     __tablename__ = "masterdata_product_properties"
-    __table_args__ = (UniqueConstraint("product_id", "key", name="uq_masterdata_product_properties_key"),)
+    __table_args__ = (UniqueConstraint("product_id", "key", name="uq_masterdata_product_properties_key"), CheckConstraint("NOT allows_range OR kind = 'number'", name="ck_product_property_range_number"))
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     product_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("masterdata_products.id", ondelete="CASCADE"), nullable=False, index=True)
     line_no: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -64,6 +64,7 @@ class ProductProperty(Base):
     name_en: Mapped[str] = mapped_column(String(120), nullable=False)
     kind: Mapped[str] = mapped_column(String(8), nullable=False, default="text")  # number | text | choice
     unit: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    allows_range: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     options: Mapped[list | None] = mapped_column(JSON, nullable=True)  # [{value, label_ar, label_en}] for a choice
     product: Mapped[Product] = relationship(back_populates="properties")

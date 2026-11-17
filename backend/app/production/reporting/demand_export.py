@@ -1,3 +1,4 @@
+from app.core.specifications import format_spec_value
 """Customer production demands as a simple Arabic Excel sheet (PROD-EXPORT-001): one row per demand line, everything a
 planner needs at a glance. Built on request from the same filters as the screen and streamed; nothing is stored.
 
@@ -59,7 +60,7 @@ def _spec(spec, product=None):
         return props[key].name_ar if key in props else SPEC_NAMES.get(key, key)
     def value(key, raw):
         options = {o[0]: o[1] for o in props[key].options} if key in props else {}
-        return options.get(raw, raw)
+        return format_spec_value(options.get(raw, raw) if isinstance(raw, str) else raw)
     return "، ".join(f"{name(k)}: {value(k, v)}" for k, v in spec.items() if v not in (None, ""))
 
 
@@ -82,9 +83,16 @@ def demands(svc, filters, statuses, planning=False):
 def build(svc, filters, statuses, planning=False, zone="UTC") -> bytes:
     rows = demands(svc, filters, statuses, planning)
     names = product_catalog.products(svc.db, svc.org_id, {i.product_type for d in rows for i in d.items if i.product_type})
+    from app.core.interfaces.specification_columns import specification_columns
+    all_items = [i for d in rows for i in sorted(d.items, key=lambda i: i.line_no)]
+    columns = specification_columns(all_items, names, 'ar', spec=lambda i: i.target_spec_json)
+    headers = [*HEADERS[:12], *columns.headers, *HEADERS[13:]]
+    widths = [*WIDTHS[:12], *([18] * len(columns.headers)), *WIDTHS[13:]]
+    spec_rows = iter(columns.rows)
     tz = ZoneInfo(zone)
     wb = Workbook()
     ws = wb.active
+    ws.page_setup.orientation = "landscape" if columns.landscape else "portrait"
     ws.title = "طلبات العملاء"
     ws.sheet_view.rightToLeft = True
     ws["A1"] = "طلبات العملاء للإنتاج"
@@ -92,7 +100,7 @@ def build(svc, filters, statuses, planning=False, zone="UTC") -> bytes:
     ws["A2"] = f"تاريخ التصدير: {datetime.now(tz):%Y-%m-%d %H:%M} — عدد الطلبات: {len(rows)}"
     ws["A2"].font = Font(color="6B7280")
     head = 4
-    for col, name in enumerate(HEADERS, 1):
+    for col, name in enumerate(headers, 1):
         cell = ws.cell(row=head, column=col, value=name)
         cell.fill, cell.font, cell.border = BLUE, Font(bold=True, color="FFFFFF"), THIN
         cell.alignment = Alignment(wrap_text=True, vertical="center", horizontal="center")
@@ -108,7 +116,7 @@ def build(svc, filters, statuses, planning=False, zone="UTC") -> bytes:
             values = [d.demand_number, info["customer"]["name"], info["customer"]["code"], d.source_order_number or "",
                       (info["quote"] or {}).get("number") or "", d.request_date, d.requested_delivery_date,
                       PRIORITY.get(d.priority, d.priority), STATUS.get(d.status, d.status), d.planning_sequence, item.line_no,
-                      product.name("ar") if product else (item.product_type or ""), _spec(item.target_spec_json, product), _number(required), _number(allocated),
+                      product.name("ar") if product else (item.product_type or ""), *next(spec_rows), _number(required), _number(allocated),
                       _number(required - allocated), _unit(item.unit), round(float(allocated / required * 100), 1) if required else None,
                       LINE_STATE.get(item.planning_state, item.planning_state), orders, d.notes or "", item.notes or "", info["created_by"] or "",
                       d.created_at.astimezone(tz).replace(tzinfo=None) if d.created_at and d.created_at.tzinfo else d.created_at]
@@ -119,14 +127,14 @@ def build(svc, filters, statuses, planning=False, zone="UTC") -> bytes:
                     cell.fill = STRIPE
                 if col in (6, 7):
                     cell.number_format = "yyyy-mm-dd"
-                elif col == 24:
+                elif col == len(headers):
                     cell.number_format = "yyyy-mm-dd hh:mm"
             r += 1
-    for col, width in enumerate(WIDTHS, 1):
+    for col, width in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(col)].width = width
     ws.freeze_panes = ws.cell(row=head + 1, column=3)
     if r > head + 1:
-        ws.auto_filter.ref = f"A{head}:{get_column_letter(len(HEADERS))}{r - 1}"
+        ws.auto_filter.ref = f"A{head}:{get_column_letter(len(headers))}{r - 1}"
     out = BytesIO()
     wb.save(out)
     return out.getvalue()

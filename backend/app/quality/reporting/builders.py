@@ -1,3 +1,4 @@
+from app.core.specifications import format_spec_value
 """Quality report data (QUAL-REPORT-001): read-only, from quality's own tables.
 
 Production orders and lines are read through the shared metadata (`shared`), never by importing production's models.
@@ -180,7 +181,7 @@ SPEC_LABELS = {
 
 
 def spec_text(spec, lang):
-    return ' · '.join(f'{SPEC_LABELS.get(k, (k, k))[lang == "en"]}: {v}' for k, v in (spec or {}).items()) or None
+    return ' · '.join(f'{SPEC_LABELS.get(k, (k, k))[lang == "en"]}: {format_spec_value(v)}' for k, v in (spec or {}).items()) or None
 
 
 # ── Q1: one inspection ──────────────────────────────────────────────────────────────────────────

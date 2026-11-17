@@ -26,6 +26,7 @@ class PropertyInfo:
     unit: str | None = None
     options: tuple[tuple[str, str, str], ...] = ()  # (value, label_ar, label_en)
     required: bool = False
+    allows_range: bool = False
 
 
 @dataclass(frozen=True)
@@ -78,6 +79,30 @@ def products(db: Session, organization_id: UUID, keys: Iterable[str]) -> dict[st
 
 def business_settings(db: Session, organization_id: UUID) -> BusinessSettings:
     return _provider.settings(db, organization_id) if _provider else BusinessSettings()
+
+
+def validate_specification_values(db, organization_id, items, spec_attr='requested_spec_json'):
+    """Validate numeric fields/ranges on document writes, retaining free-text legacy specs.
+
+    The product catalogue is read once for the document. Only the owning module
+    validates all required/text/choice rules; this shared boundary protects ranges.
+    """
+    from app.core.specifications import normalize_numeric, SpecificationValueError
+    get = lambda item, key: item.get(key) if isinstance(item, dict) else getattr(item, key, None)
+    items = list(items)
+    known = products(db, organization_id, [get(item, 'product_type') for item in items])
+    for item in items:
+        product = known.get(get(item, 'product_type'))
+        props = {p.key: p for p in product.properties} if product else {}
+        for key, value in (get(item, spec_attr) or {}).items():
+            prop = props.get(key)
+            is_range = isinstance(value, dict) and ('min' in value or 'max' in value)
+            if value in (None, '') or not (is_range or (prop and prop.kind == 'number')):
+                continue
+            try:
+                get(item, spec_attr)[key] = normalize_numeric(value, bool(prop and prop.kind == 'number' and prop.allows_range))
+            except SpecificationValueError as exc:
+                raise ProductSpecificationError(exc.code, key) from None
 
 
 def sample_products(db: Session, organization_id: UUID) -> list[ProductInfo]:

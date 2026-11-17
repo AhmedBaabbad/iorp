@@ -25,10 +25,12 @@ class TableSection(BaseModel):
     cards: list[tuple[str, str]] = []
     # 'fields': rows are (label, value) pairs shown as a two-column information panel instead of a table.
     layout: Literal['table', 'fields'] = 'table'
+    specification_columns: int = 0
 
 
 class ReportData(BaseModel):
     sections: list[TableSection]
+    orientation: Literal["portrait", "landscape"] | None = None
     provisional: bool = False
     subject: str = ''
     applied_filters: str = ''

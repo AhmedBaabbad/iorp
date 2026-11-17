@@ -296,7 +296,7 @@ class SampleService:
     def product_view(product):
         return dict(key=product.key,name_ar=product.name_ar,name_en=product.name_en,active=product.active,
             default_unit=product.default_unit,properties=[dict(key=p.key,name_ar=p.name_ar,name_en=p.name_en,
-                kind=p.kind,unit=p.unit,required=p.required,options=[dict(value=v,label_ar=ar,label_en=en) for v,ar,en in p.options])
+                kind=p.kind,unit=p.unit,required=p.required,allows_range=p.allows_range,options=[dict(value=v,label_ar=ar,label_en=en) for v,ar,en in p.options])
                 for p in product.properties])
 
     def product_options(self,tenant):

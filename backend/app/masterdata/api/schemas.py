@@ -39,6 +39,7 @@ class PropertyInput(_Input):
     kind: PropertyKind = "text"
     unit: str | None = Field(default=None, max_length=32)
     required: bool = False
+    allows_range: bool = False
     options: list[OptionInput] | None = Field(default=None, max_length=rules.MAX_OPTIONS)
 
     @field_validator("unit")
@@ -93,6 +94,7 @@ class PropertyRead(BaseModel):
     name_en: str
     kind: str
     unit: str | None
+    allows_range: bool = False
     required: bool
     options: list[OptionRead] | None
 

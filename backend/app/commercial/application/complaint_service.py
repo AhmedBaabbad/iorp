@@ -39,7 +39,8 @@ def fail(code, status=409):
 
 
 def _text(value):
-    return '' if value is None else str(value)
+    from app.core.specifications import format_spec_value
+    return format_spec_value(value)
 
 
 class ComplaintService:

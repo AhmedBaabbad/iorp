@@ -1,4 +1,6 @@
 "use client";
+import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
+import { formatThickness, thicknessFields } from "@/lib/spec-value";
 import { customerDisplayName } from "@/lib/customer-name";
 
 import { TransportSelection, DirectorySelect, type TransportValues } from "@/features/reference-directory/DirectorySelect";
@@ -73,7 +75,7 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
       setMethod(x.delivery_method); setDate(x.shipment_date); setRegistered(Boolean(x.customer_id)); setCustomerId(x.customer_id ?? "");
       setH(Object.fromEntries(Object.keys(EMPTY_HEADER).map(k => [k, (x[k as keyof Header] as string | null) ?? ""])) as Header);
       setNotify(x.notify_consignee); setLocked(!x.actions.includes("edit"));
-      setLines(x.lines.map(l => ({ description: l.description, width_mm: text(l.width_mm), thickness_mm: text(l.thickness_mm),
+      setLines(x.lines.map(l => ({ description: l.description, width_mm: text(l.width_mm), thickness_mm: formatThickness(l.thickness_mm, l.thickness_max_mm),
         quantity: text(l.quantity), unit: l.unit, weight: text(l.weight), weight_unit: l.weight_unit, production_order_id: l.production_order_id ?? "" })));
       setOrders(x.lines.filter(l => l.production_order_id).map(l => ({ id: l.production_order_id!, number: l.production_order_no ?? "", product_type: "",
         status: "", planned_quantity: "", unit: "" })));
@@ -104,7 +106,7 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
   const set = (field: keyof Header, value: string) => setH(old => ({ ...old, [field]: value }));
   const setLine = (index: number, field: keyof Line, value: string) => setLines(old => old.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
   const linesOk = lines.every(l => l.description.trim() && DECIMAL.test(l.quantity.trim()) && Number(l.quantity) > 0 && l.unit.trim()
-    && [l.width_mm, l.thickness_mm, l.weight].every(v => !v.trim() || DECIMAL.test(v.trim())));
+    && [l.width_mm, l.weight].every(v => !v.trim() || DECIMAL.test(v.trim())) && (() => { try { const r = thicknessFields(l.thickness_mm); return r.thickness_mm === null || Number(r.thickness_mm) >= 0; } catch { return false; } })());
   const valid = Boolean(date) && (registered ? Boolean(customerId) : Boolean(h.customer_name.trim())) && linesOk;
 
   async function submit(event: FormEvent) {
@@ -114,7 +116,7 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
     const header = Object.fromEntries(Object.entries(h).map(([k, v]) => [k, blank(v)])) as unknown as ShipmentHeader;
     const body = { ...header, ...transport, delivery_site_id:site,customer_contact_id:contact, delivery_method: method, shipment_date: date, notify_consignee: notify, customer_id: registered ? customerId : null,
       customer_name: registered ? blank(h.customer_name) : h.customer_name.trim(),
-      lines: lines.map<ShipmentLineInput>(l => ({ description: l.description.trim(), width_mm: blank(l.width_mm), thickness_mm: blank(l.thickness_mm),
+      lines: lines.map<ShipmentLineInput>(l => ({ description: l.description.trim(), width_mm: blank(l.width_mm), ...thicknessFields(l.thickness_mm),
         quantity: l.quantity.trim(), unit: l.unit, weight: blank(l.weight), weight_unit: l.weight_unit, production_order_id: l.production_order_id || null })) };
     try {
       const saved = shipmentId ? await updateShipment(shipmentId, body) : await createShipment(body);
@@ -222,7 +224,7 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
               <label className={s.field} style={{ gridColumn: "1 / -1" }}>{t("lineFields.description")}
                 <input required maxLength={255} value={l.description} onChange={e => setLine(i, "description", e.target.value)} /></label>
               {(["width_mm", "thickness_mm"] as const).map(field => <label key={field} className={s.field}>{t(`lineFields.${field}`)}
-                <input inputMode="decimal" dir="ltr" value={l[field]} onChange={e => setLine(i, field, e.target.value)} /></label>)}
+                <NumericSpecInput value={l[field]} allowsRange={field === "thickness_mm"} onValueChange={text => setLine(i, field, text)} /></label>)}
               <label className={s.field}>{t("lineFields.quantity")}
                 <input required inputMode="decimal" dir="ltr" value={l.quantity} onChange={e => setLine(i, "quantity", e.target.value)} /></label>
               <label className={s.field}>{t("lineFields.unit")}

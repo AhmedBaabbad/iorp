@@ -39,13 +39,13 @@ def _value(spec: dict, names: tuple[str, ...]):
 
 
 def _sort_part(value):
-    # (missing?, is-text?, number, text): numbers sort numerically, text alphabetically, missing last.
+    from app.core.specifications import numeric_bounds
     if value is None:
-        return (1, 0, Decimal(0), "")
-    try:
-        return (0, 0, Decimal(str(value).strip()), "")
-    except (InvalidOperation, ValueError):
-        return (0, 1, Decimal(0), str(value).strip().casefold())
+        return (1, 0, Decimal(0), Decimal(0), "")
+    bounds = numeric_bounds(value)
+    if bounds:
+        return (0, 0, *bounds, "")
+    return (0, 1, Decimal(0), Decimal(0), str(value).strip().casefold())
 
 
 def sort_key(spec: dict | None):

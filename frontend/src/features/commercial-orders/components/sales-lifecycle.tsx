@@ -1,4 +1,5 @@
 "use client";
+import { formatSpecValue, isSpecRange } from "@/lib/spec-value";
 
 import { useLocale, useTranslations } from "next-intl";
 
@@ -70,9 +71,9 @@ export function SpecList({ productKey, spec }: { productKey: string; spec: Recor
         const name = prop ? (locale === "ar" ? prop.name_ar : prop.name_en) : key;
         const option = prop?.options?.find((o) => o.value === raw);
         const value = option ? (locale === "ar" ? option.label_ar : option.label_en)
-          : typeof raw === "object" ? JSON.stringify(raw) : String(raw);
+          : formatSpecValue(raw);
         const unit = prop?.unit ? ` ${units.has(prop.unit) ? units(prop.unit) : prop.unit}` : "";
-        return <li key={key}><strong>{name}</strong>: <bdi>{value}{unit}</bdi></li>;
+        return <li key={key}><strong>{name}</strong>: <bdi dir={isSpecRange(raw) ? "ltr" : "auto"}>{value}{unit}</bdi></li>;
       })}
     </ul>
   );

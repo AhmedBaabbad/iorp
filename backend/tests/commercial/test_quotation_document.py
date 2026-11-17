@@ -99,7 +99,7 @@ def test_arabic_document_content(doc_env):
                      'الشروط والأحكام', 'خامات شريط PP', 'مع خالص التحية', 'مدير المبيعات', 'مصرف الراجحي', 'SA0380000000608010167519',
                      'factory@rehanh.com', 'factory.rehanh.com'):
         assert expected in text, expected
-    assert 'strap — 15MM × 0.85MM' in text  # no description: product and specification
+    assert '>strap</bdi>' in text and '15MM' in text and '0.85MM' in text
     assert 'بند موقوف' not in text and 'لا يظهر' not in text  # inactive term and inactive bank account
 
 
@@ -109,7 +109,8 @@ def test_a_specification_typed_without_values_is_printed_in_full(doc_env):
     quote = create_quote(doc_env, items=[dict(line_no=1, product_type="PP Strap", requested_spec_json={long: "", "color": "White"},
                                               quantity="100", unit="roll", unit_price="60")])
     for lang in ("ar", "en"):
-        assert f"PP Strap — {long} × White" in html(doc_env, quote, lang)
+        rendered = html(doc_env, quote, lang)
+        assert '>PP Strap</bdi>' in rendered and long in rendered and 'White' in rendered
 
 
 def test_english_document_prints_only_english_settings(doc_env):

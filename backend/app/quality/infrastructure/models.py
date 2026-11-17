@@ -728,6 +728,7 @@ class QualityCertificate(Base):
     inspection_result: Mapped[str] = mapped_column(String(32), nullable=False)
     specification_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
     specification_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    product_specification: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     measurements: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     inspector_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     supersedes_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("quality_certificates.id"), nullable=True)

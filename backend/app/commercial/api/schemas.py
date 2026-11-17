@@ -422,6 +422,7 @@ class SamplePropertyDefinition(BaseModel):
     name_en: str
     kind: str
     unit: str | None = None
+    allows_range: bool = False
     required: bool = False
     options: list[SamplePropertyOption] = Field(default_factory=list)
 

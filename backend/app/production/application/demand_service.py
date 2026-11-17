@@ -161,6 +161,11 @@ class ProductionDemandService:
 
     def _add_item(self, row, data, keep=()):
         self._assert_products([data.product_type], keep)
+        from app.core.interfaces.product_catalog import validate_specification_values, ProductSpecificationError
+        try:
+            validate_specification_values(self.db, self.org_id, [data], 'target_spec_json')
+        except ProductSpecificationError as exc:
+            raise DemandError(exc.code, 400) from exc
         used = {item.line_no for item in row.items}
         line = data.line_no or max(used, default=0) + 1
         if line in used:
@@ -248,6 +253,15 @@ class ProductionDemandService:
                 self._assert_products([values["product_type"]], keep=[item.product_type, *self._quote_types(row)])
             if "line_no" in values and any(other.id != item.id and other.line_no == values["line_no"] for other in row.items):
                 raise DemandError("duplicate_line_number", 409)
+            from app.core.interfaces.product_catalog import validate_specification_values, ProductSpecificationError
+            candidate = {'product_type': values.get('product_type', item.product_type),
+                         'target_spec_json': deepcopy(values.get('target_spec_json', item.target_spec_json))}
+            try:
+                validate_specification_values(self.db, self.org_id, [candidate], 'target_spec_json')
+            except ProductSpecificationError as exc:
+                raise DemandError(exc.code, 400) from exc
+            if 'target_spec_json' in values:
+                values['target_spec_json'] = candidate['target_spec_json']
             for key, value in values.items():
                 setattr(item, key, deepcopy(value))
         row.updated_at = utc_now()

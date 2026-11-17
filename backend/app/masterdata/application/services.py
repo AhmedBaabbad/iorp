@@ -66,7 +66,7 @@ class ProductService:
         for number, prop in enumerate(properties, 1):
             product.properties.append(ProductProperty(
                 line_no=number, key=prop.key, name_ar=prop.name_ar, name_en=prop.name_en, kind=prop.kind, unit=prop.unit or None,
-                required=prop.required, options=[o.model_dump() for o in prop.options] if prop.options else None))
+                required=prop.required, allows_range=prop.allows_range, options=[o.model_dump() for o in prop.options] if prop.options else None))
 
     def create(self, data) -> Product:
         key = data.key or rules.key_from(data.name_en)

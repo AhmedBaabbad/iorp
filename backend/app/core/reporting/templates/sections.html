@@ -11,7 +11,7 @@
   {% elif section.rows %}
   <table class="data">
     <thead><tr>{% for column in section.columns %}<th>{{ column }}</th>{% endfor %}</tr></thead>
-    <tbody>{% for row in section.rows %}<tr>{% for cell in row %}<td{% if cell is numeric %} class="num"{% endif %}><bdi>{{ cell }}</bdi></td>{% endfor %}</tr>{% endfor %}</tbody>
+    <tbody>{% for row in section.rows %}<tr>{% for cell in row %}<td{% if cell is numeric %} class="num"{% endif %}><bdi{% if cell is spec_range %} dir="ltr"{% endif %}>{{ cell }}</bdi></td>{% endfor %}</tr>{% endfor %}</tbody>
   </table>
   {% elif not section.cards and not section.bars %}
   <p class="empty">{{ 'لا توجد بيانات ضمن النطاق المختار' if ar else 'No data in the selected scope' }}</p>

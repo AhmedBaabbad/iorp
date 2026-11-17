@@ -78,7 +78,7 @@ export type ReturnSource = {
 
 // Returned goods received for quality, each line with its inspection once opened.
 export type AwaitingReturnLine = {
-  line_id: string; line_no: number; description: string; width_mm: string | null; thickness_mm: string | null; unit: string;
+  line_id: string; line_no: number; description: string; width_mm: string | null; thickness_mm: string | null; thickness_max_mm?: string | null; unit: string;
   production_order_id: string | null; production_order_no: string | null; received_quantity: string | null;
   inspection_id: string | null; inspection_code: string | null; inspection_status: QualityCheckStatus | null;
 };
@@ -120,7 +120,7 @@ export type QualityCheckData = QualityCheckListItem & {
   specification_id: string | null;
   specification_code: string | null;
   specification_revision: number | null;
-  lot_values: Record<string, string> | null;
+  lot_values: Record<string, unknown> | null;
   measurements: Measurement[];
   notes: string | null;
   started_at: string | null;

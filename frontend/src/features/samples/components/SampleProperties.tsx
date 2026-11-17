@@ -1,4 +1,6 @@
 "use client";
+import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
+import { formatSpecValue, isSpecRange, numericSpecOrText } from "@/lib/spec-value";
 import {useUnitLabel} from "@/components/UnitLabel";
 import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
@@ -13,6 +15,7 @@ function ReadableValue({ value }: { value: unknown }) {
   if (value === null || value === undefined || value === '') return <>—</>;
   if (typeof value === 'boolean') return <>{t(value ? 'yes' : 'no')}</>;
   if (Array.isArray(value)) return <ul>{value.map((v, i) => <li key={i}><ReadableValue value={v} /></li>)}</ul>;
+  if (isSpecRange(value)) return <bdi dir="ltr">{formatSpecValue(value)}</bdi>;
   if (typeof value === 'object') return <dl>{Object.entries(value).map(([k, v]) => <div key={k}><dt>{k}</dt><dd><ReadableValue value={v} /></dd></div>)}</dl>;
   return <bdi>{String(value)}</bdi>;
 }
@@ -60,7 +63,7 @@ export function SampleProductFields({ productKey, values, original, unchanged = 
     for (const prop of product?.properties ?? []) {
       const v = next[prop.key];
       if (v === '') delete next[prop.key];
-      else if (prop.kind === 'number' && typeof v === 'string' && v.trim() && Number.isFinite(Number(v))) next[prop.key] = Number(v);
+      else if (prop.kind === 'number' && typeof v === 'string' && v.trim()) next[prop.key] = numericSpecOrText(v, prop.allows_range);
     }
     onChange(productKey, next);
   }
@@ -83,14 +86,17 @@ export function SampleProductFields({ productKey, values, original, unchanged = 
         {product.properties.map(p => {
           const label = ar ? p.name_ar : p.name_en;
           const raw = values[p.key];
-          const value = typeof raw === 'string' || typeof raw === 'number' ? String(raw) : '';
+          const value = formatSpecValue(raw);
           return <label key={p.key} style={sharedStyles.field}><span>{label}{p.unit ? ` (${unitText(p.unit)})` : ''}{p.required ? ' *' : ''}</span>
             {p.kind === 'choice' ? <select aria-label={label} style={sharedStyles.input} value={value} required={p.required && !unchanged}
               onChange={e => changeProperty(p.key, e.target.value)}>
               <option value="">—</option>{p.options?.map(o => <option key={o.value} value={o.value}>{ar ? o.label_ar : o.label_en}</option>)}
               {value && !p.options?.some(o => o.value === value) && <option value={value} disabled>{value} — {t('legacy')}</option>}
-            </select> : <input aria-label={label} style={sharedStyles.input} type={p.kind === 'number' ? 'number' : 'text'} step={p.kind === 'number' ? 'any' : undefined}
+            </select> : p.kind === 'number' ? <NumericSpecInput aria-label={label} style={sharedStyles.input}
+              value={raw} allowsRange={p.allows_range} required={p.required && !unchanged}
+              onValueChange={text => changeProperty(p.key, text)} /> : <input aria-label={label} style={sharedStyles.input}
               value={value} required={p.required && !unchanged} onChange={e => changeProperty(p.key, e.target.value)} />}
+
           </label>;
         })}
       </div>

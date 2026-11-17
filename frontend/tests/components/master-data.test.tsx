@@ -34,6 +34,19 @@ const ui = (node: ReactNode, locale: "en" | "ar" = "en") =>
   render(<NextIntlClientProvider locale={locale} messages={locale === "en" ? en : ar} timeZone="UTC">{node}</NextIntlClientProvider>);
 const sent = (path: string, method: string) => api.apiClient.mock.calls.find(([p, o]) => p === path && o?.method === method)?.[1]?.body;
 
+it("offers range opt-in only on numeric properties and clears it on type changes", () => {
+  ui(<ProductForm />);
+  fireEvent.click(screen.getByRole("button", { name: "Add property" }));
+  const group = screen.getByRole("group", { name: /New property/ });
+  const range = within(group).getByRole("checkbox", { name: "Allows a range (from – to)" }) as HTMLInputElement;
+  fireEvent.click(range);
+  expect(range.checked).toBe(true);
+  fireEvent.change(within(group).getByLabelText("Type"), { target: { value: "text" } });
+  expect(within(group).queryByRole("checkbox", { name: "Allows a range (from – to)" })).toBeNull();
+  fireEvent.change(within(group).getByLabelText("Type"), { target: { value: "number" } });
+  expect((within(group).getByRole("checkbox", { name: "Allows a range (from – to)" }) as HTMLInputElement).checked).toBe(false);
+});
+
 const strap: Product = { id: "p1", code: "PRD-0001", key: "pp_strap", name_ar: "شريط تربيط PP", name_en: "PP Strap", kind: "finished", default_unit: "roll",
   active: true, notes: null, actions: ["edit"], created_at: "", updated_at: "", properties: [
     { key: "width_mm", name_ar: "العرض", name_en: "Width", kind: "number", unit: "mm", required: true, options: null },

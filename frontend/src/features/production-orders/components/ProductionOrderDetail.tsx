@@ -1,4 +1,5 @@
 "use client";
+import { SpecList } from "@/features/commercial-orders/components/sales-lifecycle";
 
 import Link from "next/link";
 import { OrderAllocations } from "./OrderAllocations";
@@ -222,9 +223,7 @@ export function ProductionOrderDetail() {
           <section style={styles.section}>
             <h2 style={styles.sectionTitle}>{t("specificationsSection")}</h2>
             {order.target_spec_json && Object.keys(order.target_spec_json).length > 0 ? (
-              <pre style={styles.codeBlock}>
-                {JSON.stringify(order.target_spec_json, null, 2)}
-              </pre>
+              <SpecList productKey={order.product_type ?? ""} spec={order.target_spec_json} />
             ) : (
               <p style={{ margin: 0 }}>{t("noSpecifications")}</p>
             )}
@@ -241,6 +240,7 @@ export function ProductionOrderDetail() {
           {/* Planning orders show their lines above; manual items remain for orders without allocations. */}
           {order.allocations.length === 0 && (
             <ProductionOrderItemsList
+              productType={order.product_type ?? undefined}
               productionOrderId={order.id}
               productionOrderStatus={order.status}
             />

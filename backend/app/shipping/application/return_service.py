@@ -133,7 +133,7 @@ class ReturnService:
         for number, (line, quantity) in enumerate(quantities, 1):
             weight = (weights or {}).get(line.id)
             ret.lines.append(ShipmentReturnLine(
-                shipment_line_id=line.id, line_no=number, description=line.description, width_mm=line.width_mm, thickness_mm=line.thickness_mm,
+                shipment_line_id=line.id, line_no=number, description=line.description, width_mm=line.width_mm, thickness_mm=line.thickness_mm, thickness_max_mm=line.thickness_max_mm,
                 unit=line.unit, weight_unit=line.weight_unit, production_order_no=line.production_order_no, quantity=quantity,
                 weight=weight if weight is not None else R.share(line.weight, quantity, line.quantity)))
         self.db.add(ret)
