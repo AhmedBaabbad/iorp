@@ -1,3 +1,5 @@
+from app.core.interfaces.product_catalog import products
+from app.core.interfaces.specification_columns import specification_columns
 from collections import defaultdict
 from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal
@@ -189,8 +191,15 @@ def order_full(db, tenant, params, selected):
         rows = [(bi(field, lang), value) for field, value in rows]
         sections.append(table('information', 'معلومات الأمر', 'Order information', ['الحقل / Field', 'القيمة / Value'], rows, lang, layout='fields'))
     if 'items' in selected:
-        sections.append(table('items', 'البنود والمواصفات', 'Items and specifications', ['#', label('product', lang), 'المواصفات / Specifications', label('planned_qty', lang), label('unit', lang)],
-            [(i.line_no, order.product_type, ' · '.join(f'{k}: {v}' for k,v in (i.target_spec_json or {}).items()), i.planned_quantity, i.unit) for i in order.items], lang))
+        definitions = products(db, tenant.organization_id, [order.product_type])
+        columns = specification_columns(order.items, definitions, lang,
+            product_key=lambda i: order.product_type, spec=lambda i: i.target_spec_json)
+        section = table('items', 'البنود والمواصفات', 'Items and specifications',
+            ['#', label('product', lang), *columns.headers, label('planned_qty', lang), label('unit', lang)],
+            [(i.line_no, definitions[order.product_type].name(lang) if order.product_type in definitions else order.product_type,
+              *columns.rows[n], i.planned_quantity, i.unit) for n, i in enumerate(order.items)], lang)
+        section.specification_columns = len(columns.headers)
+        sections.append(section)
     if 'allocations' in selected:
         # The order's status when each quantity was allocated: "in progress" / "on hold" marks what was added after start.
         sections.append(table('allocations', 'طلبات العملاء والتخصيصات', 'Customer demand and allocations', [label('customer',lang),'الطلب / Demand',label('allocated_qty',lang),label('unit',lang),

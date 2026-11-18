@@ -31,7 +31,7 @@ PHONES = ("consignee_phone", "driver_phone")
 # What a rescheduled note may change: who carries it, and when (never its customer or its lines).
 TRANSPORT = ("driver_id", "vehicle_id", "carrier_id", "driver_affiliation", "delivery_method", "shipment_date", "driver_name", "driver_phone", "driver_id_no", "vehicle_plate", "vehicle_type",
              "carrier_name", "tracking_no")
-LINE_FIELDS = ("description", "width_mm", "thickness_mm", "quantity", "unit", "weight", "weight_unit", "production_order_id")
+LINE_FIELDS = ("description", "width_mm", "thickness_mm", "thickness_max_mm", "quantity", "unit", "weight", "weight_unit", "production_order_id")
 
 
 def _kg(value, unit):

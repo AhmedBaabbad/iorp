@@ -1,3 +1,4 @@
+from app.core.specifications import format_spec_value
 """The Certificate of Analysis document (QUAL-COA-001), rendered by the reporting core with the external identity.
 
 Everything printed comes from the certificate record (frozen when the draft was made); nothing is stored.
@@ -31,7 +32,7 @@ def _num(value):
 def _limits(m, ar):
     lower, upper = _num(m.get("lower")), _num(m.get("upper"))
     if lower and upper:
-        return f"{lower} – {upper}"
+        return format_spec_value({'min': float(lower), 'max': float(upper)})
     if lower:
         return ("الأدنى " if ar else "Min. ") + lower
     if upper:
@@ -94,15 +95,24 @@ def build(db, tenant, params, selected) -> ReportData:
         (tr("عينة محفوظة", "Retained sample"), (tr("نعم", "Yes") + (f" — {c.retention_ref}" if c.retention_ref else "")) if c.retained_sample else tr("لا", "No")),
         (tr("سجل الفحص", "Inspection record"), c.inspection_code),
     ]
+    from types import SimpleNamespace
+    from app.core.interfaces.product_catalog import ProductInfo, PropertyInfo
+    from app.core.interfaces.specification_columns import specification_columns
+    frozen = c.product_specification or {}
+    raw = frozen.get('product')
+    definitions = {}
+    if raw:
+        definitions[raw['key']] = ProductInfo(**{**raw, 'properties': tuple(PropertyInfo(**p) for p in raw['properties'])})
+    spec_columns = specification_columns([SimpleNamespace(product_type=frozen.get('key'), requested_spec_json=frozen.get('values') or {})], definitions, params.lang)
     document = dict(
-        identification=identification, rows=rows, sampling=sampling,
+        identification=identification, rows=rows, sampling=sampling, spec_headers=spec_columns.headers, spec_rows=spec_columns.rows,
         overall=tr("بانتظار اعتماد الإفراج", "PENDING RELEASE APPROVAL") if c.status == "draft"
         else tr("مُفرَج عنه — مطابق مع انحراف معتمد", "RELEASED — CONFORMING WITH APPROVED DEVIATION") if conditional
         else tr("مُفرَج عنه — مطابق", "RELEASED / CONFORMING"),
         deviation=c.deviation_note if conditional else None, remarks=c.remarks,
         prepared_by=c.inspector_name or names.get(c.prepared_by_user_id) or "", approved_by=approvals.signed_name(issued, names.get(c.issued_by_user_id), params.lang),
         approved_on=day(c.issued_at) if c.issued_at else "", status=c.status, revoke_reason=c.revoke_reason)
-    return ReportData(sections=[], subject=c.certificate_no or "DRAFT", document=document)
+    return ReportData(sections=[], orientation="landscape" if spec_columns.landscape else "portrait", subject=c.certificate_no or "DRAFT", document=document)
 
 
 def watermark(data, lang):

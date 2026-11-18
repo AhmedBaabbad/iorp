@@ -7,6 +7,7 @@ takes from the order line but the line lacks (e.g. an order written before its s
 inspector when applying the plan; it is kept on the check as the lot's value. A value the order line has always wins.
 """
 from __future__ import annotations
+from app.core.specifications import numeric_bounds
 
 from decimal import Decimal
 
@@ -54,7 +55,7 @@ class MeasurementService:
     def missing_keys(self, spec_id, effective) -> list[str]:
         keys = {line.order_spec_key for line, parameter in self.specs.lines(spec_id)
                 if parameter.kind == rules.NUMERIC and line.target_source == rules.ORDER_LINE and line.order_spec_key}
-        return sorted(k for k in keys if rules.decimal(effective.get(k)) is None)
+        return sorted(k for k in keys if numeric_bounds(effective.get(k)) is None)
 
     @staticmethod
     def _effective(check, lot_spec, extra=None) -> dict:
@@ -62,7 +63,7 @@ class MeasurementService:
         entered = {**(check.lot_values or {}), **(extra or {})}
         effective = dict(lot_spec)
         for key, value in entered.items():
-            if rules.decimal(lot_spec.get(key)) is None:
+            if numeric_bounds(lot_spec.get(key)) is None:
                 effective[key] = value
         return effective
 
@@ -77,7 +78,7 @@ class MeasurementService:
             raise QualityError("MEASUREMENTS_STARTED")
         _product, lot_spec = self.lot(check)
         for key, value in (lot_values or {}).items():
-            if rules.decimal(value) is None:
+            if numeric_bounds(value) is None:
                 raise QualityError("LOT_VALUE_INVALID", 400, key=key, value=str(value))
         effective = self._effective(check, lot_spec, lot_values)
         lines = self.specs.lines(spec.id)
@@ -101,7 +102,7 @@ class MeasurementService:
         check.specification_id, check.specification_code, check.specification_revision = spec.id, spec.code, spec.revision
         # Keep only what the inspector supplied for values the lot lacks, as the lot's recorded values.
         used = {line.order_spec_key for line, _p in lines if line.target_source == rules.ORDER_LINE}
-        supplied = {k: str(v) for k, v in effective.items() if k in used and rules.decimal(lot_spec.get(k)) is None}
+        supplied = {k: (v if isinstance(v, dict) else str(v)) for k, v in effective.items() if k in used and numeric_bounds(lot_spec.get(k)) is None}
         check.lot_values = supplied or None
         record(self.db, self.org, "check", check.id, "plan", check.status.value, check.status.value, self.tenant.user_id,
                detail=dict(specification=f"{spec.code} rev {spec.revision}"))

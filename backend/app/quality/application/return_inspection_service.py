@@ -7,6 +7,7 @@ rejected part a rejection already decided (second grade, rework, back to the pro
 later as usual — and, when asked, a draft NCR for the customer return.
 """
 from __future__ import annotations
+from app.core.specifications import thickness_value
 
 from decimal import Decimal
 
@@ -56,7 +57,7 @@ class ReturnInspectionService:
                 received_at=line["received_at"], shipment_id=line["shipment_id"], shipment_no=line["shipment_no"], lines=[]))
             entry["lines"].append(dict(
                 line_id=line["line_id"], line_no=line["line_no"], description=line["description"], width_mm=line["width_mm"],
-                thickness_mm=line["thickness_mm"], unit=line["unit"], production_order_id=line["production_order_id"],
+                thickness_mm=line["thickness_mm"], thickness_max_mm=line["thickness_max_mm"], unit=line["unit"], production_order_id=line["production_order_id"],
                 production_order_no=line["production_order_no"], received_quantity=line["received_quantity"],
                 inspection_id=check.id if check else None, inspection_code=check.inspection_code if check else None,
                 inspection_status=check.status.value if check else None))
@@ -74,6 +75,8 @@ class ReturnInspectionService:
         line = self.shipping.line(return_line_id)
         RR.assert_awaiting(line, bool(line) and return_line_id in self._checks_by_line([return_line_id]))
         lot = {key: _text(line[key]) for key in LOT_KEYS if line[key] is not None}
+        if line["thickness_mm"] is not None and line["thickness_max_mm"] is not None:
+            lot["thickness_mm"] = thickness_value(line["thickness_mm"], line["thickness_max_mm"])
         check = QualityCheck(
             organization_id=self.org, inspection_code=next_code(self.db, self.org, "QI"), check_type=T.ISSUE_TRIGGERED,
             check_datetime=utc_now(), status=S.OPEN, result=None, production_order_id=line["production_order_id"],

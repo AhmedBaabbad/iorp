@@ -1,6 +1,7 @@
 {#- Certificate of Analysis (QUAL-COA-001): identification, specification and actual results, sampling and release, signatures. -#}
 {%- set ar = lang == 'ar' %}{% set d = data.document %}
 <main class="coa">
+
   <header class="coa-banner">
     <h1>{{ 'شهادة تحليل (COA)' if ar else 'CERTIFICATE OF ANALYSIS (COA)' }}</h1>
     <p class="coa-sub">{{ 'شهادة جودة الدفعة من الشركة المصنّعة' if ar else "MANUFACTURER'S BATCH QUALITY CERTIFICATE" }}</p>
@@ -12,6 +13,13 @@
     <h2><span>1</span>{{ 'بيانات الشهادة والدفعة' if ar else 'Certificate & batch identification' }}</h2>
     <dl class="coa-grid">{% for label, value in d.identification %}<div><dt>{{ label }}</dt><dd><bdi>{{ value }}</bdi></dd></div>{% endfor %}</dl>
   </section>
+
+  {% if d.spec_headers %}<section class="coa-block">
+    <h2>{{ 'مواصفات المنتج' if ar else 'Product specifications' }}</h2>
+    <table class="data"><thead><tr>{% for header in d.spec_headers %}<th>{{ header }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for row in d.spec_rows %}<tr>{% for cell in row %}<td><bdi dir="{{ 'ltr' if ' – ' in cell else 'auto' }}">{{ cell }}</bdi></td>{% endfor %}</tr>{% endfor %}</tbody>
+    </table>
+  </section>{% endif %}
 
   <section class="coa-block" style="break-inside:auto">
     <h2><span>2</span>{{ 'مواصفات المنتج ونتائج الدفعة الفعلية' if ar else 'Product specification & actual batch results' }}</h2>

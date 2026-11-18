@@ -4,7 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 import uuid
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, JSON, Boolean, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -103,13 +103,14 @@ class ShipmentLine(Base):
     """What is shipped (SHIP-003): description, width and thickness (mm), quantity in a unit from the shared catalogue
     (app/core/units.py), and the full weight of those units in a weight unit."""
     __tablename__ = "shipping_shipment_lines"
-    __table_args__ = (UniqueConstraint("shipment_id", "line_no", name="uq_shipping_shipment_lines_no"),)
+    __table_args__ = (UniqueConstraint("shipment_id", "line_no", name="uq_shipping_shipment_lines_no"), CheckConstraint("thickness_max_mm IS NULL OR (thickness_mm IS NOT NULL AND thickness_max_mm >= thickness_mm)", name="ck_shipping_shipment_lines_thickness_range"))
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     shipment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("shipping_shipments.id", ondelete="CASCADE"), nullable=False, index=True)
     line_no: Mapped[int] = mapped_column(Integer, nullable=False)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
     width_mm: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
     thickness_mm: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
+    thickness_max_mm: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
     quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False)
     unit: Mapped[str] = mapped_column(String(32), nullable=False)
     weight: Mapped[Decimal | None] = mapped_column(Numeric(14, 3), nullable=True)
@@ -190,7 +191,7 @@ class ShipmentReturnLine(Base):
     """A delivery note line coming back: how much is expected, and what actually arrived. The line's description and
     units are copied, so the return prints what the note printed."""
     __tablename__ = "shipping_return_lines"
-    __table_args__ = (UniqueConstraint("return_id", "line_no", name="uq_shipping_return_lines_no"),)
+    __table_args__ = (UniqueConstraint("return_id", "line_no", name="uq_shipping_return_lines_no"), CheckConstraint("thickness_max_mm IS NULL OR (thickness_mm IS NOT NULL AND thickness_max_mm >= thickness_mm)", name="ck_shipping_return_lines_thickness_range"))
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     return_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("shipping_returns.id", ondelete="CASCADE"), nullable=False, index=True)
     shipment_line_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("shipping_shipment_lines.id"), nullable=False, index=True)
@@ -198,6 +199,7 @@ class ShipmentReturnLine(Base):
     description: Mapped[str] = mapped_column(String(255), nullable=False)
     width_mm: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
     thickness_mm: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
+    thickness_max_mm: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
     unit: Mapped[str] = mapped_column(String(32), nullable=False)
     weight_unit: Mapped[str] = mapped_column(String(8), nullable=False, default="kg")
     production_order_no: Mapped[str | None] = mapped_column(String(64), nullable=True)

@@ -247,7 +247,12 @@
     "TRANSPORT_RECORD_UNAVAILABLE": "السائق أو المركبة أو شركة النقل غير متاحة للاختيار.",
     "CUSTOMER_DELIVERY_RECORD_UNAVAILABLE": "موقع التسليم أو جهة الاتصال غير متاح لهذا العميل.",
     "SUPPLIER_CONTACT_UNAVAILABLE": "جهة الاتصال غير متاحة لهذا المورد.",
-    "LOCATION_URL_INVALID": "يجب أن يبدأ رابط الموقع بـ https://"
+    "LOCATION_URL_INVALID": "يجب أن يبدأ رابط الموقع بـ https://",
+    "SPEC_RANGE_NOT_ALLOWED": "هذه الخانة لا تقبل نطاقًا؛ أدخل رقمًا مفردًا.",
+    "SPEC_RANGE_SHAPE": "يجب أن يحتوي النطاق على الحد الأدنى والأعلى فقط.",
+    "SPEC_RANGE_NUMBER": "أدخل رقمًا أو نطاقًا رقميًا صحيحًا (مثل 0.55 – 0.60).",
+    "SPEC_RANGE_REVERSED": "الحد الأدنى يجب ألا يتجاوز الحد الأعلى.",
+    "RANGE_ONLY_FOR_NUMBER": "خيار النطاق متاح للخانات الرقمية فقط."
   },
   "productionOrder": {
     "none": "غير مرتبط",

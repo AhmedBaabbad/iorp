@@ -1,4 +1,5 @@
 "use client";
+import { formatThickness } from "@/lib/spec-value";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -97,7 +98,7 @@ export function ReturnDetail({ returnId }: { returnId: string }) {
           <td>{l.line_no}</td>
           <td>{l.description}{l.production_order_no && <div className={s.muted}>{shipping("lineFields.production_order")}: <bdi dir="ltr">{l.production_order_no}</bdi></div>}</td>
           <td><bdi>{l.width_mm !== null ? String(Number(l.width_mm)) : "—"}</bdi></td>
-          <td><bdi>{l.thickness_mm !== null ? String(Number(l.thickness_mm)) : "—"}</bdi></td>
+          <td><bdi dir="ltr">{l.thickness_mm !== null ? formatThickness(l.thickness_mm, l.thickness_max_mm) : "—"}</bdi></td>
           <td><bdi>{fmt.quantity(l.quantity, unit(l.unit))}</bdi></td>
           <td><bdi>{received && l.received_quantity !== null ? fmt.quantity(l.received_quantity, unit(l.unit)) : "—"}</bdi></td>
           <td><bdi>{(received ? l.received_weight : l.weight) ? fmt.quantity((received ? l.received_weight : l.weight)!, unit(l.weight_unit)) : "—"}</bdi></td>

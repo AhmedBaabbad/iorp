@@ -1,4 +1,6 @@
 "use client";
+import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
+import { parseNumericSpec, formatSpecValue, numericSpecOrText } from "@/lib/spec-value";
 
 import {UnitLabel} from "@/components/UnitLabel";
 import Link from "next/link";
@@ -36,7 +38,7 @@ const filled = (d: Draft) => d.readings.map(r => r.trim()).filter(Boolean);
 
 export function limitsText(m: Pick<Measurement, "lower_limit" | "upper_limit">) {
   const trim = (v: string) => String(Number(v));
-  if (m.lower_limit !== null && m.upper_limit !== null) return `${trim(m.lower_limit)} – ${trim(m.upper_limit)}`;
+  if (m.lower_limit !== null && m.upper_limit !== null) return formatSpecValue({ min: Number(m.lower_limit), max: Number(m.upper_limit) });
   if (m.lower_limit !== null) return `≥ ${trim(m.lower_limit)}`;
   if (m.upper_limit !== null) return `≤ ${trim(m.upper_limit)}`;
   return "—";
@@ -71,7 +73,7 @@ export function MeasurementsSection({ check, onChange }: { check: QualityCheckDa
 
   const chosen = candidates?.find(c => c.id === choice) ?? null;
   const missing = chosen?.missing_keys ?? [];
-  const valuesReady = missing.every(k => /^\d+(\.\d+)?$/.test((lotValues[k] ?? "").trim()));
+  const valuesReady = missing.every(k => { try { parseNumericSpec(lotValues[k] ?? "", true); return true; } catch { return false; } });
   const matching = candidates?.filter(c => c.matches_product) ?? [];
   const others = candidates?.filter(c => !c.matches_product) ?? [];
   const option = (c: PlanCandidate) => <option key={c.id} value={c.id}>{c.code} — rev {c.revision} — {c.title}</option>;
@@ -98,11 +100,11 @@ export function MeasurementsSection({ check, onChange }: { check: QualityCheckDa
             </select>
           </label>
           {missing.map(key => <label key={key} className={s.field}>{keyLabel(key)}
-            <input required dir="ltr" inputMode="decimal" style={{ width: 120 }} value={lotValues[key] ?? ""} disabled={busy}
-              onChange={e => setLotValues(old => ({ ...old, [key]: e.target.value }))} />
+            <NumericSpecInput required allowsRange style={{ width: 120 }} value={lotValues[key] ?? ""} disabled={busy}
+              onValueChange={text => setLotValues(old => ({ ...old, [key]: text }))} />
           </label>)}
           <button type="button" className={`${s.button} ${s.primary}`} disabled={busy || !choice || !valuesReady}
-            onClick={() => void run(() => applyPlan(check.id, choice, Object.fromEntries(missing.map(k => [k, lotValues[k].trim()]))))}>{t("applyPlan")}</button>
+            onClick={() => void run(() => applyPlan(check.id, choice, Object.fromEntries(missing.map(k => [k, typeof numericSpecOrText(lotValues[k], true) === "number" ? normalizeReading(lotValues[k]) : numericSpecOrText(lotValues[k], true)]))))}>{t("applyPlan")}</button>
         </div>
         {chosen && !chosen.matches_product && <p className={s.muted} style={{ margin: "8px 0 0" }}>{t("otherProductHint", { product: chosen.product_type })}</p>}
         {missing.length > 0 && <p className={s.muted} style={{ margin: "8px 0 0" }}>{t("missingValuesHint")}</p>}
@@ -150,7 +152,7 @@ function MeasurementTable({ check, ar, editable, busy, setBusy, setError, onChan
   }
 
   return <>
-    {check.lot_values && <p className={s.muted}>{t("lotValues", { values: Object.entries(check.lot_values).map(([k, v]) => `${keyLabel(k)}: ${v}`).join(" · ") })}</p>}
+    {check.lot_values && <p className={s.muted}>{t("lotValues", { values: Object.entries(check.lot_values).map(([k, v]) => `${keyLabel(k)}: ${formatSpecValue(v)}`).join(" · ") })}</p>}
     <p className={s.muted}>{t("summary", { pass: String(counts.pass), fail: String(counts.fail), pending: String(counts.pending) })}</p>
     <div className={s.tableWrap}><table className={s.table} aria-label={t("title")}>
       <thead><tr>{["parameter", "unit", "target", "acceptance", "result", "stats", "verdict"].map(c => <th key={c}>{t(`columns.${c}`)}</th>)}</tr></thead>

@@ -183,7 +183,7 @@ class ShippingReads:
     def _lines(self):
         returns, lines, notes, note_lines = (_t("shipping_returns"), _t("shipping_return_lines"), _t("shipping_shipments"),
                                              _t("shipping_shipment_lines"))
-        query = (select(lines.c.id.label("line_id"), lines.c.line_no, lines.c.description, lines.c.width_mm, lines.c.thickness_mm, lines.c.unit,
+        query = (select(lines.c.id.label("line_id"), lines.c.line_no, lines.c.description, lines.c.width_mm, lines.c.thickness_mm, lines.c.thickness_max_mm, lines.c.unit,
                         lines.c.weight_unit, lines.c.production_order_no, lines.c.received_quantity, lines.c.received_weight,
                         returns.c.id.label("return_id"), returns.c.return_no, returns.c.kind, returns.c.reason, returns.c.responsibility,
                         returns.c.details, returns.c.customer_name, returns.c.received_at, returns.c.status, returns.c.quality_required,

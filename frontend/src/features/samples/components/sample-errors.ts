@@ -1,7 +1,7 @@
 import { ApiClientError } from '@/lib/api-client';
 import { getApiErrorMessage } from '@/lib/api-error-handler';
 
-const codes = new Set(['SAMPLE_PRODUCT_NOT_FOUND','SAMPLE_PRODUCT_INACTIVE','SAMPLE_PROPERTY_UNKNOWN',
+const codes = new Set(['SPEC_RANGE_NOT_ALLOWED','SPEC_RANGE_SHAPE','SPEC_RANGE_NUMBER','SPEC_RANGE_REVERSED','SAMPLE_PRODUCT_NOT_FOUND','SAMPLE_PRODUCT_INACTIVE','SAMPLE_PROPERTY_UNKNOWN',
   'SAMPLE_PROPERTY_REQUIRED','SAMPLE_PROPERTY_NUMBER','SAMPLE_PROPERTY_TEXT','SAMPLE_PROPERTY_CHOICE','SAMPLE_PROPERTY_KIND']);
 
 export function sampleError(error: unknown, t: (key: string) => string, messages: (key: string) => string) {

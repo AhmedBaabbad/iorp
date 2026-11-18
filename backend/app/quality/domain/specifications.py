@@ -48,7 +48,8 @@ def decimal(value):
     if value is None or value == "":
         return None
     try:
-        return Decimal(str(value))
+        number = Decimal(str(value))
+        return number if number.is_finite() else None
     except (InvalidOperation, ValueError):
         return None
 
@@ -101,6 +102,12 @@ def resolve_limits(line, lot_spec: dict | None):
     if source == FIXED:
         target = decimal(line.get("target_value"))
     elif source == ORDER_LINE:
+        from app.core.specifications import numeric_bounds
+        raw = (lot_spec or {}).get(line.get("order_spec_key"))
+        bounds = numeric_bounds(raw)
+        if isinstance(raw, dict) and bounds:
+            # A range is the acceptance interval, never a midpoint target.
+            return None, bounds[0], bounds[1]
         target = decimal((lot_spec or {}).get(line.get("order_spec_key")))
         if target is None:
             raise QualityError("LOT_SPEC_VALUE_MISSING", 409, parameter=line.get("parameter_code"), key=line.get("order_spec_key"))

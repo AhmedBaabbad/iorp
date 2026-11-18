@@ -1,3 +1,4 @@
+from app.core.specifications import format_spec_value, thickness_value
 """The delivery note (SHIP-001, SHIP-004), rendered by the reporting core with the company's external identity. Nothing is stored."""
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -61,7 +62,7 @@ def build(db, tenant, params, selected) -> ReportData:
     totals = rules.totals(s.lines)
     unit = lambda code: unit_label(code, params.lang)  # noqa: E731
     weight = lambda value, code: f"{_num(value)} {unit(code)}" if value is not None else "—"  # noqa: E731
-    lines = [dict(no=line.line_no, description=line.description, width=_num(line.width_mm) or "—", thickness=_num(line.thickness_mm) or "—",
+    lines = [dict(no=line.line_no, description=line.description, width=_num(line.width_mm) or "—", thickness=format_spec_value(thickness_value(line.thickness_mm, line.thickness_max_mm)) or "—",
                   quantity=_num(line.quantity), unit=unit(line.unit), weight=weight(line.weight, line.weight_unit), batch=line.production_order_no,
                   delivered=_num(line.delivered_quantity) if s.status == rules.PARTIALLY_DELIVERED else None) for line in s.lines]
     returns = db.scalars(select(ShipmentReturn.return_no).where(ShipmentReturn.organization_id == tenant.organization_id,
@@ -74,7 +75,7 @@ def build(db, tenant, params, selected) -> ReportData:
         prepared_by=names.get(s.created_by_user_id) or "", driver=s.driver_name if s.delivery_method != rules.CARRIER else s.carrier_name,
         received_by=s.received_by_name, received_at=moment(s.delivered_at), cancel_reason=s.cancel_reason, close_reason=s.close_reason,
         attempt=s.attempt, returns=" · ".join(returns))
-    return ReportData(sections=[], subject=s.shipment_no, document=document)
+    return ReportData(sections=[], orientation="portrait", subject=s.shipment_no, document=document)
 
 
 def watermark(data, lang):

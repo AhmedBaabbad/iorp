@@ -247,7 +247,12 @@
     "TRANSPORT_RECORD_UNAVAILABLE": "The selected driver, vehicle or carrier is unavailable.",
     "CUSTOMER_DELIVERY_RECORD_UNAVAILABLE": "The selected delivery site or contact is unavailable for this customer.",
     "SUPPLIER_CONTACT_UNAVAILABLE": "The selected contact is unavailable for this supplier.",
-    "LOCATION_URL_INVALID": "Location URL must use https://"
+    "LOCATION_URL_INVALID": "Location URL must use https://",
+    "SPEC_RANGE_NOT_ALLOWED": "This property does not allow a range; enter one number.",
+    "SPEC_RANGE_SHAPE": "A range must contain only its minimum and maximum.",
+    "SPEC_RANGE_NUMBER": "Enter a valid number or numeric range (such as 0.55 – 0.60).",
+    "SPEC_RANGE_REVERSED": "The minimum must not exceed the maximum.",
+    "RANGE_ONLY_FOR_NUMBER": "Only numeric properties may allow a range."
   },
   "productionOrder": {
     "none": "Not linked",

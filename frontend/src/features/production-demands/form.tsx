@@ -1,4 +1,6 @@
 "use client";
+import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
+import { numericSpecOrText, formatSpecValue } from "@/lib/spec-value";
 import { customerDisplayName } from "@/lib/customer-name";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -55,11 +57,11 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
     return () => { active = false; };
   }, [id]);
   function update(key: string, values: Partial<Row>) { setRows(old => old.map(row => row.key === key ? { ...row, ...values } : row)); }
-  function specValue(row: Row, key: string) { try { return JSON.parse(row.specText)[key] ?? ""; } catch { return ""; } }
-  function updateSpec(row: Row, key: string, value: string, numeric = false) {
+  function specValue(row: Row, key: string) { try { return formatSpecValue(JSON.parse(row.specText)[key] ?? ""); } catch { return ""; } }
+  function updateSpec(row: Row, key: string, value: string, numeric = false, allowsRange = false) {
     try {
       const specs = JSON.parse(row.specText);
-      if (!value) delete specs[key]; else specs[key] = numeric ? Number(value) : value;
+      if (!value) delete specs[key]; else specs[key] = numeric ? numericSpecOrText(value, allowsRange) : value;
       update(row.key, { specText: JSON.stringify(specs, null, 2) });
     } catch { setError("invalid_specs"); }
   }
@@ -139,7 +141,7 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
           {locale === "ar" ? q.name_ar : q.name_en}{q.unit ? ` (${units.has(q.unit) ? units(q.unit) : q.unit})` : ""}
           {q.kind === "choice" ? <select value={specValue(row, q.key)} onChange={e => updateSpec(row, q.key, e.target.value)}><option value="">—</option>
             {(q.options ?? []).map(o => <option key={o.value} value={o.value}>{locale === "ar" ? o.label_ar : o.label_en}</option>)}</select>
-            : <input type={q.kind === "number" ? "number" : "text"} step="any" value={specValue(row, q.key)} onChange={e => updateSpec(row, q.key, e.target.value, q.kind === "number")} />}</label>)}
+            : q.kind === "number" ? <NumericSpecInput value={specValue(row, q.key)} allowsRange={q.allows_range} onValueChange={text => updateSpec(row, q.key, text, true, q.allows_range)} /> : <input value={specValue(row, q.key)} onChange={e => updateSpec(row, q.key, e.target.value)} />}</label>)}
         <label className={s.field}>{t("specifications")}<textarea dir="ltr" value={row.specText} onChange={e => update(row.key, { specText: e.target.value })} /></label>
         <label className={s.field}>{t("itemNotes")}<textarea value={row.notes ?? ""} onChange={e => update(row.key, { notes: e.target.value })} /></label>
       </div><button type="button" className={s.button} onClick={() => setRows(old => old.filter(r => r.key !== row.key))}>{t("removeItem")}</button></section>)}

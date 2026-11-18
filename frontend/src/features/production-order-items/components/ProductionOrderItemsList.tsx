@@ -1,4 +1,5 @@
 "use client";
+import { formatSpecValue } from "@/lib/spec-value";
 
 import type { CSSProperties } from "react";
 import { useTranslations } from "next-intl";
@@ -19,6 +20,7 @@ import { P } from "@/lib/production-permissions";
 type ProductionOrderItemsListProps = {
   productionOrderId: string;
   productionOrderStatus: string;
+  productType?: string;
 };
 
 const styles: Record<string, CSSProperties> = {
@@ -45,6 +47,7 @@ const styles: Record<string, CSSProperties> = {
 export function ProductionOrderItemsList({
   productionOrderId,
   productionOrderStatus,
+  productType,
 }: ProductionOrderItemsListProps) {
   const t = useTranslations("production.productionOrders.items");
   const canManageItems = usePermission(P.ORDERS_MANAGE_ITEMS);
@@ -101,6 +104,7 @@ export function ProductionOrderItemsList({
         </div>
       ) : (
         <ProductionOrderItemForm
+          productType={productType}
           productionOrderId={productionOrderId}
           productionOrderStatus={productionOrderStatus}
           onCreated={loadItems}
@@ -168,16 +172,4 @@ function truncateText(value: string | null | undefined, maxLength: number) {
   }
 
   return `${value.slice(0, maxLength - 1)}...`;
-}
-
-function formatSpecValue(value: unknown) {
-  if (value === null || value === undefined) {
-    return "-";
-  }
-
-  if (typeof value === "object") {
-    return JSON.stringify(value);
-  }
-
-  return String(value);
 }

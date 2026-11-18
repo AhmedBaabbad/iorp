@@ -37,7 +37,7 @@
       <tbody>{% for l in d.lines %}<tr>
         <td class="n">{{ l.no }}</td>
         <td><bdi>{{ l.description }}</bdi>{% if l.batch %}<small>{{ 'أمر الإنتاج:' if ar else 'Production order:' }} <bdi dir="ltr">{{ l.batch }}</bdi></small>{% endif %}</td>
-        <td class="num">{{ l.width }}</td><td class="num">{{ l.thickness }}</td>
+        <td class="num"><bdi dir="ltr">{{ l.width }}</bdi></td><td class="num"><bdi dir="ltr">{{ l.thickness }}</bdi></td>
         <td class="num">{{ l.quantity }}</td><td class="num">{{ l.received }}</td><td>{{ l.unit }}</td><td class="num"><bdi>{{ l.weight }}</bdi></td>
       </tr>{% endfor %}</tbody>
       <tfoot><tr><td colspan="7" class="lbl">{{ 'إجمالي الوزن' if ar else 'Total weight' }}</td><td class="num"><bdi>{{ d.weight }}</bdi></td></tr></tfoot>

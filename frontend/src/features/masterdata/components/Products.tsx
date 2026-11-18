@@ -190,8 +190,10 @@ export function ProductForm({ productId, initialName, initialKey }: { productId?
               <label className={s.field}>{t("template.key")}<input required dir="ltr" maxLength={60} value={p.key} placeholder="width_mm"
                 onChange={e => setProp(i, { key: e.target.value })} /></label>
               <label className={s.field}>{t("template.kind")}
-                <select value={p.kind} onChange={e => setProp(i, { kind: e.target.value as ProductProperty["kind"] })}>
+                <select value={p.kind} onChange={e => setProp(i, { kind: e.target.value as ProductProperty["kind"], allows_range: e.target.value === "number" && Boolean(p.allows_range) })}>
                   {PROPERTY_KINDS.map(k => <option key={k} value={k}>{t(`propertyKinds.${k}`)}</option>)}</select></label>
+              {p.kind === "number" && <label className={s.field}><span>{t("template.allowsRange")}</span>
+                <input type="checkbox" checked={Boolean(p.allows_range)} onChange={e => setProp(i, { allows_range: e.target.checked })} /></label>}
               {p.kind === "number" && <label className={s.field}>{t("template.unit")}<UnitSelect value={p.unit ?? ""} onChange={u => setProp(i, { unit: u || null })}
                 ariaLabel={t("template.unit")} placeholder="—" required={false} /></label>}
             </div>

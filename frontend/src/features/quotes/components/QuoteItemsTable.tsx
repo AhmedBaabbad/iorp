@@ -1,4 +1,5 @@
 "use client";
+import { SpecList } from "@/features/commercial-orders/components/sales-lifecycle";
 
 import type { CSSProperties } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -102,9 +103,7 @@ export function QuoteItemsTable({ items, currency }: QuoteItemsTableProps) {
                     <div style={{ marginTop: "4px" }}>{locale === "ar" ? item.description_ar || item.description_en : item.description_en || item.description_ar}</div>
                   ) : null}
                   {item.requested_spec_json ? (
-                    <pre style={styles.spec}>
-                      {JSON.stringify(item.requested_spec_json, null, 2)}
-                    </pre>
+                    <SpecList productKey={item.product_type} spec={item.requested_spec_json} />
                   ) : null}
                 </td>
                 <td style={{ ...styles.td, textAlign: "center" }}>{fmt.number(item.quantity)}</td>

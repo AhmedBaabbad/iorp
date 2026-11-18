@@ -129,6 +129,13 @@ class CertificateService:
         completed = lot.get("completed_at")
         inspected = (check.closed_at or check.check_datetime)
         inspector = user_names(self.db, self.org, [check.checked_by_user_id]).get(check.checked_by_user_id)
+        from dataclasses import asdict
+        from copy import deepcopy
+        from app.core.interfaces.product_catalog import products
+        product_key, values = self.production.lot_spec(check.production_order_id, check.production_order_item_id) if check.production_order_id else (None, {})
+        definition = products(self.db, self.org, [product_key]).get(product_key)
+        frozen_spec = dict(product=asdict(definition) if definition else None,
+                           key=product_key, values=deepcopy(MeasurementService._effective(check, values)))
         certificate = QualityCertificate(
             organization_id=self.org, status=rules.DRAFT, quality_check_id=check.id, production_order_id=check.production_order_id,
             production_order_item_id=check.production_order_item_id, customer_id=data.customer_id,
@@ -141,7 +148,7 @@ class CertificateService:
             sample_size=f"{text(check.qty_inspected)} {check.unit or ''}".strip(),
             inspection_code=check.inspection_code, inspection_result=check.result.value,
             specification_code=check.specification_code, specification_revision=check.specification_revision,
-            measurements=[_frozen(m) for m in measurements], inspector_name=inspector, prepared_by_user_id=self.tenant.user_id)
+            product_specification=frozen_spec, measurements=[_frozen(m) for m in measurements], inspector_name=inspector, prepared_by_user_id=self.tenant.user_id)
         if certificate.customer_id is None and len(customers) == 1:
             certificate.customer_id = next(iter(customers))
         self.db.add(certificate)
@@ -210,7 +217,7 @@ class CertificateService:
         copy = QualityCertificate(organization_id=self.org, status=rules.DRAFT, supersedes_id=old.id, prepared_by_user_id=self.tenant.user_id,
                                   **{f: getattr(old, f) for f in (*EDITABLE, "quality_check_id", "production_order_id", "production_order_item_id",
                                                                   "inspection_code", "inspection_result", "specification_code",
-                                                                  "specification_revision", "measurements", "inspector_name")})
+                                                                  "specification_revision", "measurements", "product_specification", "inspector_name")})
         self.db.add(copy)
         self.db.flush()
         record(self.db, self.org, "certificate", copy.id, "create", None, rules.DRAFT, self.tenant.user_id, detail=dict(supersedes=old.certificate_no))

@@ -17,7 +17,7 @@ class MasterDataCatalog:
         rows = db.scalars(select(Product).options(selectinload(Product.properties)).where(
             Product.organization_id == organization_id, Product.key.in_(list(keys))))
         return {p.key: ProductInfo(p.key, p.name_ar, p.name_en, p.active, tuple(
-            PropertyInfo(q.key, q.name_ar, q.name_en, q.kind, q.unit, tuple((o["value"], o["label_ar"], o["label_en"]) for o in q.options or ()), q.required)
+            PropertyInfo(q.key, q.name_ar, q.name_en, q.kind, q.unit, tuple((o["value"], o["label_ar"], o["label_en"]) for o in q.options or ()), q.required, q.allows_range)
             for q in p.properties), p.default_unit) for p in rows}
 
     def sample_products(self, db, organization_id):

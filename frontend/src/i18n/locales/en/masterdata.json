@@ -58,7 +58,8 @@
     "moveDown": "Move down",
     "remove": "Remove",
     "add": "Add property",
-    "keyInvalid": "The key uses small English letters, digits and _ and starts with a letter (e.g. width_mm)."
+    "keyInvalid": "The key uses small English letters, digits and _ and starts with a letter (e.g. width_mm).",
+    "allowsRange": "Allows a range (from – to)"
   },
   "legacy": {
     "title": "Product types written before the list",
@@ -126,7 +127,12 @@
     "TOO_MANY_ITEMS": "At most {limit} items.",
     "ITEM_IN_USE": "The item is used by records; deactivate it instead of deleting it.",
     "ITEM_PROTECTED": "The system uses this item itself; it cannot be deleted.",
-    "ITEM_HAS_CHILDREN": "This country has cities; delete them or deactivate the country."
+    "ITEM_HAS_CHILDREN": "This country has cities; delete them or deactivate the country.",
+    "SPEC_RANGE_NOT_ALLOWED": "This property does not allow a range; enter one number.",
+    "SPEC_RANGE_SHAPE": "A range must contain only its minimum and maximum.",
+    "SPEC_RANGE_NUMBER": "Enter a valid number or numeric range (such as 0.55 – 0.60).",
+    "SPEC_RANGE_REVERSED": "The minimum must not exceed the maximum.",
+    "RANGE_ONLY_FOR_NUMBER": "Only numeric properties may allow a range."
   },
   "lists": {
     "title": "Reference lists",

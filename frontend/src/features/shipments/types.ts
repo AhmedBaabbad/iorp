@@ -9,7 +9,7 @@ export const DELIVERY_METHODS: DeliveryMethod[] = ["factory_delivery", "pickup",
 // What is shipped: description, width and thickness (mm), quantity in a unit from src/lib/units.ts, the full weight,
 // and the production order (batch) it comes from.
 export type ShipmentLineInput = {
-  description: string; width_mm: string | null; thickness_mm: string | null; quantity: string; unit: string;
+  description: string; width_mm: string | null; thickness_mm: string | null; thickness_max_mm?: string | null; quantity: string; unit: string;
   weight: string | null; weight_unit: string; production_order_id?: string | null;
 };
 export type ShipmentLine = ShipmentLineInput & { id: string; line_no: number; production_order_no: string | null; delivered_quantity: string | null };
@@ -82,7 +82,7 @@ export type ReturnQuality = {
 export type ReturnSummary = { id: string; return_no: string; kind: ReturnKind; status: ReturnStatus; reason: string; attempt: number; requested_at: string };
 
 export type ReturnLine = {
-  id: string; shipment_line_id: string; line_no: number; description: string; width_mm: string | null; thickness_mm: string | null;
+  id: string; shipment_line_id: string; line_no: number; description: string; width_mm: string | null; thickness_mm: string | null; thickness_max_mm?: string | null;
   unit: string; weight_unit: string; production_order_no: string | null; quantity: string; weight: string | null;
   received_quantity: string | null; received_weight: string | null;
 };

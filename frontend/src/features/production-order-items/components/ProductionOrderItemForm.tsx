@@ -1,4 +1,6 @@
 "use client";
+import { SpecEditor } from "@/components/forms/SpecEditor";
+import { useProducts } from "@/features/masterdata";
 
 import type { CSSProperties, FormEvent } from "react";
 import { useTranslations } from "next-intl";
@@ -14,6 +16,7 @@ import { formatStatus, isReadOnlyStatus } from "./production-order-items-utils";
 type ProductionOrderItemFormProps = {
   productionOrderId: string;
   productionOrderStatus: string;
+  productType?: string;
   onCreated: () => Promise<void>;
 };
 
@@ -58,7 +61,9 @@ export function ProductionOrderItemForm({
   productionOrderId,
   productionOrderStatus,
   onCreated,
+  productType,
 }: ProductionOrderItemFormProps) {
+  const products = useProducts();
   const t = useTranslations("production.productionOrders.items");
   const messages = useTranslations("messages");
   const [values, setValues] = useState<ProductionOrderItemFormValues>(defaultValues);
@@ -139,19 +144,8 @@ export function ProductionOrderItemForm({
         </label>
       </div>
 
-      <label style={sharedStyles.field}>
-        <span style={sharedStyles.label}>{t("lineSpecifications")}</span>
-        <textarea
-          style={sharedStyles.textarea}
-          value={values.target_spec_json}
-          onChange={(event) => updateField("target_spec_json", event.target.value)}
-          disabled={isSubmitting}
-          placeholder='{"width": "50cm"}'
-        />
-        <p style={styles.helper}>
-          {t("lineSpecificationsHelper", { example: "{\"width\": \"50cm\"}" })}
-        </p>
-      </label>
+      <SpecEditor value={values.target_spec_json} onChange={value => updateField("target_spec_json", value)}
+        disabled={isSubmitting} template={products?.find(p => p.key === productType)?.properties} />
 
       <label style={sharedStyles.field}>
         <span style={sharedStyles.label}>{t("fields.notes")}</span>

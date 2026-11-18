@@ -15,10 +15,14 @@ def is_numeric(value):
 def render_layout(context, template_roots, templates=('base.html', 'header.html', 'footer.html')):
     environment = Environment(loader=FileSystemLoader([ROOT / 'templates', *template_roots]), autoescape=select_autoescape(['html']))
     environment.tests['numeric'] = is_numeric
+    environment.tests['spec_range'] = lambda value: bool(re.search(r'\d\s*\u2013\s*[+-]?\d', str(value)))
     fonts = ''.join("@font-face{font-family:'%s';src:url(data:font/ttf;base64,%s) format('truetype');font-weight:100 900;}" %
                     (family, base64.b64encode((ROOT / 'assets/fonts' / filename).read_bytes()).decode())
                     for family, filename in [('Noto Naskh Arabic', 'NotoNaskhArabic.ttf'), ('Noto Sans', 'NotoSans.ttf')])
     css = (ROOT / 'assets/print.css').read_text(encoding='utf-8')
+    orientation = context.get('orientation') or getattr(context.get('data'), 'orientation', None)
+    if orientation:
+        css += '@page{size:A4 ' + ('landscape' if orientation == 'landscape' else 'portrait') + ';}'
     # CSS is exclusively trusted packaged content; no user CSS is inserted here.
     from markupsafe import Markup
     context = dict(context, css=Markup(fonts + css), chrome_css=Markup(css + 'body{width:100%;padding:0 36px}'))

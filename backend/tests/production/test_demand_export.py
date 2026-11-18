@@ -15,7 +15,7 @@ def sheet(response):
     assert response.headers["content-type"] == XLSX and "attachment" in response.headers["content-disposition"]
     ws = load_workbook(BytesIO(response.content)).active
     rows = [r for r in ws.iter_rows(min_row=5, values_only=True) if any(v not in (None, "") for v in r)]
-    return ws, [dict(zip(demand_export.HEADERS, r)) for r in rows]
+    return ws, [dict(zip([c.value for c in ws[4]], r)) for r in rows]
 
 
 def test_one_arabic_row_per_demand_line_with_its_planning(env):
@@ -24,14 +24,14 @@ def test_one_arabic_row_per_demand_line_with_its_planning(env):
     other_org_demand(env.db)
     ws, rows = sheet(env.client.get(f"{ROOT}/demands/export.xlsx"))
     assert ws.sheet_view.rightToLeft is True and ws.title == "طلبات العملاء"
-    assert [c.value for c in ws[4]] == demand_export.HEADERS
+    assert [c.value for c in ws[4]] == [*demand_export.HEADERS[:12], 'مواصفات أخرى', *demand_export.HEADERS[13:]]
     mine = [r for r in rows if r["رقم الطلب"] == d["demand_number"]]
     assert [r["رقم البند"] for r in mine] == [1, 2]
     first, second = mine
     assert first["العميل"] == "Lines Customer" and first["حالة الطلب"] == "مخطط جزئيًا" and first["الأولوية"] == "عادية"
     assert (first["الكمية المطلوبة"], first["المخصص للإنتاج"], first["المتبقي"], first["الوحدة"]) == (1000, 400, 600, "كجم")
     assert first["نسبة التخطيط %"] == 40 and first["حالة البند"] == "مخطط جزئيًا"
-    assert first["المواصفات"] == "العرض: 10، اللون: red"
+    assert first["مواصفات أخرى"] == "width_mm: 10 × color: red"
     assert first["أوامر الإنتاج"] == f'{po["production_order_number"]} (مسودة: 400)'
     assert second["المخصص للإنتاج"] == 0 and second["حالة البند"] == "غير مخطط" and second["أوامر الإنتاج"] in ("", None)
     assert all(r["رقم الطلب"] != "PD-OTHER" for r in rows)  # another organization's demand never appears

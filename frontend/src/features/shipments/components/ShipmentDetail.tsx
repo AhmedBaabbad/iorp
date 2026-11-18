@@ -1,4 +1,5 @@
 "use client";
+import { formatThickness } from "@/lib/spec-value";
 
 import { TransportSelection, DriverAffiliation, type TransportValues } from "@/features/reference-directory/DirectorySelect";
 import Link from "next/link";
@@ -150,7 +151,7 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
           <td>{l.line_no}</td>
           <td>{l.description}{l.production_order_no && <div className={s.muted}>{t("lineFields.production_order")}: <bdi dir="ltr">{l.production_order_no}</bdi></div>}</td>
           <td><bdi>{l.width_mm !== null ? String(Number(l.width_mm)) : "—"}</bdi></td>
-          <td><bdi>{l.thickness_mm !== null ? String(Number(l.thickness_mm)) : "—"}</bdi></td>
+          <td><bdi dir="ltr">{l.thickness_mm !== null ? formatThickness(l.thickness_mm, l.thickness_max_mm) : "—"}</bdi></td>
           <td><bdi>{fmt.quantity(l.quantity, unit(l.unit))}</bdi></td>
           {received && <td><bdi>{l.delivered_quantity !== null ? fmt.quantity(l.delivered_quantity, unit(l.unit)) : "—"}</bdi></td>}
           {anyReturned && <td><bdi>{fmt.quantity(x.line_returns[l.id]?.returned ?? "0", unit(l.unit))}</bdi></td>}

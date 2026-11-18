@@ -1,4 +1,5 @@
 "use client";
+import { formatSpecValue, isSpecRange } from "@/lib/spec-value";
 import { useTranslations } from "next-intl";
 import { ApiClientError } from "@/lib/api-client";
 import type { DemandPriority, DemandStatus, Item } from "./api";
@@ -29,5 +30,5 @@ export function Badge({ value, priority = false }: { value: DemandStatus | Deman
 }
 export function Specs({ value }: { value: Item["target_spec_json"] }) {
   const t = useTranslations("production.planning");
-  return <div className={styles.specs}>{Object.entries(value ?? {}).map(([key, val]) => <div key={key}><strong>{t.has(`specColumns.${key}`) ? t(`specColumns.${key}`) : key}</strong>{": "}{typeof val === "object" ? JSON.stringify(val) : String(val)}</div>)}</div>;
+  return <div className={styles.specs}>{Object.entries(value ?? {}).map(([key, val]) => <div key={key}><strong>{t.has(`specColumns.${key}`) ? t(`specColumns.${key}`) : key}</strong>{": "}<bdi dir={isSpecRange(val) ? "ltr" : "auto"}>{formatSpecValue(val)}</bdi></div>)}</div>;
 }

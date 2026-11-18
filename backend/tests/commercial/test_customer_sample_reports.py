@@ -89,7 +89,8 @@ def test_master_data_labels_choices_and_separate_unit_totals(samples):
     assert ('Requested quantity (roll)','3.00') in cards
     assert ('Requested quantity (kg)','7.00') in cards
     assert len(data.sections[1].rows)==2
-    assert any('Surface finish: Smooth finish' in row[2] for row in data.sections[1].rows)
+    assert data.sections[1].columns[2] == 'Surface finish'
+    assert any(row[2] == 'Smooth finish' for row in data.sections[1].rows)
 
 
 def test_properties_have_one_row_per_sample(samples):
@@ -102,7 +103,7 @@ def test_properties_have_one_row_per_sample(samples):
         assert len(section.rows)==1
         row=section.rows[0]
         assert row[:2]==[e.customer.name,'RFS-REPORT']
-        assert len(row)==3
+        assert len(row)==4  # independent specification and internal-note columns
         assert 'Legacy width: 12' in row[2] and 'Color: Blue' in row[2]
 
 
