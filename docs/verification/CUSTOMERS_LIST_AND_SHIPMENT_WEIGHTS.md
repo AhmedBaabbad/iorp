@@ -27,6 +27,7 @@ No backfill; downgrade removes only those columns. A real isolated PostgreSQL 16
 - Frontend: 375 Vitest plus 93 Node tests; TypeScript and translation check passed; lint 22 warnings, no errors.
 - Real API-to-renderer PDF E2E: 4 passed; delivery notes are one-page A4 portrait and visually reviewed in both languages.
 - Production frontend build and full CI results are recorded in the PR.
+- A pre-existing quality-specification test now waits for ProductSelect's editable textbox after catalogue loading, avoiding typing into its transient disabled select. This is test-only; quality application behavior is unchanged.
 
 ## Executed API example
 
@@ -72,3 +73,4 @@ No backfill; downgrade removes only those columns. A real isolated PostgreSQL 16
 - `frontend/src/i18n/locales/en/shipping.json`
 - `frontend/tests/components/customers-pagination.test.tsx`
 - `frontend/tests/components/shipments.test.tsx`
+- `frontend/tests/components/quality-inspections.test.tsx`
