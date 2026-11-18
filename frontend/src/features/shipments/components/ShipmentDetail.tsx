@@ -145,7 +145,7 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
           <th>#</th>{["description", "width_mm", "thickness_mm", "quantity"].map(c => <th key={c}>{t(`lineFields.${c}`)}</th>)}
           {received && <th>{t("lineFields.delivered_quantity")}</th>}
           {anyReturned && <th>{t("lineFields.returned_quantity")}</th>}
-          <th>{t("lineFields.weight")}</th>
+          <th>{t("lineFields.unit_net_weight")}</th><th>{t("lineFields.net_weight")}</th>
         </tr></thead>
         <tbody>{x.lines.map(l => <tr key={l.id}>
           <td>{l.line_no}</td>
@@ -155,14 +155,21 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
           <td><bdi>{fmt.quantity(l.quantity, unit(l.unit))}</bdi></td>
           {received && <td><bdi>{l.delivered_quantity !== null ? fmt.quantity(l.delivered_quantity, unit(l.unit)) : "—"}</bdi></td>}
           {anyReturned && <td><bdi>{fmt.quantity(x.line_returns[l.id]?.returned ?? "0", unit(l.unit))}</bdi></td>}
-          <td><bdi>{l.weight ? fmt.quantity(l.weight, unit(l.weight_unit)) : "—"}</bdi></td>
+          <td><bdi dir="ltr">{l.unit_net_weight != null ? fmt.quantity(l.unit_net_weight, unit(l.weight_unit)) : "—"}</bdi></td>
+          <td><bdi dir="ltr">{l.weight != null ? fmt.quantity(l.weight, unit(l.weight_unit)) : "—"}</bdi></td>
         </tr>)}</tbody>
       </table></div>
       <p className={s.muted} style={{ marginBottom: 0 }}>{t("totals", { quantities: x.quantities.map(q => fmt.quantity(q.quantity, unit(q.unit))).join(" · ") || "—",
         weight: kg(x.weight_total_kg) })}</p>
+      <dl className={s.grid}>
+        <Item label={t("weights.net")}><bdi dir="ltr">{kg(x.weight_total_kg)}</bdi></Item>
+        <Item label={t("weights.gross")}><bdi dir="ltr">{kg(x.gross_weight_kg ?? null)}</bdi></Item>
+        <Item label={t("weights.packaging")}><bdi dir="ltr">{kg(x.packaging_weight_kg ?? null)}</bdi></Item>
+      </dl>
     </section>
-    {(x.gate_weight_kg || x.received_weight_kg) && <section className={s.panel} aria-label={t("weightCheck.title")}>
+    {(x.gate_weight_kg || x.received_weight_kg || x.gross_weight_kg) && <section className={s.panel} aria-label={t("weightCheck.title")}>
       <h2 style={{ marginTop: 0 }}>{t("weightCheck.title")}</h2>
+      <p className={s.muted}>{t(x.gate_weight_kg != null ? "weightCheck.gateReference" : x.gross_weight_kg != null ? "weightCheck.grossReference" : "weightCheck.noReference")}</p>
       <dl className={s.grid} style={{ margin: 0 }}>
         <Item label={label("gate_weight")}><bdi>{kg(x.gate_weight_kg)}</bdi></Item>
         <Item label={label("received_weight")}><bdi>{kg(x.received_weight_kg)}</bdi></Item>

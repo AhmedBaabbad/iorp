@@ -17,8 +17,8 @@ PNG = png()
 
 
 def two_lines(env, **over):
-    return env.create(lines=[dict(description="PP Strap 5 mm", width_mm="5", thickness_mm="0.35", quantity="100", unit="roll", weight="1000"),
-                             dict(description="PP Strap 15 mm", width_mm="15", thickness_mm="0.85", quantity="40", unit="roll", weight="0.4",
+    return env.create(lines=[dict(description="PP Strap 5 mm", width_mm="5", thickness_mm="0.35", quantity="100", unit="roll", unit_net_weight="10"),
+                             dict(description="PP Strap 15 mm", width_mm="15", thickness_mm="0.85", quantity="40", unit="roll", unit_net_weight="0.01",
                                   weight_unit="ton")], driver_affiliation="external", driver_name="Saleh", vehicle_plate="ABC 1234", **over)
 
 
@@ -206,9 +206,9 @@ def test_a_line_names_the_production_order_it_comes_from(ship):
     ship.db.commit()
     options = ship.client.get(f"{ROOT}/lookups/production-orders", params=dict(q="000014")).json()
     assert [o["number"] for o in options] == ["PO-2026-000014"]
-    s = ship.create(lines=[dict(description="PP Strap", quantity="10", unit="roll", production_order_id=str(order_id))])
+    s = ship.create(lines=[dict(description="PP Strap", quantity="10", unit="roll", unit_net_weight="10", production_order_id=str(order_id))])
     assert s["lines"][0]["production_order_no"] == "PO-2026-000014"
-    r = ship.client.post(ROOT, json=ship.body(lines=[dict(description="x", quantity="1", unit="roll", production_order_id=str(uuid4()))]))
+    r = ship.client.post(ROOT, json=ship.body(lines=[dict(description="x", quantity="1", unit="roll", unit_net_weight="1", production_order_id=str(uuid4()))]))
     assert r.status_code == 404 and code(r) == "PRODUCTION_ORDER_NOT_FOUND"
 
 

@@ -84,6 +84,7 @@ class Shipment(Base):
     dispatched_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
     dispatched_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
     gate_weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(14, 3), nullable=True)  # the factory weighbridge, at dispatch
+    gross_weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(14, 3), nullable=True)
     received_weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(14, 3), nullable=True)  # the customer's, at delivery
     failed_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)  # the last failed delivery
     delivered_at: Mapped[datetime | None] = mapped_column(TZDateTime, nullable=True)
@@ -101,7 +102,9 @@ class Shipment(Base):
 
 class ShipmentLine(Base):
     """What is shipped (SHIP-003): description, width and thickness (mm), quantity in a unit from the shared catalogue
-    (app/core/units.py), and the full weight of those units in a weight unit."""
+    (app/core/units.py), per-unit net and computed full-line net in weight_unit.
+    Legacy rows retain their stored weight with unit_net_weight NULL; weighed
+    quantity units also have no per-unit net input."""
     __tablename__ = "shipping_shipment_lines"
     __table_args__ = (UniqueConstraint("shipment_id", "line_no", name="uq_shipping_shipment_lines_no"), CheckConstraint("thickness_max_mm IS NULL OR (thickness_mm IS NOT NULL AND thickness_max_mm >= thickness_mm)", name="ck_shipping_shipment_lines_thickness_range"))
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -114,6 +117,7 @@ class ShipmentLine(Base):
     quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False)
     unit: Mapped[str] = mapped_column(String(32), nullable=False)
     weight: Mapped[Decimal | None] = mapped_column(Numeric(14, 3), nullable=True)
+    unit_net_weight: Mapped[Decimal | None] = mapped_column(Numeric(14, 3), nullable=True)
     weight_unit: Mapped[str] = mapped_column(String(8), nullable=False, default="kg")
     # The production order (batch) the goods come from, for tracing a complaint back; its number is kept as printed.
     production_order_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)

@@ -64,10 +64,16 @@ def test_quotation_range_pdf(md, language):
     save_pdf(response, 'quotation-'+language, True)
 
 
-def test_delivery_range_pdf(ship):
+@pytest.mark.parametrize('language', ['ar', 'en'])
+def test_delivery_range_pdf(ship, language):
     note = ship.create(customer_name='Synthetic Customer', consignee_name='Synthetic receiving team',
         driver_name='Synthetic Driver', driver_affiliation='external', delivery_address='Synthetic destination',
-        lines=[dict(description='Synthetic band', width_mm='12', thickness_mm='.55', thickness_max_mm='.60',
-                    quantity='120', unit='roll', weight='1200', weight_unit='kg')])
-    response = ship.client.post('/api/v1/reports/shipping.delivery_note/pdf', json=dict(shipment_id=note['id'], lang='ar'))
-    save_pdf(response, 'delivery-note-ar', False)
+        gross_weight='1.6', gross_weight_unit='ton',
+        lines=[dict(description='Synthetic band A', width_mm='12', thickness_mm='.55', thickness_max_mm='.60',
+                    quantity='100', unit='roll', unit_net_weight='9', weight_unit='kg'),
+               dict(description='Synthetic band B', width_mm='15', thickness_mm='.55', thickness_max_mm='.60',
+                    quantity='50', unit='roll', unit_net_weight='12', weight_unit='kg')])
+    response = ship.client.post('/api/v1/reports/shipping.delivery_note/pdf', json=dict(shipment_id=note['id'], lang=language))
+    save_pdf(response, 'delivery-note-'+language, False)
+    text = ''.join(page.extract_text() for page in PdfReader(BytesIO(response.content)).pages)
+    assert all(value in text for value in ('900', '600', '1500', '1600', '100'))

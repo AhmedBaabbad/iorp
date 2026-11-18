@@ -33,7 +33,7 @@ def env(ship):
 
 
 def delivered(env, **over):
-    s = env.create(lines=[dict(description="PP Strap 5 mm", width_mm="5", thickness_mm="0.35", quantity="100", unit="roll", weight="1000",
+    s = env.create(lines=[dict(description="PP Strap 5 mm", width_mm="5", thickness_mm="0.35", quantity="100", unit="roll", unit_net_weight="10",
                                production_order_id=str(env.order_id))], driver_affiliation="external", driver_name="Saleh", vehicle_plate="ABC 1", **over)
     go(env, s, "ready"); go(env, s, "dispatch")
     return go(env, s, "deliver", received_by_name="Khalid").json()
@@ -115,10 +115,10 @@ def test_second_grade_needs_the_concession_and_returned_goods_never_block_the_pr
 def test_containment_lists_every_note_that_carried_the_production_order(env):
     first, ret = returned(env)
     other = delivered(env)
-    ready = env.create(lines=[dict(description="PP Strap 5 mm", quantity="30", unit="roll", production_order_id=str(env.order_id))],
+    ready = env.create(lines=[dict(description="PP Strap 5 mm", quantity="30", unit="roll", unit_net_weight="10", production_order_id=str(env.order_id))],
                        driver_affiliation="external", driver_name="Saleh", vehicle_plate="ABC 1")
     go(env, ready, "ready")
-    env.create(lines=[dict(description="draft", quantity="1", unit="roll", production_order_id=str(env.order_id))])  # a draft has not left
+    env.create(lines=[dict(description="draft", quantity="1", unit="roll", unit_net_weight="10", production_order_id=str(env.order_id))])  # a draft has not left
     line = env.client.get(f"{QUALITY}/returns/awaiting").json()[0]["lines"][0]
     check = env.client.post(f"{QUALITY}/returns/lines/{line['line_id']}/inspection").json()
     batch = env.client.get(f"{QUALITY}/quality-checks/{check['id']}/batch-shipments").json()
