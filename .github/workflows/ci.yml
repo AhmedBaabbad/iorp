@@ -174,8 +174,9 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: "${{ env.NODE_VERSION }}" }
       - name: shipped JavaScript dependencies (high and critical block)
-        working-directory: frontend
-        run: npm audit --omit=dev --audit-level=high
+        run: |
+          python -m unittest discover -s .github/scripts -p 'test_npm_audit_gate.py' -v
+          python .github/scripts/npm_audit_gate.py
 
   images:
     name: Docker images (publish tested images on main push only)
