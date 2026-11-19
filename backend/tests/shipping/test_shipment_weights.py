@@ -121,6 +121,22 @@ def test_return_share_uses_full_new_line_net_not_unit_weight(ship):
     assert ret.lines[0].weight_unit == 'kg'
 
 
+@pytest.mark.parametrize('quantity,unit,expected', [('50', 'roll', '450.000'), ('100', 'piece', '900.000')])
+def test_changed_legacy_quantity_or_unit_requires_a_new_unit_net_weight(ship, quantity, unit, expected):
+    saved = ship.create(lines=[line()])  # 100 rolls, full net 900 kg
+    stored = ship.db.get(Shipment, UUID(saved['id']))
+    stored.lines[0].unit_net_weight = None
+    ship.db.commit()
+    item = {**line(quantity), 'id': saved['lines'][0]['id'], 'unit': unit, 'unit_net_weight': None}
+    result = ship.client.patch(f"{ROOT}/{saved['id']}", json=dict(lines=[item]))
+    assert result.status_code == 400 and result.json()['detail']['code'] == 'UNIT_NET_WEIGHT_REQUIRED'
+    assert ship.client.get(f"{ROOT}/{saved['id']}").json()['weight_total_kg'] == '900.000'
+    item['unit_net_weight'] = '9'
+    result = ship.client.patch(f"{ROOT}/{saved['id']}", json=dict(lines=[item]))
+    assert result.status_code == 200, result.text
+    assert result.json()['lines'][0]['weight'] == result.json()['weight_total_kg'] == expected
+
+
 def test_legacy_weighed_quantity_is_not_recalculated_by_an_unchanged_draft_save(ship):
     saved = ship.create(lines=[dict(description='Synthetic legacy goods', quantity='100', unit='kg')])
     stored = ship.db.get(Shipment, UUID(saved['id']))

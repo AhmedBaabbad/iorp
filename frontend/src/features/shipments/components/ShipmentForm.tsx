@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { UnitSelect } from "@/components/forms/UnitSelect";
 import { PageFrame } from "@/components/layout/page-frame";
-import { grossKg, isWeightUnit, lineNet, totalNetKg, type WeightLine } from "../weights";
+import { grossKg, isWeightUnit, lineNet, totalNetKg, unchangedLegacyQuantity, type WeightLine } from "../weights";
 import s from "@/features/production-demands/demands.module.css";
 import { createShipment, getShipment, getShippingCustomers, getShippingProductionOrders, updateShipment } from "../api";
 import { DECIMAL, shippingErrorMessage, todayIso } from "../shipping-errors";
@@ -111,7 +111,7 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
   const setLine = (index: number, field: keyof Line, value: string) => setLines(old => old.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
   const linesOk = lines.every(l => l.description.trim() && DECIMAL.test(l.quantity.trim()) && Number(l.quantity) > 0 && l.unit.trim()
     && [l.width_mm, l.unit_net_weight].every(v => !v.trim() || DECIMAL.test(v.trim()))
-    && (isWeightUnit(l.unit) || Boolean(l.unit_net_weight.trim()) || l.legacy_quantity != null)
+    && (isWeightUnit(l.unit) || Boolean(l.unit_net_weight.trim()) || unchangedLegacyQuantity(l))
     && (() => { try { const r = thicknessFields(l.thickness_mm); return r.thickness_mm === null || Number(r.thickness_mm) >= 0; } catch { return false; } })());
   const netTotal = totalNetKg(lines), grossTotal = grossKg(gross, grossUnit);
   const grossBelowNet = grossTotal !== null && grossTotal < netTotal;
@@ -241,11 +241,11 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
               <label className={s.field}>{t("lineFields.unit")}
                 <UnitSelect value={l.unit} onChange={v => setLines(old => old.map((row, n) => n === i ? { ...row, unit: v, ...(isWeightUnit(v) ? { unit_net_weight: "" } : {}) } : row))} ariaLabel={t("lineFields.unit")} /></label>
               {!isWeightUnit(l.unit) && <><label className={s.field}>{t("lineFields.unit_net_weight")}
-                <input required={l.legacy_quantity == null} inputMode="decimal" dir="ltr" value={l.unit_net_weight} onChange={e => setLine(i, "unit_net_weight", e.target.value)} /></label>
+                <input required={!unchangedLegacyQuantity(l)} inputMode="decimal" dir="ltr" value={l.unit_net_weight} onChange={e => setLine(i, "unit_net_weight", e.target.value)} /></label>
               <label className={s.field}>{t("lineFields.weight_unit")}
                 <UnitSelect value={l.weight_unit} onChange={v => setLine(i, "weight_unit", v || "kg")} groups={["weight"]} ariaLabel={t("lineFields.weight_unit")} /></label></>}
               <div className={s.field}><span>{t("lineFields.net_weight")}</span><output aria-label={t("lineFields.net_weight")}><bdi dir="ltr">{lineNet(l) ? `${lineNet(l)!.value} ${unitLabel(lineNet(l)!.unit)}` : "—"}</bdi></output>
-                {l.id && !isWeightUnit(l.unit) && !l.unit_net_weight.trim() && l.legacy_weight != null && <small>{t("legacyNetHint")}</small>}</div>
+                {l.id && !isWeightUnit(l.unit) && !l.unit_net_weight.trim() && l.legacy_weight != null && unchangedLegacyQuantity(l) && <small>{t("legacyNetHint")}</small>}</div>
               <label className={s.field}>{t("lineFields.production_order")}
                 <select value={l.production_order_id} onChange={e => setLine(i, "production_order_id", e.target.value)}>
                   <option value="">{t("productionOrder.none")}</option>

@@ -5,6 +5,8 @@ export type WeightLine = {
   quantity: string; unit: string; unit_net_weight: string; weight_unit: string;
   legacy_weight?: string | null; legacy_quantity?: string; legacy_unit?: string; legacy_weight_unit?: string;
 };
+export const unchangedLegacyQuantity = (line: WeightLine) => line.legacy_quantity != null &&
+  line.unit === line.legacy_unit && Number(line.quantity) === Number(line.legacy_quantity);
 // Match Decimal/Numeric(14,3) half-even rounding for the read-only preview.
 const rounded = (value: number) => {
   const scaled = value * 1000, floor = Math.floor(scaled);
@@ -12,8 +14,7 @@ const rounded = (value: number) => {
   return (half ? floor + (floor % 2) : Math.round(scaled)) / 1000;
 };
 export function lineNet(line: WeightLine): { value: number; unit: string } | null {
-  if (!line.unit_net_weight.trim() && line.legacy_weight != null &&
-      (!isWeightUnit(line.unit) || (Number(line.quantity) === Number(line.legacy_quantity) && line.unit === line.legacy_unit))) {
+  if (!line.unit_net_weight.trim() && line.legacy_weight != null && unchangedLegacyQuantity(line)) {
     return { value: Number(line.legacy_weight), unit: line.legacy_weight_unit ?? line.weight_unit };
   }
   if (!line.quantity.trim() || !Number.isFinite(Number(line.quantity))) return null;

@@ -8,7 +8,7 @@ All API/PDF examples are synthetic; no operational server was accessed.
 - Customers: remove only phone/email headers and cells from the list. Details, API and server search are unchanged.
 - New counted-quantity lines require `unit_net_weight` and `weight_unit`; the server computes and stores full-line net in `weight`. Clients cannot submit `weight`.
 - Weight-quantity units use quantity converted to kg, store line net in kg, and reject even an explicitly null `unit_net_weight`. The form hides that input.
-- A draft update sends the existing line ID. The server resolves it only against that shipment's own lines; a legacy null per-unit value retains the stored net/weight unit until a per-unit value is entered. Reading/printing old records never recalculates them. Weighed-quantity edits derive net when quantity/unit changes.
+- A draft update sends the existing line ID. The server resolves it only against that shipment's own lines. A legacy null per-unit value retains stored net/weight unit only when quantity and quantity unit are both unchanged. Changing either requires a unit net weight for counted quantities; weighed quantities derive net in kg. The form applies the same condition to its preview, required input and legacy hint. Reading/printing old records never recalculates them.
 - Gross input uses `gross_weight` / `gross_weight_unit` and stores only `gross_weight_kg`. Packaging/remainder is a derived response/display value, never a column. Gross below total net returns HTTP 400 `GROSS_BELOW_NET`.
 - Matching references the gate weight when present, otherwise entered gross. Without either, matching is null; net is never a fallback.
 - Return allocation continues using the computed full `line.weight`; 20 of 100 rolls at 9 kg each returns 180 kg, not a fraction of 9 kg.
@@ -23,8 +23,8 @@ No backfill; downgrade removes only those columns. A real isolated PostgreSQL 16
 ## Validation
 
 - Shipping/return/quality/range-copy/tenant regression suites: 79 passed, 2 skipped; contact-directory/additional tenant checks: 13 passed.
-- Final weight-specific API/domain tests: 13 passed, including gross validation rollback, legacy draft persistence, weighed quantities and all matching fallbacks.
-- Frontend: 375 Vitest plus 93 Node tests; TypeScript and translation check passed; lint 22 warnings, no errors.
+- Final legacy-edit review regression: 58 shipping/return/driver tests passed, 2 skipped. The 15 weight-specific cases cover gross rollback, unchanged legacy persistence, changed legacy quantity/unit requiring a new per-unit weight, weighed quantities and all matching fallbacks.
+- Frontend: 377 Vitest plus 93 Node tests; TypeScript and translation check passed; lint 22 warnings, no errors.
 - Real API-to-renderer PDF E2E: 4 passed; delivery notes are one-page A4 portrait and visually reviewed in both languages.
 - Production frontend build and full CI results are recorded in the PR.
 - A pre-existing quality-specification test now waits for ProductSelect's editable textbox after catalogue loading, avoiding typing into its transient disabled select. This is test-only; quality application behavior is unchanged.

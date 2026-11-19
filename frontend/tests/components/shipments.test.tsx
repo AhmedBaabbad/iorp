@@ -148,6 +148,26 @@ describe("shipment net and gross weights", () => {
     expect("weight" in item).toBe(false);
   });
 
+  it.each(["quantity", "unit"])("requires unit net after changing a legacy %s and hides its stored net", async change => {
+    const x = shipment();
+    x.lines[0] = { ...x.lines[0], quantity: "100", weight: "900", weight_unit: "kg", unit_net_weight: null };
+    api.apiClient.mockImplementation((path: string) => Promise.resolve(path === "/shipping/shipments/s1" ? x : []));
+    ui(<ShipmentForm shipmentId="s1" />);
+    await screen.findByDisplayValue("PP Strap black");
+    const input = screen.getByLabelText("Net weight per unit") as HTMLInputElement;
+    expect(input.required).toBe(false);
+    expect(screen.getByLabelText("Line net weight").textContent).toContain("900");
+    if (change === "quantity") fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "50" } });
+    else fireEvent.change(screen.getByLabelText("Unit", { selector: "select" }), { target: { value: "piece" } });
+    expect(input.required).toBe(true);
+    expect(screen.getByLabelText("Line net weight").textContent).toBe("—");
+    expect(screen.queryByText(/Stored legacy line net weight/)).toBeNull();
+    expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(input, { target: { value: "9" } });
+    expect(screen.getByLabelText("Line net weight").textContent).toContain(change === "quantity" ? "450" : "900");
+    expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it("shows unit net, line net, gross, packaging and the gross matching reference", async () => {
     const x = shipment({ weight_total_kg: "900", gross_weight_kg: "1000", packaging_weight_kg: "100",
       received_weight_kg: "990", weight_check: { reference_kg: "1000", received_kg: "990", difference_kg: "-10", difference_pct: "-1", tolerance_pct: "1", within_tolerance: true } });

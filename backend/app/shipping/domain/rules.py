@@ -186,12 +186,12 @@ def assert_line(line) -> None:
 
 
 def line_weight(data, previous=None):
-    """Preserve a legacy draft's stored net until a unit weight is supplied."""
+    """Preserve legacy net only while its quantity and quantity unit are unchanged."""
     if data.unit in WEIGHT_UNITS and "unit_net_weight" in data.model_fields_set:
         raise ShippingError("UNIT_NET_WEIGHT_NOT_ALLOWED", 400)
-    if previous is not None and previous.unit_net_weight is None and data.unit_net_weight is None:
-        if data.unit not in WEIGHT_UNITS or (data.unit == previous.unit and data.quantity == previous.quantity):
-            return previous.weight, previous.weight_unit
+    if (previous is not None and previous.unit_net_weight is None and data.unit_net_weight is None
+            and data.unit == previous.unit and data.quantity == previous.quantity):
+        return previous.weight, previous.weight_unit
     if data.unit in WEIGHT_UNITS:
         return to_kilograms(data.quantity, data.unit).quantize(Decimal("0.001")), "kg"
     if data.unit_net_weight is None:
