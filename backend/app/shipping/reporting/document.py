@@ -63,7 +63,7 @@ def build(db, tenant, params, selected) -> ReportData:
     totals = rules.totals(s.lines)
     labels = json.loads((Path(__file__).parent / 'locales' / params.lang / 'shipping.json').read_text(encoding='utf-8'))
     unit = lambda code: unit_label(code, params.lang)  # noqa: E731
-    weight = lambda value, code: f"{_num(value)} {unit(code)}" if value is not None else "—"  # noqa: E731
+    weight = lambda value, code: dict(number=_num(value), unit=unit(code)) if value is not None else None  # noqa: E731
     lines = [dict(no=line.line_no, description=line.description, width=_num(line.width_mm) or "—", thickness=format_spec_value(thickness_value(line.thickness_mm, line.thickness_max_mm)) or "—",
                   quantity=_num(line.quantity), unit=unit(line.unit), weight=weight(line.weight, line.weight_unit),
                   unit_net_weight=weight(line.unit_net_weight, line.weight_unit), batch=line.production_order_no,
@@ -74,7 +74,7 @@ def build(db, tenant, params, selected) -> ReportData:
         number=s.shipment_no, date=s.shipment_date.strftime("%d / %m / %Y"), method=METHODS[s.delivery_method][0 if ar else 1],
         party=party, transport=transport, lines=lines, notes=s.notes, status=s.status,
         quantities=" · ".join(f"{_num(q)} {unit(u)}" for u, q in totals["quantities"].items()),
-        weight=weight(totals["weight_kg"], "kg") if totals["weight_kg"] is not None else "",
+        weight=weight(totals["weight_kg"], "kg"),
         labels=labels, gross_weight=weight(s.gross_weight_kg, 'kg') if s.gross_weight_kg is not None else None,
         packaging_weight=weight(rules.packaging_weight(s.gross_weight_kg, totals['weight_kg']), 'kg'),
         prepared_by=names.get(s.created_by_user_id) or "", driver=s.driver_name if s.delivery_method != rules.CARRIER else s.carrier_name,

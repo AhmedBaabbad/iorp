@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import unicodedata
+import re
 
 import pytest
 from pypdf import PdfReader
@@ -11,7 +13,8 @@ from app.core.reporting import providers
 from tests.masterdata.test_master_data import md, product, STRAP  # noqa: F401
 from tests.commercial.test_quotation_document import doc_env, create_quote  # noqa: F401
 from tests.commercial.test_customer_reports import env, reports_env, result_env  # noqa: F401
-from tests.shipping.test_shipments import ship  # noqa: F401
+from tests.shipping.test_shipments import ship, go  # noqa: F401
+from tests.shipping.test_delivery_note_totals import sample_note
 
 pytestmark = pytest.mark.skipif(os.environ.get('RUN_SPEC_RANGE_PDF') != '1', reason='Real synthetic PDF E2E opt-in')
 
@@ -65,15 +68,42 @@ def test_quotation_range_pdf(md, language):
 
 
 @pytest.mark.parametrize('language', ['ar', 'en'])
-def test_delivery_range_pdf(ship, language):
-    note = ship.create(customer_name='Synthetic Customer', consignee_name='Synthetic receiving team',
-        driver_name='Synthetic Driver', driver_affiliation='external', delivery_address='Synthetic destination',
-        gross_weight='1.6', gross_weight_unit='ton',
-        lines=[dict(description='Synthetic band A', width_mm='12', thickness_mm='.55', thickness_max_mm='.60',
-                    quantity='100', unit='roll', unit_net_weight='9', weight_unit='kg'),
-               dict(description='Synthetic band B', width_mm='15', thickness_mm='.55', thickness_max_mm='.60',
-                    quantity='50', unit='roll', unit_net_weight='12', weight_unit='kg')])
+@pytest.mark.parametrize('gross', [True, False])
+def test_delivery_range_pdf(ship, language, gross):
+    note = sample_note(ship, gross)
     response = ship.client.post('/api/v1/reports/shipping.delivery_note/pdf', json=dict(shipment_id=note['id'], lang=language))
-    save_pdf(response, 'delivery-note-'+language, False)
-    text = ''.join(page.extract_text() for page in PdfReader(BytesIO(response.content)).pages)
-    assert all(value in text for value in ('900', '600', '1500', '1600', '100'))
+    save_pdf(response, 'delivery-note-'+language+('' if gross else '-no-gross'), False)
+    text = unicodedata.normalize('NFKC', ''.join(page.extract_text() for page in PdfReader(BytesIO(response.content)).pages))
+    assert all(value in text for value in ('1800', '1500', '3300', '350'))
+    unit = 'كجم' if language == 'ar' else 'kg'
+    normal = ' '.join(text.split())
+    for number in ('9', '10', '1800', '1500', '3300', *(['200', '3500'] if gross else [])):
+        assert number + ' ' + unit in normal  # number must precede the unit, including Arabic extraction
+    rows = text.splitlines()
+    quantity_row = next(i for i, row in enumerate(rows) if re.search(r'(?<!\d)350(?!\d)', row))
+    net_row = next(i for i, row in enumerate(rows) if '3300 ' + unit in row)
+    assert quantity_row < net_row
+    if gross:
+        packaging_row = next(i for i, row in enumerate(rows) if i > net_row and '200 ' + unit in row)
+        gross_row = next(i for i, row in enumerate(rows) if '3500 ' + unit in row)
+        assert net_row < packaging_row < gross_row
+    else:
+        assert '3500' not in text
+        assert ('التغليف' if language == 'ar' else 'Packaging and remainder') not in text
+        assert ('الإجمالي' if language == 'ar' else 'Gross weight') not in text
+
+
+@pytest.mark.parametrize('language', ['ar', 'en'])
+def test_return_weight_number_and_unit_pdf(ship, language):
+    note = sample_note(ship)
+    for action, payload in [('ready', {}), ('dispatch', {}), ('deliver', {'received_by_name': 'Synthetic Receiver'})]:
+        response = go(ship, note, action, **payload)
+        assert response.status_code == 200, response.text
+    returned = ship.client.post('/api/v1/shipping/returns', json=dict(shipment_id=note['id'], reason='quality_defect',
+        lines=[dict(shipment_line_id=line['id'], quantity=line['quantity']) for line in note['lines']]))
+    assert returned.status_code == 201, returned.text
+    response = ship.client.post('/api/v1/reports/shipping.return_note/pdf', json=dict(return_id=returned.json()['id'], lang=language))
+    save_pdf(response, 'return-note-'+language, False)
+    text = unicodedata.normalize('NFKC', ''.join(page.extract_text() for page in PdfReader(BytesIO(response.content)).pages))
+    normal = ' '.join(text.split())
+    assert all(number + ' ' + ('كجم' if language == 'ar' else 'kg') in normal for number in ('1800', '1500', '3300'))
