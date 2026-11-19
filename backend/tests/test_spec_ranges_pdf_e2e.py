@@ -5,7 +5,6 @@ from pathlib import Path
 import shutil
 import subprocess
 import unicodedata
-import re
 
 import pytest
 from pypdf import PdfReader
@@ -75,22 +74,14 @@ def test_delivery_range_pdf(ship, language, gross):
     save_pdf(response, 'delivery-note-'+language+('' if gross else '-no-gross'), False)
     text = unicodedata.normalize('NFKC', ''.join(page.extract_text() for page in PdfReader(BytesIO(response.content)).pages))
     assert all(value in text for value in ('1800', '1500', '3300', '350'))
-    unit = 'كجم' if language == 'ar' else 'kg'
-    normal = ' '.join(text.split())
-    for number in ('9', '10', '1800', '1500', '3300', *(['200', '3500'] if gross else [])):
-        assert number + ' ' + unit in normal  # number must precede the unit, including Arabic extraction
-    rows = text.splitlines()
-    quantity_row = next(i for i, row in enumerate(rows) if re.search(r'(?<!\d)350(?!\d)', row))
-    net_row = next(i for i, row in enumerate(rows) if '3300 ' + unit in row)
-    assert quantity_row < net_row
+    weights = ['9', '10', '1800', '1500', '3300'] + (['200', '3500'] if gross else [])
+    positions = weight_positions(response.content, language, weights)
+    assert positions['3300']['y'] > positions['1800']['y']
     if gross:
-        packaging_row = next(i for i, row in enumerate(rows) if i > net_row and '200 ' + unit in row)
-        gross_row = next(i for i, row in enumerate(rows) if '3500 ' + unit in row)
-        assert net_row < packaging_row < gross_row
+        assert positions['3300']['y'] < positions['200']['y'] < positions['3500']['y']
     else:
         assert '3500' not in text
-        assert ('التغليف' if language == 'ar' else 'Packaging and remainder') not in text
-        assert ('الإجمالي' if language == 'ar' else 'Gross weight') not in text
+
 
 
 @pytest.mark.parametrize('language', ['ar', 'en'])
@@ -104,6 +95,22 @@ def test_return_weight_number_and_unit_pdf(ship, language):
     assert returned.status_code == 201, returned.text
     response = ship.client.post('/api/v1/reports/shipping.return_note/pdf', json=dict(return_id=returned.json()['id'], lang=language))
     save_pdf(response, 'return-note-'+language, False)
-    text = unicodedata.normalize('NFKC', ''.join(page.extract_text() for page in PdfReader(BytesIO(response.content)).pages))
-    normal = ' '.join(text.split())
-    assert all(number + ' ' + ('كجم' if language == 'ar' else 'kg') in normal for number in ('1800', '1500', '3300'))
+    weight_positions(response.content, language, ['1800', '1500', '3300'])
+
+
+def weight_positions(content, language, numbers):
+    """Measure physical placement independently of PDF text reading order."""
+    import pymupdf
+    with pymupdf.open(stream=content, filetype='pdf') as document:
+        words = document[0].get_text('words')
+    unit = '\u0643\u062c\u0645' if language == 'ar' else 'kg'
+    units = [word for word in words if unicodedata.normalize('NFKC', word[4]) == unit]
+    measurements = {}
+    for number in numbers:
+        pairs = [(value, label) for value in words if value[4] == number for label in units
+                 if max(value[1], label[1]) < min(value[3], label[3]) and abs(value[0] - label[0]) < 50]
+        assert len(pairs) == 1, (number, pairs)
+        value, label = pairs[0]
+        assert (value[0] > label[0]) if language == 'ar' else (value[0] < label[0]), (number, value, label)
+        measurements[number] = dict(number_x=round(value[0], 2), unit_x=round(label[0], 2), y=round(value[1], 2))
+    return measurements

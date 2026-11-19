@@ -36,7 +36,7 @@
 .dn-delivery-items tfoot td{font-weight:400;border-top:1px solid var(--line)}
 .dn-delivery-items tfoot .lbl{text-align:start}
 .dn-delivery-items tfoot .gross-total td{font-weight:700;border-top:2px solid var(--brand)}
-.dn-weight{display:inline-flex;direction:ltr;align-items:baseline;unicode-bidi:isolate}
+.dn-weight{white-space:nowrap}
 .dn-notes{margin:0;white-space:pre-wrap}
 .dn-cancelled{color:#a12a2a;margin:6px 0}
 .dn-watermark{font-size:46pt;color:rgba(160,30,30,.08)}
