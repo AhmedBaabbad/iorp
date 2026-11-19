@@ -39,6 +39,8 @@ describe("customers list", () => {
     api.apiClient.mockImplementation((path: string) => Promise.resolve(path.startsWith("/masterdata") ? [] : page(2)));
     ui(<CustomersListPage />);
     expect(await screen.findByText("Client 51")).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: /phone/i })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: /e-?mail/i })).toBeNull();
     expect(api.apiClient.mock.calls.some(([p]) => p === "/commercial/customers?page=2&page_size=50")).toBe(true);
     expect(screen.getAllByRole("row")).toHaveLength(51);  // the header and 50 rows, not all 120
     expect(screen.getByText("Showing 51 to 100 of 120")).toBeTruthy();

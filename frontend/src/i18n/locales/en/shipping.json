@@ -110,6 +110,8 @@
   "removeLine": "Remove",
   "addLine": "Add item",
   "lineFields": {
+    "unit_net_weight": "Net weight per unit",
+    "net_weight": "Line net weight",
     "description": "Description",
     "width_mm": "Width (mm)",
     "thickness_mm": "Thickness (mm)",
@@ -121,7 +123,14 @@
     "delivered_quantity": "Received",
     "returned_quantity": "Returned"
   },
-  "totalsPreview": "Total weight: {weight} kg",
+  "totalsPreview": "Total net weight: {weight} kg",
+  "legacyNetHint": "Stored legacy line net weight; retained until a unit net weight is entered.",
+  "weights": {
+    "net": "Total net weight",
+    "gross": "Gross weight",
+    "grossUnit": "Gross weight unit",
+    "packaging": "Packaging and remainder"
+  },
   "linesHint": "Each item needs a description, a quantity above zero and a unit from the list; width, thickness and weight are numbers.",
   "save": "Save",
   "create": "Save draft",
@@ -195,6 +204,9 @@
     "text": "Cancelling is final and is printed on the note. Give the reason."
   },
   "errors": {
+    "GROSS_BELOW_NET": "Gross weight cannot be below total net weight.",
+    "UNIT_NET_WEIGHT_REQUIRED": "Enter the net weight per unit for each item.",
+    "UNIT_NET_WEIGHT_NOT_ALLOWED": "A quantity measured by weight must not include a unit net weight.",
     "request_failed": "The request could not be completed. Please try again.",
     "forbidden": "You do not have permission for this action.",
     "SHIPMENT_NOT_FOUND": "The shipment was not found.",
@@ -283,6 +295,9 @@
     "text": "The goods stay at the factory and the note is closed. Give the reason."
   },
   "weightCheck": {
+    "gateReference": "Reference: gate weighbridge weight.",
+    "grossReference": "Reference: entered gross weight.",
+    "noReference": "No gate or entered gross weight is available; weight matching is not performed.",
     "title": "Weight check",
     "reference": "Weight that left",
     "received": "Weight received",

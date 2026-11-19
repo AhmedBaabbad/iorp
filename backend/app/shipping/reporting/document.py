@@ -1,6 +1,7 @@
 from app.core.specifications import format_spec_value, thickness_value
 """The delivery note (SHIP-001, SHIP-004), rendered by the reporting core with the company's external identity. Nothing is stored."""
 from uuid import UUID
+import json
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
@@ -60,10 +61,12 @@ def build(db, tenant, params, selected) -> ReportData:
         transport.append((tr("صفة السائق", "Driver affiliation"), tr("داخلي", "Internal") if s.driver_affiliation=="internal" else tr("خارجي", "External") if s.driver_affiliation=="external" else tr("غير محدد — سجل قديم", "Unclassified — legacy record")))
     transport.append((tr("وقت الخروج", "Dispatched"), moment(s.dispatched_at) or "—"))
     totals = rules.totals(s.lines)
+    labels = json.loads((Path(__file__).parent / 'locales' / params.lang / 'shipping.json').read_text(encoding='utf-8'))
     unit = lambda code: unit_label(code, params.lang)  # noqa: E731
     weight = lambda value, code: f"{_num(value)} {unit(code)}" if value is not None else "—"  # noqa: E731
     lines = [dict(no=line.line_no, description=line.description, width=_num(line.width_mm) or "—", thickness=format_spec_value(thickness_value(line.thickness_mm, line.thickness_max_mm)) or "—",
-                  quantity=_num(line.quantity), unit=unit(line.unit), weight=weight(line.weight, line.weight_unit), batch=line.production_order_no,
+                  quantity=_num(line.quantity), unit=unit(line.unit), weight=weight(line.weight, line.weight_unit),
+                  unit_net_weight=weight(line.unit_net_weight, line.weight_unit), batch=line.production_order_no,
                   delivered=_num(line.delivered_quantity) if s.status == rules.PARTIALLY_DELIVERED else None) for line in s.lines]
     returns = db.scalars(select(ShipmentReturn.return_no).where(ShipmentReturn.organization_id == tenant.organization_id,
                                                                 ShipmentReturn.shipment_id == s.id).order_by(ShipmentReturn.created_at)).all()
@@ -72,6 +75,8 @@ def build(db, tenant, params, selected) -> ReportData:
         party=party, transport=transport, lines=lines, notes=s.notes, status=s.status,
         quantities=" · ".join(f"{_num(q)} {unit(u)}" for u, q in totals["quantities"].items()),
         weight=weight(totals["weight_kg"], "kg") if totals["weight_kg"] is not None else "",
+        labels=labels, gross_weight=weight(s.gross_weight_kg, 'kg') if s.gross_weight_kg is not None else None,
+        packaging_weight=weight(rules.packaging_weight(s.gross_weight_kg, totals['weight_kg']), 'kg'),
         prepared_by=names.get(s.created_by_user_id) or "", driver=s.driver_name if s.delivery_method != rules.CARRIER else s.carrier_name,
         received_by=s.received_by_name, received_at=moment(s.delivered_at), cancel_reason=s.cancel_reason, close_reason=s.close_reason,
         attempt=s.attempt, returns=" · ".join(returns))

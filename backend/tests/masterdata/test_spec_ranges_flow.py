@@ -117,7 +117,7 @@ def test_shipment_range_is_copied_to_return_and_delivery_pdf(ship):
     from sqlalchemy import select
     response = ship.client.post('/api/v1/shipping/shipments', json=ship.body(lines=[dict(
         description='Synthetic band', width_mm='12', thickness_mm='.55', thickness_max_mm='.60',
-        quantity='10', unit='roll', weight='10', weight_unit='kg')]))
+        quantity='10', unit='roll', unit_net_weight='1', weight_unit='kg')]))
     assert response.status_code == 201, response.text
     row = ship.db.get(Shipment, UUID(response.json()['id']))
     assert row.lines[0].thickness_max_mm == Decimal('.60')

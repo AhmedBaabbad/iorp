@@ -436,8 +436,6 @@ export function CustomersListPage() {
                   <th style={styles.th}>{t("fields.customerCode")}</th>
                   <th style={styles.th}>{t("fields.name")}</th>
                   <th style={styles.th}>{t("fields.sector")}</th>
-                  <th style={styles.th}>{t("fields.phone")}</th>
-                  <th style={styles.th}>{t("fields.email")}</th>
                   <th style={styles.th}>{t("fields.relationshipStage")}</th>
                   <th style={styles.th}>{t("fields.priority")}</th>
                   <th style={styles.th}>{t("fields.status")}</th>
@@ -455,8 +453,6 @@ export function CustomersListPage() {
                       </Link>
                     </td>
                     <td style={styles.td}>{displayValue(customer.sector ? sectorName(customer.sector) : customer.sector)}</td>
-                    <td style={styles.td}>{displayValue(customer.phone)}</td>
-                    <td style={styles.td}>{displayValue(customer.email)}</td>
                     <td style={styles.td}>
                       <CustomerRelationshipStageBadge stage={customer.relationship_stage} />
                     </td>

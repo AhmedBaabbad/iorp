@@ -33,7 +33,7 @@ def ship(client, db, test_org, test_user):
 
     def body(**over):
         data = dict(delivery_method="factory_delivery", shipment_date="2026-10-04", customer_id=str(customer.id),
-                    lines=[dict(description="PP Strap", width_mm="5", thickness_mm="0.35", quantity="120", unit="roll", weight="1200")])
+                    lines=[dict(description="PP Strap", width_mm="5", thickness_mm="0.35", quantity="120", unit="roll", unit_net_weight="10")])
         data.update(over)
         return data
 
@@ -93,9 +93,9 @@ def test_lines_are_description_width_thickness_quantity_and_one_weight(ship):
     assert ship.client.post(ROOT, json=ship.body(lines=[dict(description="x", quantity="5", unit="roll", net_weight="1")])).status_code == 422  # gone
     assert ship.client.post(ROOT, json=ship.body(lines=[dict(description="x", quantity="5", unit="roll", width_mm="-1")])).status_code == 422
     s = ship.create(lines=[
-        dict(description="Strap 5 mm", width_mm="5", thickness_mm="0.35", quantity="100", unit="roll", weight="2", weight_unit="ton"),
-        dict(description="Strap 15 mm", width_mm="15", thickness_mm="0.85", quantity="500", unit="kg", weight="500"),
-        dict(description="Sample", quantity="1", unit="piece", weight="10", weight_unit="lb")])
+        dict(description="Strap 5 mm", width_mm="5", thickness_mm="0.35", quantity="100", unit="roll", unit_net_weight="0.02", weight_unit="ton"),
+        dict(description="Strap 15 mm", width_mm="15", thickness_mm="0.85", quantity="500", unit="kg"),
+        dict(description="Sample", quantity="1", unit="piece", unit_net_weight="10", weight_unit="lb")])
     first = s["lines"][0]
     assert (first["width_mm"], first["thickness_mm"], first["weight"], first["weight_unit"]) == ("5.000", "0.350", "2.000", "ton")
     assert {q["unit"]: q["quantity"] for q in s["quantities"]} == {"roll": "100.000", "kg": "500.000", "piece": "1.000"}
@@ -244,8 +244,8 @@ def test_write_delivery_note_samples(ship):
     s = ship.create(customer_reference="UCIC-PO-4471", consignee_name="UCIC Warehouse — Sulay", delivery_address="Sulay industrial area, street 12",
                     driver_affiliation="external", driver_name="صالح العتيبي", driver_phone="0559876543", vehicle_plate="أ ب ج 1234", vehicle_type="Truck 7 t",
                     notes="Deliver before 2 pm. Pallets are shrink-wrapped.",
-                    lines=[dict(description="PP Strap — black, full automatic", width_mm="5", thickness_mm="0.35", quantity="120", unit="roll", weight="1260"),
-                           dict(description="PP Strap — white", width_mm="15", thickness_mm="0.85", quantity="60", unit="roll", weight="0.366", weight_unit="ton")])
+                    lines=[dict(description="PP Strap — black, full automatic", width_mm="5", thickness_mm="0.35", quantity="120", unit="roll", unit_net_weight="10.5"),
+                           dict(description="PP Strap — white", width_mm="15", thickness_mm="0.85", quantity="60", unit="roll", unit_net_weight="6.1", weight_unit="kg")])
     go(ship, s, "ready"); go(ship, s, "dispatch")
     for lang in ("ar", "en"):
         r = ship.client.get(f"{ROOT}/{s['id']}/document.pdf", params=dict(lang=lang))

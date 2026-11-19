@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { UnitSelect } from "@/components/forms/UnitSelect";
 import { PageFrame } from "@/components/layout/page-frame";
-import { KILOGRAMS } from "@/lib/units";
+import { grossKg, isWeightUnit, lineNet, totalNetKg, unchangedLegacyQuantity, type WeightLine } from "../weights";
 import s from "@/features/production-demands/demands.module.css";
 import { createShipment, getShipment, getShippingCustomers, getShippingProductionOrders, updateShipment } from "../api";
 import { DECIMAL, shippingErrorMessage, todayIso } from "../shipping-errors";
@@ -21,24 +21,23 @@ import { MapLink } from "@/components/MapLink";
 import { useListName } from "@/features/masterdata";
 import { ListSelect } from "@/features/masterdata";
 
-// A line as edited (numbers as typed): description, width and thickness in mm, quantity and unit, one full weight, and
+// A line as edited (numbers as typed): dimensions, quantity and unit, per-unit net and a read-only legacy net, and
 // the production order (batch) it comes from.
-type Line = { description: string; width_mm: string; thickness_mm: string; quantity: string; unit: string; weight: string; weight_unit: string;
-  production_order_id: string };
-const EMPTY_LINE: Line = { description: "", width_mm: "", thickness_mm: "", quantity: "", unit: "roll", weight: "", weight_unit: "kg", production_order_id: "" };
+type Line = WeightLine & { id?: string; description: string; width_mm: string; thickness_mm: string; production_order_id: string };
+const EMPTY_LINE: Line = { description: "", width_mm: "", thickness_mm: "", quantity: "", unit: "roll", unit_net_weight: "", weight_unit: "kg", production_order_id: "" };
 type Header = { [K in keyof Omit<ShipmentHeader, "notify_consignee" | "customer_id" | "driver_id" | "vehicle_id" | "carrier_id" | "driver_affiliation" | "customer_contact_id" | "delivery_site_id">]: string };
 const EMPTY_HEADER: Header = { customer_name: "", customer_reference: "", consignee_name: "", consignee_phone: "", consignee_email: "", delivery_address: "",
   delivery_city: "", delivery_country: "", location_url: "", driver_name: "", driver_phone: "", driver_id_no: "", vehicle_plate: "", vehicle_type: "", carrier_name: "", tracking_no: "", notes: "" };
 
 const blank = (v: string) => v.trim() || null;
 // Weights in their own units, totalled in kilograms like the server and the delivery note.
-const kilograms = (lines: Line[]) =>
-  Math.round(lines.reduce((total, l) => total + (DECIMAL.test(l.weight.trim()) ? Number(l.weight) * (KILOGRAMS[l.weight_unit] ?? 1) : 0), 0) * 1000) / 1000;
 const text = (v: string | null) => (v === null ? "" : String(Number(v)));
 
 // A delivery note: create one, or edit it while it is a draft (shipmentId).
 export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
   const t = useTranslations("shipping");
+  const units = useTranslations("common.units.units");
+  const unitLabel = (code: string) => units.has(code) ? units(code) : code;
   const errors = useTranslations("shipping.errors");
   const messages = useTranslations("messages");
   const router = useRouter();
@@ -59,6 +58,8 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
   const [h, setH] = useState<Header>(EMPTY_HEADER);
   const [notify, setNotify] = useState(false);
   const [lines, setLines] = useState<Line[]>([{ ...EMPTY_LINE }]);
+  const [gross, setGross] = useState("");
+  const [grossUnit, setGrossUnit] = useState("kg");
   const [orderQuery, setOrderQuery] = useState("");
   const [orders, setOrders] = useState<ProductionOrderOption[]>([]);
   const [locked, setLocked] = useState(false);
@@ -75,8 +76,11 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
       setMethod(x.delivery_method); setDate(x.shipment_date); setRegistered(Boolean(x.customer_id)); setCustomerId(x.customer_id ?? "");
       setH(Object.fromEntries(Object.keys(EMPTY_HEADER).map(k => [k, (x[k as keyof Header] as string | null) ?? ""])) as Header);
       setNotify(x.notify_consignee); setLocked(!x.actions.includes("edit"));
-      setLines(x.lines.map(l => ({ description: l.description, width_mm: text(l.width_mm), thickness_mm: formatThickness(l.thickness_mm, l.thickness_max_mm),
-        quantity: text(l.quantity), unit: l.unit, weight: text(l.weight), weight_unit: l.weight_unit, production_order_id: l.production_order_id ?? "" })));
+      setGross(text(x.gross_weight_kg ?? null)); setGrossUnit("kg");
+      setLines(x.lines.map(l => ({ id: l.id, description: l.description, width_mm: text(l.width_mm), thickness_mm: formatThickness(l.thickness_mm, l.thickness_max_mm),
+        quantity: text(l.quantity), unit: l.unit, unit_net_weight: text(l.unit_net_weight ?? null), weight_unit: l.weight_unit,
+        ...(l.unit_net_weight == null ? { legacy_weight: l.weight, legacy_quantity: text(l.quantity), legacy_unit: l.unit, legacy_weight_unit: l.weight_unit } : {}),
+        production_order_id: l.production_order_id ?? "" })));
       setOrders(x.lines.filter(l => l.production_order_id).map(l => ({ id: l.production_order_id!, number: l.production_order_no ?? "", product_type: "",
         status: "", planned_quantity: "", unit: "" })));
       if (x.customer_id) setCustomers([{ id: x.customer_id, customer_code: "", name: x.customer_name, phone: null, email: null, city: null }]);
@@ -106,8 +110,12 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
   const set = (field: keyof Header, value: string) => setH(old => ({ ...old, [field]: value }));
   const setLine = (index: number, field: keyof Line, value: string) => setLines(old => old.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
   const linesOk = lines.every(l => l.description.trim() && DECIMAL.test(l.quantity.trim()) && Number(l.quantity) > 0 && l.unit.trim()
-    && [l.width_mm, l.weight].every(v => !v.trim() || DECIMAL.test(v.trim())) && (() => { try { const r = thicknessFields(l.thickness_mm); return r.thickness_mm === null || Number(r.thickness_mm) >= 0; } catch { return false; } })());
-  const valid = Boolean(date) && (registered ? Boolean(customerId) : Boolean(h.customer_name.trim())) && linesOk;
+    && [l.width_mm, l.unit_net_weight].every(v => !v.trim() || DECIMAL.test(v.trim()))
+    && (isWeightUnit(l.unit) || Boolean(l.unit_net_weight.trim()) || unchangedLegacyQuantity(l))
+    && (() => { try { const r = thicknessFields(l.thickness_mm); return r.thickness_mm === null || Number(r.thickness_mm) >= 0; } catch { return false; } })());
+  const netTotal = totalNetKg(lines), grossTotal = grossKg(gross, grossUnit);
+  const grossBelowNet = grossTotal !== null && grossTotal < netTotal;
+  const valid = Boolean(date) && (registered ? Boolean(customerId) : Boolean(h.customer_name.trim())) && linesOk && (!gross.trim() || DECIMAL.test(gross.trim())) && !grossBelowNet;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -116,8 +124,11 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
     const header = Object.fromEntries(Object.entries(h).map(([k, v]) => [k, blank(v)])) as unknown as ShipmentHeader;
     const body = { ...header, ...transport, delivery_site_id:site,customer_contact_id:contact, delivery_method: method, shipment_date: date, notify_consignee: notify, customer_id: registered ? customerId : null,
       customer_name: registered ? blank(h.customer_name) : h.customer_name.trim(),
+      gross_weight: blank(gross), gross_weight_unit: grossUnit,
       lines: lines.map<ShipmentLineInput>(l => ({ description: l.description.trim(), width_mm: blank(l.width_mm), ...thicknessFields(l.thickness_mm),
-        quantity: l.quantity.trim(), unit: l.unit, weight: blank(l.weight), weight_unit: l.weight_unit, production_order_id: l.production_order_id || null })) };
+        ...(l.id ? { id: l.id } : {}), quantity: l.quantity.trim(), unit: l.unit,
+        ...(!isWeightUnit(l.unit) ? { unit_net_weight: blank(l.unit_net_weight) } : {}),
+        weight_unit: l.weight_unit, production_order_id: l.production_order_id || null })) };
     try {
       const saved = shipmentId ? await updateShipment(shipmentId, body) : await createShipment(body);
       router.push(`/shipments/${saved.id}`);
@@ -228,11 +239,13 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
               <label className={s.field}>{t("lineFields.quantity")}
                 <input required inputMode="decimal" dir="ltr" value={l.quantity} onChange={e => setLine(i, "quantity", e.target.value)} /></label>
               <label className={s.field}>{t("lineFields.unit")}
-                <UnitSelect value={l.unit} onChange={v => setLine(i, "unit", v)} ariaLabel={t("lineFields.unit")} /></label>
-              <label className={s.field}>{t("lineFields.weight")}
-                <input inputMode="decimal" dir="ltr" value={l.weight} onChange={e => setLine(i, "weight", e.target.value)} /></label>
+                <UnitSelect value={l.unit} onChange={v => setLines(old => old.map((row, n) => n === i ? { ...row, unit: v, ...(isWeightUnit(v) ? { unit_net_weight: "" } : {}) } : row))} ariaLabel={t("lineFields.unit")} /></label>
+              {!isWeightUnit(l.unit) && <><label className={s.field}>{t("lineFields.unit_net_weight")}
+                <input required={!unchangedLegacyQuantity(l)} inputMode="decimal" dir="ltr" value={l.unit_net_weight} onChange={e => setLine(i, "unit_net_weight", e.target.value)} /></label>
               <label className={s.field}>{t("lineFields.weight_unit")}
-                <UnitSelect value={l.weight_unit} onChange={v => setLine(i, "weight_unit", v || "kg")} groups={["weight"]} ariaLabel={t("lineFields.weight_unit")} /></label>
+                <UnitSelect value={l.weight_unit} onChange={v => setLine(i, "weight_unit", v || "kg")} groups={["weight"]} ariaLabel={t("lineFields.weight_unit")} /></label></>}
+              <div className={s.field}><span>{t("lineFields.net_weight")}</span><output aria-label={t("lineFields.net_weight")}><bdi dir="ltr">{lineNet(l) ? `${lineNet(l)!.value} ${unitLabel(lineNet(l)!.unit)}` : "—"}</bdi></output>
+                {l.id && !isWeightUnit(l.unit) && !l.unit_net_weight.trim() && l.legacy_weight != null && unchangedLegacyQuantity(l) && <small>{t("legacyNetHint")}</small>}</div>
               <label className={s.field}>{t("lineFields.production_order")}
                 <select value={l.production_order_id} onChange={e => setLine(i, "production_order_id", e.target.value)}>
                   <option value="">{t("productionOrder.none")}</option>
@@ -242,8 +255,14 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
           </div>)}
           <div className={s.actions}>
             <button type="button" className={s.button} onClick={() => setLines(old => [...old, { ...EMPTY_LINE }])}>{t("addLine")}</button>
-            <span className={s.muted}>{t("totalsPreview", { weight: String(kilograms(lines)) })}</span>
+            <span className={s.muted}>{t("totalsPreview", { weight: String(netTotal) })}</span>
           </div>
+          <div className={s.grid}>
+            <label className={s.field}>{t("weights.gross")}<input inputMode="decimal" dir="ltr" value={gross} onChange={e => setGross(e.target.value)} /></label>
+            <label className={s.field}>{t("weights.grossUnit")}<UnitSelect value={grossUnit} onChange={v => setGrossUnit(v || "kg")} groups={["weight"]} ariaLabel={t("weights.grossUnit")} /></label>
+            <div className={s.field}><span>{t("weights.packaging")}</span><output aria-label={t("weights.packaging")}><bdi dir="ltr">{grossTotal === null ? "—" : `${Math.round((grossTotal - netTotal) * 1000) / 1000} ${unitLabel("kg")}`}</bdi></output></div>
+          </div>
+          {grossBelowNet && <p role="alert" className={s.error}>{errors("GROSS_BELOW_NET")}</p>}
           {!linesOk && <p className={s.muted}>{t("linesHint")}</p>}
         </section>
 

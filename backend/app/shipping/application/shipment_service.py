@@ -31,7 +31,7 @@ PHONES = ("consignee_phone", "driver_phone")
 # What a rescheduled note may change: who carries it, and when (never its customer or its lines).
 TRANSPORT = ("driver_id", "vehicle_id", "carrier_id", "driver_affiliation", "delivery_method", "shipment_date", "driver_name", "driver_phone", "driver_id_no", "vehicle_plate", "vehicle_type",
              "carrier_name", "tracking_no")
-LINE_FIELDS = ("description", "width_mm", "thickness_mm", "thickness_max_mm", "quantity", "unit", "weight", "weight_unit", "production_order_id")
+LINE_FIELDS = ("description", "width_mm", "thickness_mm", "thickness_max_mm", "quantity", "unit", "unit_net_weight", "weight_unit", "production_order_id")
 
 
 def _kg(value, unit):
@@ -96,6 +96,7 @@ class ShipmentService:
             view = dict(created_by_name=names.get(s.created_by_user_id), dispatched_by_name=names.get(s.dispatched_by_user_id),
                         delivered_recorded_by_name=names.get(s.delivered_recorded_by_user_id),
                         quantities=[dict(unit=u, quantity=q) for u, q in totals["quantities"].items()], weight_total_kg=totals["weight_kg"],
+                        packaging_weight_kg=rules.packaging_weight(s.gross_weight_kg, totals["weight_kg"]),
                         missing_details=rules.method_gaps(s) if s.status == rules.DRAFT else [],
                         open_returns=sum(1 for r in returns if r.status in R.OPEN),
                         actions=rules.actions(s.status, s.delivery_method, lambda a: can(P.SHIPMENT_ACTIONS[a]), s.attempt,
@@ -107,7 +108,7 @@ class ShipmentService:
                                           requested_at=r.requested_at) for r in returns],
                             line_returns={str(line.id): dict(returned=back.get(line.id, Decimal("0")), returnable=left.get(line.id, Decimal("0")))
                                           for line in s.lines},
-                            weight_check=rules.weight_check(totals["weight_kg"], s.gate_weight_kg, s.received_weight_kg, tolerance))
+                            weight_check=rules.weight_check(s.gross_weight_kg, s.gate_weight_kg, s.received_weight_kg, tolerance))
             out.append(view)
         return out
 
@@ -119,6 +120,8 @@ class ShipmentService:
 
     # ── writes ──────────────────────────────────────────────────────────────────────────────────
     def _apply(self, shipment, values: dict, fields=HEADER):
+        if "gross_weight" in values:
+            shipment.gross_weight_kg = _kg(values["gross_weight"], values.get("gross_weight_unit", "kg"))
         from app.core.interfaces.transport_directory import apply_transport
         values = apply_transport(self.db, self.org, shipment, values)
         self._delivery_selection(shipment, values)
@@ -164,10 +167,19 @@ class ShipmentService:
 
     def _write_lines(self, shipment, lines):
         numbers = self.orders.numbers([data.production_order_id for data in lines])
+        previous = {line.id: line for line in shipment.lines}
+        calculated = []
+        seen = set()
+        for data in lines:
+            if data.id is not None and (data.id not in previous or data.id in seen):
+                raise ShippingError("LINE_NOT_FOUND", 400)
+            seen.add(data.id)
+            calculated.append(rules.line_weight(data, previous.get(data.id)))
         shipment.lines.clear()
         self.db.flush()
         for number, data in enumerate(lines, 1):
             line = ShipmentLine(line_no=number, **{f: getattr(data, f) for f in LINE_FIELDS})
+            line.weight, line.weight_unit = calculated[number - 1]
             if line.production_order_id is not None:
                 if line.production_order_id not in numbers:
                     raise ShippingError("PRODUCTION_ORDER_NOT_FOUND", 404, line=number)
@@ -209,6 +221,7 @@ class ShipmentService:
         self.db.add(shipment)
         self.db.flush()
         self._write_lines(shipment, data.lines)
+        rules.assert_gross(shipment.gross_weight_kg, rules.totals(shipment.lines)["weight_kg"])
         record(self.db, shipment, "shipment.created", None, rules.DRAFT, self.tenant.user_id)
         self.db.commit()
         log_activity(self.db, self.org, self.tenant.user_id, "shipment.created", shipment.id, shipment.shipment_no)
@@ -223,6 +236,7 @@ class ShipmentService:
         self._apply(shipment, values)
         if data.lines is not None:
             self._write_lines(shipment, data.lines)
+        rules.assert_gross(shipment.gross_weight_kg, rules.totals(shipment.lines)["weight_kg"])
         self.db.commit()
         return self._get(shipment.id)
 

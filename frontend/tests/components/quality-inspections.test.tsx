@@ -249,7 +249,8 @@ describe("specification form", () => {
     ui(<SpecificationForm />);
     fireEvent.change(await screen.findByLabelText("Specification no."), { target: { value: "ROF-TDS-PP-001" } });
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: "PP strap" } });
-    fireEvent.change(screen.getByLabelText("Product"), { target: { value: "PP strap" } });
+    // ProductSelect first renders a disabled loading select; wait for its editable no-catalog input.
+    fireEvent.change(await screen.findByRole("textbox", { name: "Product" }), { target: { value: "PP strap" } });
     fireEvent.click(screen.getByRole("button", { name: "Add all parameters" }));
     fireEvent.change(screen.getByLabelText("Target from"), { target: { value: "order_line" } });
     fireEvent.change(screen.getByLabelText("Order line key"), { target: { value: "width_mm" } });

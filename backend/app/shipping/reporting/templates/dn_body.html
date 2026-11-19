@@ -32,18 +32,19 @@
       <thead><tr>
         <th class="n">#</th><th>{{ 'الوصف' if ar else 'Description' }}</th>
         <th>{{ 'العرض (مم)' if ar else 'Width (mm)' }}</th><th>{{ 'السماكة (مم)' if ar else 'Thickness (mm)' }}</th>
-        <th>{{ 'الكمية' if ar else 'Quantity' }}</th><th>{{ 'الوحدة' if ar else 'Unit' }}</th><th>{{ 'الوزن' if ar else 'Weight' }}</th>
+        <th>{{ 'الكمية' if ar else 'Quantity' }}</th><th>{{ 'الوحدة' if ar else 'Unit' }}</th><th class="weight-head">{{ d.labels.unit_net_weight }}</th><th class="weight-head">{{ d.labels.net_weight }}</th>
       </tr></thead>
       <tbody>{% for l in d.lines %}<tr>
         <td class="n">{{ l.no }}</td>
         <td><bdi>{{ l.description }}</bdi>{% if l.batch %}<small>{{ 'أمر الإنتاج:' if ar else 'Production order:' }} <bdi dir="ltr">{{ l.batch }}</bdi></small>{% endif %}</td>
         <td class="num"><bdi dir="ltr">{{ l.width }}</bdi></td><td class="num"><bdi dir="ltr">{{ l.thickness }}</bdi></td>
-        <td class="num">{{ l.quantity }}{% if l.delivered is not none %}<small>{{ 'المستلم:' if ar else 'Received:' }} {{ l.delivered }}</small>{% endif %}</td><td>{{ l.unit }}</td><td class="num"><bdi>{{ l.weight }}</bdi></td>
+        <td class="num">{{ l.quantity }}{% if l.delivered is not none %}<small>{{ 'المستلم:' if ar else 'Received:' }} {{ l.delivered }}</small>{% endif %}</td><td>{{ l.unit }}</td><td class="num"><bdi dir="ltr">{{ l.unit_net_weight }}</bdi></td><td class="num"><bdi dir="ltr">{{ l.weight }}</bdi></td>
       </tr>{% endfor %}</tbody>
       <tfoot><tr>
-        <td colspan="4" class="lbl">{{ 'الإجمالي' if ar else 'Total' }}</td><td colspan="2"><bdi>{{ d.quantities }}</bdi></td>
+        <td colspan="4" class="lbl">{{ d.labels.net_total }}</td><td colspan="3"><bdi>{{ d.quantities }}</bdi></td>
         <td class="num"><bdi>{{ d.weight or '—' }}</bdi></td>
-      </tr></tfoot>
+      </tr>{% if d.gross_weight is not none %}<tr><td colspan="7" class="lbl">{{ d.labels.gross_weight }}</td><td class="num"><bdi dir="ltr">{{ d.gross_weight }}</bdi></td></tr>
+      <tr><td colspan="7" class="lbl">{{ d.labels.packaging_weight }}</td><td class="num"><bdi dir="ltr">{{ d.packaging_weight }}</bdi></td></tr>{% endif %}</tfoot>
     </table>
   </section>
 

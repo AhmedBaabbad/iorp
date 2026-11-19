@@ -19,7 +19,7 @@ The customer is always named, whether a registered customer or not. Delivery met
 from decimal import Decimal
 
 from app.core.phones import normalize_phone as _normalize_phone
-from app.core.units import to_kilograms
+from app.core.units import to_kilograms, WEIGHT_UNITS
 
 
 class ShippingError(ValueError):
@@ -167,9 +167,9 @@ def actions(status, method, can, attempt=1, back_at_factory=True, returnable=Fal
 
 # ── weights ─────────────────────────────────────────────────────────────────────────────────────
 
-def weight_check(planned_kg, gate_kg, received_kg, tolerance_pct) -> dict | None:
-    """The weight received against the weight that left (the gate weighbridge, else the lines' weights)."""
-    reference = gate_kg if gate_kg is not None else planned_kg
+def weight_check(gross_kg, gate_kg, received_kg, tolerance_pct) -> dict | None:
+    """Compare gross with gross: the gate weighbridge, otherwise entered gross; never net."""
+    reference = gate_kg if gate_kg is not None else gross_kg
     if received_kg is None or not reference:
         return None
     difference = (received_kg - reference).quantize(Decimal("0.001"))
@@ -183,6 +183,29 @@ def weight_check(planned_kg, gate_kg, received_kg, tolerance_pct) -> dict | None
 def assert_line(line) -> None:
     if line.quantity is None or line.quantity <= ZERO:
         raise ShippingError("QUANTITY_REQUIRED", 400, line=line.line_no)
+
+
+def line_weight(data, previous=None):
+    """Preserve legacy net only while its quantity and quantity unit are unchanged."""
+    if data.unit in WEIGHT_UNITS and "unit_net_weight" in data.model_fields_set:
+        raise ShippingError("UNIT_NET_WEIGHT_NOT_ALLOWED", 400)
+    if (previous is not None and previous.unit_net_weight is None and data.unit_net_weight is None
+            and data.unit == previous.unit and data.quantity == previous.quantity):
+        return previous.weight, previous.weight_unit
+    if data.unit in WEIGHT_UNITS:
+        return to_kilograms(data.quantity, data.unit).quantize(Decimal("0.001")), "kg"
+    if data.unit_net_weight is None:
+        raise ShippingError("UNIT_NET_WEIGHT_REQUIRED", 400)
+    return (data.quantity * data.unit_net_weight).quantize(Decimal("0.001")), data.weight_unit
+
+
+def packaging_weight(gross_kg, net_kg):
+    return (gross_kg - net_kg).quantize(Decimal("0.001")) if gross_kg is not None and net_kg is not None else None
+
+
+def assert_gross(gross_kg, net_kg):
+    if gross_kg is not None and net_kg is not None and gross_kg < net_kg:
+        raise ShippingError("GROSS_BELOW_NET", 400)
 
 
 def totals(lines) -> dict:

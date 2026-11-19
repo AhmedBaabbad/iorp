@@ -20,6 +20,7 @@
 .dn-fields dt:nth-last-of-type(1),.dn-fields dd:last-child{border-bottom:0}
 .dn-items{width:100%;border-collapse:collapse;border:1px solid var(--line);font-size:8.8pt}
 .dn-items th{background:var(--brand);color:#fff;font-weight:700;font-size:8pt;padding:6px 7px;text-align:start;white-space:nowrap}
+.dn-items th.weight-head{white-space:normal}
 .dn-items td{padding:6px 7px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:break-word}
 .dn-items tbody tr{break-inside:avoid}
 .dn-items tbody tr:nth-child(even) td{background:#fafbfc}

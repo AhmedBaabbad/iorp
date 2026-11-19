@@ -24,6 +24,7 @@ import { ReturnsList } from "@/features/shipments/components/ReturnsList";
 import { ShipmentDetail } from "@/features/shipments/components/ShipmentDetail";
 import { ShipmentForm } from "@/features/shipments/components/ShipmentForm";
 import { S } from "@/lib/shipping-permissions";
+import { lineNet, grossKg } from "@/features/shipments/weights";
 
 let en: Record<string, unknown>;
 let ar: Record<string, unknown>;
@@ -62,13 +63,12 @@ describe("shipment form", () => {
     fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "40" } });
     fireEvent.change(screen.getByLabelText("Width (mm)"), { target: { value: "15" } });
     fireEvent.change(screen.getByLabelText("Thickness (mm)"), { target: { value: "0.85" } });
-    fireEvent.change(screen.getByLabelText("Weight"), { target: { value: "0.26" } });
-    fireEvent.change(screen.getByLabelText("Weight unit"), { target: { value: "ton" } });
-    expect(screen.getByText("Total weight: 260 kg")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Net weight per unit"), { target: { value: "6.5" } });
+    expect(screen.getByText("Total net weight: 260 kg")).toBeTruthy();
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save draft" })); });
     expect(sent("/shipping/shipments", "POST")).toMatchObject({ customer_id: null, customer_name: "Walk-in buyer", delivery_method: "pickup",
       driver_name: "Fahad", vehicle_plate: "أ ب ج 1234", notify_consignee: false,
-      lines: [{ description: "PP Strap 15 mm", width_mm: "15", thickness_mm: "0.85", quantity: "40", unit: "roll", weight: "0.26", weight_unit: "ton" }] });
+      lines: [{ description: "PP Strap 15 mm", width_mm: "15", thickness_mm: "0.85", quantity: "40", unit: "roll", unit_net_weight: "6.5", weight_unit: "kg" }] });
     expect(nav.push).toHaveBeenCalledWith("/shipments/s1");
   });
 
@@ -82,7 +82,103 @@ describe("shipment form", () => {
     expect(save.disabled).toBe(true);  // an item is still needed
     fireEvent.change(screen.getByLabelText("الوصف"), { target: { value: "PP Strap 5 mm" } });
     fireEvent.change(screen.getByLabelText("الكمية"), { target: { value: "120" } });
+    fireEvent.change(screen.getByLabelText("الوزن الصافي للوحدة"), { target: { value: "10" } });
     expect(save.disabled).toBe(false);
+  });
+});
+
+describe("shipment net and gross weights", () => {
+  it("matches server half-even rounding at the stored three-decimal precision", () => {
+    const base = { unit: "roll", weight_unit: "kg", unit_net_weight: "0.5" };
+    expect(lineNet({ ...base, quantity: "1.001" })?.value).toBe(.5);
+    expect(lineNet({ ...base, quantity: "1.003" })?.value).toBe(.502);
+    expect(grossKg("0.5", "g")).toBe(0);
+    expect(grossKg("1.5", "g")).toBe(.002);
+  });
+  it("previews two line nets, converts gross tons, and sends only per-unit input", async () => {
+    api.apiClient.mockImplementation((path: string, o?: { method?: string }) => Promise.resolve(o?.method === "POST" ? shipment() : []));
+    ui(<ShipmentForm />);
+    fireEvent.click(screen.getByLabelText("Unregistered customer"));
+    fireEvent.change(screen.getByLabelText("Customer name"), { target: { value: "Synthetic Customer" } });
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Synthetic band A" } });
+    fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "100" } });
+    fireEvent.change(screen.getByLabelText("Net weight per unit"), { target: { value: "9" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add item" }));
+    fireEvent.change(screen.getAllByLabelText("Description")[1], { target: { value: "Synthetic band B" } });
+    fireEvent.change(screen.getAllByLabelText("Quantity")[1], { target: { value: "50" } });
+    fireEvent.change(screen.getAllByLabelText("Net weight per unit")[1], { target: { value: "12" } });
+    expect(screen.getByText("Total net weight: 1500 kg")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Gross weight"), { target: { value: "1.6" } });
+    fireEvent.change(screen.getByLabelText("Gross weight unit"), { target: { value: "ton" } });
+    expect(screen.getByLabelText("Packaging and remainder").textContent).toContain("100");
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save draft" })); });
+    const body = sent("/shipping/shipments", "POST");
+    expect(body).toMatchObject({ gross_weight: "1.6", gross_weight_unit: "ton", lines: [{ unit_net_weight: "9" }, { unit_net_weight: "12" }] });
+    expect(body.lines.every((line: object) => !("weight" in line))).toBe(true);
+  });
+
+  it("hides per-unit weight for weighed quantities and rejects gross below net in the form", async () => {
+    api.apiClient.mockImplementation((path: string, o?: { method?: string }) => Promise.resolve(o?.method === "POST" ? shipment() : []));
+    ui(<ShipmentForm />);
+    fireEvent.click(screen.getByLabelText("Unregistered customer"));
+    fireEvent.change(screen.getByLabelText("Customer name"), { target: { value: "Synthetic Customer" } });
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Synthetic weighed goods" } });
+    fireEvent.change(screen.getByLabelText("Unit", { selector: "select" }), { target: { value: "kg" } });
+    fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "900" } });
+    expect(screen.queryByLabelText("Net weight per unit")).toBeNull();
+    expect(screen.getByText("Total net weight: 900 kg")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Gross weight"), { target: { value: "800" } });
+    expect(screen.getByRole("alert").textContent).toBe("Gross weight cannot be below total net weight.");
+    expect((screen.getByRole("button", { name: "Save draft" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Gross weight"), { target: { value: "1000" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save draft" })); });
+    expect("unit_net_weight" in sent("/shipping/shipments", "POST").lines[0]).toBe(false);
+  });
+
+  it("shows a legacy net read-only and sends its line ID without a client-computed weight", async () => {
+    api.apiClient.mockImplementation((path: string) => Promise.resolve(path === "/shipping/shipments/s1" ? shipment() : []));
+    ui(<ShipmentForm shipmentId="s1" />);
+    await screen.findByDisplayValue("PP Strap black");
+    expect((screen.getByLabelText("Net weight per unit") as HTMLInputElement).value).toBe("");
+    expect(screen.getByLabelText("Line net weight").textContent).toContain("1.2");
+    expect(screen.getByText(/Stored legacy line net weight/)).toBeTruthy();
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save" })); });
+    const item = sent("/shipping/shipments/s1", "PATCH").lines[0];
+    expect(item).toMatchObject({ id: "l1", unit_net_weight: null });
+    expect("weight" in item).toBe(false);
+  });
+
+  it.each(["quantity", "unit"])("requires unit net after changing a legacy %s and hides its stored net", async change => {
+    const x = shipment();
+    x.lines[0] = { ...x.lines[0], quantity: "100", weight: "900", weight_unit: "kg", unit_net_weight: null };
+    api.apiClient.mockImplementation((path: string) => Promise.resolve(path === "/shipping/shipments/s1" ? x : []));
+    ui(<ShipmentForm shipmentId="s1" />);
+    await screen.findByDisplayValue("PP Strap black");
+    const input = screen.getByLabelText("Net weight per unit") as HTMLInputElement;
+    expect(input.required).toBe(false);
+    expect(screen.getByLabelText("Line net weight").textContent).toContain("900");
+    if (change === "quantity") fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "50" } });
+    else fireEvent.change(screen.getByLabelText("Unit", { selector: "select" }), { target: { value: "piece" } });
+    expect(input.required).toBe(true);
+    expect(screen.getByLabelText("Line net weight").textContent).toBe("—");
+    expect(screen.queryByText(/Stored legacy line net weight/)).toBeNull();
+    expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(input, { target: { value: "9" } });
+    expect(screen.getByLabelText("Line net weight").textContent).toContain(change === "quantity" ? "450" : "900");
+    expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("shows unit net, line net, gross, packaging and the gross matching reference", async () => {
+    const x = shipment({ weight_total_kg: "900", gross_weight_kg: "1000", packaging_weight_kg: "100",
+      received_weight_kg: "990", weight_check: { reference_kg: "1000", received_kg: "990", difference_kg: "-10", difference_pct: "-1", tolerance_pct: "1", within_tolerance: true } });
+    x.lines[0] = { ...x.lines[0], quantity: "100", weight: "900", unit_net_weight: "9", weight_unit: "kg" };
+    api.apiClient.mockResolvedValue(x);
+    ui(<ShipmentDetail shipmentId="s1" />);
+    await screen.findByRole("columnheader", { name: "Net weight per unit" });
+    expect(screen.getByRole("columnheader", { name: "Line net weight" })).toBeTruthy();
+    expect(screen.getByText("Packaging and remainder")).toBeTruthy();
+    expect(screen.getByText("Gross weight")).toBeTruthy();
+    expect(screen.getByText("Reference: entered gross weight.")).toBeTruthy();
   });
 });
 
@@ -127,11 +223,11 @@ describe("shipment detail", () => {
 });
 
 describe("shipment lines", () => {
-  it("has only description, width, thickness, quantity with its unit and one weight with its unit", async () => {
+  it("has per-unit net and gross weights without packaging detail fields", async () => {
     api.apiClient.mockResolvedValue([]);
     ui(<ShipmentForm />, "ar");
-    for (const label of ["الوصف", "العرض (مم)", "السماكة (مم)", "الكمية", "الوزن"]) expect(screen.getByLabelText(label)).toBeTruthy();
-    for (const gone of ["الوزن الصافي", "الوزن الإجمالي", "عدد العبوات", "نوع العبوة", "رقم الدفعة"]) expect(screen.queryByLabelText(gone)).toBeNull();
+    for (const label of ["الوصف", "العرض (مم)", "السماكة (مم)", "الكمية", "الوزن الصافي للوحدة", "الوزن الإجمالي"]) expect(screen.getByLabelText(label)).toBeTruthy();
+    for (const gone of ["الوزن الصافي", "عدد العبوات", "نوع العبوة", "رقم الدفعة"]) expect(screen.queryByLabelText(gone)).toBeNull();
     const unit = screen.getByLabelText("الوحدة", { selector: "select" });
     for (const name of ["لفة", "كيلوجرام (كجم)", "طن", "طبلية", "متر طولي (م.ط)", "قطعة"]) expect(within(unit).getByRole("option", { name })).toBeTruthy();
     const weight = screen.getByLabelText("وحدة الوزن", { selector: "select" }) as HTMLSelectElement;

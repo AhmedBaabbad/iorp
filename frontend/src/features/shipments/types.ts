@@ -6,13 +6,14 @@ export type ShipmentAction = "edit" | "ready" | "reopen" | "dispatch" | "deliver
 export const SHIPMENT_STATUSES: ShipmentStatus[] = ["draft", "ready", "dispatched", "delivered", "partially_delivered", "returned", "not_delivered", "cancelled"];
 export const DELIVERY_METHODS: DeliveryMethod[] = ["factory_delivery", "pickup", "carrier"];
 
-// What is shipped: description, width and thickness (mm), quantity in a unit from src/lib/units.ts, the full weight,
+// What is shipped: description, width and thickness (mm), quantity in a shared unit, per-unit net input,
 // and the production order (batch) it comes from.
 export type ShipmentLineInput = {
+  id?: string;
   description: string; width_mm: string | null; thickness_mm: string | null; thickness_max_mm?: string | null; quantity: string; unit: string;
-  weight: string | null; weight_unit: string; production_order_id?: string | null;
+  unit_net_weight?: string | null; weight_unit: string; production_order_id?: string | null;
 };
-export type ShipmentLine = ShipmentLineInput & { id: string; line_no: number; production_order_no: string | null; delivered_quantity: string | null };
+export type ShipmentLine = ShipmentLineInput & { id: string; weight: string | null; line_no: number; production_order_no: string | null; delivered_quantity: string | null };
 
 export type ShipmentHeader = {
   driver_id?: string|null; vehicle_id?: string|null; carrier_id?: string|null; driver_affiliation?: string|null; customer_contact_id?: string|null; delivery_site_id?: string|null;
@@ -23,7 +24,7 @@ export type ShipmentHeader = {
   carrier_name: string | null; tracking_no: string | null; notes: string | null;
 };
 
-export type ShipmentInput = ShipmentHeader & { delivery_method: DeliveryMethod; shipment_date: string; lines: ShipmentLineInput[] };
+export type ShipmentInput = ShipmentHeader & { gross_weight?: string | null; gross_weight_unit?: string; delivery_method: DeliveryMethod; shipment_date: string; lines: ShipmentLineInput[] };
 
 export type HistoryEntry = { action: string; from_status: string | null; to_status: string; reason: string | null; actor_name: string | null; at: string;
   return_no?: string | null };
@@ -33,6 +34,7 @@ export type Attachment = { id: string; kind: string; file_name: string; content_
 export type WeightCheck = { reference_kg: string; received_kg: string; difference_kg: string; difference_pct: string; tolerance_pct: string; within_tolerance: boolean };
 
 export type ShipmentListItem = {
+  gross_weight_kg?: string | null; packaging_weight_kg?: string | null;
   driver_affiliation?:string|null;
   id: string; shipment_no: string; status: ShipmentStatus; delivery_method: DeliveryMethod; shipment_date: string;
   customer_id: string | null; customer_name: string; customer_reference: string | null; consignee_name: string | null; delivery_city: string | null;

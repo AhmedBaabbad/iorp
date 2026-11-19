@@ -63,7 +63,7 @@ def world(client, db, isolated_tenants, tmp_path, monkeypatch):  # noqa: F811
     shipment = as_b("post", "/shipping/shipments", json=dict(
         delivery_method="factory_delivery", shipment_date=str(today), customer_id=str(d["customer_b"].id),
         driver_affiliation="external", driver_name="Saleh", vehicle_plate="ABC 1234",
-        lines=[dict(description="PP Strap", width_mm="5", thickness_mm="0.35", quantity="100", unit="roll", weight="1000")]))
+        lines=[dict(description="PP Strap", width_mm="5", thickness_mm="0.35", quantity="100", unit="roll", unit_net_weight="10")]))
     for step, payload in (("ready", None), ("dispatch", None), ("deliver", {"received_by_name": "Khalid"})):
         as_b("post", f"/shipping/shipments/{shipment['id']}/{step}", json=payload)
     shipment_file = as_b("post", f"/shipping/shipments/{shipment['id']}/attachments", data=dict(kind="proof_of_delivery"),
@@ -172,7 +172,7 @@ def test_a_cannot_use_b_records_inside_its_own_documents(world):
                                               lines=[dict(description="x", quantity="1", unit="kg", unit_price="1")])),
         ("/procurement/receipts", dict(supplier_id=ids["supplier_id"], receipt_date=today, lines=[dict(description="x", quantity="1", unit="kg")])),
         ("/shipping/shipments", dict(delivery_method="factory_delivery", shipment_date=today, customer_id=ids["customer_id"],
-                                     lines=[dict(description="x", width_mm="5", thickness_mm="0.35", quantity="1", unit="roll", weight="1")])),
+                                     lines=[dict(description="x", width_mm="5", thickness_mm="0.35", quantity="1", unit="roll", unit_net_weight="1")])),
         ("/shipping/returns", dict(shipment_id=ids["shipment_id"], reason="quality_defect", lines=[])),
         ("/delegations", dict(delegator_user_id=str(world["d"]["user_a"].id), delegate_user_id=str(world["deputy"].id),
                               permission_code="procurement:purchase_orders:approve", effective_from=today,

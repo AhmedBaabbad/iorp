@@ -27,6 +27,7 @@ class _Input(BaseModel):
 
 
 class LineInput(_Input):
+    id: UUID | None = None  # identifies an existing draft line; never trusted as a new row ID
     description: str = Field(min_length=1, max_length=255)
     width_mm: Decimal | None = Field(default=None, ge=0, max_digits=10, decimal_places=3)
     thickness_mm: Decimal | None = Field(default=None, ge=0, max_digits=10, decimal_places=3)
@@ -43,8 +44,7 @@ class LineInput(_Input):
 
     quantity: Quantity = Field(gt=0, max_digits=14, decimal_places=3)
     unit: str = Field(min_length=1, max_length=32)
-    # The full weight of the line's units (one weight: no net / gross split).
-    weight: Quantity | None = Field(default=None, ge=0, max_digits=14, decimal_places=3)
+    unit_net_weight: Quantity | None = Field(default=None, ge=0, max_digits=14, decimal_places=3)
     weight_unit: WeightUnit = "kg"
     production_order_id: UUID | None = None  # the batch the goods come from
 
@@ -58,6 +58,8 @@ class LineInput(_Input):
 
 
 class _Header(_Input):
+    gross_weight: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=3)
+    gross_weight_unit: WeightUnit = "kg"
     driver_id: UUID | None = None
     vehicle_id: UUID | None = None
     carrier_id: UUID | None = None
@@ -201,6 +203,7 @@ class LineRead(BaseModel):
     quantity: Decimal
     unit: str
     weight: Decimal | None
+    unit_net_weight: Decimal | None = None
     weight_unit: str
     production_order_id: UUID | None = None
     production_order_no: str | None = None
@@ -258,6 +261,8 @@ class WeightCheck(BaseModel):
 
 
 class ShipmentListItem(BaseModel):
+    gross_weight_kg: Decimal | None = None
+    packaging_weight_kg: Decimal | None = None
     driver_affiliation: str | None = None
     model_config = ConfigDict(from_attributes=True)
     id: UUID

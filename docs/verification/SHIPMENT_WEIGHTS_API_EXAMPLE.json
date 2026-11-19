@@ -1,0 +1,154 @@
+{
+  "method": "POST",
+  "path": "/api/v1/shipping/shipments",
+  "request": {
+    "delivery_method": "factory_delivery",
+    "shipment_date": "2026-10-04",
+    "customer_id": null,
+    "lines": [
+      {
+        "description": "Synthetic strapping band",
+        "quantity": "100",
+        "unit": "roll",
+        "unit_net_weight": "9",
+        "weight_unit": "kg"
+      },
+      {
+        "description": "Synthetic strapping band",
+        "quantity": "50",
+        "unit": "roll",
+        "unit_net_weight": "12",
+        "weight_unit": "kg"
+      }
+    ],
+    "customer_name": "Synthetic Customer",
+    "gross_weight": "1.6",
+    "gross_weight_unit": "ton"
+  },
+  "status": 201,
+  "response": {
+    "gross_weight_kg": "1600.000",
+    "packaging_weight_kg": "100.000",
+    "driver_affiliation": null,
+    "id": "dd973a62-f10d-4fe5-a1e4-04c76a0cd6e2",
+    "shipment_no": "DN-2026-0001",
+    "status": "draft",
+    "delivery_method": "factory_delivery",
+    "shipment_date": "2026-10-04",
+    "customer_id": null,
+    "customer_name": "Synthetic Customer",
+    "customer_reference": null,
+    "consignee_name": null,
+    "delivery_city": null,
+    "driver_name": null,
+    "vehicle_plate": null,
+    "carrier_name": null,
+    "dispatched_at": null,
+    "delivered_at": null,
+    "quantities": [
+      {
+        "unit": "roll",
+        "quantity": "150.000"
+      }
+    ],
+    "weight_total_kg": "1500.000",
+    "attempt": 1,
+    "open_returns": 0,
+    "actions": [
+      "edit",
+      "ready",
+      "cancel"
+    ],
+    "created_at": "2026-11-18T22:19:05+00:00",
+    "delivery_country": null,
+    "driver_id": null,
+    "vehicle_id": null,
+    "carrier_id": null,
+    "customer_contact_id": null,
+    "delivery_site_id": null,
+    "consignee_phone": null,
+    "consignee_email": null,
+    "notify_consignee": false,
+    "delivery_address": null,
+    "location_url": null,
+    "driver_phone": null,
+    "driver_id_no": null,
+    "vehicle_type": null,
+    "tracking_no": null,
+    "notes": null,
+    "ready_at": null,
+    "received_by_name": null,
+    "delivery_notes": null,
+    "cancel_reason": null,
+    "close_reason": null,
+    "failed_at": null,
+    "gate_weight_kg": null,
+    "received_weight_kg": null,
+    "weight_check": null,
+    "returns": [],
+    "line_returns": {
+      "f5de8376-5a97-4327-955f-dfe0d1f17446": {
+        "returned": "0",
+        "returnable": "0"
+      },
+      "9d557e19-d61d-421d-9896-4e7d96eaa219": {
+        "returned": "0",
+        "returnable": "0"
+      }
+    },
+    "attachments": [],
+    "lines": [
+      {
+        "id": "f5de8376-5a97-4327-955f-dfe0d1f17446",
+        "line_no": 1,
+        "description": "Synthetic strapping band",
+        "width_mm": null,
+        "thickness_mm": null,
+        "thickness_max_mm": null,
+        "quantity": "100.000",
+        "unit": "roll",
+        "weight": "900.000",
+        "unit_net_weight": "9.000",
+        "weight_unit": "kg",
+        "production_order_id": null,
+        "production_order_no": null,
+        "delivered_quantity": null
+      },
+      {
+        "id": "9d557e19-d61d-421d-9896-4e7d96eaa219",
+        "line_no": 2,
+        "description": "Synthetic strapping band",
+        "width_mm": null,
+        "thickness_mm": null,
+        "thickness_max_mm": null,
+        "quantity": "50.000",
+        "unit": "roll",
+        "weight": "600.000",
+        "unit_net_weight": "12.000",
+        "weight_unit": "kg",
+        "production_order_id": null,
+        "production_order_no": null,
+        "delivered_quantity": null
+      }
+    ],
+    "missing_details": [
+      "driver_name",
+      "vehicle_plate"
+    ],
+    "created_by_name": "Test User",
+    "dispatched_by_name": null,
+    "delivered_recorded_by_name": null,
+    "history": [
+      {
+        "action": "created",
+        "from_status": null,
+        "to_status": "draft",
+        "reason": null,
+        "actor_name": "Test User",
+        "at": "2026-11-18T22:19:05+00:00",
+        "return_no": null
+      }
+    ],
+    "updated_at": "2026-11-18T22:19:05+00:00"
+  }
+}
