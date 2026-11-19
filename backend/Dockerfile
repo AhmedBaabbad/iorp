@@ -10,6 +10,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /app
+COPY --from=shared /i18n /app/shared/i18n
 
 FROM base AS deps
 COPY requirements.lock ./

@@ -106,10 +106,11 @@ class ProductionDashboard:
                                 value=rate(l_now, g_now + l_now), previous=rate(l_before, g_before + l_before), today=rate(l_today, g_today + l_today)))
         board.series.append(Series(key="produced", unit=unit, points=points(w, good)))
         board.series.append(Series(key="scrap", unit=unit, points=points(w, loss)))
+        # Work-center names are user-entered single-language data, not enum keys.
         board.breakdowns.append(breakdown("output_by_center", list(by_center.items()), unit=unit, labels={k: k for k in by_center}, limit=8))
         board.breakdowns.append(breakdown("scrap_by_reason", list(by_reason.items()), unit=unit, limit=8))
         top = sorted(by_product.items(), key=lambda kv: kv[1], reverse=True)[:6]
-        board.rankings.append(Ranking(key="top_products", unit=unit, items=[RankItem(label=k, value=v) for k, v in top]))
+        board.rankings.append(Ranking(key="top_products", unit=unit, items=[RankItem(key=k, value=v) for k, v in top]))
 
     # ── stops ─────────────────────────────────────────────────────────────────────────────────────────────────
     def _downtime(self, w: Window, board: Dashboard) -> None:
@@ -135,7 +136,7 @@ class ProductionDashboard:
                                      .where(DowntimeEvent.organization_id == self.org, DowntimeEvent.status == DowntimeStatus.OPEN)
                                      .order_by(DowntimeEvent.start_time).limit(ATTENTION_LIMIT)).all()
         for event_id, start, category, center in open_stops:
-            board.attention.append(Attention(kind="open_downtime", id=str(event_id), label=center, detail=category, date=as_day(start),
+            board.attention.append(Attention(kind="open_downtime", id=str(event_id), label=center, detail=category, detail_kind="downtime_category", date=as_day(start),
                                              href=f"/downtime-events/{event_id}", severity="danger"))
 
     # ── orders ────────────────────────────────────────────────────────────────────────────────────────────────

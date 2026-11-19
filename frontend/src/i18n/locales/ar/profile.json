@@ -21,11 +21,6 @@
     "en": "English",
     "default": "الافتراضي (حسب المنظمة)"
   },
-  "statuses": {
-    "active": "نشط",
-    "inactive": "غير نشط",
-    "locked": "مقفل"
-  },
   "saveButton": "حفظ التغييرات",
   "saving": "جاري الحفظ...",
   "updateSuccess": "تم تحديث ملفك الشخصي بنجاح",

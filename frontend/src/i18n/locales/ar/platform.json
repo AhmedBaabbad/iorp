@@ -128,13 +128,6 @@
       "createdAt": "تاريخ الإنشاء",
       "actions": "الإجراءات"
     },
-    "status": {
-      "active": "نشطة",
-      "provisioning": "قيد التجهيز",
-      "suspended": "موقوفة",
-      "inactive": "غير نشطة",
-      "archived": "مؤرشفة"
-    },
     "actions": {
       "view": "عرض التفاصيل",
       "suspend": "تعليق",
@@ -306,10 +299,6 @@
       "root": "مالك المنصة",
       "admin": "مسؤول المنصة"
     },
-    "statuses": {
-      "active": "نشط",
-      "inactive": "غير نشط"
-    },
     "table": {
       "name": "الاسم",
       "email": "البريد الإلكتروني",
@@ -367,18 +356,6 @@
       "status": "الحالة",
       "lastActivity": "آخر نشاط",
       "noActivity": "لا يوجد نشاط"
-    },
-    "statuses": {
-      "provisioning": "قيد التجهيز",
-      "active": "نشطة",
-      "suspended": "موقوفة",
-      "inactive": "غير نشطة",
-      "archived": "مؤرشفة"
-    },
-    "userStatuses": {
-      "active": "نشط",
-      "inactive": "غير نشط",
-      "locked": "مقفل"
     },
     "locales": {
       "ar": "العربية",

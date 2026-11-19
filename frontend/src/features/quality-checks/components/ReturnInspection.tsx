@@ -1,4 +1,5 @@
 "use client";
+import { useCustomerNames } from "@/features/customers/use-customer-names";
 import { Dialog } from "@/components/ui/Dialog";
 
 import Link from "next/link";
@@ -26,6 +27,7 @@ export function ReturnSourceSection({ check }: { check: QualityCheckData }) {
   const unit = (code: string) => (units.has(code) ? units(code) : code);
   const [batch, setBatch] = useState<BatchShipment[] | null>(null);
   const source = check.return_source!;
+  const customerName = useCustomerNames([source.customer_id, ...(batch ?? []).map(row => row.customer_id)]);
   useEffect(() => {
     let active = true;
     if (check.production_order_id) getBatchShipments(check.id).then(v => { if (active) setBatch(v); }).catch(() => { if (active) setBatch([]); });
@@ -40,7 +42,7 @@ export function ReturnSourceSection({ check }: { check: QualityCheckData }) {
       <dl className={s.grid} style={{ margin: 0 }}>
         <div><dt className={s.muted}>{t("returnNo")}</dt><dd style={{ margin: "4px 0 0" }}><Link href={`/shipment-returns/${source.return_id}`}><bdi>{source.return_no}</bdi></Link></dd></div>
         <div><dt className={s.muted}>{t("note")}</dt><dd style={{ margin: "4px 0 0" }}><Link href={`/shipments/${source.shipment_id}`}><bdi>{source.shipment_no}</bdi></Link></dd></div>
-        <div><dt className={s.muted}>{t("customer")}</dt><dd style={{ margin: "4px 0 0" }}>{source.customer_name}</dd></div>
+        <div><dt className={s.muted}>{t("customer")}</dt><dd style={{ margin: "4px 0 0" }}>{customerName(source.customer_id, source.customer_name)}</dd></div>
         <div><dt className={s.muted}>{t("reason")}</dt><dd style={{ margin: "4px 0 0" }}>{labels(`reasons.${source.reason}`)} — {labels(`responsibility.${source.responsibility}`)}</dd></div>
         <div><dt className={s.muted}>{t("item")}</dt><dd style={{ margin: "4px 0 0" }}>{source.line_no}. {source.description}</dd></div>
       </dl>
@@ -55,7 +57,7 @@ export function ReturnSourceSection({ check }: { check: QualityCheckData }) {
         <tbody>{batch.map(b => <tr key={`${b.shipment_id}-${b.quantity}`}>
           <td><Link href={`/shipments/${b.shipment_id}`}><bdi>{b.shipment_no}</bdi></Link></td>
           <td>{fmt.date(b.shipment_date)}</td>
-          <td>{b.customer_name}</td>
+          <td>{customerName(b.customer_id, b.customer_name)}</td>
           <td><bdi>{fmt.quantity(b.delivered_quantity ?? b.quantity, unit(b.unit))}</bdi></td>
           <td>{statuses.has(b.status) ? statuses(b.status) : b.status}</td>
         </tr>)}</tbody>

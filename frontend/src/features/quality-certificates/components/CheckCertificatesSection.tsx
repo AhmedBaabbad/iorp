@@ -1,5 +1,6 @@
 "use client";
 
+import { useCustomerNames } from "@/features/customers/use-customer-names";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -21,6 +22,7 @@ export function CheckCertificatesSection({ checkId }: { checkId: string }) {
   const canRead = usePermission(Q.COA_READ);
   const canCreate = usePermission(Q.COA_CREATE);
   const [rows, setRows] = useState<CertificateListItem[]>([]);
+  const customerName = useCustomerNames(rows.map(row => row.customer_id));
   const [total, setTotal] = useState(0);
   const [sources, setSources] = useState<CertificateSources | null>(null);
   const [customer, setCustomer] = useState("");
@@ -46,7 +48,7 @@ export function CheckCertificatesSection({ checkId }: { checkId: string }) {
   return <section className={s.panel} aria-label={t("checkSection")}>
     <h2 style={{ marginTop: 0 }}>{t("checkSection")}</h2>
     {rows.length > 0 && <ul style={{ margin: "0 0 12px", paddingInlineStart: 18 }}>{rows.map(r => <li key={r.id} style={{ marginBottom: 4 }}>
-      <Link href={`/quality-certificates/${r.id}`}><bdi>{r.certificate_no ?? t("draftNumber")}</bdi></Link> — {r.customer_name || "—"} <CertificateStatusBadge status={r.status} />
+      <Link href={`/quality-certificates/${r.id}`}><bdi>{r.certificate_no ?? t("draftNumber")}</bdi></Link> — {customerName(r.customer_id, r.customer_name)} <CertificateStatusBadge status={r.status} />
     </li>)}</ul>}
     {total > rows.length && <p><Link href={`/quality-certificates?quality_check_id=${checkId}`}>{t("allForCheck", { count: total })}</Link></p>}
     {canCreate && sources && (sources.certifiable ? <div className={s.toolbar} style={{ marginBottom: 0 }}>

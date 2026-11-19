@@ -1,4 +1,5 @@
 // PROD-PLAN-003 frontend rules. Run: npm test (node --test, no DOM required).
+import { resolveEnums } from "./locale-fixture.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -63,7 +64,7 @@ test("server lifecycle error codes are surfaced", () => {
 
 test("every lifecycle message exists in English and Arabic", () => {
   for (const lang of ["en", "ar"]) {
-    const m = JSON.parse(readFileSync(new URL(`../src/i18n/locales/${lang}/production.json`, import.meta.url), "utf8"));
+    const m = resolveEnums({ production: JSON.parse(readFileSync(new URL(`../src/i18n/locales/${lang}/production.json`, import.meta.url), "utf8")) }, lang).production;
     for (const view of ["active", "all"]) assert.ok(m.planning.views.empty[view], `${lang} empty ${view}`);
     for (const key of ["label", "summary", "showAll", "reset", "hidden"]) assert.ok(m.demands.statusVisibility[key], `${lang} statusVisibility ${key}`);
     for (const key of ["active", "released"]) assert.ok(m.allocation.statuses[key], `${lang} status ${key}`);

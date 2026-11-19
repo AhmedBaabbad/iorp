@@ -1,4 +1,5 @@
 "use client";
+import { localName } from "@/lib/local-name";
 import {useUnitLabel} from "@/components/UnitLabel";
 import { ReferenceTextSelect } from "@/features/reference-directory/ReferenceTextSelect";
 
@@ -58,7 +59,7 @@ export function SpecificationForm({ specId }: { specId?: string }) {
   const locked = Boolean(existing && !existing.actions.includes("edit"));
   const numbersOk = lines.every(l => [l.target_value, l.tolerance_minus, l.tolerance_plus, l.min_value, l.max_value].every(v => !v || DECIMAL.test(v)));
   const valid = Boolean(header.code.trim() && header.title.trim() && header.product_type.trim()) && numbersOk;
-  const name = (p?: TestParameter) => (p ? (ar ? p.name_ar : p.name_en) : "—");
+  const name = (p?: TestParameter) => (p ? (localName(p, ar ? "ar" : "en")) : "—");
 
   const setLine = (index: number, patch: Partial<SpecificationLineInput>) => setLines(old => old.map((l, i) => (i === index ? { ...l, ...patch } : l)));
   const move = (index: number, step: number) => setLines(old => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { localName } from "@/lib/local-name";
 import Link from "next/link";
 import row from "@/components/forms/control-row.module.css";
 import { useLocale, useTranslations } from "next-intl";
@@ -23,7 +24,7 @@ export function ListSelect({ id, list, value, onChange, parent, required = false
   const locale = useLocale();
   const canManage = usePermission(MD.LISTS_UPDATE);
   const all = useListItems(list);
-  const name = (i: ListItem) => (locale === "ar" ? i.name_ar : i.name_en);
+  const name = (i: ListItem) => localName(i, locale);
 
   if (all === null) {
     return <select id={id} className={className} style={style} aria-label={ariaLabel} disabled value=""><option value="">{t("loading")}</option></select>;

@@ -186,7 +186,7 @@ class ShippingReads:
         query = (select(lines.c.id.label("line_id"), lines.c.line_no, lines.c.description, lines.c.width_mm, lines.c.thickness_mm, lines.c.thickness_max_mm, lines.c.unit,
                         lines.c.weight_unit, lines.c.production_order_no, lines.c.received_quantity, lines.c.received_weight,
                         returns.c.id.label("return_id"), returns.c.return_no, returns.c.kind, returns.c.reason, returns.c.responsibility,
-                        returns.c.details, returns.c.customer_name, returns.c.received_at, returns.c.status, returns.c.quality_required,
+                        returns.c.details, returns.c.customer_id, returns.c.customer_name, returns.c.received_at, returns.c.status, returns.c.quality_required,
                         notes.c.id.label("shipment_id"), notes.c.shipment_no, note_lines.c.production_order_id)
                  .join(returns, returns.c.id == lines.c.return_id).join(notes, notes.c.id == returns.c.shipment_id)
                  .join(note_lines, note_lines.c.id == lines.c.shipment_line_id).where(returns.c.organization_id == self.org))
@@ -231,7 +231,7 @@ class ShippingReads:
             return []
         notes, note_lines = _t("shipping_shipments"), _t("shipping_shipment_lines")
         rows = self.db.execute(select(notes.c.id.label("shipment_id"), notes.c.shipment_no, notes.c.status, notes.c.shipment_date,
-                                      notes.c.customer_name, note_lines.c.quantity, note_lines.c.delivered_quantity, note_lines.c.unit)
+                                      notes.c.customer_id, notes.c.customer_name, note_lines.c.quantity, note_lines.c.delivered_quantity, note_lines.c.unit)
                                .join(notes, notes.c.id == note_lines.c.shipment_id)
                                .where(notes.c.organization_id == self.org, note_lines.c.production_order_id == production_order_id,
                                       notes.c.status.in_(self.LEFT_OR_LEAVING))

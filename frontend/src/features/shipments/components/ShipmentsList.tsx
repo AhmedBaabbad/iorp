@@ -1,5 +1,6 @@
 "use client";
 
+import { useCustomerNames } from "@/features/customers/use-customer-names";
 import { DriverAffiliation } from "@/features/reference-directory/DirectorySelect";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -30,6 +31,7 @@ export function ShipmentsList() {
   const canSeeReturns = usePermission(S.RETURNS_READ);
   const [filters, setFilters] = useState(EMPTY);
   const [rows, setRows] = useState<ShipmentListItem[] | null>(null);
+  const customerName = useCustomerNames((rows ?? []).map(row => row.customer_id));
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -74,7 +76,7 @@ export function ShipmentsList() {
         <tbody>{rows.map(r => <tr key={r.id}>
           <td><Link href={`/shipments/${r.id}`}><bdi>{r.shipment_no}</bdi></Link></td>
           <td>{fmt.date(r.shipment_date)}</td>
-          <td>{r.customer_name}{r.customer_reference && <div className={s.muted}><bdi>{r.customer_reference}</bdi></div>}</td>
+          <td>{customerName(r.customer_id, r.customer_name)}{r.customer_reference && <div className={s.muted}><bdi>{r.customer_reference}</bdi></div>}</td>
           <td>{t(`methods.${r.delivery_method}`)}</td>
           <td><bdi>{r.delivery_method === "carrier" ? (r.carrier_name ?? "—") : [r.driver_name, r.vehicle_plate].filter(Boolean).join(" — ") || "—"}</bdi>{r.delivery_method!=="carrier"&&r.driver_name&&<div><DriverAffiliation value={r.driver_affiliation}/></div>}</td>
           <td><bdi>{r.quantities.map(q => fmt.quantity(q.quantity, unit(q.unit))).join(" · ") || "—"}</bdi>

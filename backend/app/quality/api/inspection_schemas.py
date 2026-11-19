@@ -140,6 +140,7 @@ class ReturnSource(BaseModel):
     details: str | None
     shipment_id: UUID
     shipment_no: str
+    customer_id: UUID | None = None
     customer_name: str
     line_no: int
     description: str
@@ -370,6 +371,7 @@ class AwaitingReturn(BaseModel):
     reason: str
     responsibility: str
     details: str | None
+    customer_id: UUID | None = None
     customer_name: str
     received_at: ISODatetime | None
     shipment_id: UUID
@@ -383,6 +385,7 @@ class BatchShipment(BaseModel):
     shipment_no: str
     status: str
     shipment_date: date
+    customer_id: UUID | None = None
     customer_name: str
     quantity: Decimal
     delivered_quantity: Decimal | None

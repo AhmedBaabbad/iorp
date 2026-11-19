@@ -2,10 +2,6 @@
   "search": "بحث",
   "save": "حفظ",
   "cancel": "إلغاء",
-  "kinds": {
-    "finished": "منتج نهائي",
-    "material": "مادة"
-  },
   "propertyKinds": {
     "number": "رقم",
     "text": "نص",

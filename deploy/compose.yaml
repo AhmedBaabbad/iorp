@@ -27,6 +27,8 @@ x-backend: &backend
   image: ${IORP_REGISTRY:-iorp}/backend:${IORP_IMAGE_TAG:?set IORP_IMAGE_TAG to the commit SHA being deployed}
   build:
     context: ../backend
+    additional_contexts:
+      shared: ../shared
     target: runtime
   env_file:
     - ${IORP_BACKEND_ENV_FILE:?set IORP_BACKEND_ENV_FILE (deploy/env/backend.env.example is the template)}
@@ -42,6 +44,8 @@ services:
     image: ${IORP_REGISTRY:-iorp}/backup:${IORP_IMAGE_TAG}
     build:
       context: ../backend
+      additional_contexts:
+        shared: ../shared
       target: backup
     profiles: [backup]
     restart: "no"
@@ -66,6 +70,8 @@ services:
     image: ${IORP_REGISTRY:-iorp}/frontend:${IORP_IMAGE_TAG}
     build:
       context: ../frontend
+      additional_contexts:
+        shared: ../shared
       args:
         BACKEND_URL: http://backend:8080
     restart: unless-stopped

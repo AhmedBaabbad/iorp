@@ -86,7 +86,8 @@ class Breakdown(BaseModel):
 
 
 class RankItem(BaseModel):
-    label: str
+    key: str | None = None
+    label: str | None = None
     value: Decimal
     detail: str | None = None
     href: str | None = None
@@ -116,6 +117,7 @@ class Attention(BaseModel):
     id: str | None = None
     label: str
     detail: str | None = None
+    detail_kind: str | None = None
     date: Day | None = None
     href: str | None = None
     severity: Literal["danger", "warning", "info"] = "warning"

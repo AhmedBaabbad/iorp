@@ -1,4 +1,26 @@
 services:
+  backend:
+    profiles: [app]
+    build:
+      context: ./backend
+      target: runtime
+      additional_contexts:
+        shared: ./shared
+    environment:
+      APP_ENV: development
+      EMAIL_MODE: console
+      DATABASE_URL: postgresql+psycopg://iorp:iorp@postgres:5432/iorp
+      REPORT_RENDERER_URL: http://report-gateway
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on: [postgres, report-gateway]
+  frontend:
+    profiles: [app]
+    build:
+      context: ./frontend
+      additional_contexts:
+        shared: ./shared
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on: [backend]
   report-renderer:
     image: gotenberg/gotenberg:8.37.0
     command:

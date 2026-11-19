@@ -25,30 +25,12 @@
     "work": "Work",
     "announcement": "Announcements"
   },
-  "categories": {
-    "access": "Access and permissions",
-    "security": "Account security",
-    "delegation": "Delegations",
-    "work": "Work",
-    "announcement": "Announcement"
-  },
-  "severity": {
-    "info": "Normal",
-    "important": "Important",
-    "urgent": "Urgent"
-  },
   "ack": {
     "title": "Please read and confirm",
     "subtitle": "{count, plural, one {An announcement requires} other {# announcements require}} your confirmation that you have read it.",
     "from": "From {name}",
     "confirm": "I have read it",
     "confirmed": "Your confirmation was recorded."
-  },
-  "supplierStatus": {
-    "pending": "pending approval",
-    "approved": "approved",
-    "conditional": "conditionally approved",
-    "blocked": "blocked"
   },
   "events": {
     "foundation": {

@@ -38,6 +38,7 @@ class EligibleDemandItem(BaseModel):
     production_demand_item_id: UUID
     production_demand_id: UUID
     demand_number: str
+    customer_id: UUID | None = None
     customer_name: str | None
     line_no: int
     product_type: str | None

@@ -1,5 +1,6 @@
 // PROJECT-FIX-002: Arabic and English stay complete. Every key exists in both languages with the same kind of value
 // and the same variables, and every literal key the screens ask for exists. A failure names the file and the key.
+import { resolveEnums } from "./locale-fixture.mjs";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -66,7 +67,7 @@ for (const file of FILES) {
 }
 
 test("every literal key a screen asks for exists in both languages", () => {
-  const messages = Object.fromEntries(["ar", "en"].map((lang) => [lang, Object.fromEntries(FILES.map((f) => [NAMESPACE(f), read(lang, f)]))]));
+  const messages = Object.fromEntries(["ar", "en"].map((lang) => [lang, resolveEnums(Object.fromEntries(FILES.map((f) => [NAMESPACE(f), read(lang, f)])), lang)]));
   const has = (tree, path) => path.split(".").every((part) => (tree = tree && typeof tree === "object" ? tree[part] : undefined) !== undefined);
   // A namespace built at run time (`dashboard.${department}`) cannot be checked here; its calls are skipped.
   const declaration = /const\s+(\w+)\s*=\s*(?:useTranslations|await getTranslations)\(\s*(?:["'`]([^"'`]*)["'`])?\s*\)/g;

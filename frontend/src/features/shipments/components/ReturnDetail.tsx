@@ -1,4 +1,5 @@
 "use client";
+import { useCustomerNames } from "@/features/customers/use-customer-names";
 import { formatThickness } from "@/lib/spec-value";
 
 import Link from "next/link";
@@ -36,6 +37,7 @@ export function ReturnDetail({ returnId }: { returnId: string }) {
   const unit = (code: string) => (units.has(code) ? units(code) : code);
   const canAttach = useHasAnyPermission([S.RETURNS_CREATE, S.RETURNS_APPROVE, S.RETURNS_RECEIVE]);
   const [x, setX] = useState<ShipmentReturn | null>(null);
+  const customerName = useCustomerNames([x?.customer_id]);
   const [loading, setLoading] = useState(true);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -60,7 +62,7 @@ export function ReturnDetail({ returnId }: { returnId: string }) {
   const button = (action: Dialog, kind = s.primary) => x.actions.includes(action) &&
     <button type="button" className={`${s.button} ${kind}`} disabled={busy !== null} onClick={() => setDialog(action)}>{t(`actions.${action}`)}</button>;
 
-  return <PageFrame title={x.return_no} subtitle={`${x.customer_name} — ${t(`kinds.${x.kind}`)}`} action={back}>
+  return <PageFrame title={x.return_no} subtitle={`${customerName(x.customer_id, x.customer_name)} — ${t(`kinds.${x.kind}`)}`} action={back}>
     {error && <p role="alert" className={s.error}>{error}</p>}
     <section className={s.panel}>
       <div className={s.actions} style={{ justifyContent: "space-between", marginBottom: 16 }}>
@@ -75,7 +77,7 @@ export function ReturnDetail({ returnId }: { returnId: string }) {
       <dl className={s.grid} style={{ margin: 0 }}>
         <Item label={t("fields.note")}><Link href={`/shipments/${x.shipment_id}`}><bdi>{x.shipment_no}</bdi></Link>
           {x.kind === "delivery" && x.attempt > 1 && <div className={s.muted}>{shipping("attemptBadge", { n: String(x.attempt) })}</div>}</Item>
-        <Item label={t("fields.customer")}>{x.customer_name}</Item>
+        <Item label={t("fields.customer")}>{customerName(x.customer_id, x.customer_name)}</Item>
         <Item label={t("fields.requested_at")}>{fmt.dateTime(x.requested_at)} — {x.created_by_name ?? "—"}</Item>
         <Item label={t("fields.reason")}>{t(`reasons.${x.reason}`)}</Item>
         <Item label={t("fields.responsibility")}>{t(`responsibility.${x.responsibility}`)}</Item>

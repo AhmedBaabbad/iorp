@@ -1,5 +1,6 @@
 "use client";
 
+import { useEnumLabel } from "@/i18n/enum-helpers";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -79,6 +80,7 @@ const defaultValues: ShiftFormValues = {
 };
 
 export function ShiftForm() {
+  const statusName = useEnumLabel("production", "shiftDefinitionStatus");
   const t = useTranslations("production.shifts");
   const tEnums = useTranslations();
   const common = useTranslations("common");
@@ -236,8 +238,8 @@ export function ShiftForm() {
                 disabled={isSubmitting}
                 required
               >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="active">{statusName("active")}</option>
+                <option value="inactive">{statusName("inactive")}</option>
               </select>
             </label>
           </div>

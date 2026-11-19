@@ -83,7 +83,7 @@ class ShippingDashboard:
         board.cards.append(card("failed", w, failed, good_when="down", href="/shipments"))
         board.series.append(Series(key="dispatched", points=points(w, dispatched)))
         board.series.append(Series(key="delivered", points=points(w, delivered)))
-        board.breakdowns.append(breakdown("deliveries_by_city", list(by_city.items()), labels={k: k for k in by_city}, limit=8))
+        board.breakdowns.append(breakdown("deliveries_by_city", list(by_city.items()), limit=8))
         top = sorted(by_customer.items(), key=lambda kv: kv[1], reverse=True)[:6]
         board.rankings.append(Ranking(key="top_customers", unit="kg", items=[
             RankItem(label=name, value=v, href=f"/customers/{customer_id}" if customer_id else None) for (name, customer_id), v in top]))

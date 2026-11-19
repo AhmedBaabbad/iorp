@@ -25,30 +25,12 @@
     "work": "العمل",
     "announcement": "الإعلانات"
   },
-  "categories": {
-    "access": "الصلاحيات والأدوار",
-    "security": "أمان الحساب",
-    "delegation": "التفويضات",
-    "work": "العمل",
-    "announcement": "إعلان"
-  },
-  "severity": {
-    "info": "عادي",
-    "important": "مهم",
-    "urgent": "عاجل"
-  },
   "ack": {
     "title": "يرجى الاطلاع والتأكيد",
     "subtitle": "{count, plural, one {إعلان يتطلب} two {إعلانان يتطلبان} few {# إعلانات تتطلب} many {# إعلانًا يتطلب} other {# إعلان يتطلب}} تأكيد اطلاعك.",
     "from": "من {name}",
     "confirm": "اطّلعت عليه",
     "confirmed": "تم تسجيل تأكيد اطلاعك."
-  },
-  "supplierStatus": {
-    "pending": "بانتظار الاعتماد",
-    "approved": "معتمد",
-    "conditional": "معتمد بشروط",
-    "blocked": "موقوف"
   },
   "events": {
     "foundation": {

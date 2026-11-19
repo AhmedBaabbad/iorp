@@ -14,21 +14,6 @@
   },
   "empty": "No shipments",
   "emptyHint": "Create a shipment to issue a delivery note.",
-  "statuses": {
-    "draft": "Draft",
-    "ready": "Ready for loading",
-    "dispatched": "Dispatched",
-    "delivered": "Delivered",
-    "cancelled": "Cancelled",
-    "partially_delivered": "Partly delivered",
-    "returned": "Returned to the factory",
-    "not_delivered": "Not delivered"
-  },
-  "methods": {
-    "factory_delivery": "Factory delivery",
-    "pickup": "Collection at the factory",
-    "carrier": "Carrier"
-  },
   "methodHints": {
     "factory_delivery": "The factory's driver delivers: his name and the vehicle plate are needed before it is ready.",
     "pickup": "The customer collects at the factory: the collector's name and vehicle plate are needed; receipt is recorded at the gate.",
@@ -313,11 +298,6 @@
     "open": "Open",
     "hint": "An image or PDF, 10 MB at most: the delivery note signed by the recipient, or photos.",
     "kind": "File type",
-    "kinds": {
-      "proof_of_delivery": "Signed delivery note",
-      "document": "Document",
-      "photo": "Photo"
-    },
     "removeConfirm": "Remove {name}?"
   },
   "returns": {
@@ -328,40 +308,9 @@
     "emptyHint": "Returns open from a delivery note's outcome, or from a customer's return of delivered goods.",
     "allKinds": "All kinds",
     "searchPlaceholder": "Return no., delivery note, customer or reference",
-    "kinds": {
-      "delivery": "Not received at delivery",
-      "customer": "Returned by the customer"
-    },
     "kindHints": {
       "delivery": "Refused or not received at the door: the goods come back with the driver.",
       "customer": "The customer received the goods and later sends (some of) them back."
-    },
-    "statuses": {
-      "requested": "Awaiting approval",
-      "approved": "Approved — awaiting receipt",
-      "rejected": "Rejected",
-      "received": "Received at the factory",
-      "cancelled": "Cancelled"
-    },
-    "reasons": {
-      "customer_refused": "Customer refused",
-      "site_closed": "Site closed",
-      "no_receiver": "Nobody to receive",
-      "wrong_address": "Wrong address",
-      "transit_damage": "Damaged in transit",
-      "quality_issue": "Visible quality problem",
-      "quality_defect": "Quality defect",
-      "spec_mismatch": "Not to specification",
-      "wrong_item": "Wrong item",
-      "excess_quantity": "Excess quantity",
-      "customer_cancelled": "Customer cancelled",
-      "other": "Other"
-    },
-    "responsibility": {
-      "factory": "Factory",
-      "carrier": "Carrier",
-      "customer": "Customer",
-      "undetermined": "Undetermined"
     },
     "fields": {
       "number": "Return no.",
@@ -438,32 +387,7 @@
       "decision": "Decision",
       "quantity": "Quantity",
       "state": "State",
-      "toStock": "back to stock {quantity}",
-      "status": {
-        "not_required": "Back in stock (not sent to quality).",
-        "awaiting": "Waiting for quality to inspect the goods.",
-        "inspecting": "Quality is inspecting the goods.",
-        "decided": "Quality decided; some parts are still being carried out.",
-        "done": "Quality's decision is carried out."
-      },
-      "checkStatus": {
-        "open": "Open",
-        "under_inspection": "Under inspection",
-        "closed": "Decided",
-        "cancelled": "Cancelled"
-      },
-      "dispositions": {
-        "use_as_is": "Second grade",
-        "rework": "Rework",
-        "return_to_process": "Recycle",
-        "scrap": "Scrap",
-        "hold": "Hold"
-      },
-      "decisionStatus": {
-        "pending": "Pending",
-        "decided": "To carry out",
-        "executed": "Carried out"
-      }
+      "toStock": "back to stock {quantity}"
     }
   }
 }

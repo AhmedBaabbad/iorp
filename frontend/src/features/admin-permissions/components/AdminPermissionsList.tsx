@@ -1,5 +1,6 @@
 "use client";
 
+import { useEnumLabel } from "@/i18n/enum-helpers";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
@@ -12,6 +13,8 @@ import type { AdminPermissionGroup } from "../types";
 import styles from "@/features/admin-roles/components/roles.module.css";
 
 export function AdminPermissionsList() {
+  const permissionName = useEnumLabel("foundation", "permissionName");
+  const permissionDescription = useEnumLabel("foundation", "permissionDescription");
   const t = useTranslations("administration.permissions");
   const messages = useTranslations("messages");
   const locale = useLocale();
@@ -30,10 +33,10 @@ export function AdminPermissionsList() {
   const filtered = useMemo(() => groups
     .filter((group) => moduleFilter === "all" || group.module === moduleFilter)
     .map((group) => ({ ...group, permissions: group.permissions.filter((permission) => {
-      const name = locale === "ar" ? permission.name_ar : permission.name_en;
+      const name = permissionName(permission.code);
       return `${permission.code} ${name}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());
     }) }))
-    .filter((group) => group.permissions.length > 0), [groups, locale, moduleFilter, search]);
+    .filter((group) => group.permissions.length > 0), [groups, moduleFilter, search, permissionName]);
   const total = groups.reduce((count, group) => count + group.permissions.length, 0);
 
   return (
@@ -58,8 +61,8 @@ export function AdminPermissionsList() {
               {group.permissions.map((permission) => (
                 <div key={permission.code} className={styles.permission}>
                   <code dir="ltr" style={{ display: "inline-block", background: "var(--surface-muted)", padding: "4px 7px", borderRadius: 4 }}>{permission.code}</code>
-                  <strong style={{ display: "block", marginTop: 8 }}>{locale === "ar" ? permission.name_ar : permission.name_en}</strong>
-                  <span>{locale === "ar" ? permission.description_ar : permission.description_en}</span>
+                  <strong style={{ display: "block", marginTop: 8 }}>{permissionName(permission.code)}</strong>
+                  <span>{permissionDescription(permission.code)}</span>
                 </div>
               ))}
             </div>

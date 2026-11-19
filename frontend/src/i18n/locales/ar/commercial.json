@@ -742,34 +742,11 @@
       "statementTitle": "بلاغ العميل",
       "owner": "المسؤول"
     },
-    "statuses": {
-      "new": "جديدة",
-      "assessment": "قيد التقييم",
-      "processing": "قيد المعالجة",
-      "pending_closure": "بانتظار اعتماد الإغلاق",
-      "closed": "مغلقة",
-      "cancelled": "ملغاة"
-    },
-    "categories": {
-      "quality": "الجودة",
-      "delivery": "التسليم",
-      "quantity": "الكمية",
-      "packaging": "التغليف",
-      "commercial": "الشروط التجارية",
-      "service": "الخدمة",
-      "other": "أخرى"
-    },
     "departments": {
       "commercial": "المبيعات وخدمة العملاء",
       "quality": "الجودة",
       "shipping": "الشحن والتسليم",
       "production": "الإنتاج"
-    },
-    "priorities": {
-      "low": "منخفضة",
-      "medium": "متوسطة",
-      "high": "عالية",
-      "critical": "حرجة"
     },
     "channels": {
       "email": "البريد الإلكتروني",
@@ -783,13 +760,6 @@
       "verified": "مثبتة",
       "not_verified": "غير مثبتة",
       "inconclusive": "غير حاسمة"
-    },
-    "kinds": {
-      "order": "أمر بيع",
-      "sample": "عينة",
-      "shipment": "شحنة",
-      "return": "مرتجع",
-      "ncr": "تقرير عدم مطابقة"
     },
     "operations": {
       "assign": "إسناد المسؤولية",
@@ -842,14 +812,7 @@
       "reference": "{kind}: {label}",
       "ncr": "فُتح تقرير عدم المطابقة رقم {number}",
       "file": "الملف: {name}",
-      "lines": "عدد بنود المنتجات: {count}",
-      "reasons": {
-        "assign": "سبب الإسناد",
-        "note": "المتابعة",
-        "response": "ما أُرسل للعميل",
-        "refer_quality": "ملاحظة الإحالة",
-        "other": "السبب"
-      }
+      "lines": "عدد بنود المنتجات: {count}"
     },
     "items": {
       "title": "المنتجات والمواصفات",

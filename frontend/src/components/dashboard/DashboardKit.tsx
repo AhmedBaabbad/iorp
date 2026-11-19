@@ -1,5 +1,6 @@
 "use client";
 
+import { useEnumLabel } from "@/i18n/enum-helpers";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -186,6 +187,8 @@ export function TrendChart({ series, names, colors, unit, onDownload }: {
 /** What waits for someone, as the table under the chart in the reference design, with a filter by kind. */
 export function AttentionTable({ items, total, kinds, title }: { items: DashboardAttention[]; total: number; kinds: (kind: string) => string; title?: string }) {
   const t = useTranslations("dashboard.kit");
+  const downtimeCategory = useEnumLabel("production", "downtimeEventCategory");
+  const checkStatus = useEnumLabel("quality", "qualityCheckStatus");
   const fmt = useFormatter();
   const [kind, setKind] = useState("");
   const available = useMemo(() => [...new Set(items.map((i) => i.kind))], [items]);
@@ -209,7 +212,7 @@ export function AttentionTable({ items, total, kinds, title }: { items: Dashboar
               {rows.map((row, i) => (
                 <tr key={`${row.kind}-${row.id ?? i}`}>
                   <td>{row.href ? <Link href={row.href}><bdi>{row.label}</bdi></Link> : <bdi>{row.label}</bdi>}</td>
-                  <td>{row.detail ?? "—"}</td>
+                  <td>{row.detail_kind === "downtime_category" ? downtimeCategory(row.detail) : row.detail_kind === "quality_check_status" ? checkStatus(row.detail) : row.detail ?? "—"}</td>
                   <td>{row.date ? fmt.date(`${row.date}T12:00:00Z`) : "—"}</td>
                   <td><span className={`${s.badge} ${s[row.severity]}`}>{kinds(row.kind)}</span></td>
                 </tr>

@@ -14,21 +14,6 @@
   },
   "empty": "لا توجد شحنات",
   "emptyHint": "أنشئ شحنة جديدة لإصدار إشعار تسليم.",
-  "statuses": {
-    "draft": "مسودة",
-    "ready": "جاهزة للتحميل",
-    "dispatched": "خرجت من المصنع",
-    "delivered": "تم التسليم",
-    "cancelled": "ملغاة",
-    "partially_delivered": "سُلِّمت جزئياً",
-    "returned": "رُدّت للمصنع",
-    "not_delivered": "لم تُسلَّم"
-  },
-  "methods": {
-    "factory_delivery": "توصيل بسيارة المصنع",
-    "pickup": "استلام من المصنع",
-    "carrier": "شركة شحن"
-  },
   "methodHints": {
     "factory_delivery": "سائق المصنع يوصل الشحنة: اسمه ورقم اللوحة مطلوبان قبل التجهيز.",
     "pickup": "العميل يستلم من المصنع: اسم المستلم ورقم لوحة سيارته مطلوبان، ويُسجَّل الاستلام عند البوابة.",
@@ -313,11 +298,6 @@
     "open": "فتح",
     "hint": "صورة أو PDF بحد أقصى 10 ميجابايت: إشعار التسليم موقّعاً من المستلم، أو صور.",
     "kind": "نوع الملف",
-    "kinds": {
-      "proof_of_delivery": "إشعار التسليم الموقّع",
-      "document": "مستند",
-      "photo": "صورة"
-    },
     "removeConfirm": "حذف {name}؟"
   },
   "returns": {
@@ -328,40 +308,9 @@
     "emptyHint": "تُفتح المرتجعات من نتيجة تسليم الإشعار، أو من إرجاع العميل لبضاعة استلمها.",
     "allKinds": "كل الأنواع",
     "searchPlaceholder": "رقم المرتجع أو الإشعار أو العميل أو المرجع",
-    "kinds": {
-      "delivery": "مرتجع قبل الاستلام",
-      "customer": "مرتجع من العميل بعد الاستلام"
-    },
     "kindHints": {
       "delivery": "رُفضت أو لم تُستلم عند الباب: البضاعة تعود مع السائق.",
       "customer": "استلم العميل البضاعة ثم أرجعها أو جزءاً منها لاحقاً."
-    },
-    "statuses": {
-      "requested": "قيد الاعتماد",
-      "approved": "معتمد — بانتظار الاستلام",
-      "rejected": "مرفوض",
-      "received": "مُستلم في المصنع",
-      "cancelled": "ملغى"
-    },
-    "reasons": {
-      "customer_refused": "رفض العميل الاستلام",
-      "site_closed": "الموقع مغلق",
-      "no_receiver": "لا يوجد مستلم",
-      "wrong_address": "عنوان خاطئ",
-      "transit_damage": "تلف أثناء النقل",
-      "quality_issue": "مشكلة جودة ظاهرة",
-      "quality_defect": "عيب جودة",
-      "spec_mismatch": "مواصفات غير مطابقة",
-      "wrong_item": "صنف خاطئ",
-      "excess_quantity": "كمية زائدة",
-      "customer_cancelled": "ألغى العميل الطلب",
-      "other": "أخرى"
-    },
-    "responsibility": {
-      "factory": "المصنع",
-      "carrier": "شركة الشحن",
-      "customer": "العميل",
-      "undetermined": "غير محدد"
     },
     "fields": {
       "number": "رقم المرتجع",
@@ -438,32 +387,7 @@
       "decision": "القرار",
       "quantity": "الكمية",
       "state": "الحالة",
-      "toStock": "للمخزون {quantity}",
-      "status": {
-        "not_required": "أُعيدت للمخزون (لم تُرسل للجودة).",
-        "awaiting": "بانتظار فحص الجودة.",
-        "inspecting": "الجودة تفحص البضاعة.",
-        "decided": "قررت الجودة؛ بعض الأجزاء قيد التنفيذ.",
-        "done": "نُفِّذ قرار الجودة."
-      },
-      "checkStatus": {
-        "open": "مفتوح",
-        "under_inspection": "قيد الفحص",
-        "closed": "تقرر",
-        "cancelled": "ملغى"
-      },
-      "dispositions": {
-        "use_as_is": "درجة ثانية",
-        "rework": "إعادة تشغيل",
-        "return_to_process": "إعادة تدوير",
-        "scrap": "هالك",
-        "hold": "حجز"
-      },
-      "decisionStatus": {
-        "pending": "بانتظار القرار",
-        "decided": "قيد التنفيذ",
-        "executed": "نُفِّذ"
-      }
+      "toStock": "للمخزون {quantity}"
     }
   }
 }

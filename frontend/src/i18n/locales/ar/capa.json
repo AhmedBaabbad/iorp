@@ -14,12 +14,6 @@
       "report_overdue": "{count} تقارير تجاوزت موعدها",
       "review_due": "{count} مراجعات مستحقة",
       "due_soon": "{count} يحل موعدها قريبًا"
-    },
-    "kinds": {
-      "overdue": "إجراء متأخر",
-      "report_overdue": "تقرير تجاوز موعده",
-      "review_due": "مراجعة مستحقة",
-      "due_soon": "قريب الموعد"
     }
   }
 }

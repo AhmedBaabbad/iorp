@@ -320,10 +320,6 @@
       "recordedBy": "سجّله",
       "closedBy": "أنهاه"
     },
-    "types": {
-      "loss": "فقد في التوافر",
-      "planned": "توقف مخطط"
-    },
     "placeholders": {
       "noOrder": "بدون أمر",
       "noRun": "بدون تشغيل محدد",
@@ -596,19 +592,6 @@
     "itemTitle": "صنف {number}",
     "saveChanges": "حفظ التغييرات",
     "savedDraftReadyFailed": "تم حفظ المسودة ولكن تعذر تحويلها إلى جاهزة للتخطيط. أعد المحاولة أو افتح الطلب المحفوظ.",
-    "priorities": {
-      "low": "منخفضة",
-      "normal": "عادية",
-      "high": "مرتفعة",
-      "urgent": "عاجلة"
-    },
-    "statuses": {
-      "draft": "مسودة",
-      "ready_for_planning": "جاهز للتخطيط",
-      "partially_planned": "مخطط جزئيًا",
-      "planned": "مخطط بالكامل",
-      "cancelled": "ملغى"
-    },
     "errors": {
       "customer_required": "اختر العميل",
       "customer_not_found": "العميل غير موجود",
@@ -746,10 +729,6 @@
     "allocations": "الطلبات المخصصة",
     "allocateNow": "تخصيص لأمر إنتاج",
     "missingProductType": "نوع المنتج غير محدد — عدّل صنف الطلب لتحديده قبل التخصيص",
-    "statuses": {
-      "active": "نشط",
-      "released": "محرَّر"
-    },
     "activeAllocated": "المخصص النشط",
     "releasedAllocated": "المخصص المحرَّر",
     "planningTitle": "التخطيط / التخصيصات",
@@ -874,15 +853,6 @@
       "complete": "إكمال",
       "cancel": "إلغاء التشغيل"
     },
-    "status": {
-      "active": "فعال",
-      "closed": "مغلق",
-      "planned": "مخطط",
-      "in_progress": "قيد التشغيل",
-      "paused": "متوقف مؤقتًا",
-      "completed": "مكتمل",
-      "cancelled": "ملغى"
-    },
     "period": {
       "upcoming": "قادم",
       "current": "ساري",
@@ -910,23 +880,12 @@
       "cancel": "إلغاء",
       "save": "حفظ"
     },
-    "dispositions": {
-      "customer_good": "جيد للعملاء",
-      "stock_good": "جيد للمخزون",
-      "sample": "عينات",
-      "scrap": "هالك / تالف",
-      "rework": "إعادة تشغيل"
-    },
     "dispositionHints": {
       "customer_good": "كمية جيدة تامة تلبي طلب العملاء، ولا تتجاوز الكمية المخصصة لهم.",
       "stock_good": "كمية جيدة تامة زائدة عن طلب العملاء أو مُنتجة للمخزون، ويذهب الفائض إلى المستودع.",
       "sample": "كمية أُخذت عينات أو اختبارات. حدّد هل تُحتسب ضمن الهالك.",
       "scrap": "منتج تالف نهائيًا غير قابل للاستخدام، ويُحتسب هالكًا دائمًا.",
       "rework": "ليست جيدة نهائيًا لكن يمكن استردادها، ولا تُحتسب هالكًا."
-    },
-    "entryTypes": {
-      "original": "أصلي",
-      "correction": "تصحيح"
     },
     "columns": {
       "disposition": "التصنيف",
@@ -1133,11 +1092,6 @@
         "user": "المستخدم",
         "date": "التاريخ",
         "status": "الحالة"
-      },
-      "statuses": {
-        "success": "نجح",
-        "failed": "فشل",
-        "pending": "قيد الإعداد"
       }
     },
     "errors": {

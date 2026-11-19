@@ -92,3 +92,89 @@
 | shipping | `backend/app/shipping/domain/returns.py` | KINDS? STATUSES? OPEN? VOID? DEFAULT_TOLERANCE_PCT? ZERO? DELIVERY_REASONS? CUSTOMER_REASONS? REASONS? QUALITY_REASONS |
 | shipping | `backend/app/shipping/domain/rules.py` | STATUSES? FINAL? RECEIVED? METHODS? ZERO |
 | workforce | `backend/app/workforce/domain/enums.py` | WorkforceMemberStatus: 'active', 'inactive', 'suspended', 'terminated'? EmploymentType: 'employee', 'contractor', 'temporary'? WorkerType: 'driver', 'factory_manager', 'production_manager', 'supervisor', 'operator', 'technician', 'maintenance_technician', 'helper', 'quality_inspector', 'warehouse_staff', 'logistics_coordinator', 'sales_manager', 'sales_rep', 'procurement_officer', 'hr_officer', 'accountant', 'safety_officer', 'admin_support' |
+
+## القيم المستخرجة وفحص التغطية
+
+تربط `shared/i18n/domain-fields.json` التعريفات بقواميسها فقط، ولا تكرر القيم. يستخرج الاختبار القيم من enum وثوابت domain في كل تشغيل؛ إضافة نوع أو قيمة بلا ترجمة مقابلة تفشل CI. أسماء الصلاحيات وأوصافها في المصدر المشترك، ويحتفظ الخادم بعقد السجل القديم عبر قارئ، دون نسخة نصية ثانية في `permission_labels.py`.
+
+اللوحات لا تحتاج جدول labels عامًا: يربط `dashboard-enums.ts` نوع كل توزيع بقاموسه. `machine_fault` قيمة قديمة موجودة في بيانات التوقفات ولها تسمية خاصة بالتوقف، دون تغيير قيم الكود أو قاعدة البيانات. أسماء مراكز العمل المدخلة بلغة واحدة تظل كما هي.
+
+| المصدر | القيم | قاموس الترجمة |
+|---|---|---|
+| `commercial.CATEGORIES` | `commercial`, `delivery`, `other`, `packaging`, `quality`, `quantity`, `service` | `commercial.ComplaintsCategories` |
+| `commercial.CommercialOrderStatus` | `cancelled`, `confirmed`, `converted_to_production`, `draft` | `commercial.commercialOrderStatus` |
+| `commercial.CustomerStatus` | `active`, `archived`, `blacklisted`, `inactive`, `on_hold` | `commercial.customerStatus` |
+| `commercial.FollowUpPriority` | `high`, `low`, `medium`, `urgent` | `commercial.customerPriorityLevel` |
+| `commercial.FollowUpStatus` | `cancelled`, `completed`, `in_progress`, `pending` | `commercial.followUpStatus` |
+| `commercial.InteractionType` | `call`, `email`, `meeting`, `visit`, `whatsapp` | `commercial.interactionInteractionType` |
+| `commercial.PriorityLevel` | `high`, `low`, `medium` | `commercial.ComplaintsPriorities` |
+| `commercial.QuoteStatus` | `accepted`, `draft`, `expired`, `issued`, `rejected` | `commercial.quoteStatus` |
+| `commercial.RelationshipStage` | `active_customer`, `contacted`, `lead`, `negotiating`, `prospect`, `qualified`, `repeat_customer`, `strategic_customer`, `trial_customer` | `commercial.customerRelationshipStage` |
+| `commercial.STATUSES` | `cancelled`, `closed`, `new`, `pending_closure`, `processing` | `commercial.ComplaintsStatuses` |
+| `commercial.SampleDecision` | `accepted`, `pending`, `rejected` | `commercial.sampleDecision` |
+| `commercial.SampleEvaluationNextAction` | `close_request`, `further_review`, `proceed_to_quote`, `revise_sample` | `commercial.sampleEvaluationNextAction` |
+| `commercial.SampleEvaluationResultStatus` | `accepted`, `needs_modification`, `rejected` | `commercial.sampleEvaluationResultStatus` |
+| `commercial.SampleStatus` | `cancelled`, `delivered`, `evaluated`, `in_preparation`, `requested` | `commercial.sampleStatus` |
+| `foundation.AccessScope` | `organization`, `own`, `team` | `foundation.accessScope` |
+| `foundation.OrganizationStatus` | `active`, `archived`, `inactive`, `provisioning`, `suspended` | `foundation.OrganizationStatus` |
+| `foundation.UserStatus` | `active`, `inactive`, `locked` | `foundation.userStatus` |
+| `masterdata.KINDS` | `finished`, `material` | `masterdata.Kinds` |
+| `masterdata.PROPERTY_KINDS` | `choice`, `number`, `text` | `masterdata.PROPERTY_KINDS` |
+| `notifications.CATEGORIES` | `access`, `announcement`, `delegation`, `security`, `work` | `notifications.Categories` |
+| `notifications.SEVERITIES` | `important`, `info`, `urgent` | `notifications.severity` |
+| `platform.PlatformAccountRole` | `admin`, `root` | `platform.PlatformAccountRole` |
+| `platform.PlatformAccountStatus` | `active`, `inactive` | `platform.AdministratorsStatuses` |
+| `procurement.MATERIAL_CATEGORIES` | `accessory`, `additive`, `carton`, `core`, `film`, `masterbatch`, `other`, `resin` | `procurement.materialCategory` |
+| `procurement.RECEIPT_STATUSES` | `cancelled`, `draft`, `received` | `procurement.receiptStatus` |
+| `procurement.STATUSES` | `approved`, `cancelled`, `closed`, `draft`, `partially_received`, `received`, `sent` | `procurement.orderStatus` |
+| `procurement.SUPPLIER_CATEGORIES` | `consumables`, `other`, `packaging`, `raw_material`, `services` | `procurement.supplierCategory` |
+| `procurement.SUPPLIER_STATUSES` | `approved`, `blocked`, `conditional`, `pending` | `procurement.supplierStatus` |
+| `production.DowntimeCategory` | `break_meeting`, `breakdown`, `changeover_setup`, `material_shortage`, `no_orders`, `other`, `planned_maintenance`, `quality_issue`, `utilities`, `waiting_labor` | `production.downtimeEventCategory` |
+| `production.DowntimeStatus` | `closed`, `open` | `production.downtimeEventStatus` |
+| `production.OrderTransitionTrigger` | `activity`, `manual`, `schedule` | `production.OrderTransitionTrigger` |
+| `production.ProductionAllocationStatus` | `active`, `released` | `production.AllocationStatuses` |
+| `production.ProductionDemandPriority` | `high`, `low`, `normal`, `urgent` | `production.productionOrderPriority` |
+| `production.ProductionDemandStatus` | `cancelled`, `draft`, `partially_planned`, `planned`, `ready_for_planning` | `production.DemandsStatuses` |
+| `production.ProductionOrderPriority` | `high`, `low`, `normal`, `urgent` | `production.productionOrderPriority` |
+| `production.ProductionOrderStatus` | `cancelled`, `closed`, `completed`, `draft`, `in_progress`, `on_hold`, `released` | `production.productionOrderStatus` |
+| `production.ProductionRunStatus` | `cancelled`, `completed`, `in_progress`, `paused`, `planned` | `production.ExecutionStatus` |
+| `production.ResultDisposition` | `customer_good`, `rework`, `sample`, `scrap`, `stock_good` | `production.ResultsDispositions` |
+| `production.ResultEntryType` | `correction`, `original` | `production.ResultsEntryTypes` |
+| `production.ShiftDefinitionStatus` | `active`, `inactive` | `production.shiftDefinitionStatus` |
+| `production.ShiftRosterStatus` | `active`, `closed` | `production.ExecutionStatus` |
+| `production.ShiftType` | `custom`, `evening`, `morning`, `night` | `production.shiftDefinitionShiftType` |
+| `production.WasteCategory` | `changeover`, `contamination`, `handling_damage`, `machine_fault`, `material_defect`, `other`, `process`, `startup_setup` | `production.wasteRecordWasteCategory` |
+| `production.WorkCenterStatus` | `active`, `inactive`, `under_maintenance` | `production.workCenterStatus` |
+| `production.WorkCenterType` | `extrusion`, `generic`, `packing`, `quality_station`, `rewinding` | `production.workCenterCenterType` |
+| `quality.ACTION_KINDS` | `correction`, `corrective`, `preventive` | `quality.ACTION_KINDS` |
+| `quality.ACTION_STATUSES` | `cancelled`, `done`, `open` | `quality.ActionStatuses` |
+| `quality.CERTIFIABLE_RESULTS` | `accepted`, `conditional_accept` | `quality.qualityCheckResult` |
+| `quality.CLAIM_STATUSES` | `accepted`, `claimed`, `none`, `recovered`, `rejected` | `quality.CLAIM_STATUSES` |
+| `quality.DISPOSITIONS` | `hold`, `regrade`, `return_to_process`, `return_to_supplier`, `rework`, `scrap`, `sort`, `use_as_is` | `quality.DISPOSITIONS` |
+| `quality.DefectCategory` | `color`, `dimension`, `finish`, `labeling`, `other`, `packaging`, `strength`, `surface`, `thickness`, `weight`, `winding` | `quality.qualityDefectDefectCategory` |
+| `quality.DefectSeverity` | `critical`, `major`, `minor` | `quality.qualityDefectSeverity` |
+| `quality.Disposition` | `hold`, `return_to_process`, `rework`, `scrap`, `use_as_is` | `quality.qualityRejectionDisposition` |
+| `quality.DispositionStatus` | `decided`, `executed`, `pending` | `quality.qualityRejectionDispositionStatus` |
+| `quality.KINDS` | `attribute`, `numeric` | `quality.ParametersKinds` |
+| `quality.NCRReportType` | `documentation_non_conformance`, `material_non_conformance`, `other`, `packaging_non_conformance`, `process_non_conformance`, `product_non_conformance` | `quality.ncrReportReportType` |
+| `quality.NCRSourceType` | `customer_return`, `incoming_material`, `internal_production`, `other`, `supplier`, `warehouse` | `quality.ncrReportSourceType` |
+| `quality.ORDER_STATUSES` | `completed`, `in_progress`, `on_hold` | `quality.ORDER_STATUSES` |
+| `quality.QualityCheckResult` | `accepted`, `conditional_accept`, `needs_reinspection`, `rejected` | `quality.qualityCheckResult` |
+| `quality.QualityCheckStatus` | `cancelled`, `closed`, `open`, `under_inspection` | `quality.qualityCheckStatus` |
+| `quality.QualityCheckType` | `finished_product_inspection`, `general`, `in_process_inspection`, `incoming_inspection`, `issue_triggered`, `reinspection`, `sample_inspection` | `quality.qualityCheckCheckType` |
+| `quality.REINSPECTION_ORDER_STATUSES` | `closed`, `completed`, `in_progress`, `on_hold` | `quality.REINSPECTION_ORDER_STATUSES` |
+| `quality.ROOT_CAUSE_CATEGORIES` | `environment`, `machine`, `man`, `material`, `measurement`, `method` | `quality.ROOT_CAUSE_CATEGORIES` |
+| `quality.ROOT_CAUSE_METHODS` | `fishbone`, `five_whys`, `other` | `quality.ROOT_CAUSE_METHODS` |
+| `quality.RejectionReason` | `critical_defect`, `dimension_failure`, `failed_quality_check`, `labeling_issue`, `other`, `out_of_spec`, `packaging_failure`, `surface_failure` | `quality.qualityRejectionRejectionReason` |
+| `quality.SEVERITIES` | `critical`, `major`, `minor` | `quality.qualityDefectSeverity` |
+| `quality.STATUSES` | `action`, `cancelled`, `closed`, `draft`, `investigation`, `issued`, `open`, `revoked`, `verification` | `quality.STATUSES` |
+| `shipping.CUSTOMER_REASONS` | `customer_cancelled`, `excess_quantity`, `other`, `quality_defect`, `spec_mismatch`, `transit_damage`, `wrong_item` | `shipping.returnReason` |
+| `shipping.DELIVERY_REASONS` | `customer_refused`, `no_receiver`, `other`, `quality_issue`, `site_closed`, `transit_damage`, `wrong_address` | `shipping.returnReason` |
+| `shipping.KINDS` | `customer`, `delivery` | `shipping.returnKind` |
+| `shipping.METHODS` | `carrier`, `factory_delivery`, `pickup` | `shipping.deliveryMethod` |
+| `shipping.QUALITY_REASONS` | `other`, `quality_defect`, `quality_issue`, `spec_mismatch`, `transit_damage` | `shipping.returnReason` |
+| `shipping.REASONS` | `customer`, `delivery` | `shipping.returnKind` |
+| `shipping.STATUSES` | `approved`, `cancelled`, `delivered`, `dispatched`, `draft`, `not_delivered`, `partially_delivered`, `ready`, `received`, `rejected`, `requested`, `returned` | `shipping.STATUSES` |
+| `workforce.EmploymentType` | `contractor`, `employee`, `temporary` | `workforce.workforceMemberEmploymentType` |
+| `workforce.WorkerType` | `accountant`, `admin_support`, `driver`, `factory_manager`, `helper`, `hr_officer`, `logistics_coordinator`, `maintenance_technician`, `operator`, `procurement_officer`, `production_manager`, `quality_inspector`, `safety_officer`, `sales_manager`, `sales_rep`, `supervisor`, `technician`, `warehouse_staff` | `workforce.workforceMemberWorkerType` |
+| `workforce.WorkforceMemberStatus` | `active`, `inactive`, `suspended`, `terminated` | `workforce.workforceMemberStatus` |

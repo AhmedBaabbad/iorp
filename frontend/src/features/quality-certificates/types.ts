@@ -13,6 +13,7 @@ export type FrozenMeasurement = {
 };
 
 export type CertificateListItem = {
+  customer_id?: string | null;
   id: string; certificate_no: string | null; status: CertificateStatus; quality_check_id: string; production_order_id: string | null;
   customer_name: string; batch_no: string; product_description: string; quantity: string; unit_label: string; inspection_code: string;
   issued_at: string | null; issued_by_name: string | null; supersedes_no: string | null; superseded_by_no: string | null;

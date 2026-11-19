@@ -73,7 +73,7 @@ export type LotDecisionRequest = Record<LotPart, string> & { notes: string | nul
 // The returned goods an inspection is about (read from shipping).
 export type ReturnSource = {
   return_id: string; return_no: string; kind: string; reason: string; responsibility: string; details: string | null;
-  shipment_id: string; shipment_no: string; customer_name: string; line_no: number; description: string; production_order_no: string | null;
+  shipment_id: string; shipment_no: string; customer_id?: string | null; customer_name: string; line_no: number; description: string; production_order_no: string | null;
 };
 
 // Returned goods received for quality, each line with its inspection once opened.
@@ -83,7 +83,7 @@ export type AwaitingReturnLine = {
   inspection_id: string | null; inspection_code: string | null; inspection_status: QualityCheckStatus | null;
 };
 export type AwaitingReturn = {
-  return_id: string; return_no: string; kind: string; reason: string; responsibility: string; details: string | null; customer_name: string;
+  return_id: string; return_no: string; kind: string; reason: string; responsibility: string; details: string | null; customer_id?: string | null; customer_name: string;
   received_at: string | null; shipment_id: string; shipment_no: string; lines: AwaitingReturnLine[];
 };
 
@@ -94,7 +94,7 @@ export type ReturnDecisionRequest = Record<ReturnPart, string> & { notes: string
 
 // A delivery note that carried the same production order (containment).
 export type BatchShipment = {
-  shipment_id: string; shipment_no: string; status: string; shipment_date: string; customer_name: string;
+  shipment_id: string; shipment_no: string; status: string; shipment_date: string; customer_id?: string | null; customer_name: string;
   quantity: string; delivered_quantity: string | null; unit: string;
 };
 

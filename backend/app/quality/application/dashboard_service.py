@@ -87,7 +87,7 @@ class QualityDashboard:
         board.cards.append(Card(key="open_checks", style="count", value=Decimal(len(open_rows)), href="/quality-checks"))
         for check_id, code, status, when in open_rows:
             if as_day(when) < w.today - timedelta(days=2):  # waiting more than two days
-                board.attention.append(Attention(kind="waiting_check", id=str(check_id), label=code, detail=getattr(status, "value", status),
+                board.attention.append(Attention(kind="waiting_check", id=str(check_id), label=code, detail=getattr(status, "value", status), detail_kind="quality_check_status",
                                                  date=as_day(when), href=f"/quality-checks/{check_id}", severity="warning"))
 
     def _defects(self, w: Window, board: Dashboard) -> None:

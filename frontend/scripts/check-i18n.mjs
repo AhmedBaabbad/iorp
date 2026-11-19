@@ -31,4 +31,9 @@ for (const filename of englishFiles) {
   }
 }
 
-console.log(`i18n check passed: ${englishFiles.length} Arabic/English JSON file pairs are valid and aligned.`);
+const sharedRoot = path.resolve(process.cwd(), "../shared/i18n");
+const shared = await Promise.all(["ar", "en"].map(async locale => JSON.parse(await readFile(path.join(sharedRoot, locale, "enums.json"), "utf8"))));
+if (JSON.stringify(leafKeys(shared[0]).sort()) !== JSON.stringify(leafKeys(shared[1]).sort())) {
+  throw new Error("Shared enum locale keys do not match.");
+}
+console.log(`i18n check passed: ${englishFiles.length} Arabic/English JSON file pairs and shared enums are valid and aligned.`);

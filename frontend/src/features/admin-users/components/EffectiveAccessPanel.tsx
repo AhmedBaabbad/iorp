@@ -1,5 +1,6 @@
 "use client";
 
+import { useEnumLabel } from "@/i18n/enum-helpers";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
@@ -13,6 +14,8 @@ type Visibility = "all" | "granted" | "missing";
 
 export function EffectiveAccessPanel({ userId, self = false }: Props) {
   const locale = useLocale();
+  const permissionName = useEnumLabel("foundation", "permissionName");
+  const permissionDescription = useEnumLabel("foundation", "permissionDescription");
   const labels = useTranslations("administration.permissions");
   const rolesT = useTranslations("administration.roles");
   const moduleLabel = (module: string) => t.has(`modules.${module}`) ? t(`modules.${module}`) : module;
@@ -40,7 +43,7 @@ export function EffectiveAccessPanel({ userId, self = false }: Props) {
   ])).sort() : [], [report]);
   const matches = (item: { code: string; name: string; module: string }) =>
     (moduleFilter === "all" || item.module === moduleFilter)
-    && (!normalized || `${item.code} ${item.name}`.toLocaleLowerCase().includes(normalized));
+    && (!normalized || `${item.code} ${permissionName(item.code)}`.toLocaleLowerCase().includes(normalized));
 
   if (failed) return <section className={css.panel}><div className={css.error} role="alert">{t("error")}</div></section>;
   if (!report) return <section className={css.panel}><p>{t("loading")}</p></section>;
@@ -80,7 +83,7 @@ export function EffectiveAccessPanel({ userId, self = false }: Props) {
       {grantedModules.length ? grantedModules.map(([module, permissions]) => <details className={css.module} key={module} open={normalized ? true : undefined}>
         <summary>{moduleLabel(module)} <span>{t("modulePermissionCount", { count: permissions.length })}</span></summary><div className={css.permissionGrid}>
         {permissions.map((permission) => <article className={css.permission} key={permission.code}>
-          <div><strong>{permission.name}</strong><p>{permission.description}</p><details className={css.code}><summary>{labels("permissionCode")}</summary><code dir="ltr">{permission.code}</code></details></div>
+          <div><strong>{permissionName(permission.code)}</strong><p>{permissionDescription(permission.code)}</p><details className={css.code}><summary>{labels("permissionCode")}</summary><code dir="ltr">{permission.code}</code></details></div>
           <span className={`${css.scope} ${css[permission.effective_scope]}`}>{permission.scopable ? permission.scope_label : t("scopeNotApplicable")}</span>
           <div className={css.sources}>{permission.is_root_bypass ? <span>{t("rootBadge")}</span> : permission.granted_by_roles.map((source) => <span key={`${permission.code}-${source.role_id}`}>{t("grantedBy")}: {source.role_name} · {t(`scope${source.scope[0].toUpperCase()}${source.scope.slice(1)}`)}</span>)}</div>
         </article>)}
@@ -88,7 +91,7 @@ export function EffectiveAccessPanel({ userId, self = false }: Props) {
     </div> : null}
     {visibility !== "granted" ? <section className={css.missing}>
       <button type="button" aria-expanded={visibility === "missing" || missingOpen} onClick={() => setMissingOpen((value) => !value)}>{visibility === "missing" || missingOpen ? t("hideMissing") : t("showMissing", { count: missing.length })}</button>
-      {visibility === "missing" || missingOpen ? <div>{missing.map((item) => <p key={item.code}><span>{item.name}</span><code dir="ltr">{item.code}</code></p>)}</div> : null}
+      {visibility === "missing" || missingOpen ? <div>{missing.map((item) => <p key={item.code}><span>{permissionName(item.code)}</span><code dir="ltr">{item.code}</code></p>)}</div> : null}
     </section> : null}
   </section>;
 }

@@ -209,10 +209,6 @@
       "actions": "Actions",
       "preferredLocale": "Account and invitation language"
     },
-    "status": {
-      "active": "Active",
-      "inactive": "Inactive"
-    },
     "sessions": {
       "title": "Open sessions",
       "subtitle": "The devices signed in now.",
@@ -477,12 +473,9 @@
   },
   "scope": {
     "title": "Access Scope",
-    "own": "My Data Only",
     "ownDescription": "Access only records assigned to you",
-    "team": "My Team's Data",
     "teamDescription": "Access records of your team (coming soon)",
     "teamNotAvailable": "Team scope is not available yet",
-    "organization": "Entire Organization",
     "organizationDescription": "Access all records in the organization",
     "notSupported": "This permission does not support scoping",
     "scopeLabel": "Scope",
@@ -522,16 +515,6 @@
       "period": "Period",
       "status": "State",
       "reason": "Reason"
-    },
-    "status": {
-      "scheduled": "Not started yet",
-      "active": "In force",
-      "ended": "Ended",
-      "revoked": "Revoked",
-      "awaiting_manager": "Waiting for a manager",
-      "awaiting_holder": "Waiting for the holder",
-      "lapsed": "Lapsed unanswered",
-      "rejected": "Rejected"
     },
     "notUsable": "Not usable now: the delegator no longer holds this approval or a user is inactive.",
     "revokedBy": "Revoked by {name}: {reason}",
