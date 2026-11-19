@@ -103,7 +103,7 @@ def test_legacy_weight_is_read_printed_and_preserved_on_draft_save(ship):
     read = ship.client.get(f"{ROOT}/{saved['id']}").json()
     assert read['lines'][0]['unit_net_weight'] is None and read['weight_total_kg'] == '877.000'
     document = build(ship.db, ship.ctx.tenant, DeliveryNoteParams(shipment_id=stored.id, lang='en'), []).document
-    assert document['lines'][0]['weight'] == '877 kg' and document['lines'][0]['unit_net_weight'] == '—'
+    assert document['lines'][0]['weight'] == {'number': '877', 'unit': 'kg'} and document['lines'][0]['unit_net_weight'] is None
     item = {**line(), 'id': read['lines'][0]['id'], 'unit_net_weight': None}
     updated = ship.client.patch(f"{ROOT}/{saved['id']}", json=dict(notes='Synthetic edit', lines=[item]))
     assert updated.status_code == 200, updated.text

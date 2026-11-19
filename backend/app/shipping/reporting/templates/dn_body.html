@@ -1,5 +1,6 @@
 {#- Delivery note (SHIP-001, SHIP-004): number and method, customer and recipient, transport, items, signatures. -#}
 {%- set ar = lang == 'ar' %}{% set d = data.document %}
+{% macro weight(value) -%}{% if value %}<span class="dn-weight"><bdi dir="ltr">{{ value.number }}</bdi><span>&nbsp;{{ value.unit }}</span></span>{% else %}—{% endif %}{%- endmacro %}
 <main class="dn">
   <header class="dn-banner">
     <div class="dn-title">
@@ -28,23 +29,26 @@
 
   <section class="dn-block" style="break-inside:auto">
     <h2>{{ 'البنود' if ar else 'Items' }}</h2>
-    <table class="dn-items">
+    <table class="dn-items dn-delivery-items">
       <thead><tr>
         <th class="n">#</th><th>{{ 'الوصف' if ar else 'Description' }}</th>
-        <th>{{ 'العرض (مم)' if ar else 'Width (mm)' }}</th><th>{{ 'السماكة (مم)' if ar else 'Thickness (mm)' }}</th>
-        <th>{{ 'الكمية' if ar else 'Quantity' }}</th><th>{{ 'الوحدة' if ar else 'Unit' }}</th><th class="weight-head">{{ d.labels.unit_net_weight }}</th><th class="weight-head">{{ d.labels.net_weight }}</th>
+        <th class="num">{{ 'العرض (مم)' if ar else 'Width (mm)' }}</th><th class="num">{{ 'السماكة (مم)' if ar else 'Thickness (mm)' }}</th>
+        <th class="num">{{ 'الكمية' if ar else 'Quantity' }}</th><th class="num">{{ 'الوحدة' if ar else 'Unit' }}</th><th class="num weight-head">{{ d.labels.unit_net_weight }}</th><th class="num weight-head">{{ d.labels.net_weight }}</th>
       </tr></thead>
       <tbody>{% for l in d.lines %}<tr>
         <td class="n">{{ l.no }}</td>
         <td><bdi>{{ l.description }}</bdi>{% if l.batch %}<small>{{ 'أمر الإنتاج:' if ar else 'Production order:' }} <bdi dir="ltr">{{ l.batch }}</bdi></small>{% endif %}</td>
         <td class="num"><bdi dir="ltr">{{ l.width }}</bdi></td><td class="num"><bdi dir="ltr">{{ l.thickness }}</bdi></td>
-        <td class="num">{{ l.quantity }}{% if l.delivered is not none %}<small>{{ 'المستلم:' if ar else 'Received:' }} {{ l.delivered }}</small>{% endif %}</td><td>{{ l.unit }}</td><td class="num"><bdi dir="ltr">{{ l.unit_net_weight }}</bdi></td><td class="num"><bdi dir="ltr">{{ l.weight }}</bdi></td>
+        <td class="num">{{ l.quantity }}{% if l.delivered is not none %}<small>{{ 'المستلم:' if ar else 'Received:' }} {{ l.delivered }}</small>{% endif %}</td><td class="num">{{ l.unit }}</td><td class="num">{{ weight(l.unit_net_weight) }}</td><td class="num">{{ weight(l.weight) }}</td>
       </tr>{% endfor %}</tbody>
-      <tfoot><tr>
-        <td colspan="4" class="lbl">{{ d.labels.net_total }}</td><td colspan="3"><bdi>{{ d.quantities }}</bdi></td>
-        <td class="num"><bdi>{{ d.weight or '—' }}</bdi></td>
-      </tr>{% if d.gross_weight is not none %}<tr><td colspan="7" class="lbl">{{ d.labels.gross_weight }}</td><td class="num"><bdi dir="ltr">{{ d.gross_weight }}</bdi></td></tr>
-      <tr><td colspan="7" class="lbl">{{ d.labels.packaging_weight }}</td><td class="num"><bdi dir="ltr">{{ d.packaging_weight }}</bdi></td></tr>{% endif %}</tfoot>
+      <tfoot>
+        <tr data-total="quantity"><td colspan="4" class="lbl">{{ d.labels.total_quantity }}</td><td colspan="2" class="num"><bdi>{{ d.quantities }}</bdi></td><td colspan="2"></td></tr>
+        <tr data-total="net"><td colspan="7" class="lbl">{{ d.labels.net_total }}</td><td class="num">{{ weight(d.weight) }}</td></tr>
+        {% if d.gross_weight is not none %}
+        <tr data-total="packaging"><td colspan="7" class="lbl">{{ d.labels.packaging_weight }}</td><td class="num">{{ weight(d.packaging_weight) }}</td></tr>
+        <tr data-total="gross" class="gross-total"><td colspan="7" class="lbl">{{ d.labels.gross_weight }}</td><td class="num">{{ weight(d.gross_weight) }}</td></tr>
+        {% endif %}
+      </tfoot>
     </table>
   </section>
 

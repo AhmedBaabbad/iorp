@@ -57,7 +57,7 @@ def build(db, tenant, params, selected) -> ReportData:
     from app.core.interfaces import approvals
     approved = approvals.latest(approvals.signatures(db, tenant.organization_id, "shipment_return", [r.id])[r.id], "approve")
     unit = lambda code: unit_label(code, params.lang)  # noqa: E731
-    weight = lambda value, code: f"{_num(value)} {unit(code)}" if value is not None else "—"  # noqa: E731
+    weight = lambda value, code: dict(number=_num(value), unit=unit(code)) if value is not None else None  # noqa: E731
     party = [(say("العميل", "Customer"), r.customer_name), (say("إشعار التسليم", "Delivery note"), s.shipment_no),
              (say("تاريخ التسليم", "Delivered"), moment(s.delivered_at) if r.kind == R.CUSTOMER else moment(s.dispatched_at)),
              (say("مرجع العميل", "Customer reference"), r.customer_reference or s.customer_reference or "—")]
@@ -79,7 +79,7 @@ def build(db, tenant, params, selected) -> ReportData:
                for line in r.lines if (line.received_weight if received else line.weight) is not None]
     document = dict(
         number=r.return_no, date=moment(r.requested_at).split("  ")[0], kind=tr(KINDS[r.kind]), party=party, cause=cause, lines=lines,
-        weight=weight(sum(weights, Decimal("0")).quantize(Decimal("0.001")), "kg") if weights else "—", details=r.details,
+        weight=weight(sum(weights, Decimal("0")).quantize(Decimal("0.001")), "kg") if weights else None, details=r.details,
         decision_note=r.decision_note, receipt_notes=r.receipt_notes, cancel_reason=r.cancel_reason, status=r.status,
         prepared_by=names.get(r.created_by_user_id) or "", decided_by=approvals.signed_name(approved, names.get(r.decided_by_user_id), params.lang) if approved else names.get(r.decided_by_user_id) or "",
         received_by=names.get(r.received_by_user_id) or "", received_at=moment(r.received_at) if received else "")
