@@ -2,6 +2,7 @@ import { readFile } from "fs/promises";
 import path from "path";
 
 import type { Locale } from "./config";
+import { sharedMessages, attachEnumAliases } from "./shared-messages";
 
 const LOCALES_DIR = path.join(process.cwd(), "src", "i18n", "locales");
 
@@ -62,7 +63,7 @@ export async function loadMessages(locale: Locale) {
     readLocaleFile(locale, "auth.json"),
     readLocaleFile(locale, "common.json"),
     readLocaleFile(locale, "navigation.json"),
-    readLocaleFile(locale, "enums.json"),
+    Promise.resolve({}),
     readLocaleFile(locale, "messages.json"),
     readLocaleFile(locale, "commercial.json"),
     readLocaleFile(locale, "production.json"),
@@ -93,7 +94,8 @@ export async function loadMessages(locale: Locale) {
   const masterdata = await readLocaleFile(locale, "masterdata.json");
   const notifications = await readLocaleFile(locale, "notifications.json");
   const logs = await readLocaleFile(locale, "logs.json");
-  return {
+  const { shared, aliases } = await sharedMessages(locale);
+  return attachEnumAliases({
     notifications,
     logs,
     reports,
@@ -126,5 +128,5 @@ export async function loadMessages(locale: Locale) {
     tenantActivity,
     effectiveAccess,
     passwordReset,
-  };
+  }, shared, aliases);
 }

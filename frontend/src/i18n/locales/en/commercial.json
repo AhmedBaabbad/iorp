@@ -742,34 +742,11 @@
       "statementTitle": "Customer statement",
       "owner": "Owner"
     },
-    "statuses": {
-      "new": "New",
-      "assessment": "Under assessment",
-      "processing": "In processing",
-      "pending_closure": "Awaiting closure approval",
-      "closed": "Closed",
-      "cancelled": "Cancelled"
-    },
-    "categories": {
-      "quality": "Quality",
-      "delivery": "Delivery",
-      "quantity": "Quantity",
-      "packaging": "Packaging",
-      "commercial": "Commercial terms",
-      "service": "Service",
-      "other": "Other"
-    },
     "departments": {
       "commercial": "Sales and customer service",
       "quality": "Quality",
       "shipping": "Shipping and delivery",
       "production": "Production"
-    },
-    "priorities": {
-      "low": "Low",
-      "medium": "Medium",
-      "high": "High",
-      "critical": "Critical"
     },
     "channels": {
       "email": "E-mail",
@@ -783,13 +760,6 @@
       "verified": "Verified",
       "not_verified": "Not verified",
       "inconclusive": "Inconclusive"
-    },
-    "kinds": {
-      "order": "Sales order",
-      "sample": "Sample",
-      "shipment": "Shipment",
-      "return": "Return",
-      "ncr": "Non-conformance report"
     },
     "operations": {
       "assign": "Assign responsibility",
@@ -842,14 +812,7 @@
       "reference": "{kind}: {label}",
       "ncr": "Non-conformance report {number} opened",
       "file": "File: {name}",
-      "lines": "Product lines: {count}",
-      "reasons": {
-        "assign": "Assignment reason",
-        "note": "Follow-up",
-        "response": "Sent to the customer",
-        "refer_quality": "Referral note",
-        "other": "Reason"
-      }
+      "lines": "Product lines: {count}"
     },
     "items": {
       "title": "Products and specifications",

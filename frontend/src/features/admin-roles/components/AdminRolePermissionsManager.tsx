@@ -1,5 +1,6 @@
 "use client";
 
+import { useEnumLabel } from "@/i18n/enum-helpers";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -21,6 +22,8 @@ import styles from "./roles.module.css";
 const SCOPE_OPTIONS: AccessScope[] = ["own", "team", "organization"];
 
 export function AdminRolePermissionsManager({ roleId, readOnly = false }: { roleId: string; readOnly?: boolean }) {
+  const permissionName = useEnumLabel("foundation", "permissionName");
+  const permissionDescription = useEnumLabel("foundation", "permissionDescription");
   const t = useTranslations("administration.roles");
   const tp = useTranslations("administration.permissions");
   const ts = useTranslations("administration.scope");
@@ -87,10 +90,10 @@ export function AdminRolePermissionsManager({ roleId, readOnly = false }: { role
           <summary><strong>{locale === "ar" ? group.module_name_ar : group.module_name_en}</strong><span className={styles.badge}>{group.permissions.filter(p => assignedScope.has(p.code)).length} / {group.permissions.length}</span></summary>
           <div className={styles.permissionGrid}>{group.permissions.map(permission => {
             const assigned = assignedScope.has(permission.code);
-            const name = locale === "ar" ? permission.name_ar : permission.name_en;
+            const name = permissionName(permission.code);
             return <article className={styles.permission} data-assigned={assigned} key={permission.code}>
               <label className={styles.permissionLabel}><input type="checkbox" checked={assigned} disabled={!editable} onChange={e => { const checked = e.target.checked; void mutate(() => checked ? assignAdminPermissionToRole(roleId, {permission_code: permission.code}) : removeAdminPermissionFromRole(roleId, permission.code)); }} /><strong>{name}</strong></label>
-              <p>{locale === "ar" ? permission.description_ar : permission.description_en}</p>
+              <p>{permissionDescription(permission.code)}</p>
               <details className={styles.technical}><summary>{tp("permissionCode")}</summary><code dir="ltr">{permission.code}</code></details>
               {assigned && permission.scopable ? <label className={styles.scope}>{ts("scopeLabel")}<select aria-label={`${ts("scopeLabel")}: ${name}`} disabled={!editable} value={assignedScope.get(permission.code) ?? "organization"} onChange={e => { const scope = e.target.value as AccessScope; void mutate(() => updateAdminRolePermissionScope(roleId, permission.code, scope)); }}>{SCOPE_OPTIONS.map(option => <option key={option} value={option} disabled={option === "team"}>{ts(option)}</option>)}</select></label> : null}
             </article>;

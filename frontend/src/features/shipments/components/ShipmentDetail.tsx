@@ -1,4 +1,5 @@
 "use client";
+import { useCustomerNames } from "@/features/customers/use-customer-names";
 import { formatThickness } from "@/lib/spec-value";
 
 import { TransportSelection, DriverAffiliation, type TransportValues } from "@/features/reference-directory/DirectorySelect";
@@ -48,6 +49,7 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
   const unit = (code: string) => (units.has(code) ? units(code) : code);
   const canAttach = usePermission(S.SHIPMENTS_DELIVER);
   const [x, setX] = useState<Shipment | null>(null);
+  const customerName = useCustomerNames([x?.customer_id]);
   const [loading, setLoading] = useState(true);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -78,7 +80,7 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
   const button = (action: Dialog, text: string, kind = s.primary) => x.actions.includes(action) &&
     <button type="button" className={`${s.button} ${kind}`} disabled={busy !== null} onClick={() => setDialog(action)}>{text}</button>;
 
-  return <PageFrame title={x.shipment_no} subtitle={`${x.customer_name} — ${t(`methods.${x.delivery_method}`)}`} action={back}>
+  return <PageFrame title={x.shipment_no} subtitle={`${customerName(x.customer_id, x.customer_name)} — ${t(`methods.${x.delivery_method}`)}`} action={back}>
     {x.status === "draft" && x.missing_details.length > 0 && <p role="status" className={s.muted}>
       {t("missingHint", { fields: joinList(x.missing_details.map(label), locale) })}</p>}
     {x.status === "cancelled" && <p role="status" className={s.error}>{t("cancelledHint", { reason: x.cancel_reason ?? "" })}</p>}
@@ -111,9 +113,9 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
       </div>
       <dl className={s.grid} style={{ margin: 0 }}>
         <Item label={label("date")}>{fmt.date(x.shipment_date)}</Item>
-        <Item label={label("customer")}>{x.customer_name}{!x.customer_id && <div className={s.muted}>{t("namedCustomer")}</div>}</Item>
+        <Item label={label("customer")}>{customerName(x.customer_id, x.customer_name)}{!x.customer_id && <div className={s.muted}>{t("namedCustomer")}</div>}</Item>
         <Item label={label("customer_reference")}><bdi>{x.customer_reference ?? "—"}</bdi></Item>
-        <Item label={label("consignee_name")}>{x.consignee_name ?? x.customer_name}</Item>
+        <Item label={label("consignee_name")}>{x.consignee_name ?? customerName(x.customer_id, x.customer_name)}</Item>
         <Item label={label("consignee_phone")}><bdi dir="ltr">{x.consignee_phone ?? "—"}</bdi>{x.notify_consignee && <div className={s.muted}>{t("willNotify")}</div>}</Item>
         <Item label={label("consignee_email")}><bdi dir="ltr">{x.consignee_email ?? "—"}</bdi></Item>
         <Item label={label("delivery_city")}>{x.delivery_city ? cityName(x.delivery_city) : "—"}</Item>

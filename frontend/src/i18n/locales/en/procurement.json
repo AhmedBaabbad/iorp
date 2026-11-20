@@ -17,38 +17,10 @@
   "reasonRequired": "Reason",
   "reasonOptional": "Reason (optional)",
   "openNcr": "{count} open",
-  "supplierStatuses": {
-    "pending": "Pending evaluation",
-    "approved": "Approved",
-    "conditional": "Conditional (probation)",
-    "blocked": "Blocked"
-  },
   "statusHints": {
     "approved": "On the approved supplier list: deliveries are accepted.",
     "conditional": "On probation: deliveries are accepted and watched closely.",
     "blocked": "No delivery from this supplier is accepted until it is approved again."
-  },
-  "supplierCategories": {
-    "raw_material": "Raw materials",
-    "packaging": "Packaging",
-    "consumables": "Consumables",
-    "services": "Services",
-    "other": "Other"
-  },
-  "materialCategories": {
-    "resin": "Resin",
-    "masterbatch": "Masterbatch",
-    "additive": "Additive",
-    "core": "Core",
-    "carton": "Carton",
-    "film": "Film",
-    "accessory": "Accessory",
-    "other": "Other"
-  },
-  "receiptStatuses": {
-    "draft": "Draft",
-    "received": "Received",
-    "cancelled": "Cancelled"
   },
   "events": {
     "create": "Created",
@@ -229,14 +201,6 @@
     "CITY_OTHER_REQUIRED": "Enter the city name when choosing Other.",
     "CITY_COUNTRY_MISMATCH": "Choose a city belonging to the selected country."
   },
-  "lotStatuses": {
-    "not_required": "Not inspected",
-    "awaiting": "Awaiting quality",
-    "inspecting": "Being inspected",
-    "released": "Released",
-    "partly_released": "Partly released",
-    "rejected": "Not released"
-  },
   "evaluation": {
     "title": "Supplier evaluation",
     "notScored": "Not scored",
@@ -251,38 +215,6 @@
     "score": "Score",
     "suggestion": "The score suggests the standing «{status}»; whoever approves suppliers decides.",
     "formula": "Score = % of lots released in full − points for non-conformance reports (critical 10, major 5, minor 2; at most 30) − 1 point per 1,000 of their cost (at most 20). A ≥ 90, B ≥ 75, C ≥ 60, D below."
-  },
-  "orderStatuses": {
-    "draft": "Draft",
-    "approved": "Approved",
-    "sent": "Sent to supplier",
-    "partially_received": "Partly received",
-    "received": "Received",
-    "closed": "Closed",
-    "cancelled": "Cancelled"
-  },
-  "paymentTerms": {
-    "advance": "Advance payment",
-    "on_delivery": "On delivery",
-    "net_15": "Net 15 days",
-    "net_30": "Net 30 days",
-    "net_45": "Net 45 days",
-    "net_60": "Net 60 days",
-    "net_90": "Net 90 days",
-    "letter_of_credit": "Letter of credit",
-    "other": "Other"
-  },
-  "incoterms": {
-    "EXW": "Ex Works",
-    "FCA": "Free Carrier",
-    "FOB": "Free On Board",
-    "CFR": "Cost and Freight",
-    "CIF": "Cost, Insurance and Freight",
-    "CPT": "Carriage Paid To",
-    "CIP": "Carriage and Insurance Paid To",
-    "DAP": "Delivered At Place",
-    "DPU": "Delivered at Place Unloaded",
-    "DDP": "Delivered Duty Paid"
   },
   "orders": {
     "title": "Purchase orders",

@@ -1,5 +1,6 @@
 "use client";
 
+import { useCustomerNames } from "@/features/customers/use-customer-names";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -33,6 +34,7 @@ export function CertificatesList() {
   }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
   const setStatus = (value: CertificateStatus | "") => paged.set("status", value);
   const [data, setData] = useState<Page<CertificateListItem> | null>(null);
+  const customerName = useCustomerNames((data?.items ?? []).map(row => row.customer_id));
   const rows = data?.items ?? null;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -70,7 +72,7 @@ export function CertificatesList() {
           <td><Link href={`/quality-certificates/${r.id}`}><bdi>{r.certificate_no ?? t("draftNumber")}</bdi></Link>
             {r.supersedes_no && <div className={s.muted}>{t("supersedes", { number: r.supersedes_no })}</div>}</td>
           <td><CertificateStatusBadge status={r.status} /></td>
-          <td>{r.customer_name || "—"}</td><td>{r.product_description}</td><td><bdi>{r.batch_no}</bdi></td>
+          <td>{customerName(r.customer_id, r.customer_name)}</td><td>{r.product_description}</td><td><bdi>{r.batch_no}</bdi></td>
           <td><bdi>{fmt.quantity(r.quantity, r.unit_label)}</bdi></td>
           <td><Link href={`/quality-checks/${r.quality_check_id}`}><bdi>{r.inspection_code}</bdi></Link></td>
           <td>{r.issued_at ? `${fmt.date(r.issued_at)} — ${r.issued_by_name ?? ""}` : "—"}</td>

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
-import { NextIntlClientProvider } from "next-intl";
+import { TranslationProvider } from "@/i18n/TranslationProvider";
 import { IBM_Plex_Sans_Arabic } from "next/font/google";
 
 import { AuthProvider } from "@/features/auth";
@@ -32,9 +32,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
       {/* Browser extensions (reading tools, translators) add attributes to <body> before React loads; they are not ours. */}
       <body style={{ margin: 0 }} suppressHydrationWarning>
-        <NextIntlClientProvider locale={locale} messages={messages}>
+        <TranslationProvider locale={locale} messages={messages}>
           <ThemeProvider><AuthProvider>{children}<Notifications /></AuthProvider></ThemeProvider>
-        </NextIntlClientProvider>
+        </TranslationProvider>
       </body>
     </html>
   );

@@ -47,13 +47,6 @@
     "ar": "العربية",
     "en": "English"
   },
-  "statuses": {
-    "provisioning": "قيد التجهيز",
-    "active": "نشطة",
-    "suspended": "موقوفة",
-    "inactive": "غير نشطة",
-    "archived": "مؤرشفة"
-  },
   "branding": {
     "title": "هوية الشركة والتقارير",
     "save": "حفظ الهوية",

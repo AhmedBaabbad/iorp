@@ -18,12 +18,12 @@ export type DashboardCard = {
 export type DashboardPoint = { date: string; value: string };
 export type DashboardSeries = { key: string; unit?: string | null; points: DashboardPoint[] };
 export type DashboardAttention = {
-  kind: string; id?: string | null; label: string; detail?: string | null; date?: string | null; href?: string | null;
+  kind: string; id?: string | null; label: string; detail?: string | null; detail_kind?: string | null; date?: string | null; href?: string | null;
   severity: "danger" | "warning" | "info";
 };
 export type Dashboard = {
   module: string; period: Period; start: string; end: string;
   cards: DashboardCard[]; series: DashboardSeries[]; attention: DashboardAttention[]; attention_total: number;
   breakdowns?: { key: string; style: "donut" | "bars" | "funnel"; unit?: string | null; items: { key: string; value: string; label?: string | null }[] }[];
-  rankings?: { key: string; unit?: string | null; items: { label: string; value: string; detail?: string | null; href?: string | null }[] }[];
+  rankings?: { key: string; unit?: string | null; items: { key?: string | null; label?: string | null; value: string; detail?: string | null; href?: string | null }[] }[];
 };

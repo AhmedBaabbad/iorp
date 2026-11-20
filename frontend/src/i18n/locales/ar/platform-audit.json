@@ -17,11 +17,41 @@
   "next": "التالي",
   "page": "الصفحة {page} من {pages}",
   "detailTitle": "تفاصيل حدث التدقيق",
-  "filters": {"search":"البحث في الأحداث والمنفذين والأهداف","allCategories":"كل الفئات","allOutcomes":"كل النتائج","allSeverities":"كل مستويات الخطورة","from":"من تاريخ","to":"إلى تاريخ","apply":"تطبيق التصفية","clear":"مسح التصفية"},
-  "table": {"time":"الوقت","event":"الحدث","actor":"المنفذ","target":"الهدف","organization":"المنظمة","outcome":"النتيجة","severity":"الخطورة"},
-  "categories": {"identity":"الهوية","organization":"المنظمة","authentication":"المصادقة","authorization":"التخويل","security":"الأمان","configuration":"الإعدادات","audit":"التدقيق"},
-  "outcomes": {"success":"نجاح","failure":"فشل","denied":"مرفوض"},
-  "severities": {"info":"معلومات","warning":"تحذير","critical":"حرج"},
-  "actors": {"platform":"حساب منصة","tenant":"مستخدم منظمة","system":"النظام","anonymous":"غير معروف"},
-  "detail": {"event":"نوع الحدث","time":"وقت الحدوث","category":"الفئة","outcome":"النتيجة","severity":"الخطورة","actor":"المنفذ","target":"الهدف","organization":"معرف المنظمة","requestId":"معرف الطلب","correlationId":"معرف الارتباط","ip":"عنوان IP","reason":"السبب","errorCode":"رمز الخطأ","userAgent":"وكيل المستخدم","changes":"التغييرات المسجلة","metadata":"بيانات وصفية إضافية"}
+  "filters": {
+    "search": "البحث في الأحداث والمنفذين والأهداف",
+    "allCategories": "كل الفئات",
+    "allOutcomes": "كل النتائج",
+    "allSeverities": "كل مستويات الخطورة",
+    "from": "من تاريخ",
+    "to": "إلى تاريخ",
+    "apply": "تطبيق التصفية",
+    "clear": "مسح التصفية"
+  },
+  "table": {
+    "time": "الوقت",
+    "event": "الحدث",
+    "actor": "المنفذ",
+    "target": "الهدف",
+    "organization": "المنظمة",
+    "outcome": "النتيجة",
+    "severity": "الخطورة"
+  },
+  "detail": {
+    "event": "نوع الحدث",
+    "time": "وقت الحدوث",
+    "category": "الفئة",
+    "outcome": "النتيجة",
+    "severity": "الخطورة",
+    "actor": "المنفذ",
+    "target": "الهدف",
+    "organization": "معرف المنظمة",
+    "requestId": "معرف الطلب",
+    "correlationId": "معرف الارتباط",
+    "ip": "عنوان IP",
+    "reason": "السبب",
+    "errorCode": "رمز الخطأ",
+    "userAgent": "وكيل المستخدم",
+    "changes": "التغييرات المسجلة",
+    "metadata": "بيانات وصفية إضافية"
+  }
 }

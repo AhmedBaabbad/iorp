@@ -1,5 +1,6 @@
 "use client";
 import { customerDisplayName } from "@/lib/customer-name";
+import { localName } from "@/lib/local-name";
 import Link from 'next/link';
 import { useEffect, useState, useCallback, type FormEvent, type ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
@@ -52,7 +53,7 @@ function useWords() {
   // The product's name in the reader's language when the catalogue has it, else the name the line stored.
   const named = useCallback((products: Product[], key: string, stored?: string) => {
     const p = products.find(x => x.key === key);
-    return p ? (ar ? p.name_ar : p.name_en) : stored || key;
+    return p ? localName(p, ar ? "ar" : "en") : stored || "—";
   }, [ar]);
   return { t, ar, unit, named };
 }
@@ -200,7 +201,7 @@ function ItemsEditor({ customerId, products, items, onChange }: { customerId: st
           <Field name={t('items.product')}>
             <select required value={item.product_key} onChange={e => choose(i, e.target.value)}>
               <option value="">{t('items.chooseProduct')}</option>
-              {products.map(p => <option key={p.key} value={p.key}>{ar ? p.name_ar : p.name_en}</option>)}
+              {products.map(p => <option key={p.key} value={p.key}>{localName(p, ar ? "ar" : "en")}</option>)}
             </select>
           </Field>
           {item.product_key && <Field name={t('items.source')}>
@@ -412,7 +413,7 @@ export function ComplaintDetail({ id }: { id: string }) {
           {!!item.properties.length && <div className={s.tableWrap}><table className={s.table}>
             <thead><tr><th>{t('items.property')}</th><th>{t('items.expected')}</th><th>{t('items.reportedValue')}</th><th>{t('items.measured')}</th></tr></thead>
             <tbody>{item.properties.map(p => {
-              const name = ar ? p.name_ar : p.name_en;
+              const name = localName(p, ar ? "ar" : "en");
               return <tr key={p.key}><td>{name}{p.unit ? ` (${unit(p.unit)})` : ''}</td><td>{p.expected || '—'}</td><td>{p.reported || '—'}</td>
                 <td><input aria-label={`${name} — ${t('items.measured')}`} maxLength={1000} value={findings[item.id]?.measured[p.key] ?? ''}
                   onChange={e => measure(item.id, { measured: { ...findings[item.id]?.measured, [p.key]: e.target.value } })} /></td></tr>;
@@ -433,7 +434,7 @@ export function ComplaintDetail({ id }: { id: string }) {
           <p className={s.muted}>{t('items.source')}: {item.source_kind === 'manual' ? t('items.manual') : `${t(`kinds.${item.source_kind}`)} ${item.source_label ?? ''}`}</p>
           {!!item.properties.length && <div className={s.tableWrap}><table className={s.table}>
             <thead><tr><th>{t('items.property')}</th><th>{t('items.expected')}</th><th>{t('items.reportedValue')}</th><th>{t('items.measured')}</th></tr></thead>
-            <tbody>{item.properties.map(p => <tr key={p.key}><td>{ar ? p.name_ar : p.name_en}{p.unit ? ` (${unit(p.unit)})` : ''}</td>
+            <tbody>{item.properties.map(p => <tr key={p.key}><td>{localName(p, ar ? "ar" : "en")}{p.unit ? ` (${unit(p.unit)})` : ''}</td>
               <td>{p.expected || '—'}</td><td>{p.reported || '—'}</td><td>{p.measured || '—'}</td></tr>)}</tbody>
           </table></div>}
         </section>)}

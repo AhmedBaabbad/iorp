@@ -1,4 +1,5 @@
 "use client";
+import { useCustomerNames } from "@/features/customers/use-customer-names";
 import { Dialog } from "@/components/ui/Dialog";
 
 import Link from "next/link";
@@ -40,6 +41,7 @@ export function CertificateDetail({ certificateId }: { certificateId: string }) 
   const ar = useLocale() === "ar";
   const router = useRouter();
   const [c, setC] = useState<Certificate | null>(null);
+  const customerName = useCustomerNames([c?.customer_id]);
   const [loading, setLoading] = useState(true);
   const [dialog, setDialog] = useState<"issue" | "revoke" | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -81,7 +83,7 @@ export function CertificateDetail({ certificateId }: { certificateId: string }) 
       </div>
       {editable ? <CertificateFields c={c} busy={busy !== null} onSave={body => void run("save", () => updateCertificate(c.id, body))} />
         : <dl className={s.grid} style={{ margin: 0 }}>
-          <Item label={t("fields.customer")}>{c.customer_name || "—"}</Item>
+          <Item label={t("fields.customer")}>{customerName(c.customer_id, c.customer_name)}</Item>
           <Item label={t("fields.customerPo")}><bdi>{c.customer_po ?? "—"}</bdi></Item>
           <Item label={t("fields.product")}>{c.product_description}</Item>
           <Item label={t("fields.grade")}>{c.grade ?? "—"}</Item>

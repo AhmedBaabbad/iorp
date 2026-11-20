@@ -2,10 +2,6 @@
   "search": "Search",
   "save": "Save",
   "cancel": "Cancel",
-  "kinds": {
-    "finished": "Finished product",
-    "material": "Material"
-  },
   "propertyKinds": {
     "number": "Number",
     "text": "Text",

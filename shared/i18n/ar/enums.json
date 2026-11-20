@@ -1,0 +1,1336 @@
+{
+  "capa": {
+    "AttentionKinds": {
+      "overdue": "إجراء متأخر",
+      "report_overdue": "تقرير تجاوز موعده",
+      "review_due": "مراجعة مستحقة",
+      "due_soon": "قريب الموعد"
+    }
+  },
+  "commercial": {
+    "ComplaintsStatuses": {
+      "new": "جديدة",
+      "assessment": "قيد التقييم",
+      "processing": "قيد المعالجة",
+      "pending_closure": "بانتظار اعتماد الإغلاق",
+      "closed": "مغلقة",
+      "cancelled": "ملغاة"
+    },
+    "ComplaintsCategories": {
+      "quality": "الجودة",
+      "delivery": "التسليم",
+      "quantity": "الكمية",
+      "packaging": "التغليف",
+      "commercial": "الشروط التجارية",
+      "service": "الخدمة",
+      "other": "أخرى"
+    },
+    "ComplaintsPriorities": {
+      "low": "منخفضة",
+      "medium": "متوسطة",
+      "high": "عالية",
+      "critical": "حرجة"
+    },
+    "ComplaintsKinds": {
+      "order": "أمر بيع",
+      "sample": "عينة",
+      "shipment": "شحنة",
+      "return": "مرتجع",
+      "ncr": "تقرير عدم مطابقة"
+    },
+    "ComplaintsHistoryReasons": {
+      "assign": "سبب الإسناد",
+      "note": "المتابعة",
+      "response": "ما أُرسل للعميل",
+      "refer_quality": "ملاحظة الإحالة",
+      "other": "السبب"
+    },
+    "customerStatus": {
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "on_hold": "معلّق",
+      "archived": "مؤرشف",
+      "blacklisted": "محظور"
+    },
+    "customerRelationshipStage": {
+      "lead": "عميل محتمل",
+      "contacted": "تم التواصل",
+      "qualified": "مؤهل",
+      "prospect": "قيد الترقب",
+      "negotiating": "قيد التفاوض",
+      "trial_customer": "عميل تجريبي",
+      "active_customer": "عميل نشط",
+      "repeat_customer": "عميل متكرر",
+      "strategic_customer": "عميل استراتيجي"
+    },
+    "customerPriorityLevel": {
+      "low": "منخفض",
+      "medium": "متوسط",
+      "high": "مرتفع",
+      "urgent": "عاجل"
+    },
+    "interactionInteractionType": {
+      "call": "مكالمة هاتفية",
+      "visit": "زيارة ميدانية",
+      "whatsapp": "واتساب",
+      "meeting": "اجتماع",
+      "message": "رسالة",
+      "email": "بريد إلكتروني",
+      "other": "أخرى"
+    },
+    "interactionOutcome": {
+      "positive": "إيجابي",
+      "neutral": "محايد",
+      "negative": "سلبي",
+      "pending": "قيد الانتظار"
+    },
+    "followUpStatus": {
+      "pending": "معلق",
+      "in_progress": "قيد التنفيذ",
+      "completed": "مكتمل",
+      "cancelled": "ملغي",
+      "overdue": "متأخر"
+    },
+    "followUpPriority": {
+      "low": "منخفض",
+      "medium": "متوسط",
+      "high": "مرتفع",
+      "urgent": "عاجل"
+    },
+    "sampleStatus": {
+      "requested": "مطلوبة",
+      "in_preparation": "قيد التحضير",
+      "delivered": "تم التسليم",
+      "evaluated": "تم التقييم",
+      "cancelled": "ملغية"
+    },
+    "sampleDecision": {
+      "pending": "قيد الانتظار",
+      "accepted": "تم القبول",
+      "rejected": "تم الرفض"
+    },
+    "sampleEvaluationResultStatus": {
+      "accepted": "مقبول",
+      "rejected": "مرفوض",
+      "needs_modification": "يحتاج تعديل"
+    },
+    "sampleEvaluationNextAction": {
+      "proceed_to_quote": "المتابعة لعرض سعر",
+      "revise_sample": "مراجعة العينة",
+      "close_request": "إغلاق الطلب",
+      "further_review": "مراجعة إضافية"
+    },
+    "quoteStatus": {
+      "draft": "مسودة",
+      "issued": "تم الإصدار",
+      "accepted": "مقبول",
+      "rejected": "مرفوض",
+      "expired": "منتهي الصلاحية"
+    },
+    "commercialOrderStatus": {
+      "draft": "مسودة",
+      "confirmed": "مؤكد",
+      "converted_to_production": "تم التحويل إلى الإنتاج",
+      "cancelled": "ملغي"
+    }
+  },
+  "foundation": {
+    "userStatus": {
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "locked": "مقفل"
+    },
+    "OrganizationStatus": {
+      "active": "ساري",
+      "archived": "مؤرشف",
+      "inactive": "غير نشط",
+      "provisioning": "قيد التجهيز",
+      "suspended": "موقوف"
+    },
+    "permissionName": {
+      "foundation:organization:read": "عرض بيانات المنظمة",
+      "foundation:organization:update": "تعديل بيانات المنظمة",
+      "foundation:organization:branding": "إدارة شعار المنظمة",
+      "foundation:users:read": "عرض المستخدمين",
+      "foundation:users:write": "إضافة مستخدمين وتعديل بياناتهم",
+      "foundation:users:activate": "تفعيل حساب مستخدم",
+      "foundation:users:deactivate": "تعطيل حساب مستخدم",
+      "foundation:users:delete": "إلغاء دعوة مستخدم",
+      "foundation:users:lock": "قفل حساب مستخدم أو فتحه",
+      "foundation:users:reset_password": "إعادة تعيين كلمة مرور مستخدم",
+      "foundation:roles:read": "عرض الأدوار",
+      "foundation:roles:write": "إنشاء الأدوار وتعديلها وحذفها",
+      "foundation:permissions:read": "عرض قائمة الصلاحيات",
+      "foundation:user_roles:write": "منح الأدوار للمستخدمين وسحبها",
+      "foundation:role_permissions:write": "منح الصلاحيات للأدوار وسحبها",
+      "foundation:audit:read": "عرض سجل التدقيق",
+      "foundation:security_log:read": "عرض سجل الأمان",
+      "foundation:activity_log:read": "عرض سجل النشاطات",
+      "foundation:activity_log:archive": "أرشفة سجل النشاطات وحذف القديم منه",
+      "foundation:delegations:read": "عرض التفويضات",
+      "foundation:delegations:manage": "إدارة التفويضات",
+      "commercial:complaints:read": "عرض شكاوى العملاء",
+      "commercial:complaints:create": "تسجيل شكوى عميل",
+      "commercial:complaints:update": "متابعة شكوى",
+      "commercial:complaints:assign": "إسناد شكوى",
+      "commercial:complaints:investigate": "التحقيق في شكوى",
+      "commercial:complaints:resolve": "تسجيل حل الشكوى",
+      "commercial:complaints:close": "اعتماد إغلاق الشكوى",
+      "commercial:complaints:reopen": "إعادة فتح شكوى",
+      "commercial:complaints:cancel": "إلغاء شكوى",
+      "commercial:complaints:report": "تقارير الشكاوى",
+      "commercial:customers:read": "عرض العملاء",
+      "commercial:customers:create": "إضافة عميل",
+      "commercial:customers:update": "تعديل بيانات عميل",
+      "commercial:customers:delete": "حذف عميل",
+      "commercial:customers:assign_owner": "تعيين مسؤول المبيعات للعميل",
+      "commercial:interactions:read": "عرض تفاعلات العملاء",
+      "commercial:interactions:create": "تسجيل تفاعل مع عميل",
+      "commercial:interactions:update": "تعديل تفاعل مسجل",
+      "commercial:interactions:delete": "حذف تفاعل مسجل",
+      "commercial:follow_ups:read": "عرض المتابعات",
+      "commercial:follow_ups:create": "إنشاء متابعة",
+      "commercial:follow_ups:update": "تعديل متابعة",
+      "commercial:follow_ups:delete": "حذف متابعة",
+      "commercial:follow_ups:assign": "إسناد المتابعات لموظف",
+      "commercial:follow_ups:complete": "إنجاز متابعة",
+      "commercial:samples:read": "عرض العينات",
+      "commercial:samples:create": "تسجيل طلب عينة",
+      "commercial:samples:update": "تعديل بيانات عينة",
+      "commercial:samples:delete": "حذف عينة",
+      "commercial:evaluations:read": "عرض تقييمات العينات",
+      "commercial:evaluations:create": "تسجيل تقييم عينة",
+      "commercial:evaluations:update": "تعديل تقييم عينة",
+      "commercial:evaluations:delete": "حذف تقييم عينة",
+      "commercial:quotes:read": "عرض عروض الأسعار",
+      "commercial:quotes:create": "إنشاء عرض سعر",
+      "commercial:quotes:update": "تعديل عرض سعر (مسودة)",
+      "commercial:quotes:delete": "حذف عرض سعر",
+      "commercial:quote_settings:read": "عرض إعدادات عروض الأسعار",
+      "commercial:quote_settings:update": "تعديل إعدادات عروض الأسعار",
+      "commercial:orders:read": "عرض أوامر البيع",
+      "commercial:orders:create": "إنشاء أمر بيع",
+      "commercial:orders:update": "تعديل أمر بيع (مسودة)",
+      "commercial:orders:delete": "حذف أمر بيع",
+      "commercial:quotes:issue": "إصدار عرض السعر للعميل",
+      "commercial:quotes:accept": "تسجيل قبول العميل للعرض",
+      "commercial:quotes:reject": "تسجيل رفض العميل للعرض",
+      "commercial:quotes:expire": "إنهاء صلاحية عرض السعر",
+      "commercial:quotes:revise": "إعادة عرض السعر إلى مسودة",
+      "commercial:orders:confirm": "اعتماد أمر البيع",
+      "commercial:orders:cancel": "إلغاء أمر البيع",
+      "commercial:orders:revise": "إعادة أمر البيع إلى مسودة",
+      "commercial:samples:start": "بدء تحضير العينة",
+      "commercial:samples:deliver": "تسجيل تسليم العينة",
+      "commercial:samples:cancel": "إلغاء العينة",
+      "commercial:samples:reopen": "إعادة فتح العينة",
+      "commercial:samples:decide": "اتخاذ قرار العينة",
+      "commercial:follow_ups:cancel": "إلغاء متابعة",
+      "commercial:follow_ups:reopen": "إعادة فتح متابعة",
+      "production:work_centers:read": "عرض مراكز العمل",
+      "production:work_centers:create": "إضافة مركز عمل",
+      "production:work_centers:update": "تعديل مركز عمل",
+      "production:work_centers:delete": "حذف مركز عمل",
+      "production:shifts:read": "عرض الورديات",
+      "production:shifts:create": "إضافة وردية",
+      "production:shifts:update": "تعديل وردية",
+      "production:shifts:delete": "حذف وردية",
+      "production:shift_rosters:read": "عرض جداول الورديات",
+      "production:shift_rosters:create": "إنشاء جدول وردية",
+      "production:shift_rosters:update": "تعديل جدول وردية",
+      "production:shift_rosters:manage_members": "إدارة أعضاء جدول الوردية",
+      "production:shift_rosters:close": "إقفال جدول وردية",
+      "production:demands:read": "عرض طلبات الإنتاج",
+      "production:demands:create": "إنشاء طلب إنتاج",
+      "production:demands:update": "تعديل طلب إنتاج",
+      "production:demands:delete": "حذف طلب إنتاج",
+      "production:demands:release": "إرسال الطلب للتخطيط",
+      "production:demands:cancel": "إلغاء طلب إنتاج",
+      "production:planning:read": "عرض قائمة التخطيط",
+      "production:planning:sequence": "ترتيب أولويات التخطيط",
+      "production:planning:allocate": "تخصيص الكميات لأوامر الإنتاج",
+      "production:planning:release_allocation": "تحرير تخصيص",
+      "production:production_orders:read": "عرض أوامر الإنتاج",
+      "production:production_orders:update": "تعديل بيانات أمر الإنتاج",
+      "production:production_orders:manage_items": "إدارة بنود أمر الإنتاج",
+      "production:production_orders:create": "إنشاء أمر إنتاج",
+      "production:production_orders:release": "اعتماد أمر الإنتاج",
+      "production:production_orders:start": "بدء أمر الإنتاج أو استئنافه",
+      "production:production_orders:hold": "تعليق أمر الإنتاج",
+      "production:production_orders:complete": "إكمال أمر الإنتاج",
+      "production:production_orders:close": "إقفال أمر الإنتاج",
+      "production:production_orders:cancel": "إلغاء أمر الإنتاج",
+      "production:runs:read": "عرض جلسات التشغيل",
+      "production:runs:create": "إنشاء جلسة تشغيل",
+      "production:runs:update": "تعديل جلسة تشغيل",
+      "production:runs:start": "بدء جلسة التشغيل أو استئنافها",
+      "production:runs:pause": "إيقاف جلسة التشغيل مؤقتاً",
+      "production:runs:complete": "إنهاء جلسة التشغيل",
+      "production:runs:cancel": "إلغاء جلسة التشغيل",
+      "production:runs:manage_members": "إدارة فريق جلسة التشغيل",
+      "production:results:read": "عرض نتائج الإنتاج",
+      "production:results:create": "تسجيل نتيجة إنتاج",
+      "production:results:update": "تعديل نتيجة إنتاج",
+      "production:results:delete": "حذف نتيجة إنتاج",
+      "production:results:correct": "تصحيح نتيجة أمر مقفل",
+      "production:downtime_events:read": "عرض أحداث التوقف",
+      "production:downtime_events:create": "تسجيل حدث توقف",
+      "production:downtime_events:update": "تعديل حدث توقف",
+      "production:downtime_events:delete": "حذف حدث توقف",
+      "production:downtime_events:close": "إنهاء حدث توقف مفتوح",
+      "production:waste_records:read": "عرض سجلات الهالك",
+      "production:waste_records:create": "تسجيل هالك",
+      "production:waste_records:update": "تعديل سجل هالك",
+      "production:waste_records:delete": "حذف سجل هالك",
+      "quality:settings:update": "تعديل إعدادات الجودة",
+      "quality:quality_checks:read": "عرض فحوصات الجودة",
+      "quality:quality_checks:create": "إنشاء فحص جودة",
+      "quality:quality_checks:update": "تعديل فحص جودة",
+      "quality:quality_checks:start": "بدء الفحص",
+      "quality:quality_checks:close": "إغلاق الفحص بنتيجة",
+      "quality:quality_checks:cancel": "إلغاء فحص جودة",
+      "quality:quality_checks:measure": "تسجيل قياسات الفحص",
+      "quality:rejections:read": "عرض حالات الرفض",
+      "quality:rejections:create": "تسجيل حالة رفض",
+      "quality:rejections:update": "تعديل حالة رفض",
+      "quality:rejections:decide": "اتخاذ قرار في المرفوض",
+      "quality:rejections:execute": "تنفيذ قرار الرفض",
+      "quality:quality_defects:read": "عرض العيوب",
+      "quality:quality_defects:create": "تسجيل عيب",
+      "quality:quality_defects:update": "تعديل عيب",
+      "quality:ncr_reports:read": "عرض تقارير عدم المطابقة",
+      "quality:ncr_reports:create": "فتح تقرير عدم مطابقة",
+      "quality:ncr_reports:update": "تعديل تقرير عدم مطابقة",
+      "quality:ncr_reports:verify": "التحقق من الفعالية وإغلاق التقرير",
+      "quality:ncr_reports:cancel": "إلغاء تقرير أو إجراء تصحيحي",
+      "quality:ncr_reports:contain": "تسجيل الاحتواء",
+      "quality:ncr_reports:investigate": "تسجيل السبب الجذري",
+      "quality:ncr_reports:submit": "إرسال التقرير للتحقق",
+      "quality:ncr_actions:read": "عرض الإجراءات التصحيحية",
+      "quality:ncr_actions:complete": "إنجاز إجراء تصحيحي",
+      "quality:specifications:read": "عرض مواصفات المنتجات",
+      "quality:specifications:create": "إنشاء مواصفة أو مراجعة جديدة",
+      "quality:specifications:update": "تعديل مواصفة (مسودة)",
+      "quality:specifications:activate": "اعتماد المواصفة وتفعيلها",
+      "quality:certificates:read": "عرض شهادات التحليل",
+      "quality:certificates:create": "إنشاء شهادة تحليل",
+      "quality:certificates:update": "تعديل شهادة تحليل (مسودة)",
+      "quality:certificates:issue": "اعتماد شهادة التحليل وإصدارها",
+      "quality:certificates:revoke": "إلغاء شهادة صادرة",
+      "shipping:directory:read": "عرض دليل النقل",
+      "shipping:directory:write": "إدارة دليل النقل",
+      "shipping:shipments:read": "عرض الشحنات",
+      "shipping:shipments:create": "إنشاء شحنة",
+      "shipping:shipments:update": "تعديل شحنة (مسودة)",
+      "shipping:shipments:dispatch": "إخراج الشحنة من المصنع",
+      "shipping:shipments:deliver": "تسجيل تسليم الشحنة",
+      "shipping:shipments:cancel": "إلغاء الشحنة",
+      "shipping:shipments:ready": "تجهيز الشحنة للإرسال",
+      "shipping:shipments:reopen": "إعادة فتح شحنة جاهزة",
+      "shipping:shipments:reschedule": "إعادة جدولة الشحنة",
+      "shipping:shipments:fail": "تسجيل تعذّر التسليم",
+      "shipping:shipments:close": "إقفال شحنة غير مسلّمة",
+      "shipping:returns:read": "عرض المرتجعات",
+      "shipping:returns:create": "تسجيل مرتجع عميل",
+      "shipping:returns:approve": "اعتماد المرتجع",
+      "shipping:returns:receive": "استلام البضاعة المرتجعة",
+      "shipping:returns:cancel": "إلغاء المرتجع",
+      "shipping:returns:reject": "رفض المرتجع",
+      "shipping:settings:update": "تعديل إعدادات الشحن",
+      "procurement:suppliers:read": "عرض الموردين",
+      "procurement:suppliers:create": "إضافة مورد",
+      "procurement:suppliers:update": "تعديل بيانات مورد",
+      "procurement:suppliers:approve": "اعتماد المورد أو إيقافه",
+      "procurement:materials:read": "عرض المواد",
+      "procurement:materials:create": "إضافة مادة",
+      "procurement:materials:update": "تعديل مادة",
+      "procurement:receipts:read": "عرض استلام المواد",
+      "procurement:receipts:create": "إنشاء استلام مواد",
+      "procurement:receipts:update": "تعديل استلام مواد (مسودة)",
+      "procurement:receipts:receive": "تأكيد استلام المواد",
+      "procurement:receipts:cancel": "إلغاء استلام مواد",
+      "procurement:settings:update": "تعديل إعدادات المشتريات",
+      "procurement:purchase_orders:read": "عرض أوامر الشراء",
+      "procurement:purchase_orders:create": "إنشاء أمر شراء",
+      "procurement:purchase_orders:update": "تعديل أمر شراء (مسودة)",
+      "procurement:purchase_orders:approve": "اعتماد أمر الشراء",
+      "procurement:purchase_orders:cancel": "إلغاء أمر الشراء",
+      "procurement:purchase_orders:send": "إرسال أمر الشراء للمورد",
+      "procurement:purchase_orders:close": "إقفال أمر الشراء",
+      "masterdata:products:read": "عرض المنتجات",
+      "masterdata:products:create": "إضافة منتج",
+      "masterdata:products:update": "تعديل منتج وقالب مواصفاته",
+      "masterdata:products:map_legacy": "ربط أنواع المنتجات القديمة بمنتج",
+      "masterdata:settings:read": "عرض الإعدادات العامة",
+      "masterdata:settings:update": "تعديل الإعدادات العامة",
+      "masterdata:lists:read": "عرض القوائم المرجعية",
+      "masterdata:lists:update": "تعديل القوائم المرجعية",
+      "masterdata:lists:map_legacy": "ربط القيم القديمة بالقوائم",
+      "workforce:members:read": "عرض الموارد البشرية",
+      "workforce:members:create": "إضافة عامل أو موظف",
+      "workforce:members:update": "تعديل بيانات عامل أو موظف",
+      "workforce:members:delete": "حذف عامل أو موظف",
+      "workforce:members:link_user": "ربط العامل بحساب مستخدم",
+      "notifications:announcements:send": "إرسال الإعلانات والرسائل",
+      "notifications:announcements:manage": "إدارة كل الإعلانات",
+      "organization:branding:read": "عرض هوية الشركة",
+      "organization:branding:update": "تعديل هوية الشركة",
+      "reports:production:order_full": "تقرير أمر الإنتاج",
+      "reports:production:orders_summary": "ملخص أوامر الإنتاج",
+      "reports:production:results_analysis": "تحليل نتائج الإنتاج",
+      "reports:production:shift_workforce": "تقرير فرق الورديات",
+      "reports:customers:customer_profile": "تقرير ملف العميل",
+      "reports:customers:directory": "تقرير دليل العملاء",
+      "reports:customers:activity_summary": "تقرير نشاط العملاء",
+      "reports:customers:quotations_report": "تقرير عروض الأسعار",
+      "reports:customers:demand_fulfillment": "تقرير حالة الطلبات والتنفيذ",
+      "reports:customers:growth_retention": "تقرير نمو العملاء والخمول",
+      "reports:customers:customer_statement": "كشف حالة طلبات العميل",
+      "reports:customers:internal_audience": "نسخة التقارير الداخلية للعملاء",
+      "reports:quality:check_full": "تقرير فحص الجودة",
+      "reports:quality:checks_summary": "ملخص فحوصات الجودة",
+      "reports:quality:rejections_analysis": "تحليل الرفض والقرارات",
+      "reports:quality:defects_analysis": "تحليل العيوب",
+      "reports:quality:corrective_actions": "تقرير متابعة الإجراءات التصحيحية"
+    },
+    "permissionDescription": {
+      "foundation:organization:read": "يعرض ملف المنظمة وبياناتها الأساسية.",
+      "foundation:organization:update": "يعدّل الاسم والعنوان وبيانات التواصل والمنطقة الزمنية للمنظمة.",
+      "foundation:organization:branding": "يرفع شعار المنظمة أو يحذفه.",
+      "foundation:users:read": "يعرض قائمة المستخدمين وبياناتهم.",
+      "foundation:users:write": "ينشئ حسابات مستخدمين جدد ويعدّل بياناتهم.",
+      "foundation:users:activate": "يعيد تفعيل حساب معطّل.",
+      "foundation:users:deactivate": "يمنع المستخدم من الدخول مع بقاء سجله وتاريخه.",
+      "foundation:users:delete": "يحذف حسابًا لم يُفعّل ولا يرتبط بسجلات عمل.",
+      "foundation:users:lock": "يقفل الحساب مؤقتاً أو يفتحه بعد القفل.",
+      "foundation:users:reset_password": "يضع كلمة مرور جديدة لمستخدم.",
+      "foundation:roles:read": "يعرض الأدوار وصلاحياتها.",
+      "foundation:roles:write": "ينشئ أدواراً مخصصة ويعدّلها أو يحذفها.",
+      "foundation:permissions:read": "يعرض كل الصلاحيات المتاحة.",
+      "foundation:user_roles:write": "يضيف دوراً لمستخدم أو يسحبه منه.",
+      "foundation:role_permissions:write": "يضيف صلاحية لدور أو يسحبها ويحدد نطاقها.",
+      "foundation:audit:read": "يعرض سجل العمليات الإدارية.",
+      "foundation:security_log:read": "يعرض محاولات الدخول والأحداث الأمنية.",
+      "foundation:activity_log:read": "يعرض ما قام به المستخدمون في النظام.",
+      "foundation:activity_log:archive": "ينزّل أرشيف الأشهر التي انتهت مدة حفظها (12 شهرًا) ثم يحذفها، ويصله تنبيه عند استحقاقها.",
+      "foundation:delegations:read": "يعرض كل تفويضات الاعتماد في المنظمة وحالتها.",
+      "foundation:delegations:manage": "يوافق على طلبات التفويض أو يرفضها، وينشئ تفويضًا نيابةً عن صاحب الاعتماد (بموافقته)، ويلغي أي تفويض.",
+      "commercial:complaints:read": "يعرض سجل الشكاوى وتفاصيلها وسجل قراراتها؛ ويقتصر على عملاء المستخدم عند النطاق «الخاص».",
+      "commercial:complaints:create": "يسجّل شكوى جديدة كما وردت من العميل مع منتجاتها وكمياتها.",
+      "commercial:complaints:update": "يسجّل التواصل مع العميل والمتابعات الداخلية، ويربط السجلات ويرفق الأدلة، ويعدّل بنود المنتجات.",
+      "commercial:complaints:assign": "يحدد المسؤول عن الشكوى والقسم المعالج وموعد الحل؛ وأول إسناد يبدأ المعالجة.",
+      "commercial:complaints:investigate": "يسجّل نتيجة التحقق والقياسات الفعلية والكمية المثبت تأثرها والاحتواء، ويحيل إلى الجودة.",
+      "commercial:complaints:resolve": "يسجّل الحل ودليل تنفيذه وموقف العميل ويطلب الإغلاق.",
+      "commercial:complaints:close": "يعتمد إغلاق الشكوى أو يعيدها للمعالجة.",
+      "commercial:complaints:reopen": "يعيد فتح شكوى مغلقة بسبب موثّق.",
+      "commercial:complaints:cancel": "يلغي شكوى سُجّلت بالخطأ مع ذكر السبب.",
+      "commercial:complaints:report": "يصدر سجل الشكاوى وتقرير الشكوى المفصّل.",
+      "commercial:customers:read": "يعرض العملاء وبياناتهم (عملاءه فقط إذا كان نطاقه «سجلاته»).",
+      "commercial:customers:create": "يسجّل عميلاً جديداً.",
+      "commercial:customers:update": "يعدّل بيانات العميل وحالته ومرحلة العلاقة.",
+      "commercial:customers:delete": "يحذف عميلاً لا ترتبط به عروض أو أوامر.",
+      "commercial:customers:assign_owner": "يحدد أو ينقل مسؤول المبيعات للعميل، فردياً أو جماعياً.",
+      "commercial:interactions:read": "يعرض المكالمات والزيارات والرسائل المسجلة.",
+      "commercial:interactions:create": "يسجّل مكالمة أو زيارة أو رسالة.",
+      "commercial:interactions:update": "يصحّح بيانات تفاعل مسجل.",
+      "commercial:interactions:delete": "يحذف تفاعلاً سُجّل بالخطأ (إذا لم تُفتح منه متابعة).",
+      "commercial:follow_ups:read": "يعرض مهام المتابعة مع العملاء.",
+      "commercial:follow_ups:create": "ينشئ مهمة متابعة مع عميل.",
+      "commercial:follow_ups:update": "يعدّل موعد المتابعة وتفاصيلها.",
+      "commercial:follow_ups:delete": "يحذف مهمة متابعة.",
+      "commercial:follow_ups:assign": "يسند المتابعة أو ينقل متابعات موظف لآخر.",
+      "commercial:follow_ups:complete": "يسجّل أن المتابعة أُنجزت مع نتيجتها.",
+      "commercial:samples:read": "يعرض طلبات العينات (لعملائه فقط إذا كان نطاقه «سجلاته»).",
+      "commercial:samples:create": "يسجّل طلب عينة لعميل.",
+      "commercial:samples:update": "يعدّل المنتج والمواصفات والكمية قبل التسليم.",
+      "commercial:samples:delete": "يحذف طلب عينة لا ترتبط به عروض.",
+      "commercial:evaluations:read": "يعرض نتائج تقييم العينات.",
+      "commercial:evaluations:create": "يسجّل نتيجة تقييم العينة والخطوة التالية.",
+      "commercial:evaluations:update": "يصحّح نتيجة أو ملاحظات تقييم مسجل.",
+      "commercial:evaluations:delete": "يحذف تقييماً سُجّل بالخطأ.",
+      "commercial:quotes:read": "يعرض عروض الأسعار ومستنداتها (لعملائه فقط إذا كان نطاقه «سجلاته»).",
+      "commercial:quotes:create": "ينشئ عرض سعر جديداً كمسودة.",
+      "commercial:quotes:update": "يعدّل بنود العرض وأسعاره وهو مسودة.",
+      "commercial:quotes:delete": "يحذف عرض سعر غير مقبول ولا يرتبط بأوامر.",
+      "commercial:quote_settings:read": "يعرض لغة العرض والتوقيع والشروط.",
+      "commercial:quote_settings:update": "يعدّل لغة العرض والتوقيع والشروط والأحكام.",
+      "commercial:orders:read": "يعرض أوامر البيع (لعملائه فقط إذا كان نطاقه «سجلاته»).",
+      "commercial:orders:create": "ينشئ أمر بيع مسودة، مباشرة أو من عرض مقبول.",
+      "commercial:orders:update": "يعدّل بنود الأمر وكمياته وهو مسودة.",
+      "commercial:orders:delete": "يحذف أمر بيع مسودة لم يُعتمد قط.",
+      "commercial:quotes:issue": "يرسل العرض للعميل ويقفله من التعديل.",
+      "commercial:quotes:accept": "يسجّل أن العميل قبل العرض فيصبح نهائياً.",
+      "commercial:quotes:reject": "يسجّل رفض العميل مع السبب.",
+      "commercial:quotes:expire": "يسجّل انتهاء صلاحية العرض.",
+      "commercial:quotes:revise": "يعيد العرض مسودة بمراجعة جديدة مع السبب.",
+      "commercial:orders:confirm": "يعتمد الأمر فتُقفل بنوده وكمياته ومواصفاته.",
+      "commercial:orders:cancel": "يلغي الأمر مع السبب (قبل الإنتاج).",
+      "commercial:orders:revise": "يعيد الأمر المعتمد مسودة بمراجعة جديدة (قبل الإنتاج).",
+      "commercial:samples:start": "ينقل العينة إلى «قيد التحضير».",
+      "commercial:samples:deliver": "يسجّل أن العينة سُلّمت للعميل.",
+      "commercial:samples:cancel": "يلغي طلب العينة.",
+      "commercial:samples:reopen": "يعيد العينة إلى «مطلوبة».",
+      "commercial:samples:decide": "يسجّل قرار العميل في العينة (قبول أو رفض أو تعديل).",
+      "commercial:follow_ups:cancel": "يلغي متابعة لم تعد مطلوبة.",
+      "commercial:follow_ups:reopen": "يعيد فتح متابعة منجزة أو ملغاة.",
+      "production:work_centers:read": "يعرض الخطوط والمكائن.",
+      "production:work_centers:create": "يضيف خطاً أو ماكينة.",
+      "production:work_centers:update": "يعدّل بيانات مركز العمل وطاقته.",
+      "production:work_centers:delete": "يحذف مركز عمل غير مستخدم.",
+      "production:shifts:read": "يعرض تعريفات الورديات.",
+      "production:shifts:create": "يعرّف وردية جديدة.",
+      "production:shifts:update": "يعدّل أوقات الوردية وبياناتها.",
+      "production:shifts:delete": "يحذف تعريف وردية.",
+      "production:shift_rosters:read": "يعرض فرق العمل في كل وردية.",
+      "production:shift_rosters:create": "ينشئ جدول فريق لوردية.",
+      "production:shift_rosters:update": "يعدّل جدول الوردية أو يستبدله.",
+      "production:shift_rosters:manage_members": "يضيف عمالاً للجدول أو يزيلهم.",
+      "production:shift_rosters:close": "يقفل جدول الوردية فلا يتغير.",
+      "production:demands:read": "يعرض طلبات الإنتاج وحالتها.",
+      "production:demands:create": "ينشئ طلب إنتاج، من أمر بيع معتمد أو يدوياً.",
+      "production:demands:update": "يعدّل الطلب وبنوده قبل التخطيط.",
+      "production:demands:delete": "يحذف طلب إنتاج مسودة.",
+      "production:demands:release": "يجعل الطلب جاهزاً للتخطيط أو يعيده مسودة.",
+      "production:demands:cancel": "يلغي الطلب فتعود كميته لأمر البيع.",
+      "production:planning:read": "يعرض الطلبات الجاهزة للتخطيط.",
+      "production:planning:sequence": "يغيّر ترتيب الطلبات في قائمة التخطيط.",
+      "production:planning:allocate": "يخصص كميات الطلبات لأمر إنتاج.",
+      "production:planning:release_allocation": "يعيد الكمية المخصصة إلى الطلب مع السبب.",
+      "production:production_orders:read": "يعرض أوامر الإنتاج وتفاصيلها.",
+      "production:production_orders:update": "يعدّل مواعيد الأمر وبياناته.",
+      "production:production_orders:manage_items": "يضيف بنود الأمر أو يعدّلها أو يحذفها.",
+      "production:production_orders:create": "ينشئ أمر إنتاج من التخطيط.",
+      "production:production_orders:release": "يعتمد الأمر ليكون جاهزاً للتشغيل.",
+      "production:production_orders:start": "يبدأ الأمر أو يستأنفه بعد التعليق.",
+      "production:production_orders:hold": "يوقف الأمر مؤقتاً مع السبب.",
+      "production:production_orders:complete": "يسجّل انتهاء تشغيل الأمر.",
+      "production:production_orders:close": "يقفل الأمر بعد اعتماد نتيجته.",
+      "production:production_orders:cancel": "يلغي الأمر مع السبب.",
+      "production:runs:read": "يعرض جلسات التشغيل وفرقها.",
+      "production:runs:create": "ينشئ جلسة تشغيل لأمر إنتاج.",
+      "production:runs:update": "يعدّل بيانات الجلسة.",
+      "production:runs:start": "يبدأ التشغيل أو يستأنفه.",
+      "production:runs:pause": "يوقف التشغيل مؤقتاً.",
+      "production:runs:complete": "يسجّل انتهاء الجلسة.",
+      "production:runs:cancel": "يلغي الجلسة مع السبب.",
+      "production:runs:manage_members": "يضيف عمالاً للجلسة أو يزيلهم أو يحمّلهم من جدول الوردية.",
+      "production:results:read": "يعرض الكميات المنتجة والهالك.",
+      "production:results:create": "يسجّل الكمية المنتجة والهالك.",
+      "production:results:update": "يعدّل نتيجة مسجلة قبل الإقفال.",
+      "production:results:delete": "يحذف نتيجة مسجلة قبل الإقفال.",
+      "production:results:correct": "يسجّل تصحيحاً موثقاً لنتيجة أمر مقفل.",
+      "production:downtime_events:read": "يعرض توقفات المكائن وأسبابها.",
+      "production:downtime_events:create": "يسجّل توقف ماكينة وسببه.",
+      "production:downtime_events:update": "يعدّل بيانات حدث التوقف.",
+      "production:downtime_events:delete": "يحذف حدث توقف مسجلاً بالخطأ.",
+      "production:downtime_events:close": "يسجّل عودة الماكينة للعمل.",
+      "production:waste_records:read": "يعرض كميات الهالك وأسبابها.",
+      "production:waste_records:create": "يسجّل كمية هالك وسببها.",
+      "production:waste_records:update": "يعدّل سجل الهالك.",
+      "production:waste_records:delete": "يحذف سجل هالك مسجلاً بالخطأ.",
+      "quality:settings:update": "يعدّل ترقيم الشهادات وإعدادات الجودة.",
+      "quality:quality_checks:read": "يعرض الفحوصات ونتائجها.",
+      "quality:quality_checks:create": "يفتح فحصاً لأمر إنتاج أو استلام أو مرتجع.",
+      "quality:quality_checks:update": "يعدّل بيانات الفحص قبل إغلاقه.",
+      "quality:quality_checks:start": "يبدأ الفحص ويثبّت خطة القياس.",
+      "quality:quality_checks:close": "يحدد نتيجة الفحص والكميات المقبولة والمرفوضة.",
+      "quality:quality_checks:cancel": "يلغي الفحص مع السبب.",
+      "quality:quality_checks:measure": "يسجّل قيم القياس لكل خاصية.",
+      "quality:rejections:read": "يعرض الكميات المرفوضة وقراراتها.",
+      "quality:rejections:create": "يسجّل كمية مرفوضة.",
+      "quality:rejections:update": "يعدّل بيانات حالة الرفض قبل القرار.",
+      "quality:rejections:decide": "يقرر إعادة التشغيل أو الإتلاف أو القبول بانحراف.",
+      "quality:rejections:execute": "يسجّل تنفيذ القرار.",
+      "quality:quality_defects:read": "يعرض العيوب المسجلة في الفحوصات.",
+      "quality:quality_defects:create": "يسجّل عيباً في فحص.",
+      "quality:quality_defects:update": "يعدّل بيانات العيب.",
+      "quality:ncr_reports:read": "يعرض التقارير وإجراءاتها.",
+      "quality:ncr_reports:create": "يسجّل حالة عدم مطابقة جديدة.",
+      "quality:ncr_reports:update": "يعدّل التقرير وبنوده وإجراءاته التصحيحية.",
+      "quality:ncr_reports:verify": "يحكم على فعالية الإجراءات ويغلق التقرير.",
+      "quality:ncr_reports:cancel": "يلغي التقرير أو أحد إجراءاته مع السبب.",
+      "quality:ncr_reports:contain": "يسجّل إجراءات الاحتواء الفورية.",
+      "quality:ncr_reports:investigate": "يسجّل نتيجة التحقيق والسبب الجذري.",
+      "quality:ncr_reports:submit": "يرسل التقرير للتحقق بعد إنجاز الإجراءات.",
+      "quality:ncr_actions:read": "يعرض الإجراءات المسندة لقسمه.",
+      "quality:ncr_actions:complete": "يسجّل إنجاز الإجراء مع الدليل.",
+      "quality:specifications:read": "يعرض المواصفات الفنية ومعايير الفحص.",
+      "quality:specifications:create": "ينشئ مواصفة مسودة أو مراجعة جديدة لمواصفة.",
+      "quality:specifications:update": "يعدّل المواصفة ومعاييرها وهي مسودة.",
+      "quality:specifications:activate": "يجعل المراجعة سارية بدل السابقة.",
+      "quality:certificates:read": "يعرض الشهادات ونسخها.",
+      "quality:certificates:create": "ينشئ شهادة مسودة أو بديلة لشهادة صادرة.",
+      "quality:certificates:update": "يعدّل الشهادة وهي مسودة.",
+      "quality:certificates:issue": "يعتمد الشهادة ويرقّمها فتصبح نهائية.",
+      "quality:certificates:revoke": "يلغي شهادة صادرة (ويلزم أيضاً لإصدار بديلة).",
+      "shipping:directory:read": "يعرض السائقين والمركبات وشركات الشحن المسجلة.",
+      "shipping:directory:write": "يضيف السائقين والمركبات وشركات الشحن ويعدّلها ويوقفها.",
+      "shipping:shipments:read": "يعرض الشحنات وإشعارات التسليم.",
+      "shipping:shipments:create": "ينشئ إشعار تسليم مسودة.",
+      "shipping:shipments:update": "يعدّل بنود الشحنة وبياناتها.",
+      "shipping:shipments:dispatch": "يسجّل خروج البضاعة مع الوزن عند البوابة.",
+      "shipping:shipments:deliver": "يسجّل استلام العميل كلياً أو جزئياً وإثبات التسليم.",
+      "shipping:shipments:cancel": "يلغي الشحنة قبل خروجها.",
+      "shipping:shipments:ready": "يثبّت الشحنة جاهزة للإخراج.",
+      "shipping:shipments:reopen": "يعيد الشحنة مسودة للتعديل.",
+      "shipping:shipments:reschedule": "يغيّر موعد الإرسال أو التسليم.",
+      "shipping:shipments:fail": "يسجّل أن العميل لم يستلم وأن البضاعة عائدة.",
+      "shipping:shipments:close": "يقفل إشعاراً عادت بضاعته دون تسليم.",
+      "shipping:returns:read": "يعرض مرتجعات العملاء.",
+      "shipping:returns:create": "يسجّل مرتجعاً على إشعار تسليم.",
+      "shipping:returns:approve": "يقبل مرتجع العميل.",
+      "shipping:returns:receive": "يسجّل وصول البضاعة المرتجعة للمصنع.",
+      "shipping:returns:cancel": "يسحب المرتجع قبل استلامه.",
+      "shipping:returns:reject": "يرفض مرتجع العميل مع السبب.",
+      "shipping:settings:update": "يعدّل ترقيم إشعارات التسليم وإعداداتها.",
+      "procurement:suppliers:read": "يعرض الموردين وتقييمهم.",
+      "procurement:suppliers:create": "يسجّل مورداً جديداً.",
+      "procurement:suppliers:update": "يعدّل بيانات المورد.",
+      "procurement:suppliers:approve": "يعتمد المورد أو يضعه تحت التجربة أو يوقفه.",
+      "procurement:materials:read": "يعرض المواد الخام والمستلزمات.",
+      "procurement:materials:create": "يعرّف مادة جديدة.",
+      "procurement:materials:update": "يعدّل بيانات المادة ومتطلبات فحصها.",
+      "procurement:receipts:read": "يعرض إشعارات استلام المواد.",
+      "procurement:receipts:create": "ينشئ إشعار استلام مسودة.",
+      "procurement:receipts:update": "يعدّل بنود الاستلام قبل تأكيده.",
+      "procurement:receipts:receive": "يؤكد وصول المواد فيصبح الاستلام نهائياً.",
+      "procurement:receipts:cancel": "يلغي الاستلام مع السبب.",
+      "procurement:settings:update": "يعدّل ترقيم المستندات وشروط الشراء.",
+      "procurement:purchase_orders:read": "يعرض أوامر الشراء ومستنداتها.",
+      "procurement:purchase_orders:create": "ينشئ أمر شراء مسودة.",
+      "procurement:purchase_orders:update": "يعدّل بنود الأمر وأسعاره قبل الاعتماد.",
+      "procurement:purchase_orders:approve": "يعتمد الأمر قبل إرساله للمورد.",
+      "procurement:purchase_orders:cancel": "يلغي الأمر مع السبب.",
+      "procurement:purchase_orders:send": "يسجّل إرسال الأمر المعتمد للمورد.",
+      "procurement:purchase_orders:close": "يقفل أمراً لا يُنتظر منه استلام آخر.",
+      "masterdata:products:read": "يعرض المنتجات وقوالب مواصفاتها ويختار منها.",
+      "masterdata:products:create": "يضيف منتجاً وقالب مواصفاته.",
+      "masterdata:products:update": "يعدّل اسم المنتج أو قالبه أو يوقفه.",
+      "masterdata:products:map_legacy": "يعيد كتابة نوع منتج قديم في كل سجلات النظام إلى منتج معرّف.",
+      "masterdata:settings:read": "يعرض نسبة الضريبة والعملة الافتراضية.",
+      "masterdata:settings:update": "يعدّل نسبة الضريبة والعملة الافتراضية.",
+      "masterdata:lists:read": "يعرض القطاعات ومصادر الفرص والدول والمدن.",
+      "masterdata:lists:update": "يضيف عناصر القوائم أو يعدّلها أو يوقفها.",
+      "masterdata:lists:map_legacy": "يعيد كتابة قيمة قديمة في كل سجلات النظام إلى عنصر في القائمة.",
+      "workforce:members:read": "يعرض العمال والموظفين.",
+      "workforce:members:create": "يسجّل عاملاً أو موظفاً.",
+      "workforce:members:update": "يعدّل بيانات العامل وحالته.",
+      "workforce:members:delete": "يحذف سجل عامل.",
+      "workforce:members:link_user": "يربط سجل العامل بحساب دخول أو يفك الربط.",
+      "notifications:announcements:send": "يكتب رسالة أو إعلانًا لمستخدمين محددين أو لأصحاب دور أو لكل المنظمة، ويتابع من اطّلع عليها وأكّد اطلاعه.",
+      "notifications:announcements:manage": "يتابع كل إعلانات المنظمة ومن اطّلع عليها، ويسحب أي إعلان.",
+      "organization:branding:read": "يعرض بيانات الهوية المطبوعة على المستندات.",
+      "organization:branding:update": "يعدّل الأسماء والعناوين والحسابات البنكية والشعار المطبوع على المستندات.",
+      "reports:production:order_full": "يطبع تقرير أمر الإنتاج الكامل.",
+      "reports:production:orders_summary": "يطبع ملخص أوامر الإنتاج لفترة.",
+      "reports:production:results_analysis": "يطبع تحليل الكميات والهالك.",
+      "reports:production:shift_workforce": "يطبع فرق العمل في الورديات.",
+      "reports:customers:customer_profile": "يطبع ملف العميل الكامل.",
+      "reports:customers:directory": "يطبع قائمة العملاء وبياناتهم.",
+      "reports:customers:activity_summary": "يطبع نشاط العملاء وترتيبهم.",
+      "reports:customers:quotations_report": "يطبع عروض الأسعار ونتائجها لفترة.",
+      "reports:customers:demand_fulfillment": "يطبع حالة طلبات العملاء وتخصيصها.",
+      "reports:customers:growth_retention": "يطبع العملاء الجدد والخاملين.",
+      "reports:customers:customer_statement": "يطبع كشف طلبات العميل وحالتها.",
+      "reports:customers:internal_audience": "يطبع تقارير العملاء بالبيانات الداخلية (للإدارة).",
+      "reports:quality:check_full": "يطبع تقرير الفحص الكامل.",
+      "reports:quality:checks_summary": "يطبع ملخص الفحوصات لفترة.",
+      "reports:quality:rejections_analysis": "يطبع تحليل المرفوض وقراراته.",
+      "reports:quality:defects_analysis": "يطبع تحليل العيوب وتكرارها.",
+      "reports:quality:corrective_actions": "يطبع حالة الإجراءات التصحيحية ومواعيدها."
+    },
+    "UsersStatus": {
+      "active": "نشط",
+      "inactive": "غير نشط"
+    },
+    "DelegationsStatus": {
+      "scheduled": "لم يبدأ بعد",
+      "active": "ساري",
+      "ended": "منتهٍ",
+      "revoked": "ملغى",
+      "awaiting_manager": "بانتظار موافقة المدير",
+      "awaiting_holder": "بانتظار موافقة صاحب الاعتماد",
+      "lapsed": "انتهت مدته دون رد",
+      "rejected": "مرفوض"
+    },
+    "accessScope": {
+      "own": "بياناتي فقط",
+      "team": "بيانات فريقي",
+      "organization": "كل المنظمة"
+    }
+  },
+  "quality": {
+    "qualityCheckStatus": {
+      "open": "مفتوح",
+      "under_inspection": "قيد الفحص",
+      "closed": "مغلق",
+      "cancelled": "ملغى"
+    },
+    "qualityCheckResult": {
+      "accepted": "مقبول",
+      "rejected": "مرفوض",
+      "conditional_accept": "قبول مشروط",
+      "needs_reinspection": "يحتاج إعادة فحص"
+    },
+    "qualityCheckCheckType": {
+      "in_process_inspection": "فحص أثناء الإنتاج",
+      "finished_product_inspection": "فحص المنتج النهائي",
+      "sample_inspection": "فحص العينة",
+      "reinspection": "إعادة فحص",
+      "issue_triggered": "بسبب مشكلة",
+      "general": "عام",
+      "incoming_inspection": "فحص مواد واردة"
+    },
+    "qualityRejectionRejectionReason": {
+      "failed_quality_check": "فشل فحص الجودة",
+      "critical_defect": "عيب حرج",
+      "out_of_spec": "خارج المواصفات",
+      "dimension_failure": "فشل الأبعاد",
+      "surface_failure": "فشل السطح",
+      "packaging_failure": "فشل التعبئة",
+      "labeling_issue": "مشكلة في التسمية",
+      "other": "أخرى"
+    },
+    "qualityRejectionDisposition": {
+      "hold": "حجز (عزل)",
+      "scrap": "هالك (إتلاف)",
+      "rework": "إعادة تشغيل",
+      "return_to_process": "إعادة إلى العملية",
+      "use_as_is": "استخدام كما هو بموافقة"
+    },
+    "qualityRejectionDispositionStatus": {
+      "pending": "بانتظار القرار",
+      "executed": "منفَّذ",
+      "decided": "مقرَّر"
+    },
+    "ncrReportStatus": {
+      "draft": "مسودة",
+      "open": "مفتوح",
+      "under_review": "قيد المراجعة",
+      "closed": "مغلق"
+    },
+    "ncrReportSourceType": {
+      "internal_production": "إنتاج داخلي",
+      "incoming_material": "مواد واردة",
+      "supplier": "مورد",
+      "warehouse": "مستودع",
+      "customer_return": "إرجاع من العميل",
+      "other": "أخرى"
+    },
+    "ncrReportReportType": {
+      "material_non_conformance": "عدم مطابقة المواد",
+      "product_non_conformance": "عدم مطابقة المنتج",
+      "process_non_conformance": "عدم مطابقة العملية",
+      "packaging_non_conformance": "عدم مطابقة التعبئة",
+      "documentation_non_conformance": "عدم مطابقة التوثيق",
+      "other": "أخرى"
+    },
+    "correctiveActionStatus": {
+      "open": "مفتوح",
+      "in_progress": "قيد التنفيذ",
+      "completed": "مكتمل",
+      "closed": "مغلق"
+    },
+    "correctiveActionPriority": {
+      "urgent": "عاجل",
+      "high": "مرتفع",
+      "normal": "عادي",
+      "low": "منخفض"
+    },
+    "correctiveActionActionType": {
+      "corrective": "تصحيحي",
+      "preventive": "وقائي",
+      "improvement": "تحسيني",
+      "containment": "احتوائي"
+    },
+    "correctiveActionSourceType": {
+      "quality_rejection": "حالة رفض جودة",
+      "ncr_report": "تقرير عدم مطابقة",
+      "quality_defect": "عيب جودة",
+      "ncr_item": "بند عدم مطابقة",
+      "manual": "يدوي"
+    },
+    "qualityDefectDefectCategory": {
+      "dimension": "أبعاد",
+      "thickness": "السماكة / القياس",
+      "surface": "عيب سطحي",
+      "color": "انحراف اللون",
+      "strength": "إخفاق في المتانة",
+      "winding": "عيب اللف",
+      "weight": "وزن خارج المعيار",
+      "packaging": "عيب التعبئة",
+      "labeling": "خطأ في التسمية",
+      "finish": "نعومة / الملمس",
+      "other": "أخرى"
+    },
+    "qualityDefectSeverity": {
+      "minor": "بسيط",
+      "major": "رئيسي",
+      "critical": "حرج"
+    },
+    "actionFollowUpStatus": {
+      "on_track": "في المسار",
+      "delayed": "متأخر",
+      "blocked": "محظور",
+      "completed": "مكتمل"
+    },
+    "closureVerificationVerificationResult": {
+      "effective": "فعّال",
+      "partially_effective": "فعّال جزئياً",
+      "not_effective": "غير فعّال"
+    },
+    "closureVerificationClosureStatus": {
+      "closed": "مغلق",
+      "re_opened": "أُعيد فتحه"
+    },
+    "ParametersKinds": {
+      "numeric": "رقمية (قراءات)",
+      "attribute": "وصفية (مطابق / غير مطابق)"
+    },
+    "SpecificationsStatuses": {
+      "draft": "مسودة",
+      "active": "سارية",
+      "superseded": "مستبدلة"
+    },
+    "CertificatesStatuses": {
+      "draft": "مسودة",
+      "issued": "صادرة",
+      "revoked": "ملغاة"
+    },
+    "STATUSES": {
+      "action": "الإجراء التصحيحي",
+      "cancelled": "ملغى",
+      "closed": "الإغلاق",
+      "draft": "مسودة",
+      "investigation": "التحقيق",
+      "issued": "صادرة",
+      "open": "مفتوح",
+      "revoked": "ملغاة",
+      "verification": "التحقق"
+    },
+    "ROOT_CAUSE_CATEGORIES": {
+      "man": "العنصر البشري",
+      "machine": "الآلة",
+      "material": "المادة",
+      "method": "الطريقة",
+      "measurement": "القياس",
+      "environment": "البيئة"
+    },
+    "ROOT_CAUSE_METHODS": {
+      "fishbone": "مخطط عظم السمكة",
+      "five_whys": "لماذا خمس مرات",
+      "other": "أخرى"
+    },
+    "DISPOSITIONS": {
+      "hold": "حجز (عزل)",
+      "regrade": "إعادة التصنيف",
+      "return_to_process": "إعادة إلى العملية",
+      "return_to_supplier": "إرجاع إلى المورد",
+      "rework": "إعادة تشغيل",
+      "scrap": "هالك (إتلاف)",
+      "sort": "فرز",
+      "use_as_is": "استخدام كما هو بموافقة"
+    },
+    "ACTION_KINDS": {
+      "correction": "تصحيح",
+      "corrective": "تصحيحي",
+      "preventive": "وقائي"
+    },
+    "ACTION_STATUSES": {
+      "done": "مكتمل"
+    },
+    "CLAIM_STATUSES": {
+      "accepted": "مقبول",
+      "claimed": "تمت المطالبة",
+      "none": "لا توجد مطالبة",
+      "recovered": "تم الاسترداد",
+      "rejected": "مرفوض"
+    },
+    "ORDER_STATUSES": {
+      "completed": "مكتمل",
+      "in_progress": "قيد التنفيذ",
+      "on_hold": "معلّق"
+    },
+    "Stages": {
+      "open": "التسجيل",
+      "investigation": "التحقيق",
+      "action": "الإجراء التصحيحي",
+      "verification": "التحقق",
+      "closed": "الإغلاق"
+    },
+    "ActionStatuses": {
+      "open": "مفتوح",
+      "done": "منجز",
+      "cancelled": "ملغى"
+    },
+    "REINSPECTION_ORDER_STATUSES": {
+      "closed": "الإغلاق",
+      "completed": "مكتمل",
+      "in_progress": "قيد التنفيذ",
+      "on_hold": "معلّق"
+    }
+  },
+  "production": {
+    "productionOrderStatus": {
+      "draft": "مسودة",
+      "released": "معتمد",
+      "in_progress": "قيد التنفيذ",
+      "on_hold": "موقوف مؤقتاً",
+      "completed": "مكتمل",
+      "closed": "مغلق",
+      "cancelled": "ملغي"
+    },
+    "productionOrderPriority": {
+      "urgent": "عاجل",
+      "normal": "عادي",
+      "low": "منخفض",
+      "high": "مرتفعة"
+    },
+    "workCenterStatus": {
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "under_maintenance": "تحت الصيانة"
+    },
+    "workCenterCenterType": {
+      "extrusion": "بثق",
+      "rewinding": "إعادة لف",
+      "packing": "تعبئة",
+      "quality_station": "محطة جودة",
+      "generic": "عام"
+    },
+    "wasteRecordWasteCategory": {
+      "startup_setup": "هالك بدء التشغيل والضبط",
+      "changeover": "هالك تغيير المنتج",
+      "process": "هالك العملية (قص وحواف)",
+      "material_defect": "هالك عيب المادة الخام",
+      "machine_fault": "هالك عطل الماكينة",
+      "handling_damage": "هالك المناولة والكسر",
+      "contamination": "هالك التلوث",
+      "other": "هالك آخر"
+    },
+    "downtimeEventStatus": {
+      "open": "مفتوح",
+      "closed": "منتهٍ"
+    },
+    "downtimeEventCategory": {
+      "breakdown": "عطل",
+      "changeover_setup": "تغيير المنتج والضبط",
+      "material_shortage": "نقص المواد",
+      "waiting_labor": "انتظار المشغّل",
+      "quality_issue": "مشكلة جودة",
+      "utilities": "المرافق (كهرباء، هواء، ماء)",
+      "other": "أخرى",
+      "planned_maintenance": "صيانة مخططة",
+      "break_meeting": "استراحة أو اجتماع",
+      "no_orders": "لا يوجد عمل مجدول",
+      "machine_fault": "عطل في الآلة"
+    },
+    "shiftDefinitionShiftType": {
+      "morning": "صباحي",
+      "evening": "مسائي",
+      "night": "ليلي",
+      "custom": "مخصص"
+    },
+    "shiftDefinitionStatus": {
+      "active": "نشط",
+      "inactive": "غير نشط"
+    },
+    "DowntimeEventsTypes": {
+      "loss": "فقد في التوافر",
+      "planned": "توقف مخطط"
+    },
+    "DemandsPriorities": {
+      "low": "منخفضة",
+      "normal": "عادية",
+      "high": "مرتفعة",
+      "urgent": "عاجلة"
+    },
+    "DemandsStatuses": {
+      "draft": "مسودة",
+      "ready_for_planning": "جاهز للتخطيط",
+      "partially_planned": "مخطط جزئيًا",
+      "planned": "مخطط بالكامل",
+      "cancelled": "ملغى"
+    },
+    "AllocationStatuses": {
+      "active": "نشط",
+      "released": "محرَّر"
+    },
+    "ResultsDispositions": {
+      "customer_good": "جيد للعملاء",
+      "stock_good": "جيد للمخزون",
+      "sample": "عينات",
+      "scrap": "هالك / تالف",
+      "rework": "إعادة تشغيل"
+    },
+    "ResultsEntryTypes": {
+      "original": "أصلي",
+      "correction": "تصحيح"
+    },
+    "ReportsHistoryStatuses": {
+      "success": "نجح",
+      "failed": "فشل",
+      "pending": "قيد الإعداد"
+    },
+    "ProductionRunStatus": {
+      "paused": "متوقف مؤقتًا"
+    },
+    "OrderTransitionTrigger": {
+      "manual": "يدوي",
+      "activity": "النشاط",
+      "schedule": "الجدول الزمني"
+    },
+    "ExecutionStatus": {
+      "active": "فعال",
+      "closed": "مغلق",
+      "planned": "مخطط",
+      "in_progress": "قيد التشغيل",
+      "paused": "متوقف مؤقتًا",
+      "completed": "مكتمل",
+      "cancelled": "ملغى"
+    }
+  },
+  "workforce": {
+    "workforceMemberStatus": {
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "suspended": "موقوف",
+      "terminated": "منتهية خدمته"
+    },
+    "workforceMemberEmploymentType": {
+      "employee": "موظف",
+      "contractor": "متعاقد",
+      "temporary": "مؤقت"
+    },
+    "workforceMemberWorkerType": {
+      "factory_manager": "مدير مصنع",
+      "production_manager": "مدير إنتاج",
+      "supervisor": "مشرف وردية",
+      "operator": "مشغّل",
+      "technician": "فني تشغيل",
+      "maintenance_technician": "فني صيانة",
+      "helper": "عامل مساعد",
+      "quality_inspector": "فاحص جودة",
+      "warehouse_staff": "موظف مستودع",
+      "logistics_coordinator": "منسق لوجستيات",
+      "sales_manager": "مدير مبيعات",
+      "sales_rep": "مندوب مبيعات",
+      "procurement_officer": "مسؤول مشتريات",
+      "hr_officer": "مسؤول موارد بشرية",
+      "accountant": "محاسب",
+      "safety_officer": "مسؤول السلامة",
+      "admin_support": "دعم إداري",
+      "driver": "سائق"
+    }
+  },
+  "masterdata": {
+    "Kinds": {
+      "finished": "منتج نهائي",
+      "material": "مادة"
+    },
+    "PROPERTY_KINDS": {
+      "number": "رقم",
+      "text": "نص",
+      "choice": "اختيار"
+    }
+  },
+  "ncr": {
+    "Statuses": {
+      "open": "مفتوح",
+      "investigation": "قيد التحقيق",
+      "action": "إجراءات تصحيحية",
+      "verification": "قيد التحقق",
+      "closed": "مغلق",
+      "cancelled": "ملغى"
+    },
+    "Types": {
+      "material_non_conformance": "مادة",
+      "product_non_conformance": "منتج",
+      "process_non_conformance": "عملية",
+      "packaging_non_conformance": "تغليف",
+      "documentation_non_conformance": "مستندات",
+      "other": "أخرى"
+    },
+    "Dispositions": {
+      "return_to_supplier": "إرجاع للمورد",
+      "use_as_is": "قبول كما هو باستثناء",
+      "sort": "فرز وإعادة فحص",
+      "rework": "إعادة تشغيل",
+      "regrade": "درجة ثانية",
+      "return_to_process": "إعادة تدوير",
+      "scrap": "هالك",
+      "hold": "حجز"
+    },
+    "Categories": {
+      "man": "الإنسان",
+      "machine": "الآلة",
+      "material": "المادة",
+      "method": "الطريقة",
+      "measurement": "القياس",
+      "environment": "البيئة"
+    },
+    "Kinds": {
+      "correction": "تصحيح فوري",
+      "corrective": "إجراء تصحيحي",
+      "preventive": "إجراء وقائي"
+    },
+    "ReviewResults": {
+      "effective": "المراجعة اللاحقة: فعّالة",
+      "not_effective": "المراجعة اللاحقة: غير فعّالة"
+    }
+  },
+  "notifications": {
+    "Categories": {
+      "access": "الصلاحيات والأدوار",
+      "security": "أمان الحساب",
+      "delegation": "التفويضات",
+      "work": "العمل",
+      "announcement": "إعلان"
+    },
+    "SupplierStatus": {
+      "pending": "بانتظار الاعتماد",
+      "approved": "معتمد",
+      "conditional": "معتمد بشروط",
+      "blocked": "موقوف"
+    },
+    "severity": {
+      "info": "عادي",
+      "important": "مهم",
+      "urgent": "عاجل"
+    }
+  },
+  "organization": {
+    "Statuses": {
+      "provisioning": "قيد التجهيز",
+      "active": "نشطة",
+      "suspended": "موقوفة",
+      "inactive": "غير نشطة",
+      "archived": "مؤرشفة"
+    }
+  },
+  "platform-audit": {
+    "Categories": {
+      "identity": "الهوية",
+      "organization": "المنظمة",
+      "authentication": "المصادقة",
+      "authorization": "التخويل",
+      "security": "الأمان",
+      "configuration": "الإعدادات",
+      "audit": "التدقيق"
+    }
+  },
+  "platform": {
+    "AdministratorsStatuses": {
+      "active": "نشط",
+      "inactive": "غير نشط"
+    },
+    "OrganizationDetailStatuses": {
+      "provisioning": "قيد التجهيز",
+      "active": "نشطة",
+      "suspended": "موقوفة",
+      "inactive": "غير نشطة",
+      "archived": "مؤرشفة"
+    },
+    "PlatformAccountRole": {
+      "root": "المدير الرئيسي",
+      "admin": "مدير"
+    },
+    "OrganizationsStatus": {
+      "active": "نشطة",
+      "provisioning": "قيد التجهيز",
+      "suspended": "موقوفة",
+      "inactive": "غير نشطة",
+      "archived": "مؤرشفة"
+    },
+    "OrganizationDetailUserStatuses": {
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "locked": "مقفل"
+    },
+    "auditOutcome": {
+      "success": "نجاح",
+      "failure": "فشل",
+      "denied": "مرفوض"
+    },
+    "auditSeverity": {
+      "info": "معلومات",
+      "warning": "تحذير",
+      "critical": "حرج"
+    },
+    "auditActor": {
+      "platform": "حساب منصة",
+      "tenant": "مستخدم منظمة",
+      "system": "النظام",
+      "anonymous": "غير معروف"
+    }
+  },
+  "procurement": {
+    "supplierStatus": {
+      "pending": "بانتظار التقييم",
+      "approved": "معتمد",
+      "conditional": "مشروط (تحت المراقبة)",
+      "blocked": "موقوف"
+    },
+    "supplierCategory": {
+      "raw_material": "مواد خام",
+      "packaging": "مواد تغليف",
+      "consumables": "مستهلكات",
+      "services": "خدمات",
+      "other": "أخرى"
+    },
+    "materialCategory": {
+      "resin": "حبيبات (ريزن)",
+      "masterbatch": "ماستر باتش",
+      "additive": "إضافات",
+      "core": "كور",
+      "carton": "كراتين",
+      "film": "استريتش / أفلام",
+      "accessory": "ملحقات",
+      "other": "أخرى"
+    },
+    "receiptStatus": {
+      "draft": "مسودة",
+      "received": "مُستلم",
+      "cancelled": "ملغى"
+    },
+    "lotStatus": {
+      "not_required": "لا تُفحص",
+      "awaiting": "بانتظار الجودة",
+      "inspecting": "قيد الفحص",
+      "released": "معتمدة",
+      "partly_released": "معتمدة جزئياً",
+      "rejected": "غير معتمدة"
+    },
+    "orderStatus": {
+      "draft": "مسودة",
+      "approved": "معتمد",
+      "sent": "أُرسل للمورد",
+      "partially_received": "مستلم جزئيًا",
+      "received": "مستلم بالكامل",
+      "closed": "مُقفل",
+      "cancelled": "ملغى"
+    },
+    "PaymentTerms": {
+      "advance": "دفعة مقدمة",
+      "on_delivery": "عند الاستلام",
+      "net_15": "آجل 15 يومًا",
+      "net_30": "آجل 30 يومًا",
+      "net_45": "آجل 45 يومًا",
+      "net_60": "آجل 60 يومًا",
+      "net_90": "آجل 90 يومًا",
+      "letter_of_credit": "اعتماد مستندي",
+      "other": "أخرى"
+    },
+    "Incoterms": {
+      "EXW": "تسليم أرض المصنع",
+      "FCA": "تسليم الناقل",
+      "FOB": "تسليم ظهر السفينة",
+      "CFR": "التكلفة والشحن",
+      "CIF": "التكلفة والتأمين والشحن",
+      "CPT": "أجرة النقل مدفوعة إلى",
+      "CIP": "أجرة النقل والتأمين مدفوعة إلى",
+      "DAP": "التسليم في المكان",
+      "DPU": "التسليم في المكان مُفرَّغًا",
+      "DDP": "التسليم مع دفع الرسوم"
+    }
+  },
+  "profile": {
+    "Statuses": {
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "locked": "مقفل"
+    }
+  },
+  "shipping": {
+    "status": {
+      "draft": "مسودة",
+      "ready": "جاهزة للتحميل",
+      "dispatched": "خرجت من المصنع",
+      "delivered": "تم التسليم",
+      "cancelled": "ملغاة",
+      "partially_delivered": "سُلِّمت جزئياً",
+      "returned": "رُدّت للمصنع",
+      "not_delivered": "لم تُسلَّم"
+    },
+    "deliveryMethod": {
+      "factory_delivery": "توصيل بسيارة المصنع",
+      "pickup": "استلام من المصنع",
+      "carrier": "شركة شحن"
+    },
+    "AttachmentsKinds": {
+      "proof_of_delivery": "إشعار التسليم الموقّع",
+      "document": "مستند",
+      "photo": "صورة"
+    },
+    "returnKind": {
+      "delivery": "مرتجع قبل الاستلام",
+      "customer": "مرتجع من العميل بعد الاستلام"
+    },
+    "returnStatus": {
+      "requested": "قيد الاعتماد",
+      "approved": "معتمد — بانتظار الاستلام",
+      "rejected": "مرفوض",
+      "received": "مُستلم في المصنع",
+      "cancelled": "ملغى"
+    },
+    "returnReason": {
+      "customer_refused": "رفض العميل الاستلام",
+      "site_closed": "الموقع مغلق",
+      "no_receiver": "لا يوجد مستلم",
+      "wrong_address": "عنوان خاطئ",
+      "transit_damage": "تلف أثناء النقل",
+      "quality_issue": "مشكلة جودة ظاهرة",
+      "quality_defect": "عيب جودة",
+      "spec_mismatch": "مواصفات غير مطابقة",
+      "wrong_item": "صنف خاطئ",
+      "excess_quantity": "كمية زائدة",
+      "customer_cancelled": "ألغى العميل الطلب",
+      "other": "أخرى"
+    },
+    "responsibility": {
+      "factory": "المصنع",
+      "carrier": "شركة الشحن",
+      "customer": "العميل",
+      "undetermined": "غير محدد"
+    },
+    "ReturnsQualityCheckStatus": {
+      "open": "مفتوح",
+      "under_inspection": "قيد الفحص",
+      "closed": "تقرر",
+      "cancelled": "ملغى"
+    },
+    "ReturnsQualityDispositions": {
+      "use_as_is": "درجة ثانية",
+      "rework": "إعادة تشغيل",
+      "return_to_process": "إعادة تدوير",
+      "scrap": "هالك",
+      "hold": "حجز"
+    },
+    "ReturnsQualityDecisionStatus": {
+      "pending": "بانتظار القرار",
+      "decided": "قيد التنفيذ",
+      "executed": "نُفِّذ"
+    },
+    "ReturnsQualityStatus": {
+      "not_required": "أُعيدت للمخزون (لم تُرسل للجودة).",
+      "awaiting": "بانتظار فحص الجودة.",
+      "inspecting": "الجودة تفحص البضاعة.",
+      "decided": "قررت الجودة؛ بعض الأجزاء قيد التنفيذ.",
+      "done": "نُفِّذ قرار الجودة."
+    },
+    "STATUSES": {
+      "approved": "معتمد — بانتظار الاستلام",
+      "cancelled": "ملغى",
+      "delivered": "تم التسليم",
+      "dispatched": "خرجت من المصنع",
+      "draft": "مسودة",
+      "not_delivered": "لم تُسلَّم",
+      "partially_delivered": "سُلِّمت جزئياً",
+      "ready": "جاهزة للتحميل",
+      "received": "مُستلم في المصنع",
+      "rejected": "مرفوض",
+      "requested": "قيد الاعتماد",
+      "returned": "رُدّت للمصنع"
+    }
+  }
+}

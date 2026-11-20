@@ -53,7 +53,7 @@ class ReturnInspectionService:
             check = checks.get(line["line_id"])
             entry = grouped.setdefault(line["return_id"], dict(
                 return_id=line["return_id"], return_no=line["return_no"], kind=line["kind"], reason=line["reason"],
-                responsibility=line["responsibility"], details=line["details"], customer_name=line["customer_name"],
+                responsibility=line["responsibility"], details=line["details"], customer_id=line.get("customer_id"), customer_name=line["customer_name"],
                 received_at=line["received_at"], shipment_id=line["shipment_id"], shipment_no=line["shipment_no"], lines=[]))
             entry["lines"].append(dict(
                 line_id=line["line_id"], line_no=line["line_no"], description=line["description"], width_mm=line["width_mm"],

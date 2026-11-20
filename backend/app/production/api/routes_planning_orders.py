@@ -51,7 +51,7 @@ def preview(payload: PlanningPreviewRequest, db=Depends(get_db), tenant=Depends(
     result = PlanningOrderService(db, tenant, checker).preview(payload.allocations)
     for line in result["lines"]:
         for entry in line["allocations"]:
-            customer = customers.get_customer_summary(db, entry.pop("customer_id"), tenant.organization_id)
+            customer = customers.get_customer_summary(db, entry["customer_id"], tenant.organization_id)
             entry["customer_name"] = customer.customer_name if customer else None
     return result
 

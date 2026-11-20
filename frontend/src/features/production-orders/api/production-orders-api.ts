@@ -46,7 +46,7 @@ export type EligibleOrder = { id: string; production_order_number: string; statu
 
 // Demand items an open order may take, searched on the server (demand number or customer), at most `limit`:
 // never a first page of demands filtered in the browser.
-export type EligibleDemandItem = { production_demand_item_id: string; production_demand_id: string; demand_number: string; customer_name: string | null;
+export type EligibleDemandItem = { production_demand_item_id: string; production_demand_id: string; demand_number: string; customer_id?: string | null; customer_name: string | null;
   line_no: number; product_type: string | null; unit: string; target_spec_json: Record<string, unknown> | null; required_quantity: string;
   remaining_quantity: string; priority: string | null; requested_delivery_date: string | null };
 

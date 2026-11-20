@@ -2,6 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 
+import { localName } from "@/lib/local-name";
 import { getEnumLabel } from "@/i18n/enum-helpers";
 import { useEffect, useState } from "react";
 
@@ -59,7 +60,7 @@ export function useListName(list: ListName, fallback?: (key: string) => string |
   return (key) => {
     if (!key) return "—";
     const found = all?.find(i => i.key === key);
-    return found ? (locale === "ar" ? found.name_ar : found.name_en) : fallback?.(key) ?? key;
+    return found ? localName(found, locale) : fallback?.(key) ?? "—";
   };
 }
 
@@ -84,7 +85,7 @@ export function useProductName(): (key: string | null | undefined) => string {
   return (key) => {
     if (!key) return "—";
     const found = all?.find(p => p.key === key);
-    return found ? (locale === "ar" ? found.name_ar : found.name_en) : key;
+    return found ? localName(found, locale) : "—";
   };
 }
 
@@ -94,7 +95,7 @@ export function useListChoices(list: ListName, fallback: readonly string[], fall
                                current?: string | null): { key: string; label: string }[] {
   const locale = useLocale();
   const all = useListItems(list);
-  const named = (i: ListItem) => (locale === "ar" ? i.name_ar : i.name_en);
+  const named = (i: ListItem) => localName(i, locale);
   if (!all || all.length === 0) {
     const keys = current && !fallback.includes(current) ? [...fallback, current] : [...fallback];
     return keys.map(key => ({ key, label: fallbackLabel(key) }));

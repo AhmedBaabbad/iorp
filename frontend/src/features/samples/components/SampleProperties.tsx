@@ -1,4 +1,5 @@
 "use client";
+import { localName } from "@/lib/local-name";
 import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
 import { formatSpecValue, isSpecRange, numericSpecOrText } from "@/lib/spec-value";
 import {useUnitLabel} from "@/components/UnitLabel";
@@ -73,8 +74,8 @@ export function SampleProductFields({ productKey, values, original, unchanged = 
       <select style={sharedStyles.input} aria-label={t('product')} value={productKey} required disabled={disabled || loading || failed}
         onChange={e => { const p = products.find(p => p.key === e.target.value); onChange(e.target.value, {}, p?.default_unit); }}>
         <option value="">{loading ? t('loading') : t('choose')}</option>
-        {products.map(p => <option key={p.key} value={p.key}>{ar ? p.name_ar : p.name_en}</option>)}
-        {productKey && !products.some(p => p.key === productKey) && <option value={productKey}>{product ? (ar ? product.name_ar : product.name_en) : productKey} — {t('legacy')}</option>}
+        {products.map(p => <option key={p.key} value={p.key}>{localName(p, ar ? "ar" : "en")}</option>)}
+        {productKey && !products.some(p => p.key === productKey) && <option value={productKey}>{product ? (localName(product, ar ? "ar" : "en")) : productKey} — {t('legacy')}</option>}
       </select>
     </label>
     {failed && <div role="alert">{t('loadError')} <button type="button" onClick={() => setRetry(n => n + 1)}>{t('retry')}</button></div>}
@@ -84,7 +85,7 @@ export function SampleProductFields({ productKey, values, original, unchanged = 
       {!product.properties.length && <p>{t('noProperties')}</p>}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
         {product.properties.map(p => {
-          const label = ar ? p.name_ar : p.name_en;
+          const label = localName(p, ar ? "ar" : "en");
           const raw = values[p.key];
           const value = formatSpecValue(raw);
           return <label key={p.key} style={sharedStyles.field}><span>{label}{p.unit ? ` (${unitText(p.unit)})` : ''}{p.required ? ' *' : ''}</span>

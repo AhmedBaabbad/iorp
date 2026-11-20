@@ -15,21 +15,6 @@
   },
   "empty": "لا توجد تقارير",
   "emptyHint": "افتح تقريراً عند وجود عدم مطابقة: مادة واردة، دفعة إنتاج، مرتجع عميل.",
-  "statuses": {
-    "open": "مفتوح",
-    "investigation": "قيد التحقيق",
-    "action": "إجراءات تصحيحية",
-    "verification": "قيد التحقق",
-    "closed": "مغلق",
-    "cancelled": "ملغى"
-  },
-  "stages": {
-    "open": "التسجيل",
-    "investigation": "التحقيق",
-    "action": "الإجراء التصحيحي",
-    "verification": "التحقق",
-    "closed": "الإغلاق"
-  },
   "stagesAria": "مراحل التقرير",
   "stageHints": {
     "open": "سجّل الاحتواء: ما الذي عُمل فوراً لمنع انتشار المشكلة (حجز، فرز، إيقاف خط).",
@@ -60,51 +45,15 @@
     "customer_return": "بضاعة أرجعها العميل أو اشتكى منها.",
     "other": "غير ذلك؛ صِفه."
   },
-  "types": {
-    "material_non_conformance": "مادة",
-    "product_non_conformance": "منتج",
-    "process_non_conformance": "عملية",
-    "packaging_non_conformance": "تغليف",
-    "documentation_non_conformance": "مستندات",
-    "other": "أخرى"
-  },
-  "dispositions": {
-    "return_to_supplier": "إرجاع للمورد",
-    "use_as_is": "قبول كما هو باستثناء",
-    "sort": "فرز وإعادة فحص",
-    "rework": "إعادة تشغيل",
-    "regrade": "درجة ثانية",
-    "return_to_process": "إعادة تدوير",
-    "scrap": "هالك",
-    "hold": "حجز"
-  },
-  "categories": {
-    "man": "الإنسان",
-    "machine": "الآلة",
-    "material": "المادة",
-    "method": "الطريقة",
-    "measurement": "القياس",
-    "environment": "البيئة"
-  },
   "methods": {
     "five_whys": "لماذا الخمسة",
     "fishbone": "مخطط عظم السمكة",
     "other": "أخرى"
   },
-  "kinds": {
-    "correction": "تصحيح فوري",
-    "corrective": "إجراء تصحيحي",
-    "preventive": "إجراء وقائي"
-  },
   "kindHints": {
     "correction": "يعالج ما حدث الآن (فرز، إعادة تشغيل، إرجاع).",
     "corrective": "يزيل السبب حتى لا يتكرر.",
     "preventive": "يمنع حدوثه في مكان آخر (خطوط أخرى، موردون آخرون)."
-  },
-  "actionStatuses": {
-    "open": "مفتوح",
-    "done": "منجز",
-    "cancelled": "ملغى"
   },
   "supplierActions": {
     "none": "لا إجراء",
@@ -373,10 +322,6 @@
     "reopens": "يُعاد فتح التقرير إلى إجراءاته التصحيحية.",
     "confirm": "تسجيل المراجعة",
     "scheduled": "تُراجع الفعالية مرة أخرى في {date}.",
-    "due": "مراجعة الفعالية مستحقة (منذ {date}).",
-    "results": {
-      "effective": "المراجعة اللاحقة: فعّالة",
-      "not_effective": "المراجعة اللاحقة: غير فعّالة"
-    }
+    "due": "مراجعة الفعالية مستحقة (منذ {date})."
   }
 }

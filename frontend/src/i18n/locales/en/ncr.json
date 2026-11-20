@@ -15,21 +15,6 @@
   },
   "empty": "No reports",
   "emptyHint": "Open a report when something does not conform: incoming material, a batch, a customer's return.",
-  "statuses": {
-    "open": "Open",
-    "investigation": "Under investigation",
-    "action": "Corrective action",
-    "verification": "Verification",
-    "closed": "Closed",
-    "cancelled": "Cancelled"
-  },
-  "stages": {
-    "open": "Recorded",
-    "investigation": "Investigation",
-    "action": "Corrective action",
-    "verification": "Verification",
-    "closed": "Closed"
-  },
   "stagesAria": "Report stages",
   "stageHints": {
     "open": "Record the containment: what was done at once to stop it spreading (quarantine, sorting, stopping a line).",
@@ -60,51 +45,15 @@
     "customer_return": "Goods a customer returned or complained about.",
     "other": "Anything else; describe it."
   },
-  "types": {
-    "material_non_conformance": "Material",
-    "product_non_conformance": "Product",
-    "process_non_conformance": "Process",
-    "packaging_non_conformance": "Packaging",
-    "documentation_non_conformance": "Documentation",
-    "other": "Other"
-  },
-  "dispositions": {
-    "return_to_supplier": "Return to supplier",
-    "use_as_is": "Use as is (concession)",
-    "sort": "Sort and re-inspect",
-    "rework": "Rework",
-    "regrade": "Second grade",
-    "return_to_process": "Recycle",
-    "scrap": "Scrap",
-    "hold": "Hold"
-  },
-  "categories": {
-    "man": "Man",
-    "machine": "Machine",
-    "material": "Material",
-    "method": "Method",
-    "measurement": "Measurement",
-    "environment": "Environment"
-  },
   "methods": {
     "five_whys": "5 Whys",
     "fishbone": "Fishbone",
     "other": "Other"
   },
-  "kinds": {
-    "correction": "Correction",
-    "corrective": "Corrective",
-    "preventive": "Preventive"
-  },
   "kindHints": {
     "correction": "Fixes what happened now (sort, rework, return).",
     "corrective": "Removes the cause, so it does not happen again.",
     "preventive": "Stops it happening elsewhere (other lines, other suppliers)."
-  },
-  "actionStatuses": {
-    "open": "Open",
-    "done": "Done",
-    "cancelled": "Cancelled"
   },
   "supplierActions": {
     "none": "No action",
@@ -373,10 +322,6 @@
     "reopens": "The report reopens to its corrective actions.",
     "confirm": "Record the review",
     "scheduled": "Effectiveness to be reviewed again on {date}.",
-    "due": "The effectiveness review is due (since {date}).",
-    "results": {
-      "effective": "Later review: effective",
-      "not_effective": "Later review: not effective"
-    }
+    "due": "The effectiveness review is due (since {date})."
   }
 }

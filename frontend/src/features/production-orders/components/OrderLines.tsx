@@ -1,4 +1,5 @@
 "use client";
+import { useCustomerNames } from "@/features/customers/use-customer-names";
 import {useUnitLabel} from "@/components/UnitLabel";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
@@ -31,6 +32,7 @@ export function OrderLines({ order, onChanged }: { order: ProductionOrderData; o
   const [error, setError] = useState("");
   const [releasing, setReleasing] = useState<Allocation | null>(null);
   const [candidates, setCandidates] = useState<EligibleDemandItem[]>([]);
+  const customerName = useCustomerNames([...order.allocations.map(a => a.customer_id), ...candidates.map(row => row.customer_id)]);
   const [search, setSearch] = useState("");
   const [searching, setSearching] = useState(false);
   const [addItem, setAddItem] = useState("");
@@ -40,7 +42,7 @@ export function OrderLines({ order, onChanged }: { order: ProductionOrderData; o
   const lines: ArrangedLine[] = (order.lines ?? []).map(line => ({
     key: line.id, line_no: line.line_no, target_spec_json: line.target_spec_json, planned_quantity: line.planned_quantity, unit: line.unit,
     allocations: line.allocation_ids.map(id => byId.get(id)).filter((a): a is Allocation => Boolean(a)).map(a => ({
-      key: a.id, customer_name: a.customer_name, demand_number: a.demand_number, demand_item_line_no: a.demand_item_line_no, allocated_quantity: a.allocated_quantity, status: a.status,
+      key: a.id, customer_id: a.customer_id, customer_name: a.customer_name, demand_number: a.demand_number, demand_item_line_no: a.demand_item_line_no, allocated_quantity: a.allocated_quantity, status: a.status,
       addedAfterStart: Boolean(a.added_after_start) })),
   }));
 
@@ -57,7 +59,7 @@ export function OrderLines({ order, onChanged }: { order: ProductionOrderData; o
     return () => { active = false; clearTimeout(timer); };
   }, [editing, order.id, order.allocations, search]);
   const options = candidates.map(item => ({ id: item.production_demand_item_id, remaining: item.remaining_quantity,
-    label: `${item.customer_name ?? "—"} · ${item.demand_number} · ${d("lineNo")} ${item.line_no} — ${t("remaining")}: ${item.remaining_quantity} ${unitText(item.unit)}` }));
+    label: `${customerName(item.customer_id, item.customer_name)} · ${item.demand_number} · ${d("lineNo")} ${item.line_no} — ${t("remaining")}: ${item.remaining_quantity} ${unitText(item.unit)}` }));
   const chosen = useMemo(() => options.find(o => o.id === addItem), [options, addItem]);
 
   async function run(action: () => Promise<unknown>) {

@@ -3,6 +3,7 @@ import { getRequestConfig } from "next-intl/server";
 
 import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, isLocale } from "./config";
 import { loadMessages } from "./messages";
+import { missingTranslation } from "./missing-message";
 
 export default getRequestConfig(async () => {
   const cookieStore = await cookies();
@@ -12,5 +13,7 @@ export default getRequestConfig(async () => {
   return {
     locale,
     messages: await loadMessages(locale),
+    onError: () => undefined,
+    getMessageFallback: ({ namespace }) => missingTranslation(namespace || "messages"),
   };
 });

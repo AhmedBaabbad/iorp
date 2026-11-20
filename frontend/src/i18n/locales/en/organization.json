@@ -47,13 +47,6 @@
     "ar": "Arabic",
     "en": "English"
   },
-  "statuses": {
-    "provisioning": "Provisioning",
-    "active": "Active",
-    "suspended": "Suspended",
-    "inactive": "Inactive",
-    "archived": "Archived"
-  },
   "branding": {
     "title": "Company identity and reports",
     "save": "Save identity",

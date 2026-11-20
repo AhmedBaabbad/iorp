@@ -89,7 +89,7 @@ jobs:
         with: { python-version: "${{ env.PYTHON_VERSION }}" }
       - run: pip install --require-hashes --no-deps -r requirements-dev.lock
       - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends rclone
-      - run: docker build --target backup -t "$BACKUP_TEST_IMAGE" .
+      - run: docker build --build-context shared=../shared --target backup -t "$BACKUP_TEST_IMAGE" .
       - run: python -m pytest -q -p no:cacheprovider tests/core/test_ops_backup_retention.py tests/test_ops_backup_roundtrip.py tests/test_backup_roundtrip_isolated.py
 
   postgres:
@@ -233,9 +233,9 @@ jobs:
           set -euo pipefail
           tag="${GITHUB_SHA}"
           source="org.opencontainers.image.source=https://github.com/AhmedBaabbad/iorp"
-          docker build --label "$source" --target runtime -t "iorp/backend:${tag}" backend
-          docker build --label "$source" --target backup -t "iorp/backup:${tag}" backend
-          docker build --label "$source" --build-arg BACKEND_URL=http://backend:8080 -t "iorp/frontend:${tag}" frontend
+          docker build --build-context shared=./shared --label "$source" --target runtime -t "iorp/backend:${tag}" backend
+          docker build --build-context shared=./shared --label "$source" --target backup -t "iorp/backup:${tag}" backend
+          docker build --build-context shared=./shared --label "$source" --build-arg BACKEND_URL=http://backend:8080 -t "iorp/frontend:${tag}" frontend
           docker build --label "$source" -f deploy/reporting/Dockerfile.gateway -t "iorp/report-gateway:${tag}" .
           docker build --label "$source" -f deploy/reporting/Dockerfile.renderer -t "iorp/report-renderer:${tag}" .
       - name: no secrets or local state inside the images

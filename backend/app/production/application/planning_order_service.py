@@ -177,7 +177,7 @@ class PlanningOrderService:
         for customer_id in {d.customer_id for _, d, _ in found}:
             summary = customers.get_customer_summary(self.db, customer_id, self.org_id)
             names[customer_id] = summary.customer_name if summary else None
-        return [dict(production_demand_item_id=i.id, production_demand_id=d.id, demand_number=d.demand_number, customer_name=names.get(d.customer_id),
+        return [dict(production_demand_item_id=i.id, production_demand_id=d.id, demand_number=d.demand_number, customer_id=d.customer_id, customer_name=names.get(d.customer_id),
                      line_no=i.line_no, product_type=i.product_type, unit=i.unit, target_spec_json=i.target_spec_json,
                      required_quantity=i.required_quantity, remaining_quantity=remaining, priority=d.priority,
                      requested_delivery_date=d.requested_delivery_date) for i, d, remaining in found]
@@ -262,7 +262,7 @@ def order_response(order, db, tenant, customer_lookup):
         # Released allocations stay listed so the order never loses its demand origin.
         result["allocations"].append(dict(id=a.id, production_demand_id=a.production_demand_id,
             production_demand_item_id=a.production_demand_item_id, demand_number=a.demand.demand_number,
-            customer_name=customer.customer_name if customer else None, demand_item_line_no=a.demand_item.line_no,
+            customer_id=a.demand.customer_id, customer_name=customer.customer_name if customer else None, demand_item_line_no=a.demand_item.line_no,
             product_type=order.product_type, allocated_quantity=a.allocated_quantity, unit=a.unit,
             target_spec_json=a.demand_item.target_spec_json, production_order_item_id=a.production_order_item_id,
             order_line_no=line.line_no if line else None,

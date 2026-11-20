@@ -1,0 +1,1336 @@
+{
+  "capa": {
+    "AttentionKinds": {
+      "overdue": "Late action",
+      "report_overdue": "Report past due",
+      "review_due": "Review due",
+      "due_soon": "Due soon"
+    }
+  },
+  "commercial": {
+    "ComplaintsStatuses": {
+      "new": "New",
+      "assessment": "Under assessment",
+      "processing": "In processing",
+      "pending_closure": "Awaiting closure approval",
+      "closed": "Closed",
+      "cancelled": "Cancelled"
+    },
+    "ComplaintsCategories": {
+      "quality": "Quality",
+      "delivery": "Delivery",
+      "quantity": "Quantity",
+      "packaging": "Packaging",
+      "commercial": "Commercial terms",
+      "service": "Service",
+      "other": "Other"
+    },
+    "ComplaintsPriorities": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "ComplaintsKinds": {
+      "order": "Sales order",
+      "sample": "Sample",
+      "shipment": "Shipment",
+      "return": "Return",
+      "ncr": "Non-conformance report"
+    },
+    "ComplaintsHistoryReasons": {
+      "assign": "Assignment reason",
+      "note": "Follow-up",
+      "response": "Sent to the customer",
+      "refer_quality": "Referral note",
+      "other": "Reason"
+    },
+    "customerStatus": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "on_hold": "On Hold",
+      "archived": "Archived",
+      "blacklisted": "Blacklisted"
+    },
+    "customerRelationshipStage": {
+      "lead": "Lead",
+      "contacted": "Contacted",
+      "qualified": "Qualified",
+      "prospect": "Prospect",
+      "negotiating": "Negotiating",
+      "trial_customer": "Trial Customer",
+      "active_customer": "Active Customer",
+      "repeat_customer": "Repeat Customer",
+      "strategic_customer": "Strategic Customer"
+    },
+    "customerPriorityLevel": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "interactionInteractionType": {
+      "call": "Phone Call",
+      "visit": "Site Visit",
+      "whatsapp": "WhatsApp",
+      "meeting": "Meeting",
+      "message": "Message",
+      "email": "Email",
+      "other": "Other"
+    },
+    "interactionOutcome": {
+      "positive": "Positive",
+      "neutral": "Neutral",
+      "negative": "Negative",
+      "pending": "Pending"
+    },
+    "followUpStatus": {
+      "pending": "Pending",
+      "in_progress": "In Progress",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "overdue": "Overdue"
+    },
+    "followUpPriority": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "sampleStatus": {
+      "requested": "Requested",
+      "in_preparation": "In Preparation",
+      "delivered": "Delivered",
+      "evaluated": "Evaluated",
+      "cancelled": "Cancelled"
+    },
+    "sampleDecision": {
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "rejected": "Rejected"
+    },
+    "sampleEvaluationResultStatus": {
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "needs_modification": "Needs Modification"
+    },
+    "sampleEvaluationNextAction": {
+      "proceed_to_quote": "Proceed to Quote",
+      "revise_sample": "Revise Sample",
+      "close_request": "Close Request",
+      "further_review": "Further Review"
+    },
+    "quoteStatus": {
+      "draft": "Draft",
+      "issued": "Issued",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "expired": "Expired"
+    },
+    "commercialOrderStatus": {
+      "draft": "Draft",
+      "confirmed": "Confirmed",
+      "converted_to_production": "Converted to Production",
+      "cancelled": "Cancelled"
+    }
+  },
+  "foundation": {
+    "userStatus": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "locked": "Locked"
+    },
+    "OrganizationStatus": {
+      "active": "In force",
+      "archived": "Archived",
+      "inactive": "Inactive",
+      "provisioning": "Provisioning",
+      "suspended": "Suspended"
+    },
+    "permissionName": {
+      "foundation:organization:read": "View organization details",
+      "foundation:organization:update": "Edit organization details",
+      "foundation:organization:branding": "Manage organization logo",
+      "foundation:users:read": "View users",
+      "foundation:users:write": "Add and edit users",
+      "foundation:users:activate": "Activate a user account",
+      "foundation:users:deactivate": "Deactivate a user account",
+      "foundation:users:delete": "Cancel a user invitation",
+      "foundation:users:lock": "Lock or unlock a user account",
+      "foundation:users:reset_password": "Reset a user's password",
+      "foundation:roles:read": "View roles",
+      "foundation:roles:write": "Create, edit and delete roles",
+      "foundation:permissions:read": "View the permission list",
+      "foundation:user_roles:write": "Give and remove users' roles",
+      "foundation:role_permissions:write": "Give and remove roles' permissions",
+      "foundation:audit:read": "View the audit log",
+      "foundation:security_log:read": "View the security log",
+      "foundation:activity_log:read": "View the activity log",
+      "foundation:activity_log:archive": "Archive and delete old activity",
+      "foundation:delegations:read": "View delegations",
+      "foundation:delegations:manage": "Manage delegations",
+      "commercial:complaints:read": "View customer complaints",
+      "commercial:complaints:create": "Register a customer complaint",
+      "commercial:complaints:update": "Follow up a complaint",
+      "commercial:complaints:assign": "Assign a complaint",
+      "commercial:complaints:investigate": "Investigate a complaint",
+      "commercial:complaints:resolve": "Record a complaint's resolution",
+      "commercial:complaints:close": "Approve a complaint's closure",
+      "commercial:complaints:reopen": "Reopen a complaint",
+      "commercial:complaints:cancel": "Cancel a complaint",
+      "commercial:complaints:report": "Complaint reports",
+      "commercial:customers:read": "View customers",
+      "commercial:customers:create": "Add a customer",
+      "commercial:customers:update": "Edit customer details",
+      "commercial:customers:delete": "Delete a customer",
+      "commercial:customers:assign_owner": "Assign a customer's sales owner",
+      "commercial:interactions:read": "View customer interactions",
+      "commercial:interactions:create": "Record a customer interaction",
+      "commercial:interactions:update": "Edit a recorded interaction",
+      "commercial:interactions:delete": "Delete a recorded interaction",
+      "commercial:follow_ups:read": "View follow-ups",
+      "commercial:follow_ups:create": "Create a follow-up",
+      "commercial:follow_ups:update": "Edit a follow-up",
+      "commercial:follow_ups:delete": "Delete a follow-up",
+      "commercial:follow_ups:assign": "Assign follow-ups",
+      "commercial:follow_ups:complete": "Complete a follow-up",
+      "commercial:samples:read": "View samples",
+      "commercial:samples:create": "Register a sample request",
+      "commercial:samples:update": "Edit sample details",
+      "commercial:samples:delete": "Delete a sample",
+      "commercial:evaluations:read": "View sample evaluations",
+      "commercial:evaluations:create": "Record a sample evaluation",
+      "commercial:evaluations:update": "Edit a sample evaluation",
+      "commercial:evaluations:delete": "Delete a sample evaluation",
+      "commercial:quotes:read": "View quotations",
+      "commercial:quotes:create": "Create a quotation",
+      "commercial:quotes:update": "Edit a draft quotation",
+      "commercial:quotes:delete": "Delete a quotation",
+      "commercial:quote_settings:read": "View quotation settings",
+      "commercial:quote_settings:update": "Edit quotation settings",
+      "commercial:orders:read": "View sales orders",
+      "commercial:orders:create": "Create a sales order",
+      "commercial:orders:update": "Edit a draft sales order",
+      "commercial:orders:delete": "Delete a sales order",
+      "commercial:quotes:issue": "Issue a quotation",
+      "commercial:quotes:accept": "Record a quotation's acceptance",
+      "commercial:quotes:reject": "Record a quotation's rejection",
+      "commercial:quotes:expire": "Mark a quotation expired",
+      "commercial:quotes:revise": "Revise a quotation",
+      "commercial:orders:confirm": "Confirm a sales order",
+      "commercial:orders:cancel": "Cancel a sales order",
+      "commercial:orders:revise": "Revise a sales order",
+      "commercial:samples:start": "Start preparing a sample",
+      "commercial:samples:deliver": "Record sample delivery",
+      "commercial:samples:cancel": "Cancel a sample",
+      "commercial:samples:reopen": "Reopen a sample",
+      "commercial:samples:decide": "Decide on a sample",
+      "commercial:follow_ups:cancel": "Cancel a follow-up",
+      "commercial:follow_ups:reopen": "Reopen a follow-up",
+      "production:work_centers:read": "View work centers",
+      "production:work_centers:create": "Add a work center",
+      "production:work_centers:update": "Edit a work center",
+      "production:work_centers:delete": "Delete a work center",
+      "production:shifts:read": "View shifts",
+      "production:shifts:create": "Add a shift",
+      "production:shifts:update": "Edit a shift",
+      "production:shifts:delete": "Delete a shift",
+      "production:shift_rosters:read": "View shift rosters",
+      "production:shift_rosters:create": "Create a shift roster",
+      "production:shift_rosters:update": "Edit a shift roster",
+      "production:shift_rosters:manage_members": "Manage shift roster members",
+      "production:shift_rosters:close": "Close a shift roster",
+      "production:demands:read": "View production demands",
+      "production:demands:create": "Create a production demand",
+      "production:demands:update": "Edit a production demand",
+      "production:demands:delete": "Delete a production demand",
+      "production:demands:release": "Release a demand to planning",
+      "production:demands:cancel": "Cancel a production demand",
+      "production:planning:read": "View the planning queue",
+      "production:planning:sequence": "Order the planning queue",
+      "production:planning:allocate": "Allocate quantities to production orders",
+      "production:planning:release_allocation": "Release an allocation",
+      "production:production_orders:read": "View production orders",
+      "production:production_orders:update": "Edit a production order",
+      "production:production_orders:manage_items": "Manage production order items",
+      "production:production_orders:create": "Create a production order",
+      "production:production_orders:release": "Release a production order",
+      "production:production_orders:start": "Start or resume a production order",
+      "production:production_orders:hold": "Hold a production order",
+      "production:production_orders:complete": "Complete a production order",
+      "production:production_orders:close": "Close a production order",
+      "production:production_orders:cancel": "Cancel a production order",
+      "production:runs:read": "View production runs",
+      "production:runs:create": "Create a production run",
+      "production:runs:update": "Edit a production run",
+      "production:runs:start": "Start or resume a run",
+      "production:runs:pause": "Pause a run",
+      "production:runs:complete": "Complete a run",
+      "production:runs:cancel": "Cancel a run",
+      "production:runs:manage_members": "Manage a run's crew",
+      "production:results:read": "View production results",
+      "production:results:create": "Record a production result",
+      "production:results:update": "Edit a production result",
+      "production:results:delete": "Delete a production result",
+      "production:results:correct": "Correct a closed order's result",
+      "production:downtime_events:read": "View downtime events",
+      "production:downtime_events:create": "Record a downtime event",
+      "production:downtime_events:update": "Edit a downtime event",
+      "production:downtime_events:delete": "Delete a downtime event",
+      "production:downtime_events:close": "End an open downtime event",
+      "production:waste_records:read": "View scrap records",
+      "production:waste_records:create": "Record scrap",
+      "production:waste_records:update": "Edit a scrap record",
+      "production:waste_records:delete": "Delete a scrap record",
+      "quality:settings:update": "Edit quality settings",
+      "quality:quality_checks:read": "View quality checks",
+      "quality:quality_checks:create": "Create a quality check",
+      "quality:quality_checks:update": "Edit a quality check",
+      "quality:quality_checks:start": "Start an inspection",
+      "quality:quality_checks:close": "Close a check with a result",
+      "quality:quality_checks:cancel": "Cancel a quality check",
+      "quality:quality_checks:measure": "Record inspection measurements",
+      "quality:rejections:read": "View rejections",
+      "quality:rejections:create": "Record a rejection",
+      "quality:rejections:update": "Edit a rejection",
+      "quality:rejections:decide": "Decide on a rejection",
+      "quality:rejections:execute": "Carry out a rejection decision",
+      "quality:quality_defects:read": "View defects",
+      "quality:quality_defects:create": "Record a defect",
+      "quality:quality_defects:update": "Edit a defect",
+      "quality:ncr_reports:read": "View non-conformance reports",
+      "quality:ncr_reports:create": "Open a non-conformance report",
+      "quality:ncr_reports:update": "Edit a non-conformance report",
+      "quality:ncr_reports:verify": "Verify effectiveness and close",
+      "quality:ncr_reports:cancel": "Cancel a report or a corrective action",
+      "quality:ncr_reports:contain": "Record containment",
+      "quality:ncr_reports:investigate": "Record the root cause",
+      "quality:ncr_reports:submit": "Submit for verification",
+      "quality:ncr_actions:read": "View corrective actions",
+      "quality:ncr_actions:complete": "Complete a corrective action",
+      "quality:specifications:read": "View product specifications",
+      "quality:specifications:create": "Create a specification or a revision",
+      "quality:specifications:update": "Edit a draft specification",
+      "quality:specifications:activate": "Approve and activate a specification",
+      "quality:certificates:read": "View certificates of analysis",
+      "quality:certificates:create": "Create a certificate of analysis",
+      "quality:certificates:update": "Edit a draft certificate",
+      "quality:certificates:issue": "Approve and issue a certificate",
+      "quality:certificates:revoke": "Revoke an issued certificate",
+      "shipping:directory:read": "View the transport directory",
+      "shipping:directory:write": "Manage the transport directory",
+      "shipping:shipments:read": "View shipments",
+      "shipping:shipments:create": "Create a shipment",
+      "shipping:shipments:update": "Edit a draft shipment",
+      "shipping:shipments:dispatch": "Dispatch a shipment",
+      "shipping:shipments:deliver": "Record a delivery",
+      "shipping:shipments:cancel": "Cancel a shipment",
+      "shipping:shipments:ready": "Mark a shipment ready",
+      "shipping:shipments:reopen": "Reopen a ready shipment",
+      "shipping:shipments:reschedule": "Reschedule a shipment",
+      "shipping:shipments:fail": "Record a failed delivery",
+      "shipping:shipments:close": "Close an undelivered shipment",
+      "shipping:returns:read": "View returns",
+      "shipping:returns:create": "Register a customer return",
+      "shipping:returns:approve": "Approve a return",
+      "shipping:returns:receive": "Receive returned goods",
+      "shipping:returns:cancel": "Cancel a return",
+      "shipping:returns:reject": "Reject a return",
+      "shipping:settings:update": "Edit shipping settings",
+      "procurement:suppliers:read": "View suppliers",
+      "procurement:suppliers:create": "Add a supplier",
+      "procurement:suppliers:update": "Edit supplier details",
+      "procurement:suppliers:approve": "Approve or block a supplier",
+      "procurement:materials:read": "View materials",
+      "procurement:materials:create": "Add a material",
+      "procurement:materials:update": "Edit a material",
+      "procurement:receipts:read": "View goods receipts",
+      "procurement:receipts:create": "Create a goods receipt",
+      "procurement:receipts:update": "Edit a draft goods receipt",
+      "procurement:receipts:receive": "Confirm a goods receipt",
+      "procurement:receipts:cancel": "Cancel a goods receipt",
+      "procurement:settings:update": "Edit procurement settings",
+      "procurement:purchase_orders:read": "View purchase orders",
+      "procurement:purchase_orders:create": "Create a purchase order",
+      "procurement:purchase_orders:update": "Edit a draft purchase order",
+      "procurement:purchase_orders:approve": "Approve a purchase order",
+      "procurement:purchase_orders:cancel": "Cancel a purchase order",
+      "procurement:purchase_orders:send": "Send a purchase order",
+      "procurement:purchase_orders:close": "Close a purchase order",
+      "masterdata:products:read": "View products",
+      "masterdata:products:create": "Add a product",
+      "masterdata:products:update": "Edit a product and its template",
+      "masterdata:products:map_legacy": "Map legacy product types",
+      "masterdata:settings:read": "View general settings",
+      "masterdata:settings:update": "Edit general settings",
+      "masterdata:lists:read": "View reference lists",
+      "masterdata:lists:update": "Edit reference lists",
+      "masterdata:lists:map_legacy": "Map legacy list values",
+      "workforce:members:read": "View employees",
+      "workforce:members:create": "Add an employee",
+      "workforce:members:update": "Edit an employee",
+      "workforce:members:delete": "Delete an employee",
+      "workforce:members:link_user": "Link a member to a user",
+      "notifications:announcements:send": "Send announcements",
+      "notifications:announcements:manage": "Manage all announcements",
+      "organization:branding:read": "View company identity",
+      "organization:branding:update": "Edit company identity",
+      "reports:production:order_full": "Production order report",
+      "reports:production:orders_summary": "Production orders summary",
+      "reports:production:results_analysis": "Production results analysis",
+      "reports:production:shift_workforce": "Shift workforce report",
+      "reports:customers:customer_profile": "Customer profile report",
+      "reports:customers:directory": "Customer directory report",
+      "reports:customers:activity_summary": "Customer activity report",
+      "reports:customers:quotations_report": "Quotations report",
+      "reports:customers:demand_fulfillment": "Demand and fulfillment report",
+      "reports:customers:growth_retention": "Customer growth and inactivity report",
+      "reports:customers:customer_statement": "Customer order statement",
+      "reports:customers:internal_audience": "Internal version of customer reports",
+      "reports:quality:check_full": "Quality check report",
+      "reports:quality:checks_summary": "Quality checks summary",
+      "reports:quality:rejections_analysis": "Rejections analysis",
+      "reports:quality:defects_analysis": "Defects analysis",
+      "reports:quality:corrective_actions": "Corrective actions report"
+    },
+    "permissionDescription": {
+      "foundation:organization:read": "Shows the organization's profile and basic details.",
+      "foundation:organization:update": "Edits the organization's name, address, contacts and time zone.",
+      "foundation:organization:branding": "Uploads or removes the organization's logo.",
+      "foundation:users:read": "Shows the users and their details.",
+      "foundation:users:write": "Creates user accounts and edits their details.",
+      "foundation:users:activate": "Re-enables a deactivated account.",
+      "foundation:users:deactivate": "Stops the user signing in; the account and its history stay.",
+      "foundation:users:delete": "Deletes an account that was never activated and has no business references.",
+      "foundation:users:lock": "Locks an account for a while, or unlocks it.",
+      "foundation:users:reset_password": "Sets a new password for a user.",
+      "foundation:roles:read": "Shows the roles and their permissions.",
+      "foundation:roles:write": "Creates custom roles, edits or deletes them.",
+      "foundation:permissions:read": "Shows every available permission.",
+      "foundation:user_roles:write": "Gives a role to a user or removes it.",
+      "foundation:role_permissions:write": "Adds a permission to a role or removes it, with its scope.",
+      "foundation:audit:read": "Shows the administrative audit trail.",
+      "foundation:security_log:read": "Shows sign-in attempts and security events.",
+      "foundation:activity_log:read": "Shows what users did in the system.",
+      "foundation:activity_log:archive": "Downloads the archive of months past their 12-month retention, then deletes them; is told when one is due.",
+      "foundation:delegations:read": "Shows every approval delegation of the organization and its state.",
+      "foundation:delegations:manage": "Approves or rejects delegation requests, delegates on a holder's behalf (with their agreement) and revokes any delegation.",
+      "commercial:complaints:read": "Shows the complaint register, each complaint and its decision history; own customers only at scope «own».",
+      "commercial:complaints:create": "Registers a new complaint as the customer made it, with its products and quantities.",
+      "commercial:complaints:update": "Records contact with the customer and internal follow-ups, links records, attaches evidence and edits the product lines.",
+      "commercial:complaints:assign": "Sets the complaint's owner, the handling department and the resolution date; the first assignment starts the processing.",
+      "commercial:complaints:investigate": "Records the finding, the measured values, the confirmed affected quantity and containment, and refers to quality.",
+      "commercial:complaints:resolve": "Records the resolution, its evidence and the customer's response, and requests closure.",
+      "commercial:complaints:close": "Approves the closure of a complaint or returns it for processing.",
+      "commercial:complaints:reopen": "Reopens a closed complaint with a stated reason.",
+      "commercial:complaints:cancel": "Cancels a complaint registered by mistake, with the reason.",
+      "commercial:complaints:report": "Produces the complaint register and the detailed complaint report.",
+      "commercial:customers:read": "Shows customers and their details (only their own when the scope is \"own\").",
+      "commercial:customers:create": "Registers a new customer.",
+      "commercial:customers:update": "Edits a customer's details, status and relationship stage.",
+      "commercial:customers:delete": "Deletes a customer with no quotations or orders.",
+      "commercial:customers:assign_owner": "Sets or moves a customer's sales owner, one or many.",
+      "commercial:interactions:read": "Shows the recorded calls, visits and messages.",
+      "commercial:interactions:create": "Records a call, visit or message.",
+      "commercial:interactions:update": "Corrects a recorded interaction.",
+      "commercial:interactions:delete": "Deletes an interaction recorded by mistake (unless a follow-up came from it).",
+      "commercial:follow_ups:read": "Shows the customer follow-up tasks.",
+      "commercial:follow_ups:create": "Creates a follow-up task with a customer.",
+      "commercial:follow_ups:update": "Edits a follow-up's date and details.",
+      "commercial:follow_ups:delete": "Deletes a follow-up task.",
+      "commercial:follow_ups:assign": "Assigns a follow-up, or moves one person's follow-ups to another.",
+      "commercial:follow_ups:complete": "Records a follow-up as done, with its outcome.",
+      "commercial:samples:read": "Shows sample requests (for their own customers only when the scope is \"own\").",
+      "commercial:samples:create": "Registers a customer's sample request.",
+      "commercial:samples:update": "Edits the product, specification and quantity before delivery.",
+      "commercial:samples:delete": "Deletes a sample request with no quotations.",
+      "commercial:evaluations:read": "Shows sample evaluation results.",
+      "commercial:evaluations:create": "Records the sample's evaluation result and next step.",
+      "commercial:evaluations:update": "Corrects a recorded evaluation's result or notes.",
+      "commercial:evaluations:delete": "Deletes an evaluation recorded by mistake.",
+      "commercial:quotes:read": "Shows quotations and their documents (for their own customers only when the scope is \"own\").",
+      "commercial:quotes:create": "Creates a new quotation as a draft.",
+      "commercial:quotes:update": "Edits a draft quotation's lines and prices.",
+      "commercial:quotes:delete": "Deletes a quotation that is not accepted and has no orders.",
+      "commercial:quote_settings:read": "Shows the document language, signature and terms.",
+      "commercial:quote_settings:update": "Edits the document language, signature and terms.",
+      "commercial:orders:read": "Shows sales orders (for their own customers only when the scope is \"own\").",
+      "commercial:orders:create": "Creates a draft sales order, direct or from an accepted quotation.",
+      "commercial:orders:update": "Edits a draft order's lines and quantities.",
+      "commercial:orders:delete": "Deletes a draft order that was never confirmed.",
+      "commercial:quotes:issue": "Sends the quotation to the customer and locks it.",
+      "commercial:quotes:accept": "Records that the customer accepted; the quotation becomes final.",
+      "commercial:quotes:reject": "Records the customer's rejection with the reason.",
+      "commercial:quotes:expire": "Records that the quotation expired.",
+      "commercial:quotes:revise": "Takes the quotation back to a draft as a new revision, with the reason.",
+      "commercial:orders:confirm": "Confirms the order; its lines, quantities and specifications lock.",
+      "commercial:orders:cancel": "Cancels the order with the reason (before production).",
+      "commercial:orders:revise": "Takes a confirmed order back to a draft as a new revision (before production).",
+      "commercial:samples:start": "Moves a sample to in preparation.",
+      "commercial:samples:deliver": "Records that the sample reached the customer.",
+      "commercial:samples:cancel": "Cancels the sample request.",
+      "commercial:samples:reopen": "Puts a sample back to requested.",
+      "commercial:samples:decide": "Records the customer's decision on the sample (accept, reject, modify).",
+      "commercial:follow_ups:cancel": "Cancels a follow-up no longer needed.",
+      "commercial:follow_ups:reopen": "Reopens a completed or cancelled follow-up.",
+      "production:work_centers:read": "Shows the lines and machines.",
+      "production:work_centers:create": "Adds a line or machine.",
+      "production:work_centers:update": "Edits a work center's details and capacity.",
+      "production:work_centers:delete": "Deletes an unused work center.",
+      "production:shifts:read": "Shows the shift definitions.",
+      "production:shifts:create": "Defines a new shift.",
+      "production:shifts:update": "Edits a shift's times and details.",
+      "production:shifts:delete": "Deletes a shift definition.",
+      "production:shift_rosters:read": "Shows the crews on each shift.",
+      "production:shift_rosters:create": "Creates a crew roster for a shift.",
+      "production:shift_rosters:update": "Edits or replaces a shift roster.",
+      "production:shift_rosters:manage_members": "Adds workers to a roster or removes them.",
+      "production:shift_rosters:close": "Closes a roster so it no longer changes.",
+      "production:demands:read": "Shows production demands and their status.",
+      "production:demands:create": "Creates a production demand, from a confirmed sales order or by hand.",
+      "production:demands:update": "Edits a demand and its lines before planning.",
+      "production:demands:delete": "Deletes a draft production demand.",
+      "production:demands:release": "Makes a demand ready for planning, or takes it back to a draft.",
+      "production:demands:cancel": "Cancels a demand; its quantity returns to the sales order.",
+      "production:planning:read": "Shows demands ready for planning.",
+      "production:planning:sequence": "Changes the order of the planning queue.",
+      "production:planning:allocate": "Allocates demand quantities to a production order.",
+      "production:planning:release_allocation": "Gives an allocated quantity back to its demand, with the reason.",
+      "production:production_orders:read": "Shows production orders and their details.",
+      "production:production_orders:update": "Edits a production order's dates and details.",
+      "production:production_orders:manage_items": "Adds, edits or removes the order's items.",
+      "production:production_orders:create": "Creates a production order from planning.",
+      "production:production_orders:release": "Releases the order for the floor.",
+      "production:production_orders:start": "Starts the order, or resumes it after a hold.",
+      "production:production_orders:hold": "Puts the order on hold, with the reason.",
+      "production:production_orders:complete": "Records that the order's production is done.",
+      "production:production_orders:close": "Closes the order after its result is confirmed.",
+      "production:production_orders:cancel": "Cancels the order, with the reason.",
+      "production:runs:read": "Shows production runs and their crews.",
+      "production:runs:create": "Creates a run for a production order.",
+      "production:runs:update": "Edits a run's details.",
+      "production:runs:start": "Starts or resumes the run.",
+      "production:runs:pause": "Pauses the run.",
+      "production:runs:complete": "Records that the run ended.",
+      "production:runs:cancel": "Cancels the run, with the reason.",
+      "production:runs:manage_members": "Adds or removes workers, or loads them from the roster.",
+      "production:results:read": "Shows produced quantities and scrap.",
+      "production:results:create": "Records the produced quantity and scrap.",
+      "production:results:update": "Edits a recorded result before closing.",
+      "production:results:delete": "Deletes a recorded result before closing.",
+      "production:results:correct": "Records a documented correction to a closed order's result.",
+      "production:downtime_events:read": "Shows machine stops and their causes.",
+      "production:downtime_events:create": "Records a machine stop and its cause.",
+      "production:downtime_events:update": "Edits a downtime event.",
+      "production:downtime_events:delete": "Deletes a downtime event recorded by mistake.",
+      "production:downtime_events:close": "Records that the machine runs again.",
+      "production:waste_records:read": "Shows scrap quantities and causes.",
+      "production:waste_records:create": "Records a scrap quantity and its cause.",
+      "production:waste_records:update": "Edits a scrap record.",
+      "production:waste_records:delete": "Deletes a scrap record made by mistake.",
+      "quality:settings:update": "Edits certificate numbering and quality settings.",
+      "quality:quality_checks:read": "Shows checks and their results.",
+      "quality:quality_checks:create": "Opens a check for a production order, a receipt or a return.",
+      "quality:quality_checks:update": "Edits a check before it closes.",
+      "quality:quality_checks:start": "Starts the inspection and fixes its plan.",
+      "quality:quality_checks:close": "Sets the check's result and accepted and rejected quantities.",
+      "quality:quality_checks:cancel": "Cancels the check, with the reason.",
+      "quality:quality_checks:measure": "Records the measured values.",
+      "quality:rejections:read": "Shows rejected quantities and their decisions.",
+      "quality:rejections:create": "Records a rejected quantity.",
+      "quality:rejections:update": "Edits a rejection before its decision.",
+      "quality:rejections:decide": "Decides rework, scrap or use with a concession.",
+      "quality:rejections:execute": "Records that the decision was carried out.",
+      "quality:quality_defects:read": "Shows defects found in checks.",
+      "quality:quality_defects:create": "Records a defect in a check.",
+      "quality:quality_defects:update": "Edits a defect.",
+      "quality:ncr_reports:read": "Shows the reports and their actions.",
+      "quality:ncr_reports:create": "Records a new non-conformance.",
+      "quality:ncr_reports:update": "Edits the report, its items and its corrective actions.",
+      "quality:ncr_reports:verify": "Judges the actions' effectiveness and closes the report.",
+      "quality:ncr_reports:cancel": "Cancels the report or one of its actions, with the reason.",
+      "quality:ncr_reports:contain": "Records the immediate containment.",
+      "quality:ncr_reports:investigate": "Records the investigation and root cause.",
+      "quality:ncr_reports:submit": "Sends the report for verification once its actions are done.",
+      "quality:ncr_actions:read": "Shows the actions assigned to their department.",
+      "quality:ncr_actions:complete": "Records an action as done, with evidence.",
+      "quality:specifications:read": "Shows technical specifications and test limits.",
+      "quality:specifications:create": "Creates a draft specification or a new revision of one.",
+      "quality:specifications:update": "Edits a draft specification and its limits.",
+      "quality:specifications:activate": "Puts the revision in force in place of the previous one.",
+      "quality:certificates:read": "Shows the certificates and their versions.",
+      "quality:certificates:create": "Creates a draft certificate, or a replacement for an issued one.",
+      "quality:certificates:update": "Edits a draft certificate.",
+      "quality:certificates:issue": "Approves and numbers the certificate; it becomes final.",
+      "quality:certificates:revoke": "Revokes an issued certificate (also needed to issue a replacement).",
+      "shipping:directory:read": "Shows the registered drivers, vehicles and carriers.",
+      "shipping:directory:write": "Adds, edits and deactivates drivers, vehicles and carriers.",
+      "shipping:shipments:read": "Shows shipments and delivery notes.",
+      "shipping:shipments:create": "Creates a draft delivery note.",
+      "shipping:shipments:update": "Edits the shipment's lines and details.",
+      "shipping:shipments:dispatch": "Records the goods leaving, with the gate weight.",
+      "shipping:shipments:deliver": "Records the customer's receipt, in full or in part, and the proof of delivery.",
+      "shipping:shipments:cancel": "Cancels the shipment before it leaves.",
+      "shipping:shipments:ready": "Marks the shipment ready to leave.",
+      "shipping:shipments:reopen": "Takes a ready shipment back to a draft.",
+      "shipping:shipments:reschedule": "Changes the dispatch or delivery date.",
+      "shipping:shipments:fail": "Records that the customer did not receive the goods and they come back.",
+      "shipping:shipments:close": "Closes a note whose goods came back undelivered.",
+      "shipping:returns:read": "Shows customer returns.",
+      "shipping:returns:create": "Registers a return against a delivery note.",
+      "shipping:returns:approve": "Accepts the customer's return.",
+      "shipping:returns:receive": "Records the returned goods arriving.",
+      "shipping:returns:cancel": "Withdraws the return before it is received.",
+      "shipping:returns:reject": "Refuses the customer's return, with the reason.",
+      "shipping:settings:update": "Edits delivery note numbering and settings.",
+      "procurement:suppliers:read": "Shows suppliers and their evaluation.",
+      "procurement:suppliers:create": "Registers a new supplier.",
+      "procurement:suppliers:update": "Edits a supplier's details.",
+      "procurement:suppliers:approve": "Approves a supplier, puts it on probation, or blocks it.",
+      "procurement:materials:read": "Shows raw materials and supplies.",
+      "procurement:materials:create": "Defines a new material.",
+      "procurement:materials:update": "Edits a material and its inspection requirement.",
+      "procurement:receipts:read": "Shows goods receipt notes.",
+      "procurement:receipts:create": "Creates a draft goods receipt.",
+      "procurement:receipts:update": "Edits a receipt's lines before confirming.",
+      "procurement:receipts:receive": "Confirms the materials arrived; the receipt becomes final.",
+      "procurement:receipts:cancel": "Cancels the receipt, with the reason.",
+      "procurement:settings:update": "Edits document numbering and purchase terms.",
+      "procurement:purchase_orders:read": "Shows purchase orders and their documents.",
+      "procurement:purchase_orders:create": "Creates a draft purchase order.",
+      "procurement:purchase_orders:update": "Edits the order's lines and prices before approval.",
+      "procurement:purchase_orders:approve": "Approves the order before it goes to the supplier.",
+      "procurement:purchase_orders:cancel": "Cancels the order, with the reason.",
+      "procurement:purchase_orders:send": "Records that the approved order went to the supplier.",
+      "procurement:purchase_orders:close": "Closes an order that expects nothing more.",
+      "masterdata:products:read": "Shows products and their templates, to choose from.",
+      "masterdata:products:create": "Adds a product and its specification template.",
+      "masterdata:products:update": "Renames a product, changes its template, or deactivates it.",
+      "masterdata:products:map_legacy": "Rewrites an old product type in every record to a defined product.",
+      "masterdata:settings:read": "Shows the VAT rate and default currency.",
+      "masterdata:settings:update": "Edits the VAT rate and default currency.",
+      "masterdata:lists:read": "Shows sectors, opportunity sources, countries and cities.",
+      "masterdata:lists:update": "Adds, edits or deactivates list items.",
+      "masterdata:lists:map_legacy": "Rewrites an old value in every record to a list item.",
+      "workforce:members:read": "Shows workers and staff.",
+      "workforce:members:create": "Registers a worker or employee.",
+      "workforce:members:update": "Edits a member's details and status.",
+      "workforce:members:delete": "Deletes a member's record.",
+      "workforce:members:link_user": "Links a member to a sign-in account, or unlinks it.",
+      "notifications:announcements:send": "Writes a message or announcement to named users, a role's members or the whole organization, and follows who read and acknowledged it.",
+      "notifications:announcements:manage": "Follows every announcement of the organization and who read it, and withdraws any announcement.",
+      "organization:branding:read": "Shows the identity printed on documents.",
+      "organization:branding:update": "Edits the names, addresses, bank accounts and logo printed on documents.",
+      "reports:production:order_full": "Prints the full production order report.",
+      "reports:production:orders_summary": "Prints a summary of production orders for a period.",
+      "reports:production:results_analysis": "Prints the analysis of output and scrap.",
+      "reports:production:shift_workforce": "Prints the crews on each shift.",
+      "reports:customers:customer_profile": "Prints the customer's full profile.",
+      "reports:customers:directory": "Prints the customer list and details.",
+      "reports:customers:activity_summary": "Prints customers' activity and ranking.",
+      "reports:customers:quotations_report": "Prints quotations and outcomes for a period.",
+      "reports:customers:demand_fulfillment": "Prints the status and allocation of customers' demands.",
+      "reports:customers:growth_retention": "Prints new and inactive customers.",
+      "reports:customers:customer_statement": "Prints the customer's orders and their status.",
+      "reports:customers:internal_audience": "Prints customer reports with internal data (for management).",
+      "reports:quality:check_full": "Prints the full inspection report.",
+      "reports:quality:checks_summary": "Prints a summary of checks for a period.",
+      "reports:quality:rejections_analysis": "Prints the analysis of rejections and decisions.",
+      "reports:quality:defects_analysis": "Prints the analysis of defects and their frequency.",
+      "reports:quality:corrective_actions": "Prints corrective actions' status and due dates."
+    },
+    "UsersStatus": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "DelegationsStatus": {
+      "scheduled": "Not started yet",
+      "active": "In force",
+      "ended": "Ended",
+      "revoked": "Revoked",
+      "awaiting_manager": "Waiting for a manager",
+      "awaiting_holder": "Waiting for the holder",
+      "lapsed": "Lapsed unanswered",
+      "rejected": "Rejected"
+    },
+    "accessScope": {
+      "own": "My Data Only",
+      "team": "My Team's Data",
+      "organization": "Entire Organization"
+    }
+  },
+  "quality": {
+    "qualityCheckStatus": {
+      "open": "Open",
+      "under_inspection": "Under Inspection",
+      "closed": "Closed",
+      "cancelled": "Cancelled"
+    },
+    "qualityCheckResult": {
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "conditional_accept": "Conditional Accept",
+      "needs_reinspection": "Needs Re-inspection"
+    },
+    "qualityCheckCheckType": {
+      "in_process_inspection": "In Process Inspection",
+      "finished_product_inspection": "Finished Product Inspection",
+      "sample_inspection": "Sample Inspection",
+      "reinspection": "Reinspection",
+      "issue_triggered": "Issue Triggered",
+      "general": "General",
+      "incoming_inspection": "Incoming inspection"
+    },
+    "qualityRejectionRejectionReason": {
+      "failed_quality_check": "Failed Quality Check",
+      "critical_defect": "Critical Defect",
+      "out_of_spec": "Out of Specification",
+      "dimension_failure": "Dimension Failure",
+      "surface_failure": "Surface Failure",
+      "packaging_failure": "Packaging Failure",
+      "labeling_issue": "Labeling Issue",
+      "other": "Other"
+    },
+    "qualityRejectionDisposition": {
+      "hold": "Hold (quarantine)",
+      "scrap": "Scrap",
+      "rework": "Rework",
+      "return_to_process": "Return to process",
+      "use_as_is": "Use as is (concession)"
+    },
+    "qualityRejectionDispositionStatus": {
+      "pending": "Awaiting decision",
+      "executed": "Executed",
+      "decided": "Decided"
+    },
+    "ncrReportStatus": {
+      "draft": "Draft",
+      "open": "Open",
+      "under_review": "Under Review",
+      "closed": "Closed"
+    },
+    "ncrReportSourceType": {
+      "internal_production": "Internal Production",
+      "incoming_material": "Incoming Material",
+      "supplier": "Supplier",
+      "warehouse": "Warehouse",
+      "customer_return": "Customer Return",
+      "other": "Other"
+    },
+    "ncrReportReportType": {
+      "material_non_conformance": "Material Non-Conformance",
+      "product_non_conformance": "Product Non-Conformance",
+      "process_non_conformance": "Process Non-Conformance",
+      "packaging_non_conformance": "Packaging Non-Conformance",
+      "documentation_non_conformance": "Documentation Non-Conformance",
+      "other": "Other"
+    },
+    "correctiveActionStatus": {
+      "open": "Open",
+      "in_progress": "In Progress",
+      "completed": "Completed",
+      "closed": "Closed"
+    },
+    "correctiveActionPriority": {
+      "urgent": "Urgent",
+      "high": "High",
+      "normal": "Normal",
+      "low": "Low"
+    },
+    "correctiveActionActionType": {
+      "corrective": "Corrective",
+      "preventive": "Preventive",
+      "improvement": "Improvement",
+      "containment": "Containment"
+    },
+    "correctiveActionSourceType": {
+      "quality_rejection": "Quality Rejection",
+      "ncr_report": "NCR Report",
+      "quality_defect": "Quality Defect",
+      "ncr_item": "NCR Item",
+      "manual": "Manual"
+    },
+    "qualityDefectDefectCategory": {
+      "dimension": "Dimension",
+      "thickness": "Thickness / Gauge",
+      "surface": "Surface Defect",
+      "color": "Color Deviation",
+      "strength": "Strength Failure",
+      "winding": "Winding Defect",
+      "weight": "Weight Out of Tolerance",
+      "packaging": "Packaging Defect",
+      "labeling": "Labeling Error",
+      "finish": "Finish / Texture",
+      "other": "Other"
+    },
+    "qualityDefectSeverity": {
+      "minor": "Minor",
+      "major": "Major",
+      "critical": "Critical"
+    },
+    "actionFollowUpStatus": {
+      "on_track": "On Track",
+      "delayed": "Delayed",
+      "blocked": "Blocked",
+      "completed": "Completed"
+    },
+    "closureVerificationVerificationResult": {
+      "effective": "Effective",
+      "partially_effective": "Partially Effective",
+      "not_effective": "Not Effective"
+    },
+    "closureVerificationClosureStatus": {
+      "closed": "Closed",
+      "re_opened": "Re-opened"
+    },
+    "ParametersKinds": {
+      "numeric": "Numeric (readings)",
+      "attribute": "Attribute (conforming / not)"
+    },
+    "SpecificationsStatuses": {
+      "draft": "Draft",
+      "active": "In force",
+      "superseded": "Superseded"
+    },
+    "CertificatesStatuses": {
+      "draft": "Draft",
+      "issued": "Issued",
+      "revoked": "Revoked"
+    },
+    "STATUSES": {
+      "action": "Corrective action",
+      "cancelled": "Cancelled",
+      "closed": "Closed",
+      "draft": "Draft",
+      "investigation": "Investigation",
+      "issued": "Issued",
+      "open": "Open",
+      "revoked": "Revoked",
+      "verification": "Verification"
+    },
+    "ROOT_CAUSE_CATEGORIES": {
+      "man": "People",
+      "machine": "Machine",
+      "material": "Material",
+      "method": "Method",
+      "measurement": "Measurement",
+      "environment": "Environment"
+    },
+    "ROOT_CAUSE_METHODS": {
+      "fishbone": "Fishbone",
+      "five_whys": "Five whys",
+      "other": "Other"
+    },
+    "DISPOSITIONS": {
+      "hold": "Hold (quarantine)",
+      "regrade": "Regrade",
+      "return_to_process": "Return to process",
+      "return_to_supplier": "Return to supplier",
+      "rework": "Rework",
+      "scrap": "Scrap",
+      "sort": "Sort",
+      "use_as_is": "Use as is (concession)"
+    },
+    "ACTION_KINDS": {
+      "correction": "Correction",
+      "corrective": "Corrective",
+      "preventive": "Preventive"
+    },
+    "ACTION_STATUSES": {
+      "done": "Done"
+    },
+    "CLAIM_STATUSES": {
+      "accepted": "Accepted",
+      "claimed": "Claimed",
+      "none": "None",
+      "recovered": "Recovered",
+      "rejected": "Rejected"
+    },
+    "ORDER_STATUSES": {
+      "completed": "Completed",
+      "in_progress": "In Progress",
+      "on_hold": "On hold"
+    },
+    "Stages": {
+      "open": "Recorded",
+      "investigation": "Investigation",
+      "action": "Corrective action",
+      "verification": "Verification",
+      "closed": "Closed"
+    },
+    "ActionStatuses": {
+      "open": "Open",
+      "done": "Done",
+      "cancelled": "Cancelled"
+    },
+    "REINSPECTION_ORDER_STATUSES": {
+      "closed": "Closed",
+      "completed": "Completed",
+      "in_progress": "In Progress",
+      "on_hold": "On hold"
+    }
+  },
+  "production": {
+    "productionOrderStatus": {
+      "draft": "Draft",
+      "released": "Released",
+      "in_progress": "In progress",
+      "on_hold": "On hold",
+      "completed": "Completed",
+      "closed": "Closed",
+      "cancelled": "Cancelled"
+    },
+    "productionOrderPriority": {
+      "urgent": "Urgent",
+      "normal": "Normal",
+      "low": "Low",
+      "high": "High"
+    },
+    "workCenterStatus": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "under_maintenance": "Under Maintenance"
+    },
+    "workCenterCenterType": {
+      "extrusion": "Extrusion",
+      "rewinding": "Rewinding",
+      "packing": "Packing",
+      "quality_station": "Quality Station",
+      "generic": "Generic"
+    },
+    "wasteRecordWasteCategory": {
+      "startup_setup": "Start-up and setup waste",
+      "changeover": "Changeover waste",
+      "process": "Process waste (trim, edges)",
+      "material_defect": "Raw material defect",
+      "machine_fault": "Machine fault waste",
+      "handling_damage": "Handling and breakage",
+      "contamination": "Contamination",
+      "other": "Other waste"
+    },
+    "downtimeEventStatus": {
+      "open": "Open",
+      "closed": "Closed"
+    },
+    "downtimeEventCategory": {
+      "breakdown": "Breakdown",
+      "changeover_setup": "Changeover and setup",
+      "material_shortage": "Material shortage",
+      "waiting_labor": "Waiting for operator",
+      "quality_issue": "Quality issue",
+      "utilities": "Utilities (power, air, water)",
+      "other": "Other",
+      "planned_maintenance": "Planned maintenance",
+      "break_meeting": "Break or meeting",
+      "no_orders": "No orders scheduled",
+      "machine_fault": "Machine fault"
+    },
+    "shiftDefinitionShiftType": {
+      "morning": "Morning",
+      "evening": "Evening",
+      "night": "Night",
+      "custom": "Custom"
+    },
+    "shiftDefinitionStatus": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "DowntimeEventsTypes": {
+      "loss": "Availability loss",
+      "planned": "Planned stop"
+    },
+    "DemandsPriorities": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "DemandsStatuses": {
+      "draft": "Draft",
+      "ready_for_planning": "Ready for Planning",
+      "partially_planned": "Partially Planned",
+      "planned": "Planned",
+      "cancelled": "Cancelled"
+    },
+    "AllocationStatuses": {
+      "active": "Active",
+      "released": "Released"
+    },
+    "ResultsDispositions": {
+      "customer_good": "Good for customers",
+      "stock_good": "Good for stock",
+      "sample": "Samples",
+      "scrap": "Scrap / damaged",
+      "rework": "Rework"
+    },
+    "ResultsEntryTypes": {
+      "original": "Original",
+      "correction": "Correction"
+    },
+    "ReportsHistoryStatuses": {
+      "success": "Succeeded",
+      "failed": "Failed",
+      "pending": "Preparing"
+    },
+    "ProductionRunStatus": {
+      "paused": "Paused"
+    },
+    "OrderTransitionTrigger": {
+      "manual": "Manual",
+      "activity": "Activity",
+      "schedule": "Schedule"
+    },
+    "ExecutionStatus": {
+      "active": "Active",
+      "closed": "Closed",
+      "planned": "Planned",
+      "in_progress": "In progress",
+      "paused": "Paused",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    }
+  },
+  "workforce": {
+    "workforceMemberStatus": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "suspended": "Suspended",
+      "terminated": "Terminated"
+    },
+    "workforceMemberEmploymentType": {
+      "employee": "Employee",
+      "contractor": "Contractor",
+      "temporary": "Temporary"
+    },
+    "workforceMemberWorkerType": {
+      "factory_manager": "Factory Manager",
+      "production_manager": "Production Manager",
+      "supervisor": "Shift Supervisor",
+      "operator": "Operator",
+      "technician": "Operations Technician",
+      "maintenance_technician": "Maintenance Technician",
+      "helper": "Helper",
+      "quality_inspector": "Quality Inspector",
+      "warehouse_staff": "Warehouse Staff",
+      "logistics_coordinator": "Logistics Coordinator",
+      "sales_manager": "Sales Manager",
+      "sales_rep": "Sales Representative",
+      "procurement_officer": "Procurement Officer",
+      "hr_officer": "HR Officer",
+      "accountant": "Accountant",
+      "safety_officer": "Safety Officer",
+      "admin_support": "Admin Support",
+      "driver": "Driver"
+    }
+  },
+  "masterdata": {
+    "Kinds": {
+      "finished": "Finished product",
+      "material": "Material"
+    },
+    "PROPERTY_KINDS": {
+      "number": "Number",
+      "text": "Text",
+      "choice": "Choice"
+    }
+  },
+  "ncr": {
+    "Statuses": {
+      "open": "Open",
+      "investigation": "Under investigation",
+      "action": "Corrective action",
+      "verification": "Verification",
+      "closed": "Closed",
+      "cancelled": "Cancelled"
+    },
+    "Types": {
+      "material_non_conformance": "Material",
+      "product_non_conformance": "Product",
+      "process_non_conformance": "Process",
+      "packaging_non_conformance": "Packaging",
+      "documentation_non_conformance": "Documentation",
+      "other": "Other"
+    },
+    "Dispositions": {
+      "return_to_supplier": "Return to supplier",
+      "use_as_is": "Use as is (concession)",
+      "sort": "Sort and re-inspect",
+      "rework": "Rework",
+      "regrade": "Second grade",
+      "return_to_process": "Recycle",
+      "scrap": "Scrap",
+      "hold": "Hold"
+    },
+    "Categories": {
+      "man": "Man",
+      "machine": "Machine",
+      "material": "Material",
+      "method": "Method",
+      "measurement": "Measurement",
+      "environment": "Environment"
+    },
+    "Kinds": {
+      "correction": "Correction",
+      "corrective": "Corrective",
+      "preventive": "Preventive"
+    },
+    "ReviewResults": {
+      "effective": "Later review: effective",
+      "not_effective": "Later review: not effective"
+    }
+  },
+  "notifications": {
+    "Categories": {
+      "access": "Access and permissions",
+      "security": "Account security",
+      "delegation": "Delegations",
+      "work": "Work",
+      "announcement": "Announcement"
+    },
+    "SupplierStatus": {
+      "pending": "pending approval",
+      "approved": "approved",
+      "conditional": "conditionally approved",
+      "blocked": "blocked"
+    },
+    "severity": {
+      "info": "Normal",
+      "important": "Important",
+      "urgent": "Urgent"
+    }
+  },
+  "organization": {
+    "Statuses": {
+      "provisioning": "Provisioning",
+      "active": "Active",
+      "suspended": "Suspended",
+      "inactive": "Inactive",
+      "archived": "Archived"
+    }
+  },
+  "platform-audit": {
+    "Categories": {
+      "identity": "Identity",
+      "organization": "Organization",
+      "authentication": "Authentication",
+      "authorization": "Authorization",
+      "security": "Security",
+      "configuration": "Configuration",
+      "audit": "Audit"
+    }
+  },
+  "platform": {
+    "AdministratorsStatuses": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "OrganizationDetailStatuses": {
+      "provisioning": "Provisioning",
+      "active": "Active",
+      "suspended": "Suspended",
+      "inactive": "Inactive",
+      "archived": "Archived"
+    },
+    "PlatformAccountRole": {
+      "root": "Root administrator",
+      "admin": "Administrator"
+    },
+    "OrganizationsStatus": {
+      "active": "Active",
+      "provisioning": "Provisioning",
+      "suspended": "Suspended",
+      "inactive": "Inactive",
+      "archived": "Archived"
+    },
+    "OrganizationDetailUserStatuses": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "locked": "Locked"
+    },
+    "auditOutcome": {
+      "success": "Success",
+      "failure": "Failure",
+      "denied": "Denied"
+    },
+    "auditSeverity": {
+      "info": "Information",
+      "warning": "Warning",
+      "critical": "Critical"
+    },
+    "auditActor": {
+      "platform": "Platform account",
+      "tenant": "Organization user",
+      "system": "System",
+      "anonymous": "Anonymous"
+    }
+  },
+  "procurement": {
+    "supplierStatus": {
+      "pending": "Pending evaluation",
+      "approved": "Approved",
+      "conditional": "Conditional (probation)",
+      "blocked": "Blocked"
+    },
+    "supplierCategory": {
+      "raw_material": "Raw materials",
+      "packaging": "Packaging",
+      "consumables": "Consumables",
+      "services": "Services",
+      "other": "Other"
+    },
+    "materialCategory": {
+      "resin": "Resin",
+      "masterbatch": "Masterbatch",
+      "additive": "Additive",
+      "core": "Core",
+      "carton": "Carton",
+      "film": "Film",
+      "accessory": "Accessory",
+      "other": "Other"
+    },
+    "receiptStatus": {
+      "draft": "Draft",
+      "received": "Received",
+      "cancelled": "Cancelled"
+    },
+    "lotStatus": {
+      "not_required": "Not inspected",
+      "awaiting": "Awaiting quality",
+      "inspecting": "Being inspected",
+      "released": "Released",
+      "partly_released": "Partly released",
+      "rejected": "Not released"
+    },
+    "orderStatus": {
+      "draft": "Draft",
+      "approved": "Approved",
+      "sent": "Sent to supplier",
+      "partially_received": "Partly received",
+      "received": "Received",
+      "closed": "Closed",
+      "cancelled": "Cancelled"
+    },
+    "PaymentTerms": {
+      "advance": "Advance payment",
+      "on_delivery": "On delivery",
+      "net_15": "Net 15 days",
+      "net_30": "Net 30 days",
+      "net_45": "Net 45 days",
+      "net_60": "Net 60 days",
+      "net_90": "Net 90 days",
+      "letter_of_credit": "Letter of credit",
+      "other": "Other"
+    },
+    "Incoterms": {
+      "EXW": "Ex Works",
+      "FCA": "Free Carrier",
+      "FOB": "Free On Board",
+      "CFR": "Cost and Freight",
+      "CIF": "Cost, Insurance and Freight",
+      "CPT": "Carriage Paid To",
+      "CIP": "Carriage and Insurance Paid To",
+      "DAP": "Delivered At Place",
+      "DPU": "Delivered at Place Unloaded",
+      "DDP": "Delivered Duty Paid"
+    }
+  },
+  "profile": {
+    "Statuses": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "locked": "Locked"
+    }
+  },
+  "shipping": {
+    "status": {
+      "draft": "Draft",
+      "ready": "Ready for loading",
+      "dispatched": "Dispatched",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "partially_delivered": "Partly delivered",
+      "returned": "Returned to the factory",
+      "not_delivered": "Not delivered"
+    },
+    "deliveryMethod": {
+      "factory_delivery": "Factory delivery",
+      "pickup": "Collection at the factory",
+      "carrier": "Carrier"
+    },
+    "AttachmentsKinds": {
+      "proof_of_delivery": "Signed delivery note",
+      "document": "Document",
+      "photo": "Photo"
+    },
+    "returnKind": {
+      "delivery": "Not received at delivery",
+      "customer": "Returned by the customer"
+    },
+    "returnStatus": {
+      "requested": "Awaiting approval",
+      "approved": "Approved — awaiting receipt",
+      "rejected": "Rejected",
+      "received": "Received at the factory",
+      "cancelled": "Cancelled"
+    },
+    "returnReason": {
+      "customer_refused": "Customer refused",
+      "site_closed": "Site closed",
+      "no_receiver": "Nobody to receive",
+      "wrong_address": "Wrong address",
+      "transit_damage": "Damaged in transit",
+      "quality_issue": "Visible quality problem",
+      "quality_defect": "Quality defect",
+      "spec_mismatch": "Not to specification",
+      "wrong_item": "Wrong item",
+      "excess_quantity": "Excess quantity",
+      "customer_cancelled": "Customer cancelled",
+      "other": "Other"
+    },
+    "responsibility": {
+      "factory": "Factory",
+      "carrier": "Carrier",
+      "customer": "Customer",
+      "undetermined": "Undetermined"
+    },
+    "ReturnsQualityCheckStatus": {
+      "open": "Open",
+      "under_inspection": "Under inspection",
+      "closed": "Decided",
+      "cancelled": "Cancelled"
+    },
+    "ReturnsQualityDispositions": {
+      "use_as_is": "Second grade",
+      "rework": "Rework",
+      "return_to_process": "Recycle",
+      "scrap": "Scrap",
+      "hold": "Hold"
+    },
+    "ReturnsQualityDecisionStatus": {
+      "pending": "Pending",
+      "decided": "To carry out",
+      "executed": "Carried out"
+    },
+    "ReturnsQualityStatus": {
+      "not_required": "Back in stock (not sent to quality).",
+      "awaiting": "Waiting for quality to inspect the goods.",
+      "inspecting": "Quality is inspecting the goods.",
+      "decided": "Quality decided; some parts are still being carried out.",
+      "done": "Quality's decision is carried out."
+    },
+    "STATUSES": {
+      "approved": "Approved — awaiting receipt",
+      "cancelled": "Cancelled",
+      "delivered": "Delivered",
+      "dispatched": "Dispatched",
+      "draft": "Draft",
+      "not_delivered": "Not delivered",
+      "partially_delivered": "Partly delivered",
+      "ready": "Ready for loading",
+      "received": "Received at the factory",
+      "rejected": "Rejected",
+      "requested": "Awaiting approval",
+      "returned": "Returned to the factory"
+    }
+  }
+}

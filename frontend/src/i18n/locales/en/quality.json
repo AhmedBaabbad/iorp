@@ -442,10 +442,6 @@
       "method": "Method / equipment",
       "status": "Status"
     },
-    "kinds": {
-      "numeric": "Numeric (readings)",
-      "attribute": "Attribute (conforming / not)"
-    },
     "kindHint": "A parameter's kind cannot change later: specifications and inspections rely on it.",
     "active": "Active",
     "inactive": "Inactive",
@@ -464,11 +460,6 @@
     "search": "Search",
     "searchPlaceholder": "Code or title",
     "allStatuses": "All statuses",
-    "statuses": {
-      "draft": "Draft",
-      "active": "In force",
-      "superseded": "Superseded"
-    },
     "empty": "No specifications",
     "emptyHint": "Create a specification per product (and grade), then put it into force to become its inspections' measurement plan.",
     "fields": {
@@ -552,11 +543,6 @@
     "search": "Search",
     "searchPlaceholder": "Number, customer or batch",
     "allStatuses": "All statuses",
-    "statuses": {
-      "draft": "Draft",
-      "issued": "Issued",
-      "revoked": "Revoked"
-    },
     "empty": "No certificates",
     "emptyHint": "Open a closed, accepted inspection with a measurement plan, then «Prepare certificate».",
     "fields": {

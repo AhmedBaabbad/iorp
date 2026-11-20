@@ -320,10 +320,6 @@
       "recordedBy": "Recorded by",
       "closedBy": "Closed by"
     },
-    "types": {
-      "loss": "Availability loss",
-      "planned": "Planned stop"
-    },
     "placeholders": {
       "noOrder": "No order",
       "noRun": "No specific run",
@@ -596,19 +592,6 @@
     "itemTitle": "Item {number}",
     "saveChanges": "Save Changes",
     "savedDraftReadyFailed": "Draft saved. Marking it ready failed; retry or open the saved demand.",
-    "priorities": {
-      "low": "Low",
-      "normal": "Normal",
-      "high": "High",
-      "urgent": "Urgent"
-    },
-    "statuses": {
-      "draft": "Draft",
-      "ready_for_planning": "Ready for Planning",
-      "partially_planned": "Partially Planned",
-      "planned": "Planned",
-      "cancelled": "Cancelled"
-    },
     "errors": {
       "customer_required": "Select a customer",
       "customer_not_found": "Customer not found",
@@ -746,10 +729,6 @@
     "allocations": "Demand allocations",
     "allocateNow": "Allocate to a production order",
     "missingProductType": "Missing product type — edit the demand item to set one before allocating",
-    "statuses": {
-      "active": "Active",
-      "released": "Released"
-    },
     "activeAllocated": "Active allocated",
     "releasedAllocated": "Released allocated",
     "planningTitle": "Planning / Allocations",
@@ -874,15 +853,6 @@
       "complete": "Complete",
       "cancel": "Cancel run"
     },
-    "status": {
-      "active": "Active",
-      "closed": "Closed",
-      "planned": "Planned",
-      "in_progress": "In progress",
-      "paused": "Paused",
-      "completed": "Completed",
-      "cancelled": "Cancelled"
-    },
     "period": {
       "upcoming": "Upcoming",
       "current": "Current",
@@ -910,23 +880,12 @@
       "cancel": "Cancel",
       "save": "Save"
     },
-    "dispositions": {
-      "customer_good": "Good for customers",
-      "stock_good": "Good for stock",
-      "sample": "Samples",
-      "scrap": "Scrap / damaged",
-      "rework": "Rework"
-    },
     "dispositionHints": {
       "customer_good": "Good finished quantity that fulfils customer demand. It cannot exceed the quantity allocated to customers.",
       "stock_good": "Good finished quantity beyond customer demand, or made for stock. Surplus goes to the warehouse.",
       "sample": "Quantity taken as samples or tests. Choose whether it counts as loss.",
       "scrap": "Unusable final loss. Always counted as loss.",
       "rework": "Not final-good, but possibly recoverable. Not counted as loss."
-    },
-    "entryTypes": {
-      "original": "Original",
-      "correction": "Correction"
     },
     "columns": {
       "disposition": "Disposition",
@@ -1133,11 +1092,6 @@
         "user": "User",
         "date": "Date",
         "status": "Status"
-      },
-      "statuses": {
-        "success": "Succeeded",
-        "failed": "Failed",
-        "pending": "Preparing"
       }
     },
     "errors": {

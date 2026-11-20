@@ -88,6 +88,7 @@ class FrozenMeasurement(BaseModel):
 
 
 class CertificateListItem(BaseModel):
+    customer_id: UUID | None = None
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     certificate_no: str | None

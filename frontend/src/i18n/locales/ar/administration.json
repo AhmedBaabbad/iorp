@@ -209,10 +209,6 @@
       "actions": "الإجراءات",
       "preferredLocale": "لغة الحساب والدعوة"
     },
-    "status": {
-      "active": "نشط",
-      "inactive": "غير نشط"
-    },
     "sessions": {
       "title": "الجلسات المفتوحة",
       "subtitle": "الأجهزة المسجّل منها الآن.",
@@ -477,12 +473,9 @@
   },
   "scope": {
     "title": "نطاق الوصول",
-    "own": "بياناتي فقط",
     "ownDescription": "الوصول فقط للسجلات المسندة إليك",
-    "team": "بيانات فريقي",
     "teamDescription": "الوصول لسجلات فريقك (قريبًا)",
     "teamNotAvailable": "نطاق الفريق غير متاح حاليًا",
-    "organization": "كل المنظمة",
     "organizationDescription": "الوصول لجميع سجلات المنظمة",
     "notSupported": "هذه الصلاحية لا تدعم تحديد النطاق",
     "scopeLabel": "النطاق",
@@ -522,16 +515,6 @@
       "period": "الفترة",
       "status": "الحالة",
       "reason": "السبب"
-    },
-    "status": {
-      "scheduled": "لم يبدأ بعد",
-      "active": "ساري",
-      "ended": "منتهٍ",
-      "revoked": "ملغى",
-      "awaiting_manager": "بانتظار موافقة المدير",
-      "awaiting_holder": "بانتظار موافقة صاحب الاعتماد",
-      "lapsed": "انتهت مدته دون رد",
-      "rejected": "مرفوض"
     },
     "notUsable": "غير قابل للاستخدام الآن: صاحب التفويض لم يعد يملك هذا الاعتماد أو أحد المستخدمين غير نشط.",
     "revokedBy": "ألغاه {name}: {reason}",

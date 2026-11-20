@@ -1,5 +1,6 @@
 "use client";
 
+import { useCustomerNames } from "@/features/customers/use-customer-names";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -29,6 +30,7 @@ export function QualityReturnsList() {
   const canOpen = usePermission(Q.CHECKS_CREATE);
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<AwaitingReturn[] | null>(null);
+  const customerName = useCustomerNames((rows ?? []).map(row => row.customer_id));
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -57,7 +59,7 @@ export function QualityReturnsList() {
         <h2 style={{ margin: 0 }}><Link href={`/shipment-returns/${r.return_id}`}><bdi>{r.return_no}</bdi></Link></h2>
         <span className={s.muted}>{r.received_at ? fmt.dateTime(r.received_at) : ""}</span>
       </div>
-      <p style={{ margin: "8px 0" }}>{r.customer_name} — <Link href={`/shipments/${r.shipment_id}`}><bdi>{r.shipment_no}</bdi></Link>
+      <p style={{ margin: "8px 0" }}>{customerName(r.customer_id, r.customer_name)} — <Link href={`/shipments/${r.shipment_id}`}><bdi>{r.shipment_no}</bdi></Link>
         {" · "}{labels(`reasons.${r.reason}`)} · <span className={s.muted}>{t("responsibility")}: {labels(`responsibility.${r.responsibility}`)}</span></p>
       {r.details && <p className={s.muted} style={{ whiteSpace: "pre-wrap", marginTop: 0 }}>{r.details}</p>}
       <div className={s.tableWrap}><table className={s.table}>

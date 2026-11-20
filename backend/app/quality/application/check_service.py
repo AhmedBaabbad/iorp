@@ -88,7 +88,7 @@ class QualityCheckService:
                         defects=defects, severity=rules.highest_severity(d["severity"] for d in defects),
                         sample_code=samples.get(c.sample_id), checked_by_name=names.get(c.checked_by_user_id),
                         closed_by_name=names.get(c.closed_by_user_id), actions=actions,
-                        return_source=dict(return_id=source["return_id"], return_no=source["return_no"], kind=source["kind"],
+                        return_source=dict(customer_id=source.get("customer_id"), return_id=source["return_id"], return_no=source["return_no"], kind=source["kind"],
                                            reason=source["reason"], responsibility=source["responsibility"], details=source["details"],
                                            shipment_id=source["shipment_id"], shipment_no=source["shipment_no"],
                                            customer_name=source["customer_name"], line_no=source["line_no"], description=source["description"],

@@ -1,5 +1,6 @@
 "use client";
 
+import { localName } from "@/lib/local-name";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -49,12 +50,12 @@ export function ProductsList() {
       <thead><tr>{["code", "name", "key", "kind", "unit", "properties"].map(c => <th key={c}>{t(`fields.${c}`)}</th>)}</tr></thead>
       <tbody>{rows.map(p => <tr key={p.id} style={p.active ? undefined : { opacity: 0.6 }}>
         <td><Link href={`/master-data/products/${p.id}`}><bdi>{p.code}</bdi></Link></td>
-        <td>{locale === "ar" ? p.name_ar : p.name_en}<div className={s.muted}>{locale === "ar" ? p.name_en : p.name_ar}</div>
+        <td>{localName(p, locale)}<div className={s.muted}>{locale === "ar" ? p.name_en : p.name_ar}</div>
           {!p.active && <div className={s.muted}>{t("products.inactive")}</div>}</td>
         <td><bdi dir="ltr">{p.key}</bdi></td>
         <td>{t(`kinds.${p.kind}`)}</td>
         <td>{p.default_unit ? (units.has(p.default_unit) ? units(p.default_unit) : p.default_unit) : "—"}</td>
-        <td>{p.properties.length ? joinList(p.properties.map(q => (locale === "ar" ? q.name_ar : q.name_en)), locale) : "—"}</td>
+        <td>{p.properties.length ? joinList(p.properties.map(q => localName(q, locale)), locale) : "—"}</td>
       </tr>)}</tbody>
     </table></div></section>}
     {canLegacy && rows && <LegacyValues products={rows} onMapped={() => { refreshCatalog(); void load(); }} />}
@@ -95,7 +96,7 @@ function LegacyValues({ products, onMapped }: { products: Product[]; onMapped: (
         <td><bdi>«{r.value}»</bdi></td>
         <td>{Object.entries(r.uses).map(([module, count]) => t("use", { module: t(`modules.${module}`), count: String(count) })).join(" · ")}</td>
         <td>{canMap ? <select aria-label={t("mapTo")} value={chosen[r.value] ?? ""} onChange={e => setChosen(old => ({ ...old, [r.value]: e.target.value }))}>
-          <option value="">—</option>{products.filter(p => p.active).map(p => <option key={p.id} value={p.id}>{locale === "ar" ? p.name_ar : p.name_en}</option>)}
+          <option value="">—</option>{products.filter(p => p.active).map(p => <option key={p.id} value={p.id}>{localName(p, locale)}</option>)}
         </select> : "—"}</td>
         <td><span className={s.actions}>
           {canMap && <button type="button" className={`${s.button} ${s.primary}`} disabled={!chosen[r.value] || busy !== null} onClick={() => void map(r.value)}>{t("map")}</button>}

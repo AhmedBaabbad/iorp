@@ -21,11 +21,6 @@
     "en": "English",
     "default": "Default (Organization)"
   },
-  "statuses": {
-    "active": "Active",
-    "inactive": "Inactive",
-    "locked": "Locked"
-  },
   "saveButton": "Save Changes",
   "saving": "Saving...",
   "updateSuccess": "Profile updated successfully",

@@ -20,7 +20,7 @@ function milli(value: string): bigint | null {
   return BigInt(whole) * BigInt(1000) + BigInt(fraction.padEnd(3, "0"));
 }
 function decimal(value: bigint) { return `${value / BigInt(1000)}.${String(value % BigInt(1000)).padStart(3, "0")}`; }
-type PreviewLine = { line_no: number; target_spec_json: Record<string, unknown> | null; planned_quantity: string; unit: string; allocations: { production_demand_item_id: string; demand_number: string; customer_name: string | null; demand_item_line_no: number; allocated_quantity: string }[] };
+type PreviewLine = { line_no: number; target_spec_json: Record<string, unknown> | null; planned_quantity: string; unit: string; allocations: { production_demand_item_id: string; demand_number: string; customer_id?: string | null; customer_name: string | null; demand_item_line_no: number; allocated_quantity: string }[] };
 type Selection = { demand: Demand; item: Item; quantity: string };
 
 export function PlanningAllocation({ demands, busy, onRefresh }: { demands: Demand[]; busy: boolean; onRefresh: () => void }) {
@@ -70,7 +70,7 @@ export function PlanningAllocation({ demands, busy, onRefresh }: { demands: Dema
     return () => { active = false; clearTimeout(timer); };
   }, [review, valid, compatible, payload]);
   const arranged: ArrangedLine[] = lines.map(line => ({ key: String(line.line_no), line_no: line.line_no, target_spec_json: line.target_spec_json, planned_quantity: line.planned_quantity, unit: line.unit,
-    allocations: line.allocations.map(a => ({ key: a.production_demand_item_id, customer_name: a.customer_name, demand_number: a.demand_number, demand_item_line_no: a.demand_item_line_no, allocated_quantity: a.allocated_quantity })) }));
+    allocations: line.allocations.map(a => ({ key: a.production_demand_item_id, customer_id: a.customer_id, customer_name: a.customer_name, demand_number: a.demand_number, demand_item_line_no: a.demand_item_line_no, allocated_quantity: a.allocated_quantity })) }));
   const setQuantity = (id: string, quantity: string) => setSelected(old => old[id] ? { ...old, [id]: { ...old[id], quantity } } : old);
   const remove = (id: string) => setSelected(old => { const next = { ...old }; delete next[id]; if (!Object.keys(next).length) setReview(false); return next; });
   async function submit(event: FormEvent<HTMLFormElement>) {

@@ -128,13 +128,6 @@
       "createdAt": "Created",
       "actions": "Actions"
     },
-    "status": {
-      "active": "Active",
-      "provisioning": "Provisioning",
-      "suspended": "Suspended",
-      "inactive": "Inactive",
-      "archived": "Archived"
-    },
     "actions": {
       "view": "View Details",
       "suspend": "Suspend",
@@ -306,10 +299,6 @@
       "root": "Platform Root",
       "admin": "Platform Admin"
     },
-    "statuses": {
-      "active": "Active",
-      "inactive": "Inactive"
-    },
     "table": {
       "name": "Name",
       "email": "Email",
@@ -367,18 +356,6 @@
       "status": "Status",
       "lastActivity": "Last activity",
       "noActivity": "No activity"
-    },
-    "statuses": {
-      "provisioning": "Provisioning",
-      "active": "Active",
-      "suspended": "Suspended",
-      "inactive": "Inactive",
-      "archived": "Archived"
-    },
-    "userStatuses": {
-      "active": "Active",
-      "inactive": "Inactive",
-      "locked": "Locked"
     },
     "locales": {
       "ar": "Arabic",

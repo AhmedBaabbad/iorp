@@ -1,5 +1,6 @@
 "use client";
 
+import { useCustomerNames } from "@/features/customers/use-customer-names";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
@@ -26,6 +27,7 @@ export function ReturnsList() {
   const unit = (code: string) => (units.has(code) ? units(code) : code);
   const [filters, setFilters] = useState(EMPTY);
   const [rows, setRows] = useState<ReturnListItem[] | null>(null);
+  const customerName = useCustomerNames((rows ?? []).map(row => row.customer_id));
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -67,7 +69,7 @@ export function ReturnsList() {
           <td><Link href={`/shipment-returns/${r.id}`}><bdi>{r.return_no}</bdi></Link></td>
           <td>{fmt.date(r.requested_at)}</td>
           <td><Link href={`/shipments/${r.shipment_id}`}><bdi>{r.shipment_no}</bdi></Link></td>
-          <td>{r.customer_name}{r.customer_reference && <div className={s.muted}><bdi>{r.customer_reference}</bdi></div>}</td>
+          <td>{customerName(r.customer_id, r.customer_name)}{r.customer_reference && <div className={s.muted}><bdi>{r.customer_reference}</bdi></div>}</td>
           <td>{t(`kinds.${r.kind}`)}</td>
           <td>{t(`reasons.${r.reason}`)}<div className={s.muted}>{t(`responsibility.${r.responsibility}`)}</div></td>
           <td><bdi>{r.quantities.map(q => fmt.quantity(q.quantity, unit(q.unit))).join(" · ") || "—"}</bdi>

@@ -1,5 +1,6 @@
 "use client";
 
+import { localName } from "@/lib/local-name";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
@@ -22,7 +23,7 @@ export function ProductSelect({ id, value, onChange, kind, required = true, disa
   const locale = useLocale();
   const canAdd = usePermission(MD.PRODUCTS_CREATE);
   const all = useProducts();
-  const name = (p: Product) => (locale === "ar" ? p.name_ar : p.name_en);
+  const name = (p: Product) => localName(p, locale);
 
   if (all === null) {
     return <select id={id} className={className} style={style} aria-label={ariaLabel} disabled value=""><option value="">{t("loading")}</option></select>;
