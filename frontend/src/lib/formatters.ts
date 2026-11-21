@@ -162,7 +162,13 @@ export function formatQuantity(
   locale: Locale,
 ): string {
   if (value === null || value === undefined || value === "") return NO_VALUE;
-  const formatted = formatNumber(value, locale);
+  const numberValue = typeof value === "string" ? Number.parseFloat(value) : value;
+  if (Number.isNaN(numberValue)) return NO_VALUE;
+  const formatted = new Intl.NumberFormat("en-US", {
+    useGrouping: true,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  }).format(numberValue);
   if (formatted === NO_VALUE) return NO_VALUE;
   if (!unit) return formatted;
   return `${formatted} ${formatUnit(unit, locale)}`;

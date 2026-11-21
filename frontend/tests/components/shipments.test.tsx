@@ -15,7 +15,7 @@ vi.mock("@/lib/api-client", async importOriginal => ({ ...(await importOriginal<
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: nav.push, replace: vi.fn() }), usePathname: () => "/", useSearchParams: () => new URLSearchParams() }));
 vi.mock("@/features/auth/permission-hooks", () => ({ usePermission: (code: string) => perms.granted.has(code),
   useHasAnyPermission: (codes: string[]) => codes.some(code => perms.granted.has(code)) }));
-vi.mock("@/hooks/useFormatter", () => ({ useFormatter: () => ({ date: (v: string) => v, dateTime: (v: string) => v, number: (v: string) => v, quantity: (v: string, u?: string) => `${Number(v)} ${u ?? ""}`.trim() }) }));
+vi.mock("@/hooks/useFormatter", () => ({ useFormatter: () => ({ date: (v: string) => v, dateTime: (v: string) => v, number: (v: string) => v, quantity: (v: string, u?: string) => formatQuantity(v, u, "en") }) }));
 vi.mock("@/components/layout/page-frame", () => ({ PageFrame: ({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) => <main><h1>{title}</h1>{action}{children}</main> }));
 
 import { ReturnDetail } from "@/features/shipments/components/ReturnDetail";
@@ -23,6 +23,7 @@ import { ReturnForm } from "@/features/shipments/components/ReturnForm";
 import { ReturnsList } from "@/features/shipments/components/ReturnsList";
 import { ShipmentDetail } from "@/features/shipments/components/ShipmentDetail";
 import { ShipmentForm } from "@/features/shipments/components/ShipmentForm";
+import { formatQuantity } from "@/lib/formatters";
 import { S } from "@/lib/shipping-permissions";
 import { lineNet, grossKg } from "@/features/shipments/weights";
 
@@ -168,6 +169,18 @@ describe("shipment net and gross weights", () => {
     expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
+  it("preserves fractional unit net weight on the shipment detail", async () => {
+    const x = shipment({ weight_total_kg: "100" });
+    x.lines[0] = { ...x.lines[0], quantity: "40", weight: "100", unit_net_weight: "2.5", weight_unit: "kg" };
+    api.apiClient.mockResolvedValue(x);
+    ui(<ShipmentDetail shipmentId="s1" />);
+    const heading = await screen.findByRole("columnheader", { name: "Net weight per unit" });
+    const table = heading.closest("table")!;
+    const index = within(table).getAllByRole("columnheader").indexOf(heading);
+    const row = within(table).getAllByRole("row")[1];
+    expect(within(row).getAllByRole("cell")[index].textContent).toBe("2.5 kg");
+  });
+
   it("shows unit net, line net, gross, packaging and the gross matching reference", async () => {
     const x = shipment({ weight_total_kg: "900", gross_weight_kg: "1000", packaging_weight_kg: "100",
       received_weight_kg: "990", weight_check: { reference_kg: "1000", received_kg: "990", difference_kg: "-10", difference_pct: "-1", tolerance_pct: "1", within_tolerance: true } });
@@ -240,7 +253,7 @@ describe("shipment lines", () => {
     ui(<ShipmentDetail shipmentId="s1" />, "ar");
     expect(await screen.findByText("0.35")).toBeTruthy();
     expect(screen.getByText("1.2 طن")).toBeTruthy();
-    expect(screen.getByText("الإجمالي: 120 لفة · الوزن 1200 كجم")).toBeTruthy();
+    expect(screen.getByText("الإجمالي: 120 لفة · الوزن 1,200 كجم")).toBeTruthy();
   });
 });
 
