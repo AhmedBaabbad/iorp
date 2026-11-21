@@ -53,6 +53,11 @@ def apply_transport(db, org, record, values):
             for target in fields.values():
                 if hasattr(record,target):
                     result.setdefault(target,None)
+    if result.get('driver_id') or (getattr(record,'driver_id',None) and 'driver_id' not in result):
+        from app.core.phones import normalize_phone
+        if 'driver_phone' in result:
+            try:result['driver_phone']=normalize_phone(result['driver_phone'])
+            except ValueError:result['driver_phone']=None
     name=result.get('driver_name',getattr(record,'driver_name',None))
     affiliation=result.get('driver_affiliation',getattr(record,'driver_affiliation',None))
     changed=name!=getattr(record,'driver_name',None) or 'driver_affiliation' in result

@@ -56,7 +56,7 @@ class Shipment(Base):
     customer_reference: Mapped[str | None] = mapped_column(String(80), nullable=True)  # the customer's PO
     # The recipient, who may differ from the customer (a branch, a site, a contractor); contacts for notifications later.
     consignee_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    consignee_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    consignee_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     consignee_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notify_consignee: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     delivery_address: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -71,7 +71,7 @@ class Shipment(Base):
     customer_contact_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     delivery_site_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     driver_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    driver_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    driver_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     driver_id_no: Mapped[str | None] = mapped_column(String(40), nullable=True)
     vehicle_plate: Mapped[str | None] = mapped_column(String(40), nullable=True)
     vehicle_type: Mapped[str | None] = mapped_column(String(80), nullable=True)

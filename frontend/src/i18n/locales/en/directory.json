@@ -1,0 +1,17 @@
+{
+  "reload": "Reload",
+  "errors": {
+    "DIRECTORY_DUPLICATE": "This plate or name already exists.",
+    "DRIVER_IDENTITY_EXISTS": "This identity number belongs to another driver.",
+    "DRIVER_IDENTITY_REQUIRED": "An identity number is required for an external driver.",
+    "DRIVER_EMAIL_INVALID": "The driver email address is invalid.",
+    "DEFAULT_MUST_BE_ACTIVE": "The default record must be active.",
+    "CONTACT_NOT_IN_CUSTOMER": "Choose an active contact belonging to this customer.",
+    "ACTIVE_WORKER_REQUIRED": "Choose an active employee for the internal driver.",
+    "EXTERNAL_DRIVER_CANNOT_REFERENCE_EMPLOYEE": "An external driver cannot reference an employee.",
+    "TRANSPORT_RECORD_UNAVAILABLE": "The transport record is unavailable or inactive.",
+    "REFERENCE_VALUE_UNAVAILABLE": "The reference value is unavailable. Choose an active value.",
+    "PHONE_INVALID": "Invalid phone number. Enter a valid local or international number.",
+    "DIRECTORY_CHANGED": "Another user changed this record. Reload it before saving."
+  }
+}

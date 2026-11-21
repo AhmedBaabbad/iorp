@@ -113,12 +113,14 @@ class CustomerRepository:
         """One page of the customers the user may see, newest first (id breaks ties so pages never overlap)."""
         statement = self._visible(organization_id, policy, auth_context)
         if filters.search:
+            from app.core.phones import phone_search_terms
+            phone_terms=phone_search_terms(filters.search)
             like = f"%{filters.search.strip()}%"
             statement = statement.where(or_(Customer.customer_code.ilike(like), (Customer.name_ar.ilike(like) | Customer.name_en.ilike(like)),
-                Customer.effective_phone.ilike(like), Customer.effective_email.ilike(like),
+                *[Customer.effective_phone.icontains(term,autoescape=True) for term in phone_terms], Customer.effective_email.ilike(like),
                 select(CustomerContact.id).where(CustomerContact.customer_id == Customer.id,
                     CustomerContact.organization_id == Customer.organization_id,
-                    or_(CustomerContact.phone.ilike(like), CustomerContact.email.ilike(like))).exists()))
+                    or_(*[CustomerContact.phone.icontains(term,autoescape=True) for term in phone_terms], CustomerContact.email.ilike(like))).exists()))
         if filters.status:
             statement = statement.where(Customer.status == filters.status)
         if filters.relationship_stage:

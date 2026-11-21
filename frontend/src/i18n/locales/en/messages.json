@@ -29,7 +29,8 @@
     "SPEC_RANGE_SHAPE": "A range must contain only its minimum and maximum.",
     "SPEC_RANGE_NUMBER": "Enter a valid number or numeric range (such as 0.55 – 0.60).",
     "SPEC_RANGE_REVERSED": "The minimum must not exceed the maximum.",
-    "RANGE_ONLY_FOR_NUMBER": "Only numeric properties may allow a range."
+    "RANGE_ONLY_FOR_NUMBER": "Only numeric properties may allow a range.",
+    "phoneInvalid": "Invalid phone number. Enter a valid local or international number."
   },
   "success": {
     "created": "Created successfully",

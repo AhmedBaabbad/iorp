@@ -91,12 +91,12 @@ def test_default_contact_and_other_city_are_used_in_reports_and_shipping(env):
     e.customer.phone='5551111';e.customer.email='retired@example.test'
     e.customer.country='ae';e.customer.city='ae_other';e.customer.city_other='Synthetic new city'
     e.db.commit()
-    contact=e.client.post(base+'/contacts',json=dict(name='Current',phone='5552222',email='current@example.com',is_default=True))
+    contact=e.client.post(base+'/contacts',json=dict(name='Current',phone='0552222222',email='current@example.com',is_default=True))
     assert contact.status_code==201,contact.text
     read=CustomerReads(e.db,e.org.id).get(e.customer.id)
-    assert read['phone']=='5552222' and read['email']=='current@example.com' and read['city']=='Synthetic new city'
+    assert read['phone']=='+966552222222' and read['email']=='current@example.com' and read['city']=='Synthetic new city'
     e.db.expire_all()
     response=preview(e,sections=['information','contacts'],lang='en')
     assert response.status_code==200,response.text
-    assert '5552222' in response.text and 'current@example.com' in response.text and 'Synthetic new city' in response.text
+    assert '+966552222222' in response.text and 'current@example.com' in response.text and 'Synthetic new city' in response.text
     assert 'retired@example.test' not in response.text

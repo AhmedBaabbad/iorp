@@ -15,6 +15,11 @@ class CustomerDeliveryProvider:
         m,q=self.query(org,customer_id,kind)
         return [view(r) for r in db.scalars(q.where(m.name.icontains(search,autoescape=True)).order_by(m.is_default.desc(),m.name,m.id).limit(50))]
 
+    def default(self,db,org,customer_id,kind):
+        m,q=self.query(org,customer_id,kind)
+        row=db.scalar(q.where(m.is_default.is_(True)).order_by(m.id).limit(1))
+        return view(row) if row else None
+
     def resolve(self,db,org,customer_id,kind,record_id):
         m,q=self.query(org,customer_id,kind)
         row=db.scalar(q.where(m.id==record_id))

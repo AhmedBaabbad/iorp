@@ -33,6 +33,11 @@ class WorkforceService:
             raise ValueError("Current organization does not exist.")
 
         payload = data.model_dump()
+        if 'phone' in payload:
+            from app.core.phones import normalize_phone
+            from fastapi import HTTPException
+            try:payload['phone']=normalize_phone(payload['phone'])
+            except ValueError as exc:raise HTTPException(422,'PHONE_INVALID') from exc
         self._validate_national_id(tenant.organization_id, payload)
         from app.core.interfaces.reference_lists import assert_reference_text
         assert_reference_text(self.db,tenant.organization_id,'workforce_skill',payload.get('primary_skill'))
@@ -77,6 +82,11 @@ class WorkforceService:
         from app.core.interfaces.reference_lists import assert_reference_text
         current=self.workforce.get_workforce_member_by_id(member_id,organization_id)
         if current is None:return None
+        if 'phone' in payload:
+            from app.core.phones import normalize_phone
+            from fastapi import HTTPException
+            try:payload['phone']=normalize_phone(payload['phone'])
+            except ValueError as exc:raise HTTPException(422,'PHONE_INVALID') from exc
         self._validate_national_id(organization_id, payload, member_id)
         assert_reference_text(self.db,organization_id,'workforce_skill',payload.get('primary_skill'),current.primary_skill)
 

@@ -61,6 +61,10 @@ def write(db,tenant,customer_id,kind,payload,record_id=None):
         if any(error['type']=='LOCATION_URL_INVALID' for error in exc.errors()):
             raise HTTPException(422,'LOCATION_URL_INVALID') from exc
         raise HTTPException(422,'DIRECTORY_DATA_INVALID') from exc
+    if kind=='contacts':
+        from app.core.phones import normalize_phone
+        try:data.phone=normalize_phone(data.phone)
+        except ValueError as exc:raise HTTPException(422,'PHONE_INVALID') from exc
     if kind=='sites':
         previous=db.scalar(select(CustomerSite).where(CustomerSite.organization_id==tenant.organization_id,
             CustomerSite.customer_id==customer_id,CustomerSite.id==record_id)) if record_id else None
@@ -74,8 +78,6 @@ def write(db,tenant,customer_id,kind,payload,record_id=None):
         data=SiteInput.model_validate(values)
     if kind=='sites' and data.city:
         from app.core.interfaces.reference_lists import unknown_list_values
-        previous=db.scalar(select(CustomerSite).where(CustomerSite.organization_id==tenant.organization_id,
-            CustomerSite.customer_id==customer_id,CustomerSite.id==record_id)) if record_id else None
         if unknown_list_values(db,tenant.organization_id,'city',[data.city],[previous.city] if previous else []):
             raise HTTPException(422,'LIST_VALUE_UNKNOWN')
     if kind=='sites' and data.country:
@@ -84,7 +86,8 @@ def write(db,tenant,customer_id,kind,payload,record_id=None):
             raise HTTPException(422,'LIST_VALUE_UNKNOWN')
     if kind=='sites' and data.contact_id:
         if not db.scalar(select(CustomerContact.id).where(CustomerContact.organization_id==tenant.organization_id,
-            CustomerContact.customer_id==customer_id,CustomerContact.id==data.contact_id,CustomerContact.active.is_(True))):
+            CustomerContact.customer_id==customer_id,CustomerContact.id==data.contact_id,
+            True if previous and data.contact_id==previous.contact_id else CustomerContact.active.is_(True))):
             raise HTTPException(422,'CONTACT_NOT_IN_CUSTOMER')
     return save(db,tenant,m,'customer_id',customer_id,data,record_id)
 

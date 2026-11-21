@@ -51,7 +51,7 @@ class Customer(Base):
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
     city_other: Mapped[str | None] = mapped_column(String(120), nullable=True)
     country: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # status is the operational record state; relationship_stage is business progression.
     # Keep them independent and never derive one from the other.

@@ -316,7 +316,7 @@ export function WorkforceMemberForm({ mode }: { mode: Mode }) {
                   style={sharedStyles.input}
                   value={values.phone}
                   onChange={(event) => updateField("phone", event.target.value)}
-                  maxLength={50}
+                  maxLength={30}
                   disabled={isSubmitting}
                 />
               </label>

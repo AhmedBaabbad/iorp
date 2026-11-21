@@ -22,7 +22,7 @@ class CustomerRecord:
 
 class CustomerContact(CustomerRecord,Base):
     __tablename__='commercial_customer_contacts'
-    phone:Mapped[str|None]=mapped_column(String(50))
+    phone:Mapped[str|None]=mapped_column(String(30))
     created_by:Mapped[UUID|None]=mapped_column(ForeignKey('foundation_users.id'),nullable=True)
     updated_by:Mapped[UUID|None]=mapped_column(ForeignKey('foundation_users.id'),nullable=True)
     email:Mapped[str|None]=mapped_column(String(255))

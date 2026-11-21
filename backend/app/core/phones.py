@@ -4,6 +4,16 @@ import re
 _DIGITS = {**{0x0660 + i: str(i) for i in range(10)}, **{0x06F0 + i: str(i) for i in range(10)}}
 
 
+def phone_search_terms(value: str) -> tuple[str, ...]:
+    """Search local/international prefixes without treating an incomplete search as a saved number."""
+    text = re.sub(r"[\s\-().]", "", value.strip().translate(_DIGITS))
+    if text.startswith('00'):
+        text = '+' + text[2:]
+    elif re.fullmatch(r'0\d{2,9}', text):
+        text = '+966' + text[1:]
+    return tuple(dict.fromkeys((value.strip(), text)))
+
+
 def normalize_phone(value: str | None) -> str | None:
     """A phone in international form; a Saudi local number ("05…", "011…") gets +966; Arabic digits are accepted.
     Empty gives None; anything else raises ValueError."""

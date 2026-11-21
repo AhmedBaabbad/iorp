@@ -1,0 +1,17 @@
+{
+  "reload": "إعادة التحميل",
+  "errors": {
+    "DIRECTORY_DUPLICATE": "اللوحة أو الاسم مسجل مسبقاً.",
+    "DRIVER_IDENTITY_EXISTS": "رقم الهوية مسجل لسائق آخر.",
+    "DRIVER_IDENTITY_REQUIRED": "رقم الهوية مطلوب للسائق الخارجي.",
+    "DRIVER_EMAIL_INVALID": "البريد الإلكتروني للسائق غير صالح.",
+    "DEFAULT_MUST_BE_ACTIVE": "يجب أن يكون السجل الافتراضي نشطاً.",
+    "CONTACT_NOT_IN_CUSTOMER": "اختر جهة اتصال نشطة تابعة لهذا العميل.",
+    "ACTIVE_WORKER_REQUIRED": "اختر موظفاً نشطاً للسائق الداخلي.",
+    "EXTERNAL_DRIVER_CANNOT_REFERENCE_EMPLOYEE": "لا يمكن ربط السائق الخارجي بموظف.",
+    "TRANSPORT_RECORD_UNAVAILABLE": "سجل النقل غير متاح أو غير نشط.",
+    "REFERENCE_VALUE_UNAVAILABLE": "القيمة المرجعية غير متاحة. اختر قيمة نشطة.",
+    "PHONE_INVALID": "رقم الهاتف غير صالح. أدخل رقماً محلياً صحيحاً أو رقماً دولياً.",
+    "DIRECTORY_CHANGED": "عدّل مستخدم آخر هذا السجل. أعد تحميله قبل الحفظ."
+  }
+}

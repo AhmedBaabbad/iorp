@@ -49,7 +49,7 @@ class Supplier(Base):
     status_changed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id"), nullable=True)
     supplies: Mapped[str | None] = mapped_column(String(500), nullable=True)  # what it supplies, in words
     contact_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)

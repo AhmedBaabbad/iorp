@@ -189,9 +189,15 @@ class ShipmentService:
 
     def _delivery_selection(self, shipment, values):
         from app.core.interfaces.customer_delivery import directory
-        contact_explicit='customer_contact_id' in values
+        contact_explicit='customer_contact_id' in values or (values.get('customer_id',shipment.customer_id)==shipment.customer_id and bool(shipment.customer_contact_id))
         customer_id=values.get('customer_id',shipment.customer_id)
         changed=customer_id!=shipment.customer_id
+        if customer_id and changed:
+            for key,kind in (('customer_contact_id','contacts'),('delivery_site_id','sites')):
+                if key not in values:
+                    default=directory().default(self.db,self.org,customer_id,kind)
+                    if default:values[key]=default['id']
+            contact_explicit=contact_explicit or bool(values.get('customer_contact_id'))
         for key in ('delivery_site_id','customer_contact_id'):
             if changed and key not in values:values[key]=None
         for key,kind,mapping in (
@@ -205,10 +211,16 @@ class ShipmentService:
             if selected!=getattr(shipment,key,None) or changed:
                 source=directory().resolve(self.db,self.org,customer_id,kind,selected)
                 values.update({target:source[field] for field,target in mapping.items()})
-                if kind=='sites' and source.get('contact_id') and not contact_explicit:
+                if kind=='contacts':
+                    try:values['consignee_phone']=rules.normalize_phone(values.get('consignee_phone'))
+                    except ShippingError:values['consignee_phone']=None
+                if kind=='sites' and source.get('contact_id') and not contact_explicit and not values.get('customer_contact_id'):
                     values['customer_contact_id']=source['contact_id']
             else:
                 values.update({target:getattr(shipment,target) for target in mapping.values()})
+                if kind=='contacts':
+                    try:values['consignee_phone']=rules.normalize_phone(values.get('consignee_phone'))
+                    except ShippingError:values['consignee_phone']=None
 
     def create(self, data) -> Shipment:
         values = data.model_dump(exclude={"lines"},exclude_unset=True)

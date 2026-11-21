@@ -2,13 +2,15 @@
 import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
 import { formatThickness, thicknessFields } from "@/lib/spec-value";
 import { customerDisplayName } from "@/lib/customer-name";
+import type { Option } from "@/features/reference-directory/RecordSelect";
+import { apiClient } from "@/lib/api-client";
 
 import { TransportSelection, DirectorySelect, type TransportValues } from "@/features/reference-directory/DirectorySelect";
 import { useLocale } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { UnitSelect } from "@/components/forms/UnitSelect";
 import { PageFrame } from "@/components/layout/page-frame";
@@ -46,13 +48,16 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
   const ar=locale==="ar";
   const [transport,setTransport]=useState<TransportValues>({});
   const location = useTranslations("common.location");
-  const cityName = useListName("city"), countryName = useListName("country");
+  const cityName = useListName("city", key => key), countryName = useListName("country");
   const [site,setSite]=useState<string|null>(null);
   const [contact,setContact]=useState<string|null>(null);
   const [method, setMethod] = useState<DeliveryMethod>("factory_delivery");
   const [date, setDate] = useState(todayIso());
   const [registered, setRegistered] = useState(true);
   const [customerId, setCustomerId] = useState("");
+  const defaultsCustomer = useRef("");
+  const contactChanged = useRef(false);
+  const siteChanged = useRef(false);
   const [query, setQuery] = useState("");
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [h, setH] = useState<Header>(EMPTY_HEADER);
@@ -67,11 +72,22 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  const selectSite = useCallback((id: string | null, row?: Option) => {
+    setSite(id);
+    setH(old => ({ ...old,
+      delivery_address: String(row?.address ?? ""),
+      delivery_city: String(row?.city_other || row?.city || ""),
+      delivery_country: String(row?.country ?? ""),
+      location_url: String(row?.location_url ?? ""),
+    }));
+  }, []);
+
   useEffect(() => {
     if (!shipmentId) return;
     let active = true;
     getShipment(shipmentId).then(x => {
       if (!active) return;
+      defaultsCustomer.current=x.customer_id??"";
       setTransport({driver_id:x.driver_id,vehicle_id:x.vehicle_id,carrier_id:x.carrier_id,driver_affiliation:x.driver_affiliation});setSite(x.delivery_site_id??null);setContact(x.customer_contact_id??null);
       setMethod(x.delivery_method); setDate(x.shipment_date); setRegistered(Boolean(x.customer_id)); setCustomerId(x.customer_id ?? "");
       setH(Object.fromEntries(Object.keys(EMPTY_HEADER).map(k => [k, (x[k as keyof Header] as string | null) ?? ""])) as Header);
@@ -105,6 +121,23 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
     }, 200);
     return () => { active = false; clearTimeout(timer); };
   }, [orderQuery]);
+
+  useEffect(() => {
+    if (!registered || !customerId) { defaultsCustomer.current = ""; return; }
+    if (defaultsCustomer.current === customerId) return;
+    defaultsCustomer.current = customerId;
+    let active = true;
+    const base = "/shipping/directory/customers/"+customerId;
+    Promise.all([apiClient<Option[]>(base+"/contacts"), apiClient<Option[]>(base+"/sites")]).then(([contacts, sites]) => {
+      if (!active) return;
+      const defaultContact = contacts.find(row => row.is_default && row.active !== false);
+      const defaultSite = sites.find(row => row.is_default && row.active !== false);
+      const siteContact = contacts.find(row => row.id === defaultSite?.contact_id && row.active !== false);
+      if (!contactChanged.current) setContact(old => old ?? defaultContact?.id ?? siteContact?.id ?? null);
+      if (!siteChanged.current && defaultSite) selectSite(defaultSite.id, defaultSite);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [registered, customerId, selectSite]);
 
   const chosen = useMemo(() => customers.find(c => c.id === customerId) ?? null, [customers, customerId]);
   const set = (field: keyof Header, value: string) => setH(old => ({ ...old, [field]: value }));
@@ -168,7 +201,7 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
             {registered ? <>
               <label className={s.field}>{t("searchCustomer")}<input value={query} onChange={e => setQuery(e.target.value)} placeholder={t("searchCustomerPlaceholder")} /></label>
               <label className={s.field}>{t("fields.customer")}
-                <select required value={customerId} onChange={e => {setCustomerId(e.target.value);setSite(null);setContact(null);setH(old=>({...old,customer_name:"",consignee_name:"",consignee_phone:"",consignee_email:"",delivery_address:"",delivery_country:"",delivery_city:"",location_url:""}));}}>
+                <select required value={customerId} onChange={e => {contactChanged.current=false;siteChanged.current=false;setCustomerId(e.target.value);setSite(null);setContact(null);setH(old=>({...old,customer_name:"",consignee_name:"",consignee_phone:"",consignee_email:"",delivery_address:"",delivery_country:"",delivery_city:"",location_url:""}));}}>
                   <option value="">{customers.length ? t("chooseCustomer") : t("noCustomers")}</option>
                   {customers.map(c => <option key={c.id} value={c.id}>{customerDisplayName(c, locale)}{c.customer_code ? ` — ${c.customer_code}` : ""}</option>)}
                 </select>
@@ -181,7 +214,7 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
 
         <section className={s.panel}>
           <h2 style={{ marginTop: 0 }}>{t("sections.recipient")}</h2>
-          {registered&&customerId&&<><DirectorySelect key={`site-${customerId}`} path={`/shipping/directory/customers/${customerId}/sites`} value={site} label={ar?"موقع التسليم المحفوظ":"Saved delivery site"} onChange={(id,row)=>{setSite(id||null);setContact(row?.contact_id??null);setH(old=>({...old,delivery_address:String(row?.address??""),delivery_city:String(row?.city_other||row?.city||""),delivery_country:String(row?.country??""),location_url:String(row?.location_url??"")}));}}/><DirectorySelect key={`contact-${customerId}`} path={`/shipping/directory/customers/${customerId}/contacts`} value={contact} label={ar?"جهة الاتصال المحفوظة":"Saved contact"} onChange={id=>setContact(id||null)}/></>}
+          {registered&&customerId&&<><DirectorySelect key={`site-${customerId}`} path={`/shipping/directory/customers/${customerId}/sites`} value={site} label={ar?"موقع التسليم المحفوظ":"Saved delivery site"} onChange={(id,row)=>{siteChanged.current=true;selectSite(id||null,row);setContact(old=>old||(contactChanged.current?null:row?.contact_id)||null);}}/><DirectorySelect key={`contact-${customerId}`} path={`/shipping/directory/customers/${customerId}/contacts`} value={contact} label={ar?"جهة الاتصال المحفوظة":"Saved contact"} onChange={id=>{contactChanged.current=true;setContact(id||null);}}/></>}
           <div className={s.grid}>
             {input("consignee_name", { disabled:!!contact, maxLength: 255, placeholder: t("recipientPlaceholder") })}
             {input("consignee_phone", { disabled:!!contact, maxLength: 30, dir: "ltr", inputMode: "tel", placeholder: "05xxxxxxxx" })}
