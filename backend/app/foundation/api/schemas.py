@@ -33,7 +33,7 @@ class OrganizationRead(BaseModel):
 class UserCreate(BaseModel):
     full_name: str = Field(min_length=1, max_length=255)
     email: NormalizedEmail
-    phone: str | None = Field(default=None, max_length=30)
+    phone: str | None = Field(default=None, max_length=50)
     password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
     status: UserStatus = UserStatus.ACTIVE
 
@@ -204,7 +204,7 @@ class UserProfileResponse(BaseModel):
 class UserProfileUpdate(BaseModel):
     timezone: str | None = Field(default=None, max_length=64)
     full_name: str | None = Field(default=None, min_length=1, max_length=255)
-    phone: str | None = Field(default=None, max_length=30)
+    phone: str | None = Field(default=None, max_length=50)
     preferred_locale: str | None = Field(default=None, max_length=10)
 
     model_config = ConfigDict(extra="forbid")
@@ -246,7 +246,7 @@ class AdminUserCreate(BaseModel):
     """SEC-003: no password — the new user receives an activation link and chooses their own."""
     full_name: str = Field(min_length=1, max_length=255)
     email: NormalizedEmail
-    phone: str | None = Field(default=None, max_length=30)
+    phone: str | None = Field(default=None, max_length=50)
     role_codes: list[str] = Field(default_factory=list)
     preferred_locale: Literal["ar", "en"] | None = None
 
@@ -255,7 +255,7 @@ class AdminUserUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     full_name: str | None = Field(default=None, min_length=1, max_length=255)
     email: NormalizedEmail | None = None
-    phone: str | None = Field(default=None, max_length=30)
+    phone: str | None = Field(default=None, max_length=50)
     preferred_locale: Literal["ar", "en"] | None = None
 
 class RoleRef(BaseModel):

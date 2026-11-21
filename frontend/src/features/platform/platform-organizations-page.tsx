@@ -260,7 +260,7 @@ function PlatformOrganizationsContent() {
   }
 
   const field = (label: string, value: string, onChange: (value: string) => void, type = "text", optional = false) => (
-    <label style={styles.field}><span style={styles.label}>{label}{optional && <span className={css.optional}> {t("console.optional")}</span>}</span><input style={styles.input} type={type} maxLength={type === "tel" ? 30 : undefined} value={value} onChange={(event) => onChange(event.target.value)} required={!optional} /></label>
+    <label style={styles.field}><span style={styles.label}>{label}{optional && <span className={css.optional}> {t("console.optional")}</span>}</span><input style={styles.input} type={type} maxLength={type === "tel" ? 50 : undefined} value={value} onChange={(event) => onChange(event.target.value)} required={!optional} /></label>
   );
 
   return <main className={css.page} dir={isRtl ? "rtl" : "ltr"}>

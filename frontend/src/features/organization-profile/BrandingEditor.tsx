@@ -58,7 +58,7 @@ export function BrandingEditor({ revision }: { revision?: string }) {
   return <section className={s.panel}><h2>{t('title')}</h2>
     <form onSubmit={e => { e.preventDefault(); void save(); }}><div className={s.grid}>{FIELDS.map(key => <label key={key} className={s.field}>{t(`fields.${key}`)}
       <input disabled={!canWrite || busy} type={key === 'primary_color' ? 'color' : key === 'email' ? 'email' : 'text'} dir={key.endsWith('_en') ? 'ltr' : key.endsWith('_ar') ? 'rtl' : undefined}
-          value={data[key] ?? (key === 'primary_color' ? DEFAULT_ACCENT : '')} maxLength={key === 'phone' ? 30 : key.includes('footer') ? 1000 : key.includes('address') ? 500 : 255}
+          value={data[key] ?? (key === 'primary_color' ? DEFAULT_ACCENT : '')} maxLength={key === 'phone' ? 60 : key.includes('footer') ? 1000 : key.includes('address') ? 500 : 255}
         pattern={PATTERNS[key]} inputMode={PATTERNS[key] ? 'numeric' : undefined} title={PATTERNS[key] ? t(`formats.${key}`) : undefined}
         onChange={e => { setSaved(false); setData(old => ({ ...old, [key]: e.target.value })); }} /></label>)}</div>
       <h3>{t('banks.title')}</h3>

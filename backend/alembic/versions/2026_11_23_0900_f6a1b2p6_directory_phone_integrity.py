@@ -23,15 +23,14 @@ FIELDS = [
     ('commercial_customers','phone',50), ('commercial_customer_contacts','phone',50),
     ('workforce_members','phone',50), ('shipping_drivers','phone',30),
     ('shipping_carriers','phone',30), ('procurement_suppliers','phone',20),
-    ('procurement_supplier_contacts','phone',30), ('foundation_users','phone',50),
-    ('foundation_organization_branding','phone',60),
+    ('procurement_supplier_contacts','phone',30),
     ('shipping_shipments','driver_phone',20), ('shipping_shipments','consignee_phone',20),
 ]
 
 def upgrade():
     bind = op.get_bind()
     for table_name, column, old_length in FIELDS:
-        key = 'organization_id' if table_name == 'foundation_organization_branding' else 'id'
+        key = 'id'
         table = sa.table(table_name, sa.column(key,sa.Uuid()), sa.column(column,sa.String()))
         oversized = False
         for record_id, value in bind.execute(sa.select(table.c[key],table.c[column])).all():

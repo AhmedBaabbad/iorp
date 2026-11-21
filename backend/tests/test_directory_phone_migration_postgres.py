@@ -22,9 +22,17 @@ def test_phone_migration_preserves_invalid_values_and_logs_ids_only(caplog):
         with isolated.begin() as c, Operations.context(MigrationContext.configure(c)):
             grouped={}
             for table,col,size in migration.FIELDS:grouped.setdefault(table,[]).append((col,size))
+            assert 'foundation_users' not in grouped
+            assert 'foundation_organization_branding' not in grouped
+            # These independent fields may contain multiple numbers; neither data nor capacity may change.
+            c.execute(sa.text('CREATE TABLE foundation_users (id uuid PRIMARY KEY, phone varchar(50))'))
+            c.execute(sa.text('CREATE TABLE foundation_organization_branding (organization_id uuid PRIMARY KEY, phone varchar(60))'))
+            excluded_phone='0551234567 / 0111234567'
+            c.execute(sa.text('INSERT INTO foundation_users VALUES (:id,:phone)'),{'id':uuid4(),'phone':excluded_phone})
+            c.execute(sa.text('INSERT INTO foundation_organization_branding VALUES (:id,:phone)'),{'id':uuid4(),'phone':excluded_phone})
             for name,columns in grouped.items():
                 fields=', '.join(f'{col} varchar({size})' for col,size in columns)
-                key='organization_id' if name=='foundation_organization_branding' else 'id'
+                key='id'
                 c.execute(sa.text(f'CREATE TABLE {name} ({key} uuid PRIMARY KEY, {fields})'))
                 if name not in ('commercial_customer_contacts','workforce_members','commercial_customers'):
                     names=', '.join(col for col,_ in columns)
@@ -49,6 +57,10 @@ def test_phone_migration_preserves_invalid_values_and_logs_ids_only(caplog):
             migration.downgrade()
             assert c.scalar(sa.text('SELECT phone FROM commercial_customer_contacts'))=='+966551234567'
             migration.upgrade()
+            for name,size in [('foundation_users',50),('foundation_organization_branding',60)]:
+                assert c.scalar(sa.text(f'SELECT phone FROM {name}'))==excluded_phone
+                columns={column['name']:column for column in sa.inspect(c).get_columns(name)}
+                assert columns['phone']['type'].length==size
     finally:
         isolated.dispose()
         with engine.begin() as c:c.execute(sa.text(f'DROP SCHEMA "{schema}" CASCADE'))

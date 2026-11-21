@@ -93,7 +93,7 @@ class User(Base):
     )
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     preferred_locale: Mapped[str | None] = mapped_column(String(10), nullable=True, default=None)
     timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -60,7 +60,7 @@ describe("shipment form", () => {
       { id: "inactive", name: "Inactive default", is_default: true, active: false },
     ];
     const sites = [
-      { id: "default-site", name: "Default site", address: "Road", is_default: true, active: true, contact_id: "site-contact" },
+      { id: "default-site", name: "Default site", address: "Default road address", city: "ae_other", city_other: "Custom city", country: "ae", location_url: "https://maps.example.test/default", is_default: true, active: true, contact_id: "site-contact" },
       { id: "other-site", name: "Other site", address: "Other road", active: true, contact_id: "site-contact" },
     ];
     api.apiClient.mockImplementation((path: string, options?: { method?: string }) => Promise.resolve(
@@ -75,6 +75,9 @@ describe("shipment form", () => {
     await screen.findByRole("option", { name: "Default receiver" });
     expect(contact.value).toBe("default-contact");
     expect(site.value).toBe("default-site");
+    expect((screen.getByLabelText("Delivery address") as HTMLTextAreaElement).value).toBe("Default road address");
+    expect((screen.getByLabelText("City") as HTMLInputElement).value).toBe("Custom city");
+    expect((screen.getByLabelText("Location link") as HTMLInputElement).value).toBe("https://maps.example.test/default");
     fireEvent.change(contact, { target: { value: "manual-contact" } });
     fireEvent.change(site, { target: { value: "other-site" } });
     expect(contact.value).toBe("manual-contact");
