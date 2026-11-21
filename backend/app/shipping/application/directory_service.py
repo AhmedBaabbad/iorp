@@ -9,10 +9,10 @@ MODELS = {'drivers': Driver, 'vehicles': Vehicle, 'carriers': Carrier}
 PERSONAL = ('name', 'phone', 'email', 'identity_no')
 
 
-def view(db, org, row):
+def view(db, org, row, members=None):
     result = {c.name: getattr(row, c.name) for c in row.__table__.columns}
     if isinstance(row, Driver) and row.affiliation == 'internal':
-        member = workforce().member(db, org, row.workforce_member_id)
+        member = members.get(row.workforce_member_id) if members is not None else workforce().member(db, org, row.workforce_member_id)
         result.update({key: member.get(key) if member else ('—' if key == 'name' else None) for key in PERSONAL})
     return result
 
@@ -66,6 +66,10 @@ class TransportProvider:
 
 
 def validate(db, org, kind, values, previous=None):
+    if kind == 'carriers' or (kind == 'drivers' and values.get('affiliation') == 'external'):
+        from app.core.phones import normalize_phone
+        try:values['phone'] = normalize_phone(values.get('phone'))
+        except ValueError as exc:raise HTTPException(422, 'PHONE_INVALID') from exc
     if values.get('carrier_id'):
         query = select(Carrier.id).where(Carrier.organization_id == org, Carrier.id == values['carrier_id'])
         if values.get('active', True):

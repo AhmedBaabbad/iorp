@@ -36,7 +36,7 @@ class OrganizationBranding(Base):
     city: Mapped[str | None] = mapped_column(String(100))
     country: Mapped[str | None] = mapped_column(String(100))
     postal_code: Mapped[str | None] = mapped_column(String(30))
-    phone: Mapped[str | None] = mapped_column(String(60))
+    phone: Mapped[str | None] = mapped_column(String(30))
     email: Mapped[str | None] = mapped_column(String(255))
     website: Mapped[str | None] = mapped_column(String(255))
     report_footer_note_ar: Mapped[str | None] = mapped_column(Text)

@@ -52,6 +52,36 @@ function shipment(over: Partial<Shipment> = {}): Shipment {
 }
 
 describe("shipment form", () => {
+  it("selects active defaults and keeps the chosen contact when a site changes or clears", async () => {
+    const contacts = [
+      { id: "default-contact", name: "Default receiver", is_default: true, active: true },
+      { id: "manual-contact", name: "Chosen receiver", active: true },
+      { id: "site-contact", name: "Site receiver", active: true },
+      { id: "inactive", name: "Inactive default", is_default: true, active: false },
+    ];
+    const sites = [
+      { id: "default-site", name: "Default site", address: "Road", is_default: true, active: true, contact_id: "site-contact" },
+      { id: "other-site", name: "Other site", address: "Other road", active: true, contact_id: "site-contact" },
+    ];
+    api.apiClient.mockImplementation((path: string, options?: { method?: string }) => Promise.resolve(
+      options?.method === "POST" ? shipment() : path.includes("/customers/c1/contacts") ? contacts
+        : path.includes("/customers/c1/sites") ? sites : path.includes("/lookups/customers")
+          ? [{ id: "c1", name: "Customer", customer_code: "C1" }] : []));
+    ui(<ShipmentForm />);
+    await screen.findByRole("option", { name: "Customer — C1" });
+    fireEvent.change(screen.getByLabelText("Customer", { selector: "select" }), { target: { value: "c1" } });
+    const contact = await screen.findByLabelText("Saved contact", { selector: "select" }) as HTMLSelectElement;
+    const site = screen.getByLabelText("Saved delivery site", { selector: "select" }) as HTMLSelectElement;
+    await screen.findByRole("option", { name: "Default receiver" });
+    expect(contact.value).toBe("default-contact");
+    expect(site.value).toBe("default-site");
+    fireEvent.change(contact, { target: { value: "manual-contact" } });
+    fireEvent.change(site, { target: { value: "other-site" } });
+    expect(contact.value).toBe("manual-contact");
+    fireEvent.change(site, { target: { value: "" } });
+    expect(contact.value).toBe("manual-contact");
+  });
+
   it("creates a delivery note for an unregistered, named customer with its transport and items", async () => {
     api.apiClient.mockImplementation((path: string, o?: { method?: string }) => Promise.resolve(o?.method === "POST" ? shipment() : []));
     ui(<ShipmentForm />);

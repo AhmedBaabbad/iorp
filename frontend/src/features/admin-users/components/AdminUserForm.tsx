@@ -60,7 +60,7 @@ export function AdminUserForm() {
       <form onSubmit={(e) => { e.preventDefault(); void submit(); }} style={{ display: "grid", gap: "16px", maxWidth: "520px" }}>
         <label>{t("fields.fullName")}<input style={sharedStyles.input} value={fullName} onChange={(e) => setFullName(e.target.value)} required /></label>
         <label>{t("fields.email")}<input style={sharedStyles.input} type="email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError(null); }} required />{emailError ? <span style={{ color: "var(--danger)", fontSize: "13px" }} role="alert">{emailError}</span> : <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>{t("errors.emailGloballyUnique")}</span>}</label>
-        <label>{t("fields.phone")}<input style={sharedStyles.input} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></label>
+        <label>{t("fields.phone")}<input maxLength={30} style={sharedStyles.input} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></label>
         <label>{t("fields.preferredLocale")}<select style={sharedStyles.input} value={preferredLocale} onChange={event => setPreferredLocale(event.target.value as "ar" | "en")}><option value="ar">العربية</option><option value="en">English</option></select></label>
         <div style={sharedStyles.state} role="note">{t("invitation.note")}</div>
           <fieldset><legend>{t("fields.roles")}</legend>{roles.map((role) => <label key={role.id} style={{ display: "block" }}><input type="checkbox" checked={roleCodes.includes(role.code)} onChange={(e) => setRoleCodes(e.target.checked ? [...roleCodes, role.code] : roleCodes.filter((code) => code !== role.code))} /> {role.name}</label>)}</fieldset>

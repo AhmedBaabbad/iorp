@@ -113,7 +113,7 @@ export function MyProfilePage() {
                   <label><span>{t("fields.fullName")}</span><input value={fullName} onChange={(event) => setFullName(event.target.value)} disabled={user.is_organization_root} required />{user.is_organization_root ? <small>{t("rootNameLocked")}</small> : null}</label>
                   <label><span>{t("fields.email")}</span><input value={user.email} disabled /><small>{t("emailReadOnly")}</small></label>
                   <label><span>{t("timezone")}</span><input value={timezone} onChange={event => setTimezone(event.target.value)} placeholder="Asia/Riyadh" maxLength={64}/></label>
-                  <label><span>{t("fields.phone")}</span><input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder={t("phonePlaceholder")} /></label>
+                  <label><span>{t("fields.phone")}</span><input maxLength={30} type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder={t("phonePlaceholder")} /></label>
                   <label><span>{t("fields.preferredLocale")}</span><select value={preferredLocale} onChange={(event) => setPreferredLocale(event.target.value as "" | "ar" | "en")}><option value="">{t("localeOptions.default")}</option><option value="ar">{t("localeOptions.ar")}</option><option value="en">{t("localeOptions.en")}</option></select><small>{t("localeChangeNote")}</small></label>
                 </div>
                 {error ? <div className={`${css.alert} ${css.alertError}`}>{t("updateError")}</div> : null}

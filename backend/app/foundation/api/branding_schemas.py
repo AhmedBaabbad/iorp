@@ -39,7 +39,7 @@ class BrandingUpdate(BaseModel):
     city: str | None = Field(None, max_length=100)
     country: str | None = Field(None, max_length=100)
     postal_code: str | None = Field(None, max_length=30)
-    phone: str | None = Field(None, max_length=60)
+    phone: str | None = Field(None, max_length=30)
     email: EmailStr | None = None
     website: str | None = Field(None, max_length=255)
 

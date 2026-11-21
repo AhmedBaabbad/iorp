@@ -42,7 +42,7 @@ class PlatformRootInput(AccountInput):
 
 class OrganizationAdminInput(AccountInput):
     password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
-    phone: str | None = Field(default=None, max_length=50)
+    phone: str | None = Field(default=None, max_length=30)
 
 
 class OrganizationInput(BaseModel):
@@ -174,7 +174,7 @@ class OrganizationRootInvite(BaseModel):
     """SEC-003: the organization's root, without a password: they receive an activation link and choose their own."""
     full_name: str = Field(min_length=1, max_length=255)
     email: NormalizedEmail
-    phone: str | None = Field(default=None, max_length=50)
+    phone: str | None = Field(default=None, max_length=30)
 
 
 class CreatePlatformOrganizationRequest(BaseModel):

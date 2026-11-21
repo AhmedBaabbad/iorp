@@ -11,7 +11,7 @@ class WorkforceMemberCreate(BaseModel):
     worker_type: WorkerType
     employment_type: EmploymentType
     display_name: str | None = Field(default=None, max_length=255)
-    phone: str | None = Field(default=None, max_length=50)
+    phone: str | None = Field(default=None, max_length=30)
     email: str | None = Field(default=None, max_length=255)
     national_id: str | None = Field(default=None, max_length=40)
     primary_skill: str | None = Field(default=None, max_length=255)
@@ -23,7 +23,7 @@ class WorkforceMemberCreate(BaseModel):
 class WorkforceMemberUpdate(BaseModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=255)
     display_name: str | None = Field(default=None, max_length=255)
-    phone: str | None = Field(default=None, max_length=50)
+    phone: str | None = Field(default=None, max_length=30)
     email: str | None = Field(default=None, max_length=255)
     worker_type: WorkerType | None = None
     employment_type: EmploymentType | None = None

@@ -30,15 +30,24 @@ ListKey = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{1,59}$")]
 
 
 class CustomerContactInput(ContactInput):
-    phone: str | None = Field(None, max_length=50)
+    phone: str | None = Field(None, max_length=30)
 
 
 class PrimaryContactInput(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     name: str = Field(min_length=1, max_length=200)
-    phone: str | None = Field(default=None, max_length=50)
+    phone: str | None = Field(default=None, max_length=30)
     email: EmailStr | None = None
     role: str | None = Field(default=None, max_length=120)
+
+    @field_validator('phone')
+    @classmethod
+    def normalize_contact_phone(cls, value):
+        from app.core.phones import normalize_phone
+        try:
+            return normalize_phone(value)
+        except ValueError as exc:
+            raise PydanticCustomError('PHONE_INVALID', 'PHONE_INVALID') from exc
 
     @model_validator(mode="before")
     @classmethod
