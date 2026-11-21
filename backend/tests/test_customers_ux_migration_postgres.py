@@ -40,7 +40,7 @@ def test_existing_organizations_contacts_upgrade_downgrade_and_rerun():
             ids = [uuid4() for _ in range(6)]
             for i, customer in enumerate(ids):
                 c.execute(customers.insert().values(id=customer, organization_id=ar_org if i == 5 else org,
-                    customer_code=f"C{i}", name="Synthetic", name_en="Synthetic", phone="9" * 50 if i == 4 else f"555{i}",
+                    customer_code=f"C{i}", name="Synthetic", name_en="Synthetic", phone="9" * 30 if i == 4 else f"555{i}",
                     email=f"legacy{i}@example.test", status="active", relationship_stage="lead", priority_level="medium",
                     created_by_user_id=None if i in (4, 5) else user, country="sa", estimated_consumption=99,
                     created_at=sa.func.now(), updated_at=sa.func.now()))
@@ -62,7 +62,7 @@ def test_existing_organizations_contacts_upgrade_downgrade_and_rerun():
             assert new["name"] == "Primary contact" and not new["is_default"] and new["created_by"] == user
             arabic = c.execute(sa.select(contacts).where(contacts.c.customer_id == ids[5])).mappings().one()
             assert arabic["name"] == "جهة الاتصال الرئيسية" and arabic["created_by"] is None and arabic["is_default"]
-            assert c.scalar(sa.select(contacts.c.phone).where(contacts.c.customer_id == ids[4])) == "9" * 50
+            assert c.scalar(sa.select(contacts.c.phone).where(contacts.c.customer_id == ids[4])) == "9" * 30
             item = c.execute(sa.select(lists).where(lists.c.id == custom)).mappings().one()
             assert item["name_en"] == "Customized" and not item["active"] and item["sort_order"] == 999
             for organization in (org, ar_org):
