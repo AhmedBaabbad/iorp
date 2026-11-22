@@ -3,6 +3,7 @@ import { Dialog } from "@/components/ui/Dialog";
 
 import {useUnitLabel} from "@/components/UnitLabel";
 import Link from "next/link";
+import {QualityRejectionForm} from "@/features/quality-rejections/components/QualityRejectionForm";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 
@@ -50,6 +51,7 @@ export function QualityCheckDetail({ qualityCheckId }: { qualityCheckId: string 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [dialog, setDialog] = useState<"close" | "decision" | "lot" | "cancel" | null>(null);
+  const [creatingRejection,setCreatingRejection]=useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -118,7 +120,7 @@ export function QualityCheckDetail({ qualityCheckId }: { qualityCheckId: string 
     {canReadRejections && closed && thousandths(check.qty_rejected) > 0 && <section className={s.panel} aria-label={t("rejections.title")}>
       <div className={s.actions} style={{ justifyContent: "space-between" }}>
         <h2 style={{ margin: 0 }}>{t("rejections.title")}</h2>
-        {canCreateRejection && <Link href={`/quality-rejections/new?check=${check.id}`} className={s.button}>{t("rejections.add")}</Link>}
+        {canCreateRejection && <button type="button" className={s.button} onClick={()=>setCreatingRejection(true)}>{t("rejections.add")}</button>}
       </div>
       <p className={s.muted}>{t("rejections.hint")}</p>
       {check.rejections.length === 0 ? <p className={s.muted} style={{ margin: 0 }}>{t("rejections.empty")}</p> : <div className={s.tableWrap}><table className={s.table}>
@@ -142,6 +144,7 @@ export function QualityCheckDetail({ qualityCheckId }: { qualityCheckId: string 
       onConfirm={body => void act(() => decideLot(check.id, body))} />}
     {dialog === "cancel" && <ReasonDialog title={t("cancelDialog.title")} description={t("cancelDialog.text")} confirmLabel={t("actions.cancelInspection")}
       busy={busy} danger onClose={() => setDialog(null)} onConfirm={reason => void act(() => cancelQualityCheck(check.id, reason))} />}
+    {creatingRejection&&<QualityRejectionForm initialCheckId={check.id} onClose={()=>setCreatingRejection(false)} onSaved={()=>void load()}/>}
       <Signatures resourceType="quality_check" id={check.id} version={check.status} />
 </PageFrame>;
 }

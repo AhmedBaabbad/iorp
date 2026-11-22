@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
+import {EditorSurface} from "@/components/forms/EditorSurface";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { PageFrame } from "@/components/layout/page-frame";
+
 import s from "@/features/production-demands/demands.module.css";
 import { getInspectableOrders, getQualityCheckById } from "@/features/quality-checks/api/quality-checks-api";
 import { QUANTITY, qualityErrorMessage, todayIso } from "@/features/quality-checks/components/quality-errors";
@@ -14,22 +14,20 @@ import { useFormatter } from "@/hooks/useFormatter";
 import { createQualityRejection, getQualityRejectionById, updateQualityRejection } from "../api/quality-rejections-api";
 import { REJECTION_REASONS, type QualityRejectionData, type RejectionReason } from "../types";
 import { RejectionDefectsPicker, type PickedDefect } from "./RejectionDefectsPicker";
-import { useClassificationChoices, useClassificationName } from "@/features/masterdata";
+import { useClassificationChoices } from "@/features/masterdata";
 
 type Values = { order: string; item: string; date: string; reason: RejectionReason; quantity: string; notes: string };
 
 // A rejection not opened by closing a check: more of a closed check's rejected lot (?check=) or a running order's;
 // or edits one still awaiting its decision (rejectionId).
-export function QualityRejectionForm({ rejectionId }: { rejectionId?: string }) {
+function useQualityRejectionEditor({rejectionId,initialCheckId}:{rejectionId?:string;initialCheckId?:string}){
   const t = useTranslations("quality.qualityRejections");
   const errors = useTranslations("quality.errors");
 
   const orderStatus = useTranslations("enums.productionOrder.status");
-  const messages = useTranslations("messages");
   const fmt = useFormatter();
-  const router = useRouter();
   const params = useSearchParams();
-  const checkId = params.get("check") ?? "";
+  const checkId = initialCheckId ?? params.get("check") ?? "";
   const editing = Boolean(rejectionId);
   const [values, setValues] = useState<Values>({ order: params.get("order") ?? "", item: "", date: todayIso(), reason: "failed_quality_check", quantity: "", notes: "" });
   const reasonChoices = useClassificationChoices("rejection_reason", REJECTION_REASONS, "qualityRejection", "rejectionReason", values.reason);
@@ -71,9 +69,8 @@ export function QualityRejectionForm({ rejectionId }: { rejectionId?: string }) 
     && affectedOk);
   const set = <K extends keyof Values>(field: K, value: Values[K]) => setValues(old => ({ ...old, [field]: value, ...(field === "order" ? { item: "" } : {}) }));
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!valid || busy || locked) return;
+  async function save() {
+    if (!valid || busy || locked) return null;
     setBusy(true); setError("");
     const defects = inspection ? { defects: picked.map(p => ({ quality_defect_id: p.quality_defect_id, affected_quantity: p.affected_quantity || null })) } : {};
     const body = { rejection_date: values.date, rejection_reason: values.reason, quantity_rejected: values.quantity, rejection_notes: values.notes.trim(), ...defects };
@@ -81,16 +78,27 @@ export function QualityRejectionForm({ rejectionId }: { rejectionId?: string }) 
       const saved = rejectionId ? await updateQualityRejection(rejectionId, body)
         : await createQualityRejection({ ...body, ...(checkId ? { quality_check_id: checkId }
           : { production_order_id: values.order, production_order_item_id: values.item || null }) });
-      router.push(`/quality-rejections/${saved.id}`);
-    } catch (e) { setError(qualityErrorMessage(e, errors)); setBusy(false); }
+      setBusy(false);return saved;
+    } catch (e) { setError(qualityErrorMessage(e, errors)); setBusy(false); return null; }
   }
 
   const back = rejectionId ? `/quality-rejections/${rejectionId}` : checkId ? `/quality-checks/${checkId}` : "/quality-rejections";
   const source = existing ? (existing.inspection_code ?? existing.order_number ?? "—") : check?.inspection_code;
-  return <PageFrame title={editing ? t("editTitle") : t("createTitle")} subtitle={editing ? existing?.rejection_code : t("createSubtitle")}
-    action={<Link href={back} className={s.button}>{t("actions.back")}</Link>}>
-    {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form className={s.panel} onSubmit={submit} aria-label={editing ? t("editTitle") : t("createTitle")}>
-      {locked && <p role="status" className={s.error}>{t("hints.locked")}</p>}
+  return {t,orderStatus,busy,locked,values,set,source,orders,order,fmt,unit,check,inspection,picked,setPicked,affectedOk,editing,reasonChoices,rejectionId,initialCheckId,existing,loading,error,valid,save,back};
+}
+export function QualityRejectionForm({rejectionId,initialCheckId,onSaved,onClose}:{rejectionId?:string;initialCheckId?:string;onSaved?:(record:QualityRejectionData)=>void;onClose?:()=>void}){
+  const editor=useQualityRejectionEditor({rejectionId,initialCheckId}),router=useRouter();
+  const {t,editing,existing,back,loading,busy,locked,valid,error}=editor;
+  return <EditorSurface title={editing?t("editTitle"):t("createTitle")} subtitle={editing?existing?.rejection_code:t("createSubtitle")}
+    back={back} backLabel={t("actions.back")} cancelLabel={t("actions.cancel")} saveLabel={editing?t("actions.save"):t("createButton")}
+    loading={loading} busy={busy} disabled={!valid||locked} error={error} onClose={onClose}
+    onSave={async()=>{const saved=await editor.save();if(!saved)return false;if(onSaved)onSaved(saved);else router.push(`/quality-rejections/${saved.id}`);return true;}}>
+    <QualityRejectionFields editor={editor}/>
+  </EditorSurface>;
+}
+export function QualityRejectionFields({editor}:{editor:ReturnType<typeof useQualityRejectionEditor>}){
+  const {t,orderStatus,busy,locked,values,set,source,orders,order,fmt,unit,check,inspection,picked,setPicked,affectedOk,editing,reasonChoices}=editor;
+  return <>      {locked && <p role="status" className={s.error}>{t("hints.locked")}</p>}
       <div className={s.grid}>
         {source ? <label className={s.field}>{t("fields.source")}<input readOnly value={source} /></label> : <>
           <label className={s.field}>{t("fields.productionOrder")}
@@ -123,11 +131,5 @@ export function QualityRejectionForm({ rejectionId }: { rejectionId?: string }) 
       <label className={s.field}>{t("fields.rejectionNotes")}
         <textarea required maxLength={2000} value={values.notes} placeholder={t("placeholders.rejectionNotes")} disabled={busy || locked} onChange={e => set("notes", e.target.value)} />
       </label>
-      {error && <p role="alert" className={s.error}>{error}</p>}
-      <div className={s.actions} style={{ marginTop: 16 }}>
-        <button type="submit" className={`${s.button} ${s.primary}`} disabled={!valid || busy || locked}>{editing ? t("actions.save") : t("createButton")}</button>
-        <Link href={back} className={s.button}>{t("actions.cancel")}</Link>
-      </div>
-    </form>}
-  </PageFrame>;
+</>;
 }

@@ -1,5 +1,5 @@
 // QUAL-001: inspections close with balanced quantities, rejections need a final decision, and both keep a production order from closing.
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,6 +22,7 @@ import { QualityCheckDetail } from "@/features/quality-checks/components/Quality
 import { QualityChecksList } from "@/features/quality-checks/components/QualityChecksList";
 import { QualityRejectionDetail } from "@/features/quality-rejections/components/QualityRejectionDetail";
 import { OrderStatusPanel } from "@/features/production-orders/components/OrderStatusPanel";
+import { OrderQualitySection } from "@/features/order-quality/OrderQualitySection";
 import type { ProductionOrderData } from "@/features/production-orders/types";
 import { Q, QUALITY_REPORT } from "@/lib/quality-permissions";
 import { ReportForm } from "@/features/reports/ReportForm";
@@ -44,6 +45,42 @@ afterEach(cleanup);
 const ui = (node: ReactNode, locale: "en" | "ar" = "en") =>
   render(<NextIntlClientProvider locale={locale} messages={locale === "en" ? en : ar} timeZone="UTC">{node}</NextIntlClientProvider>);
 const posted = (path: string) => api.apiClient.mock.calls.find(([p, o]) => p === path && o?.method === "POST")?.[1]?.body;
+
+it("creates a check in its order's dialog and refreshes the section without navigation",async()=>{
+  nav.push.mockReset();
+  api.apiClient.mockImplementation((path:string,options?:{method?:string})=>Promise.resolve(options?.method==='POST'?check()
+    :path.includes('/lookups/orders')?[{id:'po1',number:'PO-1',status:'in_progress',product_type:'film',unit:'kg',items:[]}]
+    :{items:[],total:0,page:1,pages:0,page_size:1}));
+  ui(<OrderQualitySection order={{id:'po1',status:'in_progress',production_order_number:'PO-1'}}/>);
+  fireEvent.click(screen.getByRole('button',{name:'New check for this order'}));
+  const dialog=await screen.findByRole('dialog');
+  expect((within(dialog).getByRole('combobox',{name:'Production order'}) as HTMLSelectElement).disabled).toBe(true);
+  fireEvent.click(within(dialog).getByRole('button',{name:'Create check'}));
+  await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+  expect(posted('/quality/quality-checks')).toMatchObject({production_order_id:'po1'});
+  expect(api.apiClient.mock.calls.some(([path])=>String(path).includes('/lookups/orders?q=PO-1'))).toBe(true);
+  await waitFor(()=>expect(api.apiClient.mock.calls.filter(([path])=>String(path).startsWith('/quality/quality-checks?')).length).toBe(6));
+  expect(nav.push).not.toHaveBeenCalled();
+});
+
+it("records a rejection in the check dialog and updates its list without navigation",async()=>{
+  nav.push.mockReset();let saved=false;
+  const base=check({status:'closed',result:'rejected',qty_rejected:'10.000',actions:[]});
+  api.apiClient.mockImplementation((path:string,options?:{method?:string})=>{
+    if(path==='/quality/quality-rejections'&&options?.method==='POST'){saved=true;return Promise.resolve(rejection());}
+    return Promise.resolve(path==='/quality/quality-checks/c1'?{...base,rejections:saved?[rejection({rejection_code:'QR-INLINE'})]:[]}:[]);
+  });
+  ui(<QualityCheckDetail qualityCheckId="c1"/>);
+  fireEvent.click(await screen.findByRole('button',{name:'Record another rejection'}));
+  const dialog=await screen.findByRole('dialog',{name:'Record a rejection'});
+  await within(dialog).findByLabelText('Source');
+  fireEvent.change(within(dialog).getByLabelText('Rejected quantity (kg)'),{target:{value:'2'}});
+  fireEvent.change(within(dialog).getByLabelText('Reason details'),{target:{value:'Retained samples failed'}});
+  fireEvent.click(within(dialog).getByRole('button',{name:'Record rejection'}));
+  expect(await screen.findByRole('link',{name:'QR-INLINE'})).toBeTruthy();
+  expect(posted('/quality/quality-rejections')).toMatchObject({quality_check_id:'c1',quantity_rejected:'2'});
+  expect(nav.push).not.toHaveBeenCalled();
+});
 
 function check(over: Partial<QualityCheckData> = {}): QualityCheckData {
   return { id: "c1", inspection_code: "QI-2026-0001", check_type: "finished_product_inspection", status: "under_inspection", result: null,

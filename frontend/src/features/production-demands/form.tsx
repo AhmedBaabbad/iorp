@@ -1,4 +1,5 @@
 "use client";
+import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
 import { numericSpecOrText, formatSpecValue } from "@/lib/spec-value";
 import { customerDisplayName } from "@/lib/customer-name";
@@ -65,6 +66,7 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
       update(row.key, { specText: JSON.stringify(specs, null, 2) });
     } catch { setError("invalid_specs"); }
   }
+  const unsaved=useUnsavedFormChanges({customerId,requestDate,delivery,priority,notes,rows},!loading);
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setNotice("");
     const ready = (event.nativeEvent as SubmitEvent).submitter?.getAttribute("value") === "ready";
@@ -80,7 +82,7 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
         }
         const d = await demandsApi.saveHeader(savedId, { request_date: requestDate, requested_delivery_date: delivery || null, priority, notes: notes || null });
         if (ready && d.status === "draft") await demandsApi.status(d.id, "ready_for_planning");
-        router.push(`/production/demands/${d.id}`);
+        unsaved.markSaved(); router.push(`/production/demands/${d.id}`);
       } catch (e) { setError(errorKey(e)); setBusy(false); }
       return;
     }
@@ -101,17 +103,17 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
         try { await demandsApi.status(d.id, "ready_for_planning"); }
         catch (e) { setNotice(t("savedDraftReadyFailed")); setError(errorKey(e)); return; }
       }
-      router.push(`/production/demands/${d.id}`);
+      unsaved.markSaved(); router.push(`/production/demands/${d.id}`);
     } catch (e) { setError(errorKey(e)); } finally { setBusy(false); }
   }
   const customerOptions = selectedCustomer && !customers.some(c => c.id === selectedCustomer.id) ? [selectedCustomer, ...customers] : customers;
   const editable = ["draft", "ready_for_planning"].includes(status);
   return <PageFrame title={id ? t("editTitle") : t("createTitle")} subtitle={t("listSubtitle")}>
     <div className={s.toolbar}><Link href="/production/demands" className={s.button}>{t("backToList")}</Link>
-      {onBack && <button type="button" className={s.linkButton} onClick={onBack}>{t("fromSalesOrder.fromOrderInstead")}</button>}</div>
+      {onBack && <button type="button" className={s.linkButton} onClick={()=>unsaved.requestNavigation(onBack)}>{t("fromSalesOrder.fromOrderInstead")}</button>}</div>
     <ErrorMessage code={error} />
     {notice && <p className={s.success} role="status">{notice}</p>}
-    {loading ? <p>{t("loading")}</p> : !editable ? <ErrorMessage code="demand_not_editable" /> : <form onSubmit={save}>
+    {loading ? <p>{t("loading")}</p> : !editable ? <ErrorMessage code="demand_not_editable" /> : <form onKeyDownCapture={unsaved.onKeyboardInteraction} onChangeCapture={unsaved.onInteraction} onClickCapture={unsaved.onInteraction} onSubmit={save}>{unsaved.confirmation}
       <fieldset disabled={busy} className={s.panel}><legend>{t("details")}</legend><div className={s.grid}>
         <label className={s.field}>{t("searchCustomer")}<input disabled={status !== "draft"} value={search} onChange={e => setSearch(e.target.value)} /></label>
         <label className={s.field}>{t("customer")}<select required disabled={status !== "draft" || !!salesOrder} value={customerId} onChange={e => { setCustomer(e.target.value); setSelectedCustomer(customers.find(c => c.id === e.target.value) ?? null); }}><option value="">{t("selectCustomer")}</option>{customerOptions.map(c => <option key={c.id} value={c.id}>{c.code} · {customerDisplayName(c, locale)}</option>)}</select></label>

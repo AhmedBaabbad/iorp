@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import {WasteRecordForm} from "./WasteRecordForm";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { usePermission } from "@/features/auth/permission-hooks";
@@ -23,13 +24,14 @@ export function OrderWasteSection({ order, revision = 0 }: { order: { id: string
   const relevant = !["draft", "released", "cancelled"].includes(order.status);
   const [summary, setSummary] = useState<WasteSummary | null>(null);
   const [error, setError] = useState("");
+  const [creating,setCreating]=useState(false),[localRevision,setLocalRevision]=useState(0);
 
   useEffect(() => {
     if (!canRead || !relevant) return;
     let active = true;
     getWasteSummary(order.id).then(v => { if (active) setSummary(v); }).catch(e => { if (active) setError(wasteErrorMessage(e, t)); });
     return () => { active = false; };
-  }, [canRead, relevant, order.id, order.status, revision, t]);
+  }, [canRead, relevant, order.id, order.status, revision, localRevision, t]);
 
   if (!canRead || !relevant) return null;
   return <section className={s.panel} aria-label={t("orderSection.title")}>
@@ -37,7 +39,7 @@ export function OrderWasteSection({ order, revision = 0 }: { order: { id: string
       <h2 style={{ margin: 0 }}>{t("orderSection.title")}</h2>
       <span className={s.actions}>
         <Link className={s.button} href={`/waste-records?order=${order.id}`}>{t("orderSection.viewAll")}</Link>
-        {summary?.actions.includes("create") && <Link className={`${s.button} ${s.primary}`} href={`/waste-records/new?order=${order.id}`}>{t("actions.record")}</Link>}
+        {summary?.actions.includes("create") && <button type="button" className={`${s.button} ${s.primary}`} onClick={()=>setCreating(true)}>{t("actions.record")}</button>}
       </span>
     </div>
     <p className={s.muted}>{t("orderSection.hint")}</p>
@@ -57,5 +59,6 @@ export function OrderWasteSection({ order, revision = 0 }: { order: { id: string
         </tr>)}</tbody>
       </table></div>
     </>)}
+    {creating&&<WasteRecordForm orderId={order.id} onClose={()=>setCreating(false)} onSaved={()=>setLocalRevision(value=>value+1)}/>}
   </section>;
 }

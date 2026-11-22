@@ -209,13 +209,27 @@ describe("waste on the order page", () => {
     totals: [{ unit: "kg", quantity: "18.5", count: 3 }], by_category: [{ category: "process", unit: "kg", quantity: "15.5", count: 2 }, { category: "startup_setup", unit: "kg", quantity: "3", count: 1 }],
     actions: ["create"] };
 
+  it("records waste in a dialog and refreshes its order section without navigation",async()=>{
+    respond((path,options)=>options?.method==='POST'?record():path.includes('/summary')?summary
+      :path==='/production/production-orders/po1'?order:path.includes('/production-orders/lookup')?[order]:[]);
+    ui(<OrderWasteSection order={{id:'po1',status:'in_progress'}}/>);
+    fireEvent.click(await screen.findByRole('button',{name:'Record waste'}));const dialog=await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('Quantity wasted'),{target:{value:'2.5'}});
+    expect((within(dialog).getByRole('combobox',{name:'Production order'}) as HTMLSelectElement).disabled).toBe(true);
+    fireEvent.click(within(dialog).getByRole('button',{name:'Record waste'}));
+    await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+    expect(posted('/production/waste-records')).toMatchObject({production_order_id:'po1',quantity_wasted:'2.5'});
+    await waitFor(()=>expect(api.apiClient.mock.calls.filter(([path])=>String(path).includes('/summary')).length).toBe(2));
+    expect(nav.push).not.toHaveBeenCalled();
+  });
+
   it("shows totals by type apart from the result, with a record link", async () => {
     respond(() => summary);
     ui(<OrderWasteSection order={{ id: "po1", status: "in_progress" }} />, "ar");
     // Units are codes, printed in the screen's language (UNIT-SYM-001): kg -> كجم.
     expect(await screen.findByText("18.5 كجم")).toBeTruthy();
     expect(screen.getByText("هالك العملية (قص وحواف)")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "تسجيل هدر" }).getAttribute("href")).toBe("/waste-records/new?order=po1");
+    expect(screen.getByRole("button", { name: "تسجيل هدر" })).toBeTruthy();
     expect(screen.getByText(/لا تُضاف إلى هالكها/)).toBeTruthy();
   });
 

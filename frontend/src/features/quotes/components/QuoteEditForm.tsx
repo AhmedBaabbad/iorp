@@ -1,4 +1,5 @@
 "use client";
+import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
 import { quoteValidUntil, useQuoteValidity, quoteValidityError } from "../quote-validity";
 import Link from "next/link";
@@ -151,6 +152,8 @@ export function QuoteEditForm() {
   const [error, setError] = useState<string | null>(null);
   const [isNotFound, setIsNotFound] = useState(false);
   const [successRedirect, setSuccessRedirect] = useState<string | null>(null);
+  const unsaved=useUnsavedFormChanges(values,!isLoading);
+
 
   useEffect(() => {
     let isMounted = true;
@@ -291,7 +294,7 @@ export function QuoteEditForm() {
       };
 
       await updateQuote(quoteId, payload);
-      setSuccessRedirect(`/quotes/${quoteId}`);
+      unsaved.markSaved(); setSuccessRedirect(`/quotes/${quoteId}`);
     } catch (caughtError) {
       setError(
         caughtError instanceof FormValidationError
@@ -344,7 +347,7 @@ export function QuoteEditForm() {
 
       {!isLoading && !isNotFound && values.status === "draft" ? (
         <section style={styles.panel}>
-          <form style={styles.form} onSubmit={handleSubmit}>
+          <form onKeyDownCapture={unsaved.onKeyboardInteraction} onChangeCapture={unsaved.onInteraction} onClickCapture={unsaved.onInteraction} style={styles.form} onSubmit={handleSubmit}>{unsaved.confirmation}
             <div style={styles.formGrid}>
               <div style={sharedStyles.field}>
                 <span style={sharedStyles.label}>{t("fields.sample")}</span>

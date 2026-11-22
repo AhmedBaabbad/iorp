@@ -58,6 +58,22 @@ const summary: DowntimeSummary = { count: 3, total_minutes: "145", planned_minut
   by_work_center: [{ work_center_id: "wc1", work_center_name: "Extruder 1", count: 2, minutes: "135", unplanned_minutes: "105" },
     { work_center_id: "wc2", work_center_name: "Extruder 2", count: 1, minutes: "10", unplanned_minutes: "10" }] };
 
+it("records downtime in a dialog on the order and refreshes the same section",async()=>{
+  respond((path,options)=>options?.method==="POST"?event():path.includes('/summary')?summary
+    :path.includes('/production-orders/lookup')?[{id:'po1',production_order_number:'PO-1',product_type:'film',status:'in_progress'}]:[]);
+  ui(<OrderDowntimeSection order={{id:'po1',status:'in_progress'}}/>);
+  fireEvent.click(await screen.findByRole('button',{name:'Record downtime'}));
+  const dialog=await screen.findByRole('dialog');
+  await within(dialog).findByRole('option',{name:'EX1 — Extruder 1'});
+  fireEvent.change(within(dialog).getByLabelText('Work center (machine)'),{target:{value:'wc1'}});
+  expect((within(dialog).getByRole('combobox',{name:'Production order (optional)'}) as HTMLSelectElement).disabled).toBe(true);
+  fireEvent.click(within(dialog).getByRole('button',{name:'Record downtime'}));
+  await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+  expect(sent('/production/downtime-events')).toMatchObject({production_order_id:'po1',work_center_id:'wc1'});
+  await waitFor(()=>expect(api.apiClient.mock.calls.filter(([path])=>String(path).includes('/summary')).length).toBe(2));
+  expect(nav.push).not.toHaveBeenCalled();
+});
+
 describe("downtime list and report figures", () => {
   it("shows stops with Arabic causes and the report figures for the same filters", async () => {
     respond(path => (path.includes("/summary") ? summary : path.startsWith("/production/downtime-events") ? page([event()]) : []));
@@ -173,7 +189,7 @@ describe("stops on the order page", () => {
     ui(<OrderDowntimeSection order={{ id: "po1", status: "in_progress" }} />, "ar");
     expect(await screen.findByText("توقفات الماكينات")).toBeTruthy();
     expect(api.apiClient).toHaveBeenCalledWith("/production/downtime-events/summary?production_order_id=po1");
-    expect(screen.getByRole("link", { name: "تسجيل توقف" }).getAttribute("href")).toBe("/downtime-events/new?order=po1");
+    expect(screen.getByRole("button", { name: "تسجيل توقف" })).toBeTruthy();
   });
 
   it("offers no record link once the order is closed, and nothing before it starts", async () => {

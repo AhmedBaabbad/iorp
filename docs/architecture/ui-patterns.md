@@ -2,6 +2,12 @@
 
 Short records open in a modal dialog for both creation and editing. Use the shared `RecordDialog`, built on `Dialog`, with a responsive field grid, errors before the fields, and Save/Cancel actions. A failed save keeps the dialog open with its values intact; cancellation remains available when no save is running.
 
+Never navigate away from a form to create a missing record. Inline additions use `RecordDialog`, retain all parent-form data, refresh every mounted catalog consumer, and select the created record immediately. The product template and its fields must be available as soon as the new product is selected. A management link may appear inside the creation dialog only and must explicitly say that it opens a new tab.
+
+Classify screens consistently: short records use dialogs; long documents use full pages with inline-add dialogs and an unsaved-changes guard; detail pages with multiple sections use tabs. Downtime, waste, inspections and rejections opened from a detail page reuse the same field components and API calls as their standalone creation pages, with their parent record fixed and their originating section refreshed after a successful save.
+
+Long-document forms use `useUnsavedChangesGuard(dirty)` through `useUnsavedFormChanges` with a snapshot of editable data. Browser refresh/close triggers `beforeunload`; Back, Cancel and sidebar links in the same tab trigger a translated confirmation dialog. Programmatic Back/Cancel actions use `requestNavigation`. Successful saves call `markSaved` before redirecting or showing their success state. Lookup results and automatic initial defaults do not count as user edits.
+
 Detail pages with multiple sections use the shared accessible `Tabs`. Tabs support arrow keys (reversed in RTL), Home/End, and persist selection in `?tab=` while retaining other query parameters. Each tab owns a labelled tab panel.
 
 Long documents, including shipments, quotations and sales orders, keep full-page forms with clear sections. Use the shared searchable `Combobox` for record selection, including secondary option details and a clear action. A selected saved record shows its copied fields read-only. A labelled manual-entry action removes the binding; the server remains authoritative for saved snapshots.

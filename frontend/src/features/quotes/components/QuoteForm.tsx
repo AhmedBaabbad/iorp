@@ -1,4 +1,5 @@
 "use client";
+import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
 import { quoteValidUntil, useQuoteValidity, quoteValidityError } from "../quote-validity";
 import Link from "next/link";
@@ -134,13 +135,15 @@ export function QuoteForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successRedirect, setSuccessRedirect] = useState<string | null>(null);
+  const unsaved=useUnsavedFormChanges(values,true);
+
 
   // ARCH-PAGE-001: the customer is chosen with CustomerPicker (a search), never by loading every customer.
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadCustomerSamples() {
+  async function loadCustomerSamples() {
       const selectedCustomerId = values.customer_id;
       setValues((current) => ({ ...current, sample_id: "" }));
 
@@ -248,7 +251,7 @@ export function QuoteForm() {
 
     try {
       const createdQuote = await createQuote(toCreateRequest(values, messages, taxAmount, vatRate));
-      setSuccessRedirect(`/quotes/${createdQuote.id}`);
+      unsaved.markSaved(); setSuccessRedirect(`/quotes/${createdQuote.id}`);
     } catch (caughtError) {
       setError(
         caughtError instanceof FormValidationError
@@ -281,7 +284,7 @@ export function QuoteForm() {
       }
     >
       <section style={styles.panel}>
-        <form style={styles.form} onSubmit={handleSubmit}>
+        <form onKeyDownCapture={unsaved.onKeyboardInteraction} onChangeCapture={unsaved.onInteraction} onClickCapture={unsaved.onInteraction} style={styles.form} onSubmit={handleSubmit}>{unsaved.confirmation}
           <div style={styles.formGrid}>
             <label style={sharedStyles.field}>
               <span style={sharedStyles.label}>

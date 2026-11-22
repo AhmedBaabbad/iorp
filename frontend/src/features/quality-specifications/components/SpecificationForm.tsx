@@ -1,10 +1,14 @@
 "use client";
+import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 import { localName } from "@/lib/local-name";
 import {useUnitLabel} from "@/components/UnitLabel";
 import { ReferenceTextSelect } from "@/features/reference-directory/ReferenceTextSelect";
 
 
 import Link from "next/link";
+import {ParameterCreateDialog} from "./ParameterFormFields";
+import {usePermission} from "@/features/auth/permission-hooks";
+import {Q} from "@/lib/quality-permissions";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
@@ -26,7 +30,7 @@ export function SpecificationForm({ specId }: { specId?: string }) {
   const t = useTranslations("quality.specifications");
   const errors = useTranslations("quality.errors");
   const messages = useTranslations("messages");
-  const ar = useLocale() === "ar";
+  const locale = useLocale();
   const router = useRouter();
   const editing = Boolean(specId);
   const [header, setHeader] = useState<Header>({ code: "", title: "", product_type: "", grade: "", notes: "" });
@@ -34,6 +38,8 @@ export function SpecificationForm({ specId }: { specId?: string }) {
   const [existing, setExisting] = useState<Specification | null>(null);
   const [parameters, setParameters] = useState<TestParameter[]>([]);
   const [adding, setAdding] = useState("");
+  const [creatingParameter,setCreatingParameter]=useState(false);
+  const canCreateParameter=usePermission(Q.SPECS_CREATE);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -59,7 +65,7 @@ export function SpecificationForm({ specId }: { specId?: string }) {
   const locked = Boolean(existing && !existing.actions.includes("edit"));
   const numbersOk = lines.every(l => [l.target_value, l.tolerance_minus, l.tolerance_plus, l.min_value, l.max_value].every(v => !v || DECIMAL.test(v)));
   const valid = Boolean(header.code.trim() && header.title.trim() && header.product_type.trim()) && numbersOk;
-  const name = (p?: TestParameter) => (p ? (localName(p, ar ? "ar" : "en")) : "—");
+  const name = (p?: TestParameter) => (p ? localName(p, locale) : "—");
 
   const setLine = (index: number, patch: Partial<SpecificationLineInput>) => setLines(old => old.map((l, i) => (i === index ? { ...l, ...patch } : l)));
   const move = (index: number, step: number) => setLines(old => {
@@ -67,6 +73,7 @@ export function SpecificationForm({ specId }: { specId?: string }) {
   });
   const addLine = (id: string) => { if (id) { setLines(old => [...old, emptyLine(id)]); setAdding(""); } };
 
+  const unsaved=useUnsavedFormChanges({header,lines},!loading);
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!valid || busy || locked) return;
@@ -79,7 +86,7 @@ export function SpecificationForm({ specId }: { specId?: string }) {
         method: l.method?.trim() || null })) };
     try {
       const saved = specId ? await updateSpecification(specId, body) : await createSpecification({ ...body, code: header.code.trim() });
-      router.push(`/quality-specifications/${saved.id}`);
+      unsaved.markSaved(); router.push(`/quality-specifications/${saved.id}`);
     } catch (e) {
       const parameter = (e as { details?: { detail?: { parameter?: string } } }).details?.detail?.parameter;
       setError(qualityErrorMessage(e, errors) + (parameter ? ` (${parameter})` : ""));
@@ -90,7 +97,7 @@ export function SpecificationForm({ specId }: { specId?: string }) {
   const back = specId ? `/quality-specifications/${specId}` : "/quality-specifications";
   const title = editing ? t("editTitle", { code: existing?.code ?? "", revision: String(existing?.revision ?? "") }) : t("createTitle");
   return <PageFrame title={title} subtitle={t("formSubtitle")} action={<Link href={back} className={s.button}>{t("back")}</Link>}>
-    {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form onSubmit={submit} aria-label={title}>
+    {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form onKeyDownCapture={unsaved.onKeyboardInteraction} onChangeCapture={unsaved.onInteraction} onClickCapture={unsaved.onInteraction} onSubmit={submit} aria-label={title}>{unsaved.confirmation}
       {locked && <p role="status" className={s.error}>{t("lockedHint")}</p>}
       <section className={s.panel}>
         <div className={s.grid}>
@@ -110,7 +117,9 @@ export function SpecificationForm({ specId }: { specId?: string }) {
       <section className={s.panel} aria-label={t("linesTitle")}>
         <h2 style={{ marginTop: 0 }}>{t("linesTitle")}</h2>
         <p className={s.muted}>{t("linesHint")}</p>
-        {parameters.length === 0 && <p className={s.muted}>{t("noParameters")} <Link href="/quality-test-parameters">{t("parameters")}</Link></p>}
+        {parameters.length === 0 && <p className={s.muted}>{t("noParameters")}</p>}
+        {canCreateParameter&&!locked&&<button type="button" className={s.button} disabled={busy} onClick={()=>setCreatingParameter(true)}>{t("addParameter")}</button>}
+        {creatingParameter&&<ParameterCreateDialog onClose={()=>setCreatingParameter(false)} onCreated={parameter=>{setParameters(old=>[...old,parameter]);addLine(parameter.id);}}/>}
         {lines.map((line, index) => {
           const p = byId.get(line.parameter_id);
           const numeric = p?.kind === "numeric";

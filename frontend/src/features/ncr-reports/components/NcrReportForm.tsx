@@ -1,4 +1,5 @@
 "use client";
+import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -68,6 +69,7 @@ export function NcrReportForm({ reportId }: { reportId?: string }) {
     || (i.item_name.trim() && i.issue_description.trim() && (!i.quantity_affected.trim() || DECIMAL.test(i.quantity_affected.trim()))));
   const valid = Boolean(v.report_date && v.title.trim() && v.description.trim()) && moneyOk && itemsOk;
 
+  const unsaved=useUnsavedFormChanges({v,source,type,severity,supplierAction,claim,items},!loading);
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!valid || busy || locked) return;
@@ -79,7 +81,7 @@ export function NcrReportForm({ reportId }: { reportId?: string }) {
         items: items.filter(i => i.item_name.trim()).map(i => ({ item_name: i.item_name.trim(), item_reference: blank(i.item_reference),
           quantity_affected: blank(i.quantity_affected), unit: blank(i.unit), issue_description: i.issue_description.trim(),
           disposition: (blank(i.disposition) as NcrItemInput["disposition"]), disposition_notes: blank(i.disposition_notes), notes: null })) });
-      router.push(`/non-conformance-reports/${saved.id}`);
+      unsaved.markSaved(); router.push(`/non-conformance-reports/${saved.id}`);
     } catch (e) { setError(ncrErrorMessage(e, errors)); setBusy(false); }
   }
 
@@ -89,7 +91,7 @@ export function NcrReportForm({ reportId }: { reportId?: string }) {
   const title = editing ? t("editTitle") : t("createTitle");
 
   return <PageFrame title={title} subtitle={t("formSubtitle")} action={<Link href={back} className={s.button}>{t("back")}</Link>}>
-    {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form onSubmit={submit} aria-label={title}>
+    {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form onKeyDownCapture={unsaved.onKeyboardInteraction} onChangeCapture={unsaved.onInteraction} onClickCapture={unsaved.onInteraction} onSubmit={submit} aria-label={title}>{unsaved.confirmation}
       {locked && <p role="status" className={s.error}>{t("lockedHint")}</p>}
       <fieldset disabled={busy || locked} style={{ border: 0, padding: 0, margin: 0 }}>
         <section className={s.panel}>

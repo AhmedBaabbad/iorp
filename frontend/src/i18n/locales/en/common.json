@@ -270,5 +270,11 @@
     "city": "City",
     "cityName": "City name",
     "openGoogleMaps": "Open in Google Maps"
+  },
+  "unsavedChanges": {
+    "title": "Unsaved changes",
+    "message": "You have unsaved changes. Leave this form and discard them?",
+    "stay": "Keep editing",
+    "leave": "Discard and leave"
   }
 }

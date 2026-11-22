@@ -2,13 +2,13 @@
 
 import { UnitLabel } from "@/components/UnitLabel";
 import { ReferenceTextSelect } from "@/features/reference-directory/ReferenceTextSelect";
-import Link from "next/link";
+import {EditorSurface} from "@/components/forms/EditorSurface";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { UnitSelect } from "@/components/forms/UnitSelect";
-import { PageFrame } from "@/components/layout/page-frame";
+
 import { usePermission } from "@/features/auth/permission-hooks";
 import s from "@/features/production-demands/demands.module.css";
 import { getProductionOrderById } from "@/features/production-orders/api/production-orders-api";
@@ -28,17 +28,15 @@ type Share = { category: WasteCategory; quantity: string };
 type Values = { order: string; item: string; run: string; center: string; date: string; quantity: string; unit: string; shares: Share[]; reason: string; notes: string };
 
 // Records waste against a production order (required), optionally one of its runs; or edits a record (recordId).
-export function WasteRecordForm({ recordId }: { recordId?: string }) {
+function useWasteRecordEditor({recordId,orderId}:{recordId?:string;orderId?:string}){
   const t = useTranslations("production.wasteRecords");
   const categories = useTranslations("enums.wasteRecord.wasteCategory");
   const hints = useTranslations("production.wasteRecords.categoryHints");
-  const messages = useTranslations("messages");
   const fmt = useFormatter();
-  const router = useRouter();
   const params = useSearchParams();
   const canReadRuns = usePermission(P.RUNS_READ);
   const editing = Boolean(recordId);
-  const [values, setValues] = useState<Values>({ order: params.get("order") ?? "", item: "", run: "", center: "", date: todayIso(), quantity: "", unit: "kg", shares: [{ category: "process", quantity: "" }], reason: "", notes: "" });
+  const [values, setValues] = useState<Values>({ order: orderId ?? params.get("order") ?? "", item: "", run: "", center: "", date: todayIso(), quantity: "", unit: "kg", shares: [{ category: "process", quantity: "" }], reason: "", notes: "" });
   const [existing, setExisting] = useState<WasteRecordData | null>(null);
   const [order, setOrder] = useState<ProductionOrderData | null>(null);
   const [runs, setRuns] = useState<RunOption[]>([]);
@@ -81,9 +79,8 @@ export function WasteRecordForm({ recordId }: { recordId?: string }) {
   const share = (category: WasteCategory, quantity: string) => setValues(old => ({ ...old, shares: old.shares.map(x => x.category === category ? { ...x, quantity } : x) }));
   const set = <K extends keyof Values>(field: K, value: Values[K]) => setValues(old => ({ ...old, [field]: value, ...(field === "order" ? { item: "", run: "" } : {}) }));
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!valid || busy || locked) return;
+  async function save() {
+    if (!valid || busy || locked) return null;
     setBusy(true); setError("");
     const body = {
       production_order_item_id: values.item || null, production_run_id: values.run || null,
@@ -95,21 +92,32 @@ export function WasteRecordForm({ recordId }: { recordId?: string }) {
     };
     try {
       const saved = recordId ? await updateWasteRecord(recordId, body) : await createWasteRecord({ production_order_id: values.order, ...body });
-      router.push(`/waste-records/${saved.id}`);
-    } catch (e) { setError(wasteErrorMessage(e, t)); setBusy(false); }
+      setBusy(false);return saved;
+    } catch (e) { setError(wasteErrorMessage(e, t)); setBusy(false); return null; }
   }
 
   const back = recordId ? `/waste-records/${recordId}` : values.order ? `/waste-records?order=${values.order}` : "/waste-records";
-  return <PageFrame title={editing ? t("editTitle") : t("createTitle")} subtitle={t("createSubtitle")}
-    action={<Link href={back} className={s.button}>{t("actions.back")}</Link>}>
-    {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form className={s.panel} onSubmit={submit} aria-label={editing ? t("editTitle") : t("createTitle")}>
-      {locked && <p role="status" className={s.error}>{t("hints.locked")}</p>}
+  return {t,categories,hints,busy,locked,values,set,canReadRuns,runs,fmt,centers,order,run,split,toggle,share,editing,orderId,recordId,existing,loading,error,valid,save,back};
+}
+export function WasteRecordForm({recordId,orderId,onSaved,onClose}:{recordId?:string;orderId?:string;onSaved?:(record:WasteRecordData)=>void;onClose?:()=>void}){
+  const editor=useWasteRecordEditor({recordId,orderId}),router=useRouter();
+  const {t,editing,back,loading,busy,locked,valid,error}=editor;
+  return <EditorSurface title={editing?t("editTitle"):t("createTitle")} subtitle={t("createSubtitle")}
+    back={back} backLabel={t("actions.back")} cancelLabel={t("actions.cancel")} saveLabel={editing?t("actions.save"):t("actions.record")}
+    loading={loading} busy={busy} disabled={!valid||locked} error={error} onClose={onClose}
+    onSave={async()=>{const saved=await editor.save();if(!saved)return false;if(onSaved)onSaved(saved);else router.push(`/waste-records/${saved.id}`);return true;}}>
+    <WasteRecordFields editor={editor}/>
+  </EditorSurface>;
+}
+export function WasteRecordFields({editor}:{editor:ReturnType<typeof useWasteRecordEditor>}){
+  const {t,categories,hints,busy,locked,values,set,canReadRuns,runs,fmt,centers,order,run,split,toggle,share,editing,orderId,existing}=editor;
+  return <>      {locked && <p role="status" className={s.error}>{t("hints.locked")}</p>}
       <p className={s.muted} style={{ marginTop: 0 }}>{t("hints.notScrap")}</p>
       <div className={s.grid}>
         <label className={s.field}>{t("fields.productionOrder")}
           {editing ? <input readOnly value={order?.production_order_number ?? existing?.labels?.order_number ?? ""} />
             // Searched on the server among the orders waste can be recorded on (running, held, completed).
-            : <ProductionOrderPicker value={values.order} onChange={id => set("order", id)} statuses={WASTE_ORDER_STATUSES} required disabled={busy}
+            : <ProductionOrderPicker value={values.order} onChange={id => set("order", id)} statuses={WASTE_ORDER_STATUSES} required disabled={busy || Boolean(orderId)}
               emptyLabel={t("placeholders.selectOrder")} ariaLabel={t("fields.productionOrder")} />}
         </label>
 
@@ -162,11 +170,5 @@ export function WasteRecordForm({ recordId }: { recordId?: string }) {
       </fieldset>
       {run && <p className={s.muted}>{t("hints.runWorkCenter")}</p>}
       <label className={s.field}>{t("fields.notes")}<textarea maxLength={2000} value={values.notes} disabled={busy || locked} onChange={e => set("notes", e.target.value)} /></label>
-      {error && <p role="alert" className={s.error}>{error}</p>}
-      <div className={s.actions} style={{ marginTop: 16 }}>
-        <button type="submit" className={`${s.button} ${s.primary}`} disabled={!valid || busy || locked}>{editing ? t("actions.save") : t("actions.record")}</button>
-        <Link href={back} className={s.button}>{t("actions.cancel")}</Link>
-      </div>
-    </form>}
-  </PageFrame>;
+</>;
 }

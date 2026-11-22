@@ -1,10 +1,10 @@
 "use client";
 
 import { localName } from "@/lib/local-name";
-import Link from "next/link";
+import { ListCreateDialog } from "./ListCreateDialog";
 import row from "@/components/forms/control-row.module.css";
 import { useLocale, useTranslations } from "next-intl";
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 
 import { usePermission } from "@/features/auth/permission-hooks";
 import { MD } from "@/lib/masterdata-permissions";
@@ -21,28 +21,26 @@ export function ListSelect({ id, list, value, onChange, parent, required = false
   disabled?: boolean; ariaLabel?: string; className?: string; style?: CSSProperties;
 }) {
   const t = useTranslations("masterdata.select");
+  const listNames=useTranslations("masterdata");
   const locale = useLocale();
   const canManage = usePermission(MD.LISTS_UPDATE);
   const all = useListItems(list);
+  const [creating,setCreating]=useState(false);
   const name = (i: ListItem) => localName(i, locale);
 
-  if (all === null) {
-    return <select id={id} className={className} style={style} aria-label={ariaLabel} disabled value=""><option value="">{t("loading")}</option></select>;
-  }
-  if (all.length === 0) {
-    return <input id={id} className={className} style={style} aria-label={ariaLabel} required={required} disabled={disabled} maxLength={120} value={value}
-      onChange={e => onChange(e.target.value)} />;
-  }
-  const choices = all.filter(i => i.active && (!parent || !i.parent_key || i.parent_key === parent));
-  const current = value && !choices.some(i => i.key === value) ? all.find(i => i.key === value) : undefined;
+  const choices = (all??[]).filter(i => i.active && (!parent || !i.parent_key || i.parent_key === parent));
+  const current = value && !choices.some(i => i.key === value) ? all?.find(i => i.key === value) : undefined;
   return <span className={row.row}>
+    {all===null?<select id={id} aria-label={ariaLabel} disabled value=""><option value="">{t("loading")}</option></select>:all.length===0?
+      <input id={id} className={className} style={style} aria-label={ariaLabel} required={required} disabled={disabled} maxLength={120} value={value} onChange={e=>onChange(e.target.value)}/>:
     <select id={id} className={className} style={style} aria-label={ariaLabel} required={required} disabled={disabled} value={value}
       onChange={e => onChange(e.target.value, all.find(i => i.key === e.target.value))}>
       <option value="">{t("chooseItem")}</option>
       {choices.map(i => <option key={i.key} value={i.key}>{name(i)}</option>)}
       {value && !choices.some(i => i.key === value)
         ? <option value={value}>{current ? t("inactive", { name: name(current) }) : t("legacy", { value })}</option> : null}
-    </select>
-    {canManage ? <Link className={row.manage} href={`/master-data/lists?list=${list}`} target="_blank" rel="noopener noreferrer" title={t("manageList")} aria-label={t("manageList")}><span aria-hidden="true">&#9881;</span></Link> : null}
+    </select>}
+    {canManage&&<button type="button" className={row.manage} disabled={disabled||all===null} onClick={()=>setCreating(true)} aria-label={t("addItemTo",{label:ariaLabel??listNames(`lists.names.${list}`)})}>{t("addItem")}</button>}
+    {creating&&<ListCreateDialog list={list} parent={parent} onClose={()=>setCreating(false)} onCreated={item=>onChange(item.key,item)}/>}
   </span>;
 }

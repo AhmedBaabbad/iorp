@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import {DowntimeEventForm} from "./DowntimeEventForm";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { usePermission } from "@/features/auth/permission-hooks";
@@ -20,13 +21,14 @@ export function OrderDowntimeSection({ order, revision = 0 }: { order: { id: str
   const relevant = !["draft", "released", "cancelled"].includes(order.status);
   const [summary, setSummary] = useState<DowntimeSummary | null>(null);
   const [error, setError] = useState("");
+  const [creating,setCreating]=useState(false),[localRevision,setLocalRevision]=useState(0);
 
   useEffect(() => {
     if (!canRead || !relevant) return;
     let active = true;
     getDowntimeSummary({ production_order_id: order.id }).then(v => { if (active) setSummary(v); }).catch(e => { if (active) setError(downtimeErrorMessage(e, t)); });
     return () => { active = false; };
-  }, [canRead, relevant, order.id, order.status, revision, t]);
+  }, [canRead, relevant, order.id, order.status, revision, localRevision, t]);
 
   if (!canRead || !relevant) return null;
   const canRecord = canWrite && LINKABLE_ORDER_STATUSES.includes(order.status);
@@ -35,7 +37,7 @@ export function OrderDowntimeSection({ order, revision = 0 }: { order: { id: str
       <h2 style={{ margin: 0 }}>{t("orderSection.title")}</h2>
       <span className={s.actions}>
         <Link className={s.button} href={`/downtime-events?order=${order.id}`}>{t("orderSection.viewAll")}</Link>
-        {canRecord && <Link className={`${s.button} ${s.primary}`} href={`/downtime-events/new?order=${order.id}`}>{t("actions.record")}</Link>}
+        {canRecord && <button type="button" className={`${s.button} ${s.primary}`} onClick={()=>setCreating(true)}>{t("actions.record")}</button>}
       </span>
     </div>
     <p className={s.muted}>{t("orderSection.hint")}</p>
@@ -43,5 +45,6 @@ export function OrderDowntimeSection({ order, revision = 0 }: { order: { id: str
     {summary && (summary.count + summary.open_count === 0
       ? <p className={s.muted} style={{ margin: 0 }}>{t("orderSection.empty")}</p>
       : <DowntimeSummaryCards summary={summary} />)}
+    {creating&&<DowntimeEventForm orderId={order.id} onClose={()=>setCreating(false)} onSaved={()=>setLocalRevision(value=>value+1)}/>}
   </section>;
 }

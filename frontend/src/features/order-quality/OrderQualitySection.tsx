@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import {QualityCheckForm} from "@/features/quality-checks/components/QualityCheckForm";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { usePermission } from "@/features/auth/permission-hooks";
@@ -14,7 +15,7 @@ import { Q } from "@/lib/quality-permissions";
 const INSPECTABLE = ["in_progress", "on_hold", "completed"];
 
 // "الجودة" on the order page: its inspections and rejections, and what still keeps the order from closing.
-export function OrderQualitySection({ order, revision = 0 }: { order: { id: string; status: string }; revision?: number }) {
+export function OrderQualitySection({ order, revision = 0 }: { order: { id: string; status: string; production_order_number?: string }; revision?: number }) {
   const t = useTranslations("quality.orderSection");
   const errors = useTranslations("quality.errors");
   const canReadChecks = usePermission(Q.CHECKS_READ);
@@ -25,6 +26,7 @@ export function OrderQualitySection({ order, revision = 0 }: { order: { id: stri
   const [checks, setChecks] = useState<{ open: number; closed: number } | null>(null);
   const [rejections, setRejections] = useState<{ unresolved: number; all: number } | null>(null);
   const [error, setError] = useState("");
+  const [creating,setCreating]=useState(false),[localRevision,setLocalRevision]=useState(0);
 
   useEffect(() => {
     if (!relevant) return;
@@ -37,7 +39,7 @@ export function OrderQualitySection({ order, revision = 0 }: { order: { id: stri
     if (canReadRejections) Promise.all([getQualityRejections({ ...base, unresolved: true }), getQualityRejections(base)])
       .then(([unresolved, all]) => { if (active) setRejections({ unresolved: unresolved.total, all: all.total }); }).catch(fail);
     return () => { active = false; };
-  }, [relevant, canReadChecks, canReadRejections, order.id, order.status, revision, errors]);
+  }, [relevant, canReadChecks, canReadRejections, order.id, order.status, revision, localRevision, errors]);
 
   if (!relevant || !(canReadChecks || canReadRejections)) return null;
   const openChecks = checks?.open ?? 0;
@@ -52,7 +54,7 @@ export function OrderQualitySection({ order, revision = 0 }: { order: { id: stri
   return <section className={s.panel} aria-label={t("title")}>
     <div className={s.actions} style={{ justifyContent: "space-between" }}>
       <h2 style={{ margin: 0 }}>{t("title")}</h2>
-      {canCreate && INSPECTABLE.includes(order.status) && <Link className={`${s.button} ${s.primary}`} href={`/quality-checks/new?order=${order.id}`}>{t("newCheck")}</Link>}
+      {canCreate && INSPECTABLE.includes(order.status) && <button type="button" className={`${s.button} ${s.primary}`} onClick={()=>setCreating(true)}>{t("newCheck")}</button>}
     </div>
     <p className={s.muted}>{t("hint")}</p>
     {error && <p role="alert" className={s.error}>{error}</p>}
@@ -67,5 +69,6 @@ export function OrderQualitySection({ order, revision = 0 }: { order: { id: stri
       </>}
     </div>
     {(openChecks > 0 || unresolved > 0) && order.status !== "closed" && <p role="status" className={s.error} style={{ marginBottom: 0 }}>{t("blocksClose")}</p>}
+    {creating&&<QualityCheckForm orderId={order.id} orderNumber={order.production_order_number} onClose={()=>setCreating(false)} onSaved={()=>setLocalRevision(value=>value+1)}/>}
   </section>;
 }
