@@ -3,7 +3,13 @@ import { useState } from 'react';
 import { afterEach,beforeEach,expect,it,vi } from 'vitest';
 const mocks=vi.hoisted(()=>({api:vi.fn(),allowed:true}));
 vi.mock('@/lib/api-client',()=>({apiClient:mocks.api}));
-vi.mock('next-intl',()=>({useLocale:()=> 'en',useTranslations:()=> (key:string)=>key==='actions.close'?'Close':key}));
+vi.mock('next-intl',async()=>{
+  const dict=(await import('@/i18n/locales/en/directory.json')).default;
+  const get=(key:string):unknown=>key.split('.').reduce<unknown>((o,k)=>(o as Record<string,unknown>)?.[k],dict);
+  const translate=Object.assign((key:string)=>String(get(key)??key),{has:(key:string)=>typeof get(key)==='string'});
+  const common=(key:string)=>key==='actions.close'?'Close':key;
+  return {useLocale:()=> 'en',useTranslations:(namespace:string)=>namespace==='directory'?translate:common};
+});
 vi.mock('@/features/auth/permission-hooks',()=>({usePermission:()=>mocks.allowed}));
 vi.mock('@/features/masterdata',()=>({ListSelect:()=>null,useListName:()=>(key:string|null|undefined)=>key??'—'}));
 import { TransportSelection,type TransportValues,DriverAffiliation } from '@/features/reference-directory/DirectorySelect';
@@ -24,15 +30,26 @@ it('allows internal one-off entry without creating a driver or user account',asy
 it('selects a saved external driver and prevents changing its affiliation',async()=>{
   mocks.api.mockImplementation((path:string)=>Promise.resolve(path.includes('/drivers/')?[{id:'d1',name:'Driver',affiliation:'external'}]:[]));
   render(<Form/>);
-  await screen.findByRole('option',{name:'Driver — External'});
-  fireEvent.change(screen.getByLabelText('Saved driver'),{target:{value:'d1'}});
-  expect((screen.getByLabelText('Driver affiliation') as HTMLSelectElement).disabled).toBe(true);
+  fireEvent.focus(screen.getByRole('combobox',{name:'Saved driver'}));
+  fireEvent.click(await screen.findByRole('option',{name:/Driver.*External/}));
+  expect(screen.queryByLabelText('Driver affiliation')).toBeNull();
   expect(screen.getByRole('status').textContent).toContain('"driver_id":"d1"');
 });
 
 it('keeps legacy classification honest',()=>{
   render(<DriverAffiliation/>);
   expect(screen.getByText('Unclassified — legacy record')).toBeTruthy();
+});
+
+it('keeps document snapshot fields when the same saved driver is selected again',async()=>{
+  mocks.api.mockImplementation((path:string)=>Promise.resolve(path.includes('/drivers/options')?[{id:'same',name:'Current name',affiliation:'external'}]:[]));
+  const copy=vi.fn(),change=vi.fn();
+  render(<TransportSelection value={{driver_id:'same'}} onChange={change} onRecord={copy}/>);
+  fireEvent.focus(screen.getByRole('combobox',{name:'Saved driver'}));
+  fireEvent.click(await screen.findByRole('option',{name:/Current name/}));
+  expect(copy).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button',{name:/Enter manually for this transaction/}));
+  expect(copy).toHaveBeenCalledWith('driver');
 });
 
 it('updates a directory record with version and without organization or audit fields',async()=>{
@@ -80,8 +97,8 @@ it('autofills only an empty vehicle and warns about expired licenses without blo
   mocks.api.mockImplementation((path:string)=>Promise.resolve(path.includes('/drivers/')
     ?[{id:'d1',name:'Expired driver',affiliation:'external',default_vehicle_id:'suggested',license_expiry:'2000-01-01'}]:[]));
   render(<Form initial={{vehicle_id:'chosen'}}/>);
-  await screen.findByRole('option',{name:'Expired driver — External'});
-  fireEvent.change(screen.getByLabelText('Saved driver'),{target:{value:'d1'}});
+  fireEvent.focus(screen.getByRole('combobox',{name:'Saved driver'}));
+  fireEvent.click(await screen.findByRole('option',{name:/Expired driver.*External/}));
   expect(screen.getByText('Driver license expired')).toBeTruthy();
   expect(screen.getByText(/"vehicle_id":"chosen"/)).toBeTruthy();
 });

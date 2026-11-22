@@ -1,7 +1,9 @@
 "use client";
+import { Combobox } from "@/components/ui/Combobox";
 import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
 import { formatThickness, thicknessFields } from "@/lib/spec-value";
 import { customerDisplayName } from "@/lib/customer-name";
+import { snapshotPhone } from "../selected-records";
 import type { Option } from "@/features/reference-directory/RecordSelect";
 import { apiClient } from "@/lib/api-client";
 
@@ -45,7 +47,8 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
   const router = useRouter();
   const editing = Boolean(shipmentId);
   const locale = useLocale();
-  const ar=locale==="ar";
+  const d=useTranslations("directory");
+  const [contactChoices,setContactChoices]=useState<Option[]>([]);
   const [transport,setTransport]=useState<TransportValues>({});
   const location = useTranslations("common.location");
   const cityName = useListName("city", key => key), countryName = useListName("country");
@@ -72,6 +75,10 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  const selectContact = useCallback((id: string | null, row?: Option) => {
+    setContact(id);
+    setH(old=>({...old,consignee_name:row?.name??"",consignee_phone:snapshotPhone(row?.phone),consignee_email:row?.email??""}));
+  }, []);
   const selectSite = useCallback((id: string | null, row?: Option) => {
     setSite(id);
     setH(old => ({ ...old,
@@ -130,14 +137,15 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
     const base = "/shipping/directory/customers/"+customerId;
     Promise.all([apiClient<Option[]>(base+"/contacts"), apiClient<Option[]>(base+"/sites")]).then(([contacts, sites]) => {
       if (!active) return;
+      setContactChoices(contacts);
       const defaultContact = contacts.find(row => row.is_default && row.active !== false);
       const defaultSite = sites.find(row => row.is_default && row.active !== false);
       const siteContact = contacts.find(row => row.id === defaultSite?.contact_id && row.active !== false);
-      if (!contactChanged.current) setContact(old => old ?? defaultContact?.id ?? siteContact?.id ?? null);
+      if (!contactChanged.current) { const receiver=defaultContact??siteContact; if(receiver)selectContact(receiver.id,receiver); }
       if (!siteChanged.current && defaultSite) selectSite(defaultSite.id, defaultSite);
     }).catch(() => undefined);
     return () => { active = false; };
-  }, [registered, customerId, selectSite]);
+  }, [registered, customerId, selectSite, selectContact]);
 
   const chosen = useMemo(() => customers.find(c => c.id === customerId) ?? null, [customers, customerId]);
   const set = (field: keyof Header, value: string) => setH(old => ({ ...old, [field]: value }));
@@ -168,8 +176,10 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
     } catch (e) { setError(shippingErrorMessage(e, errors, f => t(`fields.${f}`))); setBusy(false); }
   }
 
-  const input = (field: keyof Header, extra: Record<string, unknown> = {}) =>
-    <label className={s.field}>{t(`fields.${field}`)}<input value={h[field]} disabled={busy || locked} onChange={e => set(field, e.target.value)} {...extra} /></label>;
+  const input = (field: keyof Header, extra: Record<string, unknown> = {}) => {
+    const {disabled:bound,...props}=extra;
+    return <label className={s.field}>{t("fields."+field)}<input value={h[field]} disabled={busy||locked} readOnly={Boolean(bound)} onChange={event=>set(field,event.target.value)} {...props}/></label>;
+  };
   const back = shipmentId ? `/shipments/${shipmentId}` : "/shipments";
   const title = editing ? t("editTitle") : t("createTitle");
 
@@ -199,13 +209,9 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
           </div>
           <div className={s.grid}>
             {registered ? <>
-              <label className={s.field}>{t("searchCustomer")}<input value={query} onChange={e => setQuery(e.target.value)} placeholder={t("searchCustomerPlaceholder")} /></label>
-              <label className={s.field}>{t("fields.customer")}
-                <select required value={customerId} onChange={e => {contactChanged.current=false;siteChanged.current=false;setCustomerId(e.target.value);setSite(null);setContact(null);setH(old=>({...old,customer_name:"",consignee_name:"",consignee_phone:"",consignee_email:"",delivery_address:"",delivery_country:"",delivery_city:"",location_url:""}));}}>
-                  <option value="">{customers.length ? t("chooseCustomer") : t("noCustomers")}</option>
-                  {customers.map(c => <option key={c.id} value={c.id}>{customerDisplayName(c, locale)}{c.customer_code ? ` — ${c.customer_code}` : ""}</option>)}
-                </select>
-              </label>
+              <Combobox label={t("fields.customer")} value={customerId} required onSearch={setQuery}
+                options={customers.map(customer=>({...customer,name:customerDisplayName(customer,locale),detail:customer.customer_code??""}))}
+                onChange={id=>{contactChanged.current=false;siteChanged.current=false;setCustomerId(id);setSite(null);setContact(null);setH(old=>({...old,customer_name:"",consignee_name:"",consignee_phone:"",consignee_email:"",delivery_address:"",delivery_country:"",delivery_city:"",location_url:""}));}}/>
             </> : input("customer_name", { required: true, maxLength: 255 })}
           </div>
           {registered && chosen && (chosen.phone || chosen.email) && <p className={s.muted} style={{ marginBottom: 0 }}>
@@ -214,18 +220,23 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
 
         <section className={s.panel}>
           <h2 style={{ marginTop: 0 }}>{t("sections.recipient")}</h2>
-          {registered&&customerId&&<><DirectorySelect key={`site-${customerId}`} path={`/shipping/directory/customers/${customerId}/sites`} value={site} label={ar?"موقع التسليم المحفوظ":"Saved delivery site"} onChange={(id,row)=>{siteChanged.current=true;selectSite(id||null,row);setContact(old=>old||(contactChanged.current?null:row?.contact_id)||null);}}/><DirectorySelect key={`contact-${customerId}`} path={`/shipping/directory/customers/${customerId}/contacts`} value={contact} label={ar?"جهة الاتصال المحفوظة":"Saved contact"} onChange={id=>{contactChanged.current=true;setContact(id||null);}}/></>}
+          {registered&&customerId&&<>
+            <DirectorySelect manual key={"site-"+customerId} path={"/shipping/directory/customers/"+customerId+"/sites"} value={site} label={d("savedSite")}
+              onChange={(id,row)=>{siteChanged.current=true;if((id||null)===site)return;selectSite(id||null,row);if(!contact&&!contactChanged.current&&row?.contact_id){const receiver=contactChoices.find(item=>item.id===row.contact_id&&item.active!==false);if(receiver)selectContact(receiver.id,receiver);}}}/>
+            <DirectorySelect manual key={"contact-"+customerId} path={"/shipping/directory/customers/"+customerId+"/contacts"} value={contact} label={d("savedContact")}
+              onChange={(id,row)=>{contactChanged.current=true;if((id||null)===contact)return;selectContact(id||null,row);}}/>
+          </>}
           <div className={s.grid}>
             {input("consignee_name", { disabled:!!contact, maxLength: 255, placeholder: t("recipientPlaceholder") })}
-            {input("consignee_phone", { disabled:!!contact, maxLength: 30, dir: "ltr", inputMode: "tel", placeholder: "05xxxxxxxx" })}
+            {input("consignee_phone", { disabled:!!contact, maxLength: 30, dir: "ltr", inputMode: "tel", placeholder: d("phoneExample") })}
             {input("consignee_email", { disabled:!!contact, maxLength: 255, dir: "ltr", type: "email" })}
             <label className={s.field}>{location("country")}<ListSelect list="country" ariaLabel={location("country")} value={h.delivery_country || chosen?.country || ""}
               disabled={busy || locked || !!site} onChange={key=>setH(old=>({...old,delivery_country:key,delivery_city:""}))}/></label>
-            <label className={s.field}>{t("fields.delivery_city")}{site?<input readOnly disabled value={h.delivery_city?cityName(h.delivery_city):""}/>:<ListSelect list="city" ariaLabel={t("fields.delivery_city")} value={h.delivery_city}
+            <label className={s.field}>{t("fields.delivery_city")}{site?<input readOnly value={h.delivery_city?cityName(h.delivery_city):""}/>:<ListSelect list="city" ariaLabel={t("fields.delivery_city")} value={h.delivery_city}
               parent={h.delivery_country || chosen?.country || null} disabled={busy || locked || !(h.delivery_country || chosen?.country)} onChange={key => set("delivery_city", key)} />}</label>
-            {input("location_url", { disabled:!!site, maxLength: 500, dir: "ltr", type: "url", placeholder: "https://maps.google.com/…" })}
+            {input("location_url", { disabled:!!site, maxLength: 500, dir: "ltr", type: "url", placeholder: d("mapExample") })}
           </div>
-          <label className={s.field}>{t("fields.delivery_address")}<textarea disabled={!!site} maxLength={1000} value={h.delivery_address} onChange={e => set("delivery_address", e.target.value)} /></label>
+          <label className={s.field}>{t("fields.delivery_address")}<textarea readOnly={!!site} maxLength={1000} value={h.delivery_address} onChange={e => set("delivery_address", e.target.value)} /></label>
           <MapLink locationUrl={h.location_url} address={h.delivery_address} city={h.delivery_city ? cityName(h.delivery_city) : null} country={(h.delivery_country || customers.find(c=>c.id===customerId)?.country) ? countryName(h.delivery_country || customers.find(c=>c.id===customerId)?.country) : null} />
           <label style={{ display: "block", marginTop: 8 }}><input type="checkbox" checked={notify} onChange={e => setNotify(e.target.checked)} /> {t("fields.notify_consignee")}</label>
           <p className={s.muted} style={{ marginBottom: 0 }}>{t("notifyHint")}</p>
@@ -233,14 +244,14 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
 
         <section className={s.panel}>
           <h2 style={{ marginTop: 0 }}>{t("sections.transport")}</h2>
-          <TransportSelection value={transport} onChange={setTransport} carrier={method==="carrier"}/>
+          <TransportSelection value={transport} onChange={setTransport} carrier={method==="carrier"} onRecord={(kind,row)=>setH(old=>({...old,...(kind==="driver"?{driver_name:row?.name??"",driver_phone:snapshotPhone(row?.phone),driver_id_no:row?.identity_no??""}:kind==="vehicle"?{vehicle_plate:row?.plate??"",vehicle_type:row?.vehicle_type??""}:{carrier_name:row?.name??""})}))}/>
           <div className={s.grid}>
             {method === "carrier" ? <>
               {input("carrier_name", { disabled:!!transport.carrier_id, maxLength: 200 })}
               {input("tracking_no", { maxLength: 80, dir: "ltr" })}
             </> : <>
               <label className={s.field}>{method === "pickup" ? t("fields.collector_name") : t("fields.driver_name")}
-                <input disabled={!!transport.driver_id} value={h.driver_name} maxLength={200} onChange={e => set("driver_name", e.target.value)} /></label>
+                <input readOnly={!!transport.driver_id} value={h.driver_name} maxLength={200} onChange={e => set("driver_name", e.target.value)} /></label>
               {input("driver_phone", { disabled:!!transport.driver_id, maxLength: 30, dir: "ltr", inputMode: "tel" })}
               {method === "pickup" && input("driver_id_no", { disabled:!!transport.driver_id, maxLength: 40, dir: "ltr" })}
               {input("vehicle_plate", { disabled:!!transport.vehicle_id, maxLength: 40, placeholder: t("platePlaceholder") })}
@@ -249,16 +260,11 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
                   onChange={key => set("vehicle_type", key)} /></label>
             </>}
           </div>
-          <p className={s.muted} style={{ marginBottom: 0 }}>{t("transportHint")}</p>
+          <p className={s.muted} style={{ marginBottom: 0 }}>{d("transportHint")}</p>
         </section>
 
         <section className={s.panel} aria-label={t("sections.lines")}>
           <h2 style={{ marginTop: 0 }}>{t("sections.lines")}</h2>
-          <div className={s.toolbar}>
-            <label className={s.field}>{t("productionOrder.search")}
-              <input type="search" value={orderQuery} placeholder={t("productionOrder.searchPlaceholder")} onChange={e => setOrderQuery(e.target.value)} /></label>
-            <span className={s.muted}>{t("productionOrder.hint")}</span>
-          </div>
           {lines.map((l, i) => <div key={i} className={s.panel} style={{ margin: "0 0 10px", padding: 14 }}>
             <div className={s.actions} style={{ justifyContent: "space-between", marginBottom: 8 }}>
               <strong>{t("lineNo", { no: String(i + 1) })}</strong>
@@ -279,11 +285,8 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
                 <UnitSelect value={l.weight_unit} onChange={v => setLine(i, "weight_unit", v || "kg")} groups={["weight"]} ariaLabel={t("lineFields.weight_unit")} /></label></>}
               <div className={s.field}><span>{t("lineFields.net_weight")}</span><output aria-label={t("lineFields.net_weight")}><bdi dir="ltr">{lineNet(l) ? `${lineNet(l)!.value} ${unitLabel(lineNet(l)!.unit)}` : "—"}</bdi></output>
                 {l.id && !isWeightUnit(l.unit) && !l.unit_net_weight.trim() && l.legacy_weight != null && unchangedLegacyQuantity(l) && <small>{t("legacyNetHint")}</small>}</div>
-              <label className={s.field}>{t("lineFields.production_order")}
-                <select value={l.production_order_id} onChange={e => setLine(i, "production_order_id", e.target.value)}>
-                  <option value="">{t("productionOrder.none")}</option>
-                  {orders.map(o => <option key={o.id} value={o.id}>{o.number}{o.product_type ? ` — ${o.product_type}` : ""}</option>)}
-                </select></label>
+              <Combobox label={t("lineFields.production_order")} value={l.production_order_id} onSearch={setOrderQuery}
+                options={orders.map(order=>({...order,name:order.number,detail:order.product_type}))} onChange={id=>setLine(i,"production_order_id",id)}/>
             </div>
           </div>)}
           <div className={s.actions}>

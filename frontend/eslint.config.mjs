@@ -16,5 +16,7 @@ export default defineConfig([
     ".next-*/**", // alternate build outputs (QA runs); never source
     "next-env.d.ts",
     "node_modules/**",
+    "test-results/**",
+    "playwright-report/**",
   ]),
 ]);

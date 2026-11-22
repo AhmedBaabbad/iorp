@@ -1,6 +1,6 @@
 // SHIP-001, SHIP-004: shipments — a delivery note for a registered or named customer, its transport, items and lifecycle;
 // delivery outcomes (in part, not received, sent again) and returns against a delivery note.
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,7 +30,7 @@ import { lineNet, grossKg } from "@/features/shipments/weights";
 let en: Record<string, unknown>;
 let ar: Record<string, unknown>;
 beforeAll(async () => { en = await loadMessages("en") as Record<string, unknown>; ar = await loadMessages("ar") as Record<string, unknown>; });
-beforeEach(() => { api.apiClient.mockReset(); nav.push.mockReset(); perms.granted = new Set(Object.values(S)); });
+beforeEach(() => { window.history.replaceState(null,"","/"); api.apiClient.mockReset(); nav.push.mockReset(); perms.granted = new Set(Object.values(S)); });
 afterEach(cleanup);
 const ui = (node: ReactNode, locale: "en" | "ar" = "en") =>
   render(<NextIntlClientProvider locale={locale} messages={locale === "en" ? en : ar} timeZone="UTC">{node}</NextIntlClientProvider>);
@@ -52,6 +52,32 @@ function shipment(over: Partial<Shipment> = {}): Shipment {
 }
 
 describe("shipment form", () => {
+  it("fills selected contact and driver fields immediately and clears bindings for manual entry",async()=>{
+    perms.granted.add("shipping:directory:read");
+    const contact={id:"contact",name:"Stored receiver",phone:"+966551234567",email:"receiver@example.com",active:true};
+    const driver={id:"driver",name:"Stored driver",phone:"+966557654321",identity_no:"ID-1",affiliation:"external",active:true};
+    api.apiClient.mockImplementation((path:string)=>Promise.resolve(path.includes("/lookups/customers")
+      ?[{id:"c1",name:"Customer",customer_code:"C1"}]:path.includes("/customers/c1/contacts")?[contact]
+      :path.includes("/drivers/options")?[{id:driver.id,name:driver.name,affiliation:driver.affiliation}]
+      :path.includes("/drivers?")?{items:[driver],pages:1}:[]));
+    ui(<ShipmentForm/>);
+    fireEvent.focus(screen.getByRole("combobox",{name:"Customer"}));
+    fireEvent.click(await screen.findByRole("option",{name:/Customer.*C1/}));
+    fireEvent.focus(screen.getByRole("combobox",{name:"Saved contact"}));
+    fireEvent.click(await screen.findByRole("option",{name:/Stored receiver/}));
+    expect((screen.getByLabelText("Recipient") as HTMLInputElement).value).toBe("Stored receiver");
+    expect((screen.getByLabelText("Recipient phone") as HTMLInputElement).readOnly).toBe(true);
+    fireEvent.focus(screen.getByRole("combobox",{name:"Saved driver"}));
+    fireEvent.click(await screen.findByRole("option",{name:/Stored driver/}));
+    expect((screen.getByLabelText("Driver") as HTMLInputElement).value).toBe("Stored driver");
+    expect((screen.getByLabelText("Driver phone") as HTMLInputElement).value).toBe("+966557654321");
+    expect((screen.getByLabelText("Driver phone") as HTMLInputElement).readOnly).toBe(true);
+    fireEvent.click(screen.getByRole("button",{name:"Enter manually for this transaction — Saved driver"}));
+    expect((screen.getByLabelText("Driver") as HTMLInputElement).readOnly).toBe(false);
+    expect((screen.getByLabelText("Driver") as HTMLInputElement).value).toBe("");
+    fireEvent.click(screen.getByRole("button",{name:"Enter manually for this transaction — Saved contact"}));
+    expect((screen.getByLabelText("Recipient") as HTMLInputElement).readOnly).toBe(false);
+  });
   it("selects active defaults and keeps the chosen contact when a site changes or clears", async () => {
     const contacts = [
       { id: "default-contact", name: "Default receiver", is_default: true, active: true },
@@ -68,21 +94,46 @@ describe("shipment form", () => {
         : path.includes("/customers/c1/sites") ? sites : path.includes("/lookups/customers")
           ? [{ id: "c1", name: "Customer", customer_code: "C1" }] : []));
     ui(<ShipmentForm />);
-    await screen.findByRole("option", { name: "Customer — C1" });
-    fireEvent.change(screen.getByLabelText("Customer", { selector: "select" }), { target: { value: "c1" } });
-    const contact = await screen.findByLabelText("Saved contact", { selector: "select" }) as HTMLSelectElement;
-    const site = screen.getByLabelText("Saved delivery site", { selector: "select" }) as HTMLSelectElement;
-    await screen.findByRole("option", { name: "Default receiver" });
-    expect(contact.value).toBe("default-contact");
-    expect(site.value).toBe("default-site");
+    fireEvent.focus(screen.getByRole("combobox",{name:"Customer"}));
+    fireEvent.click(await screen.findByRole("option",{name:/Customer.*C1/}));
+    const contact = await screen.findByRole("combobox",{name:"Saved contact"}) as HTMLInputElement;
+    const site = screen.getByRole("combobox",{name:"Saved delivery site"}) as HTMLInputElement;
+    await waitFor(()=>expect(contact.value).toBe("Default receiver"));
+    expect(site.value).toBe("Default site");
     expect((screen.getByLabelText("Delivery address") as HTMLTextAreaElement).value).toBe("Default road address");
     expect((screen.getByLabelText("City") as HTMLInputElement).value).toBe("Custom city");
     expect((screen.getByLabelText("Location link") as HTMLInputElement).value).toBe("https://maps.example.test/default");
-    fireEvent.change(contact, { target: { value: "manual-contact" } });
-    fireEvent.change(site, { target: { value: "other-site" } });
-    expect(contact.value).toBe("manual-contact");
-    fireEvent.change(site, { target: { value: "" } });
-    expect(contact.value).toBe("manual-contact");
+    fireEvent.focus(contact);fireEvent.click(await screen.findByRole("option",{name:"Chosen receiver"}));
+    fireEvent.focus(site);fireEvent.click(await screen.findByRole("option",{name:"Other site"}));
+    expect(contact.value).toBe("Chosen receiver");
+    fireEvent.click(screen.getByRole("button",{name:"Clear Saved delivery site"}));
+    expect(contact.value).toBe("Chosen receiver");
+  });
+
+  it("keeps recipient details unbound when the selected site's contact is unavailable",async()=>{
+    const site={id:"site",name:"Delivery site",address:"Site road",active:true,contact_id:"inactive-contact"};
+    api.apiClient.mockImplementation((path:string,options?:{method?:string})=>Promise.resolve(
+      options?.method==="POST"?shipment():path.includes("/customers/c1/contacts")?[]
+        :path.includes("/customers/c1/sites")?[site]:path.includes("/lookups/customers")
+          ?[{id:"c1",name:"Customer",customer_code:"C1"}]:[]));
+    ui(<ShipmentForm/>);
+    fireEvent.focus(screen.getByRole("combobox",{name:"Customer"}));
+    fireEvent.click(await screen.findByRole("option",{name:/Customer.*C1/}));
+    fireEvent.change(screen.getByLabelText("Recipient"),{target:{value:"Manual receiver"}});
+    fireEvent.change(screen.getByLabelText("Recipient phone"),{target:{value:"+966551234567"}});
+    fireEvent.change(screen.getByLabelText("Recipient email"),{target:{value:"receiver@example.com"}});
+    fireEvent.focus(screen.getByRole("combobox",{name:"Saved delivery site"}));
+    fireEvent.click(await screen.findByRole("option",{name:"Delivery site"}));
+    expect((screen.getByLabelText("Recipient") as HTMLInputElement).value).toBe("Manual receiver");
+    expect((screen.getByLabelText("Recipient phone") as HTMLInputElement).value).toBe("+966551234567");
+    expect((screen.getByLabelText("Recipient email") as HTMLInputElement).value).toBe("receiver@example.com");
+    expect((screen.getByLabelText("Recipient") as HTMLInputElement).readOnly).toBe(false);
+    expect((screen.getByRole("combobox",{name:"Saved contact"}) as HTMLInputElement).value).toBe("");
+    fireEvent.change(screen.getByLabelText("Description"),{target:{value:"Strap"}});
+    fireEvent.change(screen.getByLabelText("Quantity"),{target:{value:"1"}});
+    fireEvent.change(screen.getByLabelText("Net weight per unit"),{target:{value:"2.5"}});
+    await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"Save draft"}));});
+    expect(sent("/shipping/shipments","POST")).toMatchObject({customer_contact_id:null,delivery_site_id:"site",consignee_name:"Manual receiver"});
   });
 
   it("creates a delivery note for an unregistered, named customer with its transport and items", async () => {
@@ -109,8 +160,8 @@ describe("shipment form", () => {
   it("chooses a registered customer and shows the contacts it brings", async () => {
     api.apiClient.mockResolvedValue([{ id: "c1", customer_code: "C-1", name: "UCIC Company", phone: "0551234567", email: "orders@ucic.example", city: "Riyadh" }]);
     ui(<ShipmentForm />, "ar");
-    await screen.findByRole("option", { name: "UCIC Company — C-1" });  // the list arrives after the search pause
-    fireEvent.change(screen.getByLabelText("العميل", { selector: "select" }), { target: { value: "c1" } });
+    fireEvent.focus(screen.getByRole("combobox",{name:"العميل"}));
+    fireEvent.click(await screen.findByRole("option",{name:/UCIC Company.*C-1/}));
     expect(await screen.findByText(/0551234567 · orders@ucic.example/)).toBeTruthy();
     const save = screen.getByRole("button", { name: "حفظ المسودة" }) as HTMLButtonElement;
     expect(save.disabled).toBe(true);  // an item is still needed
@@ -207,6 +258,7 @@ describe("shipment net and gross weights", () => {
     x.lines[0] = { ...x.lines[0], quantity: "40", weight: "100", unit_net_weight: "2.5", weight_unit: "kg" };
     api.apiClient.mockResolvedValue(x);
     ui(<ShipmentDetail shipmentId="s1" />);
+    fireEvent.click(await screen.findByRole("tab",{name:"Items and weights"}));
     const heading = await screen.findByRole("columnheader", { name: "Net weight per unit" });
     const table = heading.closest("table")!;
     const index = within(table).getAllByRole("columnheader").indexOf(heading);
@@ -220,6 +272,7 @@ describe("shipment net and gross weights", () => {
     x.lines[0] = { ...x.lines[0], quantity: "100", weight: "900", unit_net_weight: "9", weight_unit: "kg" };
     api.apiClient.mockResolvedValue(x);
     ui(<ShipmentDetail shipmentId="s1" />);
+    fireEvent.click(await screen.findByRole("tab",{name:"Items and weights"}));
     await screen.findByRole("columnheader", { name: "Net weight per unit" });
     expect(screen.getByRole("columnheader", { name: "Line net weight" })).toBeTruthy();
     expect(screen.getByText("Packaging and remainder")).toBeTruthy();
@@ -284,6 +337,7 @@ describe("shipment lines", () => {
   it("shows width, thickness and the weight with its unit on the detail", async () => {
     api.apiClient.mockResolvedValue(shipment());
     ui(<ShipmentDetail shipmentId="s1" />, "ar");
+    fireEvent.click(await screen.findByRole("tab",{name:"البنود والأوزان"}));
     expect(await screen.findByText("0.35")).toBeTruthy();
     expect(screen.getByText("1.2 طن")).toBeTruthy();
     expect(screen.getByText("الإجمالي: 120 لفة · الوزن 1,200 كجم")).toBeTruthy();
@@ -327,12 +381,14 @@ describe("delivery outcomes", () => {
     api.apiClient.mockResolvedValueOnce(coming);
     const first = ui(<ShipmentDetail shipmentId="s1" />, "ar");
     expect(await screen.findByText("لم تُستلم: البضاعة راجعة بالمرتجع RT-2026-0003. استلمها في المصنع ثم أعد إرسال الإشعار أو أغلقه.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab",{name:"البنود والأوزان"}));
     expect(screen.getByRole("link", { name: "RT-2026-0003" }).getAttribute("href")).toBe("/shipment-returns/r1");
     first.unmount();
     const back = { ...coming, actions: ["reschedule", "close"] as Shipment["actions"], returns: [{ ...coming.returns[0], status: "received" as const }] };
     api.apiClient.mockResolvedValue(back);
     ui(<ShipmentDetail shipmentId="s1" />);
     expect(await screen.findByText(/The goods are back at the factory/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "Data" }));
     fireEvent.click(screen.getByRole("button", { name: "Send again" }));
     const dialog = screen.getByRole("dialog", { name: "Send the note again" });
     expect(within(dialog).getByText(/attempt 2/)).toBeTruthy();
