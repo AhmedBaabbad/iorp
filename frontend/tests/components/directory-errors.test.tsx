@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { afterEach, expect, it, vi } from "vitest";
 import { DirectoryPanel } from "@/features/reference-directory/DirectoryPanel";
 import { ApiClientError } from "@/lib/api-client";
+import common from "@/i18n/locales/en/common.json";
 import en from "@/i18n/locales/en/directory.json";
 import ar from "@/i18n/locales/ar/directory.json";
 
@@ -18,11 +19,20 @@ it("keeps every directory error translated in both languages",()=>{
   for(const value of [...Object.values(ar.errors),...Object.values(en.errors)])expect(value.trim()).not.toBe("");
 });
 
+it("shows contact roles in a dedicated column",async()=>{
+  mocks.api.mockResolvedValue({items:[{id:"contact",name:"Contact",role:"Purchasing manager",phone:"+966551234567",active:true,is_default:true,version:1}],pages:1});
+  render(<NextIntlClientProvider locale="en" messages={{directory:en,messages:{},common}}>
+    <DirectoryPanel path="/commercial/customers/c1/directory/contacts" kind="contacts" writePermission="commercial:customers:update"/>
+  </NextIntlClientProvider>);
+  expect(screen.getByRole("columnheader",{name:"Role"})).toBeTruthy();
+  expect(await screen.findByRole("cell",{name:"Purchasing manager"})).toBeTruthy();
+});
+
 it.each(Object.entries(en.errors))("renders the specific %s message",async(code,message)=>{
   mocks.api.mockImplementation((_path:string,options?:{method?:string})=>options?.method
     ?Promise.reject(new ApiClientError("failed",code==="DIRECTORY_CHANGED"?409:422,{detail:code}))
     :Promise.resolve([]));
-  render(<NextIntlClientProvider locale="en" messages={{directory:en,messages:{}}}>
+  render(<NextIntlClientProvider locale="en" messages={{directory:en,messages:{},common}}>
     <DirectoryPanel path="/shipping/directory/carriers" kind="carriers" writePermission="shipping:directory:write"/>
   </NextIntlClientProvider>);
   fireEvent.click(screen.getByRole("button",{name:"Add"}));
@@ -46,7 +56,7 @@ it("reloads a conflicted record before retrying with its current version",async(
     }
     return Promise.resolve([{id:"c1",name:changed?"Remote name":"Original name",active:true,version:changed?2:1}]);
   });
-  render(<NextIntlClientProvider locale="en" messages={{directory:en,messages:{}}}>
+  render(<NextIntlClientProvider locale="en" messages={{directory:en,messages:{},common}}>
     <DirectoryPanel path="/shipping/directory/carriers" kind="carriers" writePermission="shipping:directory:write"/>
   </NextIntlClientProvider>);
   fireEvent.click(await screen.findByRole("button",{name:"Edit"}));

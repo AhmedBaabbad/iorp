@@ -21,6 +21,7 @@ import { deleteCustomer, getCustomer, getCustomerDeletionImpact } from "./custom
 import { CustomerReportButtons } from "@/features/reports/CustomerReportButtons";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { CustomerDirectory } from "@/features/reference-directory/DirectoryPanel";
+import { Tabs } from "@/components/ui/Tabs";
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth";
 import { useListName } from "@/features/masterdata";
@@ -135,6 +136,7 @@ function formatSalesOwner(owner: SalesOwnerSummary): string {
 export function CustomerDetailPage() {
   const params = useParams<{ id: string }>();
   const locale = useLocale();
+  const d = useTranslations("directory");
   const t = useTranslations("commercial.customers");
   const tEnums = useTranslations();
   const messages = useTranslations("messages");
@@ -353,7 +355,7 @@ export function CustomerDetailPage() {
 
       {!isLoading && !error && !isNotFound && customer ? (
         <div style={styles.relatedSections}>
-          <section style={styles.detailGrid} aria-label={t("detailsAria")}>
+          <Tabs label={d("customerTabs")} items={[{id:"data",label:d("data"),content:<section style={styles.detailGrid} aria-label={t("detailsAria")}>
             <DetailItem label={t("fields.customerCode")} value={customer.customer_code} />
             <DetailItem label={t("fields.nameAr")} value={customer.name_ar ?? null} />
             <DetailItem label={t("fields.nameEn")} value={customer.name_en ?? null} />
@@ -389,13 +391,13 @@ export function CustomerDetailPage() {
             <DetailItem label={t("fields.created")} value={fmt.dateTime(customer.created_at)} />
             <DetailItem label={t("fields.updated")} value={fmt.dateTime(customer.updated_at)} />
             <DetailItem label={t("fields.notes")} value={customer.notes} />
-          </section>
-
-          <CustomerDirectory id={customer.id}/><CustomerInteractionsSection customerId={customer.id} />
+          </section>},{id:"contacts",label:d("fields.contacts"),content:<CustomerDirectory id={customer.id} kind="contacts"/>},
+          {id:"sites",label:d("fields.sites"),content:<CustomerDirectory id={customer.id} kind="sites"/>},
+          {id:"interactions",label:d("interactions"),content:<><CustomerInteractionsSection customerId={customer.id} />
           <CustomerFollowUpsSection
             customerId={customer.id}
             customerSalesOwnerId={customer.sales_owner_user_id}
-          />
+          /></>}]} />
         </div>
       ) : null}
     </PageFrame>

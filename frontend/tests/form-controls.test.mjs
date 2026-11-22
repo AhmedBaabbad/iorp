@@ -53,13 +53,13 @@ test("inline grid defaults respect explicit alignment and do not force inline ga
   assert.match(defects, /row:\s*\{[^}]*display:\s*"grid"[^}]*alignItems:\s*"end"/);
 });
 
-test("directory controls wrap independently from the ListSelect management row", () => {
+test("directory comboboxes shrink independently from the ListSelect management row", () => {
   const css = read("../src/components/forms/control-row.module.css");
-  const directory = css.match(/\.directoryRow\s*\{([^}]+)\}/)[1];
-  assert.match(directory, /flex-wrap:\s*wrap/);
-  assert.match(css, /div\.directoryRow > input, div\.directoryRow > select\s*\{[^}]*flex:\s*1 1 10rem;[^}]*min-inline-size:\s*min\(10rem, 100%\)/);
+  const records = read("../src/components/ui/records.module.css");
+  assert.match(records, /\.comboControl\s*\{[^}]*display:flex;min-width:0/);
+  assert.match(records, /\.comboControl input\s*\{[^}]*flex:1;min-width:0;width:100%/);
   assert.doesNotMatch(css.match(/\.row\s*\{([^}]+)\}/)[1], /flex-wrap/);
-  assert.match(read("../src/features/reference-directory/RecordSelect.tsx"), /className=\{row.directoryRow\}/);
+  assert.match(read("../src/features/reference-directory/RecordSelect.tsx"), /<Combobox/);
 });
 
 test("helpers have normal weight without changing field title weight", () => {

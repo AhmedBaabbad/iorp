@@ -1,26 +1,46 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { apiClient } from "@/lib/api-client";
-import row from "@/components/forms/control-row.module.css";
-import s from "@/features/production-demands/demands.module.css";
-export type Option = { is_default?: boolean; address?: string|null; city?: string|null; city_other?: string|null; country?: string|null; location_url?: string|null; id: string; name: string; plate?: string; affiliation?: string; active?: boolean; contact_id?: string|null; phone?: string|null; email?: string|null; identity_no?: string|null; worker_type?: string; default_vehicle_id?: string|null; license_expiry?: string|null };
+import { usePermission } from "@/features/auth/permission-hooks";
+import { Combobox } from "@/components/ui/Combobox";
+import css from "@/components/ui/records.module.css";
+export type Option = { id: string; name: string; detail?: string; is_default?: boolean; active?: boolean;
+  address?: string|null; city?: string|null; city_other?: string|null; country?: string|null; location_url?: string|null;
+  plate?: string; vehicle_type?: string|null; affiliation?: string; contact_id?: string|null; role?: string|null;
+  phone?: string|null; email?: string|null; identity_no?: string|null; worker_type?: string; default_vehicle_id?: string|null; license_expiry?: string|null };
 
-export function DirectorySelect({ path, value, label, onChange }: { path: string; value?: string | null; label: string; onChange: (id: string, row?: Option) => void }) {
-  const ar=useLocale()==="ar";
-  const [query,setQuery]=useState("");
-  const [rows,setRows]=useState<Option[]>([]);
-  const [error,setError]=useState(false);
-  useEffect(()=>{let live=true; const timer=setTimeout(()=>{
-    apiClient<Option[]>(`${path}?search=${encodeURIComponent(query)}${path.endsWith("/options") && value ? `&selected_id=${encodeURIComponent(value)}` : ""}`).then(found=>{if(live){setRows(old=>[...found.filter(r=>r.active!==false),...old.filter(r=>r.id===value&&!found.some(n=>n.id===r.id))]);setError(false);}}).catch(()=>{if(live)setError(true);});
-  },200);return()=>{live=false;clearTimeout(timer);};},[path,query,value]);
-  return <div className={s.field}><span>{label}</span>
-    <div className={row.directoryRow}><input aria-label={`${label} — ${ar?"بحث":"Search"}`} value={query} onChange={e=>setQuery(e.target.value)} placeholder={ar?"ابحث في السجلات المحفوظة":"Search saved records"}/>
-    <select aria-label={label} value={value??""} onChange={e=>onChange(e.target.value,rows.find(r=>r.id===e.target.value))}>
-      <option value="">{ar?"إدخال لهذه العملية فقط":"Enter for this transaction only"}</option>
-      {value&&!rows.some(r=>r.id===value)&&<option value={value}>{ar?"الاختيار المحفوظ في المستند":"Selection saved in document"}</option>}
-      {rows.map(r=><option key={r.id} value={r.id}>{r.name}{r.plate?` — ${r.plate}`:""}{r.affiliation?` — ${r.affiliation==="internal"?(ar?"داخلي":"Internal"):(ar?"خارجي":"External")}`:""}</option>)}
-    </select></div>{error&&<span role="alert">{ar?"تعذر تحميل السجلات. حاول مجددًا.":"Could not load records. Try again."}</span>}
+export function DirectorySelect({ path, value, label, onChange, manual = false }: {
+  path: string; value?: string|null; label: string; onChange: (id: string, row?: Option) => void; manual?: boolean;
+}) {
+  const t=useTranslations("directory"), canRead=usePermission("shipping:directory:read");
+  const [query,setQuery]=useState(""), [rows,setRows]=useState<Option[]>([]);
+  const [loading,setLoading]=useState(false), [error,setError]=useState("");
+  useEffect(()=>{
+    let live=true;
+    const timer=setTimeout(async()=>{
+      setLoading(true);
+      try {
+        const found=await apiClient<Option[]>(`${path}?search=${encodeURIComponent(query)}${path.endsWith("/options")&&value?`&selected_id=${encodeURIComponent(value)}`:""}`);
+        let full:Option[]=[];
+        if(canRead && /^\/shipping\/directory\/(drivers|vehicles)\/options$/.test(path)) {
+          try {
+            const details=await apiClient<{items:Option[]}>(`${path.replace("/options","")}?page=1&page_size=100&search=${encodeURIComponent(query)}`);
+            full=details.items??[];
+          } catch { /* The base options remain usable without directory-read access. */ }
+        }
+        if(live){
+          const next=found.filter(row=>row.active!==false).map(row=>({...row,...full.find(item=>item.id===row.id)}));
+          setRows(old=>[...next,...old.filter(row=>row.id===value&&!next.some(item=>item.id===row.id))]);setError("");
+        }
+      }catch{if(live)setError(t("loadFailed"));}
+      finally{if(live)setLoading(false);}
+    },200);
+    return()=>{live=false;clearTimeout(timer);};
+  },[path,query,value,canRead,t]);
+  const options=rows.map(row=>({...row,detail:[row.role,row.phone,row.plate,row.affiliation?t(row.affiliation==="internal"?"internal":"external"):null].filter(Boolean).join(" · ")}));
+  return <div>
+    <Combobox label={label} value={value} options={options} onChange={onChange} onSearch={setQuery} loading={loading} error={error}/>
+    {manual&&value&&<button className={css.manual} type="button" aria-label={`${t("manual")} — ${label}`} onClick={()=>onChange("")}>{t("manual")}</button>}
   </div>;
 }
-

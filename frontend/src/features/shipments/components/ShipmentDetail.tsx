@@ -9,6 +9,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { UnitSelect } from "@/components/forms/UnitSelect";
+import { Tabs } from "@/components/ui/Tabs";
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth/permission-hooks";
 import { ReasonDialog } from "@/features/production-demands/reason-dialog";
@@ -36,6 +37,7 @@ type Dialog = "dispatch" | "deliver" | "fail" | "reschedule" | "close" | "cancel
 // One delivery note: its parties, transport and lines, the next lifecycle step, what came back, the proof of delivery,
 // the PDF and the history.
 export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
+  const d = useTranslations("directory");
   const t = useTranslations("shipping");
   const errors = useTranslations("shipping.errors");
   const messages = useTranslations("messages");
@@ -88,6 +90,7 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
     {x.status === "not_delivered" && <p role="status" className={s.error}>{t("notDeliveredHint", { reason: x.close_reason ?? "" })}</p>}
     {x.status === "partially_delivered" && atDoor.length > 0 && <p role="status" className={s.muted}>{t("partialHint", { numbers: numbers(atDoor) })}</p>}
     {error && <p role="alert" className={s.error}>{error}</p>}
+    <Tabs label={d("shipmentTabs")} items={[{id:"data",label:d("data"),content:<>
     <section className={s.panel}>
       <div className={s.actions} style={{ justifyContent: "space-between", marginBottom: 16 }}>
         <span className={s.actions}>
@@ -115,9 +118,10 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
         <Item label={label("date")}>{fmt.date(x.shipment_date)}</Item>
         <Item label={label("customer")}>{customerName(x.customer_id, x.customer_name)}{!x.customer_id && <div className={s.muted}>{t("namedCustomer")}</div>}</Item>
         <Item label={label("customer_reference")}><bdi>{x.customer_reference ?? "—"}</bdi></Item>
-        <Item label={label("consignee_name")}>{x.consignee_name ?? customerName(x.customer_id, x.customer_name)}</Item>
+        <Item label={label("consignee_name")}>{x.consignee_name ?? <><span>—</span><small className={s.muted}> {d("sameCustomer")}</small></>}</Item>
         <Item label={label("consignee_phone")}><bdi dir="ltr">{x.consignee_phone ?? "—"}</bdi>{x.notify_consignee && <div className={s.muted}>{t("willNotify")}</div>}</Item>
         <Item label={label("consignee_email")}><bdi dir="ltr">{x.consignee_email ?? "—"}</bdi></Item>
+        <Item label={d("fields.country")}>{x.delivery_country ? countryName(x.delivery_country) : "—"}</Item>
         <Item label={label("delivery_city")}>{x.delivery_city ? cityName(x.delivery_city) : "—"}</Item>
         <Item label={label("delivery_address")}>{x.delivery_address ?? "—"}<div><MapLink locationUrl={x.location_url} address={x.delivery_address} city={x.delivery_city ? cityName(x.delivery_city) : null} country={x.delivery_country ? countryName(x.delivery_country) : null} /></div></Item>
       </dl>
@@ -129,7 +133,7 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
           <Item label={label("carrier_name")}>{x.carrier_name ?? "—"}</Item>
           <Item label={label("tracking_no")}><bdi dir="ltr">{x.tracking_no ?? "—"}</bdi></Item>
         </> : <>
-          <Item label={pickup ? label("collector_name") : label("driver_name")}>{x.driver_name ?? "—"} — <DriverAffiliation value={x.driver_affiliation}/></Item>
+          <Item label={pickup ? label("collector_name") : label("driver_name")}>{x.driver_name ? <>{x.driver_name} — <DriverAffiliation value={x.driver_affiliation}/></> : "—"}</Item>
           <Item label={label("driver_phone")}><bdi dir="ltr">{x.driver_phone ?? "—"}</bdi></Item>
           {pickup && <Item label={label("driver_id_no")}><bdi dir="ltr">{x.driver_id_no ?? "—"}</bdi></Item>}
           <Item label={label("vehicle_plate")}><bdi>{x.vehicle_plate ?? "—"}</bdi></Item>
@@ -140,6 +144,8 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
       </dl>
       {x.delivery_notes && <p style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}><span className={s.muted}>{label("delivery_notes")}: </span>{x.delivery_notes}</p>}
     </section>
+    {x.notes && <section className={s.panel}><h2 style={{ marginTop: 0 }}>{label("notes")}</h2><p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{x.notes}</p></section>}
+    </>},{id:"lines",label:d("linesWeights"),content:<>
     <section className={s.panel} aria-label={t("sections.lines")}>
       <h2 style={{ marginTop: 0 }}>{t("sections.lines")}</h2>
       <div className={s.tableWrap}><table className={s.table}>
@@ -190,20 +196,22 @@ export function ShipmentDetail({ shipmentId }: { shipmentId: string }) {
         {r.kind === "delivery" && x.attempt > 1 && <span className={s.muted}> · {t("attemptBadge", { n: String(r.attempt) })}</span>} <ReturnStatusBadge status={r.status} />
       </li>)}</ul>
     </section>}
+    </>},{id:"documents",label:d("documents"),content:<>
     {LEFT.includes(x.status) && <section className={s.panel} aria-label={t("sections.attachments")}>
       <h2 style={{ marginTop: 0 }}>{t("sections.attachments")}</h2>
       <Attachments owner={{ kind: "shipment", id: x.id }} files={x.attachments} kinds={["proof_of_delivery", "document"]} canChange={canAttach}
         onChange={files => setX(old => (old ? { ...old, attachments: files } : old))} />
     </section>}
-    {x.notes && <section className={s.panel}><h2 style={{ marginTop: 0 }}>{label("notes")}</h2><p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{x.notes}</p></section>}
+    </>},{id:"history",label:d("history"),content:<>
     <section className={s.panel} aria-label={t("historyTitle")}>
       <h2 style={{ marginTop: 0 }}>{t("historyTitle")}</h2>
       <ol className={s.timeline}>{x.history.map((e, i) => <li key={`${e.at}-${i}`}>
-        <strong>{t.has(`events.${e.action}`) ? t(`events.${e.action}`, { number: e.return_no ?? "" }) : e.action}</strong>
+        <strong>{t.has(`events.${e.action}`) ? t(`events.${e.action}`, { number: e.return_no ?? "" }) : d("eventUpdated")}</strong>
         <span className={s.muted}>{e.actor_name ?? "—"} · {fmt.dateTime(e.at)}</span>
         {e.reason && <span style={{ whiteSpace: "pre-wrap" }}>{e.reason}</span>}
       </li>)}</ol>
     </section>
+    </>}]} />
     {dialog === "dispatch" && <DispatchDialog transport={x.delivery_method === "carrier" ? (x.carrier_name ?? "") : `${x.driver_name ?? ""} — ${x.vehicle_plate ?? ""}`}
       busy={busy !== null} onClose={() => setDialog(null)} onConfirm={body => void run("dispatch", () => dispatchShipment(x.id, body))} />}
     {dialog === "deliver" && <DeliverDialog shipment={x} busy={busy !== null} onClose={() => setDialog(null)}
