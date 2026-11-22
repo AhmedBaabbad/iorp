@@ -1,4 +1,5 @@
 "use client";
+import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 import { Combobox } from "@/components/ui/Combobox";
 import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
 import { formatThickness, thicknessFields } from "@/lib/spec-value";
@@ -158,6 +159,7 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
   const grossBelowNet = grossTotal !== null && grossTotal < netTotal;
   const valid = Boolean(date) && (registered ? Boolean(customerId) : Boolean(h.customer_name.trim())) && linesOk && (!gross.trim() || DECIMAL.test(gross.trim())) && !grossBelowNet;
 
+  const unsaved=useUnsavedFormChanges({h,registered,customerId,site,contact,transport,method,date,notify,lines,gross,grossUnit},!loading);
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!valid || busy || locked) return;
@@ -172,7 +174,7 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
         weight_unit: l.weight_unit, production_order_id: l.production_order_id || null })) };
     try {
       const saved = shipmentId ? await updateShipment(shipmentId, body) : await createShipment(body);
-      router.push(`/shipments/${saved.id}`);
+      unsaved.markSaved(); router.push(`/shipments/${saved.id}`);
     } catch (e) { setError(shippingErrorMessage(e, errors, f => t(`fields.${f}`))); setBusy(false); }
   }
 
@@ -184,7 +186,7 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
   const title = editing ? t("editTitle") : t("createTitle");
 
   return <PageFrame title={title} subtitle={t("formSubtitle")} action={<Link href={back} className={s.button}>{t("back")}</Link>}>
-    {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form onSubmit={submit} aria-label={title}>
+    {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form onKeyDownCapture={unsaved.onKeyboardInteraction} onChangeCapture={unsaved.onInteraction} onClickCapture={unsaved.onInteraction} onSubmit={submit} aria-label={title}>{unsaved.confirmation}
       {locked && <p role="status" className={s.error}>{t("lockedHint")}</p>}
       <fieldset disabled={busy || locked} style={{ border: 0, padding: 0, margin: 0 }}>
         <section className={s.panel}>

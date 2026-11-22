@@ -1,12 +1,12 @@
 "use client";
 
 import { ReferenceTextSelect } from "@/features/reference-directory/ReferenceTextSelect";
-import Link from "next/link";
+import {EditorSurface} from "@/components/forms/EditorSurface";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { PageFrame } from "@/components/layout/page-frame";
+
 import { usePermission } from "@/features/auth/permission-hooks";
 import s from "@/features/production-demands/demands.module.css";
 import { ProductionOrderPicker } from "@/features/production-orders/components/ProductionOrderPicker";
@@ -21,17 +21,15 @@ import { P } from "@/lib/production-permissions";
 type Values = { center: string; order: string; run: string; start: string; end: string; category: DowntimeCategory; reason: string; notes: string };
 
 // Records a stop on a machine (open until closed, or with its end), or edits one (eventId).
-export function DowntimeEventForm({ eventId }: { eventId?: string }) {
+function useDowntimeEventEditor({eventId,orderId}:{eventId?:string;orderId?:string}){
   const t = useTranslations("production.downtimeEvents");
   const categories = useTranslations("enums.downtimeEvent.category");
   const hints = useTranslations("production.downtimeEvents.categoryHints");
-  const messages = useTranslations("messages");
   const fmt = useFormatter();
-  const router = useRouter();
   const params = useSearchParams();
   const canReadRuns = usePermission(P.RUNS_READ);
   const editing = Boolean(eventId);
-  const [values, setValues] = useState<Values>({ center: params.get("work_center") ?? "", order: params.get("order") ?? "", run: "", start: nowLocalInput(), end: "",
+  const [values, setValues] = useState<Values>({ center: params.get("work_center") ?? "", order: orderId ?? params.get("order") ?? "", run: "", start: nowLocalInput(), end: "",
     category: "breakdown", reason: "", notes: "" });
   const [existing, setExisting] = useState<DowntimeEvent | null>(null);
   const [runs, setRuns] = useState<RunOption[]>([]);
@@ -68,9 +66,8 @@ export function DowntimeEventForm({ eventId }: { eventId?: string }) {
   const valid = Boolean(center && values.start && !endBeforeStart);
   const set = <K extends keyof Values>(field: K, value: Values[K]) => setValues(old => ({ ...old, [field]: value, ...(field === "order" ? { run: "" } : {}) }));
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!valid || busy || locked) return;
+  async function save() {
+    if (!valid || busy || locked) return null;
     setBusy(true); setError("");
     const body = {
       // A run carries the machine and the order; otherwise both come from the form.
@@ -80,15 +77,26 @@ export function DowntimeEventForm({ eventId }: { eventId?: string }) {
     };
     try {
       const saved = eventId ? await updateDowntimeEvent(eventId, body) : await createDowntimeEvent(body);
-      router.push(`/downtime-events/${saved.id}`);
-    } catch (e) { setError(downtimeErrorMessage(e, t)); setBusy(false); }
+      setBusy(false);return saved;
+    } catch (e) { setError(downtimeErrorMessage(e, t)); setBusy(false); return null; }
   }
 
   const back = eventId ? `/downtime-events/${eventId}` : "/downtime-events";
-  return <PageFrame title={editing ? t("editTitle") : t("createTitle")} subtitle={t("createSubtitle")}
-    action={<Link href={back} className={s.button}>{t("actions.back")}</Link>}>
-    {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form className={s.panel} onSubmit={submit} aria-label={editing ? t("editTitle") : t("createTitle")}>
-      {locked && <p role="status" className={s.error}>{t("hints.locked")}</p>}
+  return {t,categories,hints,busy,locked,values,set,canReadRuns,runs,fmt,centers,center,run,endBeforeStart,orderId,eventId,existing,loading,error,valid,save,back,editing};
+}
+export function DowntimeEventForm({eventId,orderId,onSaved,onClose}:{eventId?:string;orderId?:string;onSaved?:(record:DowntimeEvent)=>void;onClose?:()=>void}){
+  const editor=useDowntimeEventEditor({eventId,orderId}),router=useRouter();
+  const {t,editing,back,loading,busy,locked,valid,error}=editor;
+  return <EditorSurface title={editing?t("editTitle"):t("createTitle")} subtitle={t("createSubtitle")}
+    back={back} backLabel={t("actions.back")} cancelLabel={t("actions.cancel")} saveLabel={editing?t("actions.save"):t("actions.record")}
+    loading={loading} busy={busy} disabled={!valid||locked} error={error} onClose={onClose}
+    onSave={async()=>{const saved=await editor.save();if(!saved)return false;if(onSaved)onSaved(saved);else router.push(`/downtime-events/${saved.id}`);return true;}}>
+    <DowntimeEventFields editor={editor}/>
+  </EditorSurface>;
+}
+export function DowntimeEventFields({editor}:{editor:ReturnType<typeof useDowntimeEventEditor>}){
+  const {t,categories,hints,busy,locked,values,set,canReadRuns,runs,fmt,centers,center,run,endBeforeStart,orderId}=editor;
+  return <>      {locked && <p role="status" className={s.error}>{t("hints.locked")}</p>}
       <div className={s.grid}>
         <label className={s.field}>{t("fields.category")}
           <select required value={values.category} disabled={busy || locked} onChange={e => set("category", e.target.value as DowntimeCategory)}>
@@ -98,7 +106,7 @@ export function DowntimeEventForm({ eventId }: { eventId?: string }) {
         </label>
         <label className={s.field}>{t("fields.orderOptional")}
           {/* Searched on the server among the orders a stop can be linked to; an order chosen earlier stays shown. */}
-          <ProductionOrderPicker value={values.order} onChange={id => set("order", id)} statuses={LINKABLE_ORDER_STATUSES} disabled={busy || locked}
+          <ProductionOrderPicker value={values.order} onChange={id => set("order", id)} statuses={LINKABLE_ORDER_STATUSES} disabled={busy || locked || Boolean(orderId)}
             emptyLabel={t("placeholders.noOrder")} ariaLabel={t("fields.orderOptional")} />
         </label>
         {canReadRuns && <label className={s.field}>{t("fields.runOptional")}
@@ -122,11 +130,5 @@ export function DowntimeEventForm({ eventId }: { eventId?: string }) {
       {endBeforeStart && <p role="status" className={s.error}>{t("errors.END_BEFORE_START")}</p>}
       {run && <p className={s.muted}>{t("hints.runWorkCenter")}</p>}
       <label className={s.field}>{t("fields.notes")}<textarea maxLength={2000} value={values.notes} disabled={busy || locked} onChange={e => set("notes", e.target.value)} /></label>
-      {error && <p role="alert" className={s.error}>{error}</p>}
-      <div className={s.actions} style={{ marginTop: 16 }}>
-        <button type="submit" className={`${s.button} ${s.primary}`} disabled={!valid || busy || locked}>{editing ? t("actions.save") : t("actions.record")}</button>
-        <Link href={back} className={s.button}>{t("actions.cancel")}</Link>
-      </div>
-    </form>}
-  </PageFrame>;
+</>;
 }

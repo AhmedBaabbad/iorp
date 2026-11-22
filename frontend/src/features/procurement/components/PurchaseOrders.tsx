@@ -1,4 +1,5 @@
 "use client";
+import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
 import { DirectorySelect } from "@/features/reference-directory/DirectorySelect";
 import Link from "next/link";
@@ -200,6 +201,7 @@ export function OrderForm({ orderId, supplierId }: { orderId?: string; supplierI
   const tax = vat ? Math.round(taxable * vatRate / 100) : 0;
   const valid = Boolean(supplier && date) && linesOk && discountOk && discount <= subtotal;
 
+  const unsaved=useUnsavedFormChanges({supplier,date,currency,vat,h,lines},!loading);
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!valid || busy) return;
@@ -212,7 +214,7 @@ export function OrderForm({ orderId, supplierId }: { orderId?: string; supplierI
         unit_price: l.unit_price.trim() })) };
     try {
       const saved = orderId ? await updateOrder(orderId, body) : await createOrder(body);
-      router.push(`/purchase-orders/${saved.id}`);
+      unsaved.markSaved(); router.push(`/purchase-orders/${saved.id}`);
     } catch (e) { setError(procurementErrorMessage(e, errors)); setBusy(false); }
   }
   const input = (field: keyof Header, extra: Record<string, unknown> = {}) =>
@@ -223,7 +225,7 @@ export function OrderForm({ orderId, supplierId }: { orderId?: string; supplierI
   const money = (value: number) => <Money amount={value / 100} currency={currency} />;
 
   return <PageFrame title={title} subtitle={t("orders.formSubtitle")} action={<Link href={back} className={s.button}>{t("back")}</Link>}>
-    {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form onSubmit={submit} aria-label={title}>
+    {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form onKeyDownCapture={unsaved.onKeyboardInteraction} onChangeCapture={unsaved.onInteraction} onClickCapture={unsaved.onInteraction} onSubmit={submit} aria-label={title}>{unsaved.confirmation}
       <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0 }}>
         <section className={s.panel} aria-label={t("orders.sections.supplier")}>
           <h2 style={{ marginTop: 0 }}>{t("orders.sections.supplier")}</h2>

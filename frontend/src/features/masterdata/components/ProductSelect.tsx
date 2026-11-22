@@ -1,9 +1,10 @@
 "use client";
 
 import { localName } from "@/lib/local-name";
-import Link from "next/link";
+import { ProductCreateDialog } from "./ProductFormFields";
+import row from "@/components/forms/control-row.module.css";
 import { useLocale, useTranslations } from "next-intl";
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 
 import { usePermission } from "@/features/auth/permission-hooks";
 import { MD } from "@/lib/masterdata-permissions";
@@ -23,28 +24,23 @@ export function ProductSelect({ id, value, onChange, kind, required = true, disa
   const locale = useLocale();
   const canAdd = usePermission(MD.PRODUCTS_CREATE);
   const all = useProducts();
+  const [creating,setCreating]=useState(false);
   const name = (p: Product) => localName(p, locale);
 
-  if (all === null) {
-    return <select id={id} className={className} style={style} aria-label={ariaLabel} disabled value=""><option value="">{t("loading")}</option></select>;
-  }
-  if (all.length === 0) {
-    return <span style={{ display: "grid", gap: 4 }}>
-      <input id={id} className={className} style={style} aria-label={ariaLabel} required={required} disabled={disabled} maxLength={120} value={value}
-        onChange={e => onChange(e.target.value)} />
-      <small style={{ color: "var(--text-muted)" }}>{t("noCatalog")}{canAdd ? <> <Link href="/master-data/products/new">{t("define")}</Link></> : null}</small>
-    </span>;
-  }
-  const choices = all.filter(p => p.active && (!kind || p.kind === kind));
-  const current = value && !choices.some(p => p.key === value) ? all.find(p => p.key === value) : undefined;
+  const choices = (all??[]).filter(p => p.active && (!kind || p.kind === kind));
+  const current = value && !choices.some(p => p.key === value) ? all?.find(p => p.key === value) : undefined;
   return <span style={{ display: "grid", gap: 4 }}>
+    {all===null?<select id={id} aria-label={ariaLabel} disabled value=""><option value="">{t("loading")}</option></select>:all.length===0?<>
+      <input id={id} className={className} style={style} aria-label={ariaLabel} required={required} disabled={disabled} maxLength={120} value={value} onChange={e=>onChange(e.target.value)}/>
+      <small style={{color:"var(--text-muted)"}}>{t("noCatalog")}</small></>:
     <select id={id} className={className} style={style} aria-label={ariaLabel} required={required} disabled={disabled} value={value}
       onChange={e => onChange(e.target.value, all.find(p => p.key === e.target.value))}>
       <option value="">{t("choose")}</option>
       {choices.map(p => <option key={p.key} value={p.key}>{name(p)}</option>)}
       {value && !choices.some(p => p.key === value)
         ? <option value={value}>{current ? t("inactive", { name: name(current) }) : t("legacy", { value })}</option> : null}
-    </select>
-    {canAdd ? <small><Link href="/master-data/products/new" target="_blank">{t("add")}</Link></small> : null}
+    </select>}
+    {canAdd&&<button type="button" className={row.manage} disabled={disabled||all===null} onClick={()=>setCreating(true)}>{t("add")}</button>}
+    {creating&&<ProductCreateDialog kind={kind} onClose={()=>setCreating(false)} onCreated={product=>onChange(product.key,product)}/>}
   </span>;
 }

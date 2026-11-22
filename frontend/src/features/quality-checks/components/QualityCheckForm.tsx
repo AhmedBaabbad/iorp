@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
+import {EditorSurface} from "@/components/forms/EditorSurface";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { PageFrame } from "@/components/layout/page-frame";
+
 import s from "@/features/production-demands/demands.module.css";
 import { useFormatter } from "@/hooks/useFormatter";
 import { createQualityCheck, getInspectableOrders, getInspectableSamples, getQualityCheckById, updateQualityCheck } from "../api/quality-checks-api";
@@ -15,17 +15,15 @@ import { localDateTime, QUANTITY, qualityErrorMessage } from "./quality-errors";
 type Values = { type: QualityCheckType; order: string; item: string; sample: string; datetime: string; quantity: string; notes: string };
 
 // Opens an inspection of a production lot (order and line) or of a commercial sample; or edits one still open (checkId).
-export function QualityCheckForm({ checkId }: { checkId?: string }) {
+function useQualityCheckEditor({checkId,orderId,orderNumber}:{checkId?:string;orderId?:string;orderNumber?:string}){
   const t = useTranslations("quality.qualityChecks");
   const errors = useTranslations("quality.errors");
   const types = useTranslations("enums.qualityCheck.checkType");
   const orderStatus = useTranslations("enums.productionOrder.status");
-  const messages = useTranslations("messages");
   const fmt = useFormatter();
-  const router = useRouter();
   const params = useSearchParams();
   const editing = Boolean(checkId);
-  const [values, setValues] = useState<Values>({ type: "in_process_inspection", order: params.get("order") ?? "", item: "", sample: "",
+  const [values, setValues] = useState<Values>({ type: "in_process_inspection", order: orderId ?? params.get("order") ?? "", item: "", sample: "",
     datetime: localDateTime(), quantity: "", notes: "" });
   const [existing, setExisting] = useState<QualityCheckData | null>(null);
   const [orders, setOrders] = useState<InspectableOrder[]>([]);
@@ -37,8 +35,8 @@ export function QualityCheckForm({ checkId }: { checkId?: string }) {
   // A reinspection may also be made on a closed order (its retained samples), so it lists those too.
   const reinspection = values.type === "reinspection";
   useEffect(() => {
-    getInspectableOrders("", reinspection ? "reinspection" : undefined).then(setOrders).catch(() => setOrders([]));
-  }, [reinspection]);
+    getInspectableOrders(orderNumber??"", reinspection ? "reinspection" : undefined).then(setOrders).catch(() => setOrders([]));
+  }, [reinspection,orderNumber]);
   useEffect(() => {
     if (values.type !== "sample_inspection" || samples.length) return;
     getInspectableSamples().then(setSamples).catch(() => setSamples([]));
@@ -60,7 +58,7 @@ export function QualityCheckForm({ checkId }: { checkId?: string }) {
   const order = useMemo(() => orders.find(o => o.id === values.order) ?? null, [orders, values.order]);
   const line = order?.items.find(i => i.id === values.item) ?? null;
   // The order is fixed once the check exists, so editing only offers types that fit what it inspects.
-  const allowedTypes = !existing ? CHECK_TYPES
+  const allowedTypes = !existing ? (orderId ? CHECK_TYPES.filter(v=>v!=="sample_inspection") : CHECK_TYPES)
     : existing.sample_id ? ["sample_inspection" as const]
     : existing.production_order_id ? CHECK_TYPES.filter(v => v !== "sample_inspection")
     : CHECK_TYPES.filter(v => !ORDER_CHECK_TYPES.includes(v));
@@ -69,9 +67,8 @@ export function QualityCheckForm({ checkId }: { checkId?: string }) {
   const valid = Boolean(values.datetime && quantityOk && (isSample ? values.sample : !orderRequired || values.order));
   const set = <K extends keyof Values>(field: K, value: Values[K]) => setValues(old => ({ ...old, [field]: value, ...(field === "order" ? { item: "" } : {}) }));
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!valid || busy || locked) return;
+  async function save() {
+    if (!valid || busy || locked) return null;
     setBusy(true); setError("");
     const common = {
       check_type: values.type, check_datetime: new Date(values.datetime).toISOString(),
@@ -81,16 +78,27 @@ export function QualityCheckForm({ checkId }: { checkId?: string }) {
     try {
       const saved = checkId ? await updateQualityCheck(checkId, common)
         : await createQualityCheck({ ...common, production_order_id: isSample ? null : values.order || null });
-      router.push(`/quality-checks/${saved.id}`);
-    } catch (e) { setError(qualityErrorMessage(e, errors)); setBusy(false); }
+      setBusy(false);return saved;
+    } catch (e) { setError(qualityErrorMessage(e, errors)); setBusy(false); return null; }
   }
 
   const back = checkId ? `/quality-checks/${checkId}` : values.order ? `/quality-checks?order=${values.order}` : "/quality-checks";
   const unit = isSample ? samples.find(x => x.id === values.sample)?.unit : line?.unit ?? order?.unit;
-  return <PageFrame title={editing ? t("editTitle") : t("createTitle")} subtitle={editing ? existing?.inspection_code : t("createSubtitle")}
-    action={<Link href={back} className={s.button}>{t("actions.back")}</Link>}>
-    {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form className={s.panel} onSubmit={submit} aria-label={editing ? t("editTitle") : t("createTitle")}>
-      {locked && <p role="status" className={s.error}>{t("hints.locked")}</p>}
+  return {t,types,orderStatus,busy,locked,values,set,allowedTypes,isSample,samples,editing,existing,orderRequired,orders,order,fmt,unit,orderId,reinspection,checkId,loading,error,valid,save,back};
+}
+export function QualityCheckForm({checkId,orderId,orderNumber,onSaved,onClose}:{checkId?:string;orderId?:string;orderNumber?:string;onSaved?:(record:QualityCheckData)=>void;onClose?:()=>void}){
+  const editor=useQualityCheckEditor({checkId,orderId,orderNumber}),router=useRouter();
+  const {t,editing,existing,back,loading,busy,locked,valid,error}=editor;
+  return <EditorSurface title={editing?t("editTitle"):t("createTitle")} subtitle={editing?existing?.inspection_code:t("createSubtitle")}
+    back={back} backLabel={t("actions.back")} cancelLabel={t("actions.cancel")} saveLabel={editing?t("actions.save"):t("createButton")}
+    loading={loading} busy={busy} disabled={!valid||locked} error={error} onClose={onClose}
+    onSave={async()=>{const saved=await editor.save();if(!saved)return false;if(onSaved)onSaved(saved);else router.push(`/quality-checks/${saved.id}`);return true;}}>
+    <QualityCheckFields editor={editor}/>
+  </EditorSurface>;
+}
+export function QualityCheckFields({editor}:{editor:ReturnType<typeof useQualityCheckEditor>}){
+  const {t,types,orderStatus,busy,locked,values,set,allowedTypes,isSample,samples,editing,existing,orderRequired,orders,order,fmt,unit,orderId,reinspection}=editor;
+  return <>      {locked && <p role="status" className={s.error}>{t("hints.locked")}</p>}
       <div className={s.grid}>
         <label className={s.field}>{t("fields.checkType")}
           <select required value={values.type} disabled={busy || locked || allowedTypes.length === 1} onChange={e => set("type", e.target.value as QualityCheckType)}>
@@ -108,7 +116,7 @@ export function QualityCheckForm({ checkId }: { checkId?: string }) {
         </label> : <>
           <label className={s.field}>{orderRequired ? t("fields.productionOrder") : t("fields.productionOrderOptional")}
             {editing ? <input readOnly value={existing?.order_number ?? "—"} />
-              : <select required={orderRequired} value={values.order} disabled={busy} onChange={e => set("order", e.target.value)}>
+              : <select required={orderRequired} value={values.order} disabled={busy || Boolean(orderId)} onChange={e => set("order", e.target.value)}>
                 <option value="">{orders.length ? t("placeholders.selectOrder") : t("placeholders.noOrders")}</option>
                 {orders.map(o => <option key={o.id} value={o.id}>{o.number} — {o.product_type} ({orderStatus(o.status)})</option>)}
               </select>}
@@ -126,11 +134,5 @@ export function QualityCheckForm({ checkId }: { checkId?: string }) {
       </div>
       <p className={s.muted}>{isSample ? t("hints.sample") : reinspection ? t("hints.reinspection") : orderRequired ? t("hints.orderStatuses") : t("hints.optionalOrder")} {t("hints.quantityLater")}</p>
       <label className={s.field}>{t("fields.notes")}<textarea maxLength={2000} value={values.notes} disabled={busy || locked} onChange={e => set("notes", e.target.value)} /></label>
-      {error && <p role="alert" className={s.error}>{error}</p>}
-      <div className={s.actions} style={{ marginTop: 16 }}>
-        <button type="submit" className={`${s.button} ${s.primary}`} disabled={!valid || busy || locked}>{editing ? t("actions.save") : t("createButton")}</button>
-        <Link href={back} className={s.button}>{t("actions.cancel")}</Link>
-      </div>
-    </form>}
-  </PageFrame>;
+</>;
 }

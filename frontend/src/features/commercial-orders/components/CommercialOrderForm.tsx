@@ -1,4 +1,5 @@
 "use client";
+import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -108,6 +109,7 @@ export function CommercialOrderForm({ order }: { order?: CommercialOrderData }) 
     setValues((v) => ({ ...v, lines: v.lines.map((l, i) => (i === index ? { ...l, product_type: key, spec: "", unit: l.unit || unit || "" } : l)) }));
   }
 
+  const unsaved=useUnsavedFormChanges(values,true);
   async function chooseQuote(quoteId: string) {
     set("quote_id", quoteId);
     if (!quoteId) return;
@@ -146,7 +148,7 @@ export function CommercialOrderForm({ order }: { order?: CommercialOrderData }) 
     setBusy(true);
     try {
       const saved = order ? await updateCommercialOrder(order.id, body) : await createCommercialOrder({ customer_id: values.customer_id, ...body });
-      router.push(`/commercial-orders/${saved.id}`);
+      unsaved.markSaved(); router.push(`/commercial-orders/${saved.id}`);
     } catch (e) { setError(salesErrorMessage(e, errors, messages)); setBusy(false); }
   }
 
@@ -157,7 +159,7 @@ export function CommercialOrderForm({ order }: { order?: CommercialOrderData }) 
   return (
     <PageFrame title={editing ? `${t("editTitle")} — ${order!.order_number}` : t("createTitle")} subtitle={t("createSubtitle")}
       action={<Link href={back} className={s.button}>{editing ? t("backToDetail") : t("backToList")}</Link>}>
-      <form onSubmit={submit}>
+      <form onKeyDownCapture={unsaved.onKeyboardInteraction} onChangeCapture={unsaved.onInteraction} onClickCapture={unsaved.onInteraction} onSubmit={submit}>{unsaved.confirmation}
         <section className={s.panel} aria-label={t("sections.header")}>
           <h2 style={{ marginTop: 0 }}>{t("sections.header")}</h2>
           <div className={s.grid}>

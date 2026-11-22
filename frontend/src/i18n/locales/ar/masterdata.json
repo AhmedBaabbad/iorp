@@ -79,11 +79,14 @@
     "choose": "اختر منتجًا",
     "add": "+ إضافة منتج",
     "noCatalog": "لم تُعرَّف المنتجات بعد: اكتب نوع المنتج.",
-    "define": "تعريف المنتجات",
     "inactive": "{name} (موقوف)",
     "legacy": "{value} (مكتوب قبل القائمة)",
     "chooseItem": "اختر…",
-    "manageList": "إدارة القائمة"
+    "addItem": "+ إضافة",
+    "addItemTo": "إضافة إلى {label}",
+    "newItem": "عنصر قائمة جديد",
+    "parentCountry": "الدولة",
+    "manageInNewTab": "إدارة القائمة (تفتح في تبويب جديد)"
   },
   "settings": {
     "title": "الإعدادات العامة",

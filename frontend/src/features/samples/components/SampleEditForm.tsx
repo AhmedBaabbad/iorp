@@ -1,4 +1,5 @@
 "use client";
+import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
 import Link from "next/link";
 import { useAuth } from '@/features/auth';
@@ -118,6 +119,8 @@ export function SampleEditForm() {
   const [error, setError] = useState<string | null>(null);
   const [isNotFound, setIsNotFound] = useState(false);
   const [successRedirect, setSuccessRedirect] = useState<string | null>(null);
+  const unsaved=useUnsavedFormChanges(values,!isLoading);
+
 
   useEffect(() => {
     let isMounted = true;
@@ -204,7 +207,7 @@ export function SampleEditForm() {
       }
 
       await updateSample(sampleId, payload);
-      setSuccessRedirect(`/samples/${sampleId}`);
+      unsaved.markSaved(); setSuccessRedirect(`/samples/${sampleId}`);
     } catch (caughtError) {
       setError(
         sampleError(caughtError, t, messages),
@@ -248,7 +251,7 @@ export function SampleEditForm() {
 
       {!isLoading && !isNotFound ? (
         <section style={styles.panel}>
-          <form style={styles.form} onSubmit={handleSubmit}>
+          <form onKeyDownCapture={unsaved.onKeyboardInteraction} onChangeCapture={unsaved.onInteraction} onClickCapture={unsaved.onInteraction} style={styles.form} onSubmit={handleSubmit}>{unsaved.confirmation}
             <p style={styles.codeNote}>
               {t("fields.sampleCode")}: <strong>{sampleCode}</strong>
             </p>

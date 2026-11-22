@@ -79,11 +79,14 @@
     "choose": "Choose a product",
     "add": "+ Add a product",
     "noCatalog": "No products are defined yet: type the product type.",
-    "define": "Define products",
     "inactive": "{name} (inactive)",
     "legacy": "{value} (written before the list)",
     "chooseItem": "Choose…",
-    "manageList": "Manage the list"
+    "addItem": "+ Add",
+    "addItemTo": "Add to {label}",
+    "newItem": "New list item",
+    "parentCountry": "Country",
+    "manageInNewTab": "Manage the list (opens in a new tab)"
   },
   "settings": {
     "title": "General settings",

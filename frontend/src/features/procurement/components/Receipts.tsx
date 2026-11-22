@@ -1,4 +1,5 @@
 "use client";
+import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
 import { TransportSelection, DriverAffiliation, type TransportValues } from "@/features/reference-directory/DirectorySelect";
 import Link from "next/link";
@@ -202,6 +203,7 @@ export function ReceiptForm({ receiptId, supplierId, orderId }: { receiptId?: st
     && (!l.weight.trim() || DECIMAL.test(l.weight.trim())) && (!l.package_count.trim() || /^\d+$/.test(l.package_count.trim())));
   const valid = Boolean(supplier && date) && linesOk;
 
+  const unsaved=useUnsavedFormChanges({supplier,date,h,transport,lines,order},!loading);
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!valid || busy) return;
@@ -213,7 +215,7 @@ export function ReceiptForm({ receiptId, supplierId, orderId }: { receiptId?: st
         po_line_id: order && l.po_line_id ? l.po_line_id : null })) };
     try {
       const saved = receiptId ? await updateReceipt(receiptId, body) : await createReceipt(body);
-      router.push(`/goods-receipts/${saved.id}`);
+      unsaved.markSaved(); router.push(`/goods-receipts/${saved.id}`);
     } catch (e) { setError(procurementErrorMessage(e, errors)); setBusy(false); }
   }
   const input = (field: keyof Header, extra: Record<string, unknown> = {}) =>
@@ -223,7 +225,7 @@ export function ReceiptForm({ receiptId, supplierId, orderId }: { receiptId?: st
   const chosen = suppliers.find(o => o.id === supplier);
 
   return <PageFrame title={title} subtitle={t("receipts.formSubtitle")} action={<Link href={back} className={s.button}>{t("back")}</Link>}>
-    {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form onSubmit={submit} aria-label={title}>
+    {loading ? <p className={s.muted}>{messages("loading.default")}</p> : <form onKeyDownCapture={unsaved.onKeyboardInteraction} onChangeCapture={unsaved.onInteraction} onClickCapture={unsaved.onInteraction} onSubmit={submit} aria-label={title}>{unsaved.confirmation}
       <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0 }}>
         <section className={s.panel}>
           <div className={s.grid}>

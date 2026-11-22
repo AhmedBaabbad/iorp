@@ -1,4 +1,5 @@
 "use client";
+import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
 import Link from "next/link";
 import { useAuth } from '@/features/auth';
@@ -120,6 +121,7 @@ export function SampleForm() {
     }));
   }
 
+  const unsaved=useUnsavedFormChanges(values,true);
   async function handleSubmit(event: { preventDefault(): void }) {
     event.preventDefault();
     setError(null);
@@ -127,7 +129,7 @@ export function SampleForm() {
 
     try {
       const createdSample = await createSample(toCreateRequest(values));
-      setSuccessRedirect(`/samples/${createdSample.id}`);
+      unsaved.markSaved(); setSuccessRedirect(`/samples/${createdSample.id}`);
     } catch (caughtError) {
       setError(
         sampleError(caughtError, t, messages),
@@ -156,7 +158,7 @@ export function SampleForm() {
       }
     >
       <section style={styles.panel}>
-        <form style={styles.form} onSubmit={handleSubmit}>
+        <form onKeyDownCapture={unsaved.onKeyboardInteraction} onChangeCapture={unsaved.onInteraction} onClickCapture={unsaved.onInteraction} style={styles.form} onSubmit={handleSubmit}>{unsaved.confirmation}
           <div style={styles.formGrid}>
             <label style={sharedStyles.field}>
               <span style={sharedStyles.label}>

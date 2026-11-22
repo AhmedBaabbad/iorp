@@ -3,6 +3,7 @@ import { ReferenceTextSelect } from "@/features/reference-directory/ReferenceTex
 
 
 import Link from "next/link";
+import {ParameterFormFields,EMPTY_PARAMETER,type ParameterDraft} from "./ParameterFormFields";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
@@ -12,10 +13,9 @@ import s from "@/features/production-demands/demands.module.css";
 import { qualityErrorMessage } from "@/features/quality-checks/components/quality-errors";
 import { Q } from "@/lib/quality-permissions";
 import { addStandardParameters, createParameter, getParameters, updateParameter } from "../api";
-import type { ParameterKind, TestParameter } from "../types";
+import type { TestParameter } from "../types";
 
-type Draft = { code: string; name_ar: string; name_en: string; kind: ParameterKind; unit: string; method: string };
-const EMPTY: Draft = { code: "", name_ar: "", name_en: "", kind: "numeric", unit: "", method: "" };
+
 
 // "خصائص الفحص": what the factory measures (numeric, in a unit) or checks visually (conforming / not).
 export function TestParametersPage() {
@@ -25,7 +25,7 @@ export function TestParametersPage() {
   const canCreate = usePermission(Q.SPECS_CREATE);
   const canUpdate = usePermission(Q.SPECS_UPDATE);
   const [rows, setRows] = useState<TestParameter[] | null>(null);
-  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [draft, setDraft] = useState<ParameterDraft>(EMPTY_PARAMETER);
   const [editing, setEditing] = useState<TestParameter | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -43,7 +43,7 @@ export function TestParametersPage() {
     event.preventDefault();
     const ok = await run(() => createParameter({ ...draft, unit: draft.kind === "numeric" ? draft.unit || null : null, method: draft.method || null,
       sort_order: (rows?.length ?? 0) * 10 + 10 }));
-    if (ok) setDraft(EMPTY);
+    if (ok) setDraft(EMPTY_PARAMETER);
   }
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -52,7 +52,7 @@ export function TestParametersPage() {
       method: editing.method || null, is_active: editing.is_active }));
     if (ok) setEditing(null);
   }
-  const set = (field: keyof Draft, value: string) => setDraft(old => ({ ...old, [field]: value }));
+  const set = (field: keyof ParameterDraft, value: string) => setDraft(old => ({ ...old, [field]: value }));
 
   return <PageFrame title={t("title")} subtitle={t("subtitle")}
     action={<Link href="/quality-specifications" className={s.button}>{t("toSpecifications")}</Link>}>
@@ -95,19 +95,7 @@ export function TestParametersPage() {
     </section>}
     {canCreate && rows !== null && <form className={s.panel} onSubmit={add} aria-label={t("newTitle")}>
       <h2 style={{ marginTop: 0 }}>{t("newTitle")}</h2>
-      <div className={s.grid}>
-        <label className={s.field}>{t("fields.code")}<input required maxLength={40} pattern="[A-Za-z0-9_\-]+" dir="ltr" value={draft.code} onChange={e => set("code", e.target.value)} /></label>
-        <label className={s.field}>{t("fields.nameAr")}<input required maxLength={120} value={draft.name_ar} onChange={e => set("name_ar", e.target.value)} /></label>
-        <label className={s.field}>{t("fields.nameEn")}<input required maxLength={120} dir="ltr" value={draft.name_en} onChange={e => set("name_en", e.target.value)} /></label>
-        <label className={s.field}>{t("fields.kind")}
-          <select value={draft.kind} onChange={e => set("kind", e.target.value)}>
-            <option value="numeric">{t("kinds.numeric")}</option><option value="attribute">{t("kinds.attribute")}</option>
-          </select>
-        </label>
-        {draft.kind === "numeric" && <label className={s.field}>{t("fields.unit")}<input maxLength={16} dir="ltr" value={draft.unit} onChange={e => set("unit", e.target.value)} /></label>}
-        <label className={s.field}>{t("fields.method")}<ReferenceTextSelect list="test_method" value={draft.method} onChange={v=>set("method",v)}/></label>
-      </div>
-      <p className={s.muted}>{t("kindHint")}</p>
+      <ParameterFormFields draft={draft} set={set}/>
       <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy}>{t("add")}</button>
     </form>}
   </PageFrame>;

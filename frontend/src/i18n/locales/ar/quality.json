@@ -534,7 +534,8 @@
       "max": "≤ {value}",
       "minus": "− {value}",
       "plus": "+ {value}"
-    }
+    },
+    "addParameter": "+ معامل اختبار"
   },
   "certificates": {
     "listTitle": "شهادات التحليل",
