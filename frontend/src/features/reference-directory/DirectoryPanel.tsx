@@ -36,8 +36,9 @@ export function DirectoryPanel({path,kind,writePermission,contactPath}:{path:str
   },[path,page,query,t]);
   useEffect(()=>{const timer=setTimeout(()=>void load(),200);return()=>clearTimeout(timer);},[load]);
   useEffect(()=>{
-    let live=true;
+    let live=true,request=0;
     async function readNames(){
+      const current=++request;
       const result:Record<string,string>={};
       for(const resource of kind==="drivers"?["vehicles","carriers"]:kind==="vehicles"?["carriers"]:[]){
         let page=1,pages=1;
@@ -47,9 +48,11 @@ export function DirectoryPanel({path,kind,writePermission,contactPath}:{path:str
           pages=Array.isArray(data)?1:data.pages;page++;
         }while(page<=pages);
       }
-      if(live)setNames(result);
+      if(live&&current===request)setNames(result);
     }
-    void readNames().catch(()=>{});return()=>{live=false;};
+    const refresh=()=>{void readNames().catch(()=>{});};
+    refresh();window.addEventListener("shipping-directory:saved",refresh);
+    return()=>{live=false;window.removeEventListener("shipping-directory:saved",refresh);};
   },[kind]);
   const label=(key:string)=>t(`fields.${key}`);
   const set=(key:string,value:string|boolean|null)=>setDraft(old=>({...old,[key]:value}));
@@ -65,7 +68,7 @@ export function DirectoryPanel({path,kind,writePermission,contactPath}:{path:str
     if(!draft||busy)return false;setBusy(true);setError("");
     const body:Record<string,unknown>={...draft};delete body.id;if(!["contacts","sites"].includes(kind))delete body.is_default;
     for(const key of Object.keys(body))if(body[key]==="")body[key]=null;
-    try{await apiClient(`${path}${draft.id?`/${draft.id}`:""}`,{method:draft.id?"PUT":"POST",body});await load();return true;}
+    try{await apiClient(`${path}${draft.id?`/${draft.id}`:""}`,{method:draft.id?"PUT":"POST",body});if(path.startsWith("/shipping/directory/"))window.dispatchEvent(new Event("shipping-directory:saved"));await load();return true;}
     catch(e){const code=apiErrorCode(e);setErrorCode(code??"");setError(code&&t.has(`errors.${code}`)?t(`errors.${code}`):getApiErrorMessage(e,messages));return false;}
     finally{setBusy(false);}
   }

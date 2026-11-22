@@ -110,6 +110,32 @@ describe("shipment form", () => {
     expect(contact.value).toBe("Chosen receiver");
   });
 
+  it("keeps recipient details unbound when the selected site's contact is unavailable",async()=>{
+    const site={id:"site",name:"Delivery site",address:"Site road",active:true,contact_id:"inactive-contact"};
+    api.apiClient.mockImplementation((path:string,options?:{method?:string})=>Promise.resolve(
+      options?.method==="POST"?shipment():path.includes("/customers/c1/contacts")?[]
+        :path.includes("/customers/c1/sites")?[site]:path.includes("/lookups/customers")
+          ?[{id:"c1",name:"Customer",customer_code:"C1"}]:[]));
+    ui(<ShipmentForm/>);
+    fireEvent.focus(screen.getByRole("combobox",{name:"Customer"}));
+    fireEvent.click(await screen.findByRole("option",{name:/Customer.*C1/}));
+    fireEvent.change(screen.getByLabelText("Recipient"),{target:{value:"Manual receiver"}});
+    fireEvent.change(screen.getByLabelText("Recipient phone"),{target:{value:"+966551234567"}});
+    fireEvent.change(screen.getByLabelText("Recipient email"),{target:{value:"receiver@example.com"}});
+    fireEvent.focus(screen.getByRole("combobox",{name:"Saved delivery site"}));
+    fireEvent.click(await screen.findByRole("option",{name:"Delivery site"}));
+    expect((screen.getByLabelText("Recipient") as HTMLInputElement).value).toBe("Manual receiver");
+    expect((screen.getByLabelText("Recipient phone") as HTMLInputElement).value).toBe("+966551234567");
+    expect((screen.getByLabelText("Recipient email") as HTMLInputElement).value).toBe("receiver@example.com");
+    expect((screen.getByLabelText("Recipient") as HTMLInputElement).readOnly).toBe(false);
+    expect((screen.getByRole("combobox",{name:"Saved contact"}) as HTMLInputElement).value).toBe("");
+    fireEvent.change(screen.getByLabelText("Description"),{target:{value:"Strap"}});
+    fireEvent.change(screen.getByLabelText("Quantity"),{target:{value:"1"}});
+    fireEvent.change(screen.getByLabelText("Net weight per unit"),{target:{value:"2.5"}});
+    await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"Save draft"}));});
+    expect(sent("/shipping/shipments","POST")).toMatchObject({customer_contact_id:null,delivery_site_id:"site",consignee_name:"Manual receiver"});
+  });
+
   it("creates a delivery note for an unregistered, named customer with its transport and items", async () => {
     api.apiClient.mockImplementation((path: string, o?: { method?: string }) => Promise.resolve(o?.method === "POST" ? shipment() : []));
     ui(<ShipmentForm />);

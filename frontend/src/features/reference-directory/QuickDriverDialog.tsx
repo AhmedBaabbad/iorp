@@ -25,8 +25,8 @@ export function QuickDriverDialog({ onClose, onSelect }: { onClose: () => void; 
       const details = (caught as { status?: number; details?: { detail?: { code?: string; existing_driver_id?: string } } });
       if (details.status === 409 && details.details?.detail?.code === "DRIVER_IDENTITY_EXISTS") {
         setExisting(details.details.detail.existing_driver_id ?? null);
-        setError(t("copy.quickdriverdialog0"));
-      } else setError(t("copy.quickdriverdialog1"));
+        setError(t("driverExists"));
+      } else setError(t("driver.addFailed"));
       return false;
     } finally { setBusy(false); }
   }
@@ -37,14 +37,14 @@ export function QuickDriverDialog({ onClose, onSelect }: { onClose: () => void; 
       const rows = await apiClient<Option[]>(`/shipping/directory/drivers/options?selected_id=${encodeURIComponent(existing)}`);
       const driver = rows.find(row => row.id === existing);
       if (driver) onSelect(driver);
-      else setError(t("copy.quickdriverdialog2"));
-    } catch { setError(t("copy.quickdriverdialog3")); }
+      else setError(t("driverUnavailable"));
+    } catch { setError(t("driver.loadFailed")); }
     finally { setBusy(false); }
   }
   return <RecordDialog title={t("newDriver")} onClose={onClose} onSave={save} error={error} saveLabel={t("saveSelect")}>
     <fieldset disabled={busy} className={s.grid} style={{ border: 0, padding: 0, margin: 0 }}>
       <DriverFields value={value} onChange={(key, next) => setValue(old => ({ ...old, [key]: next }))} />
     </fieldset>
-    {existing && <button type="button" className={s.button} disabled={busy} onClick={() => void chooseExisting()}>{t("copy.quickdriverdialog7")}</button>}
+    {existing && <button type="button" className={s.button} disabled={busy} onClick={() => void chooseExisting()}>{t("selectExisting")}</button>}
   </RecordDialog>;
 }

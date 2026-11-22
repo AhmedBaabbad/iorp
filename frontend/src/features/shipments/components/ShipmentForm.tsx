@@ -222,7 +222,7 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
           <h2 style={{ marginTop: 0 }}>{t("sections.recipient")}</h2>
           {registered&&customerId&&<>
             <DirectorySelect manual key={"site-"+customerId} path={"/shipping/directory/customers/"+customerId+"/sites"} value={site} label={d("savedSite")}
-              onChange={(id,row)=>{siteChanged.current=true;if((id||null)===site)return;selectSite(id||null,row);if(!contact&&!contactChanged.current&&row?.contact_id)selectContact(row.contact_id,contactChoices.find(item=>item.id===row.contact_id));}}/>
+              onChange={(id,row)=>{siteChanged.current=true;if((id||null)===site)return;selectSite(id||null,row);if(!contact&&!contactChanged.current&&row?.contact_id){const receiver=contactChoices.find(item=>item.id===row.contact_id&&item.active!==false);if(receiver)selectContact(receiver.id,receiver);}}}/>
             <DirectorySelect manual key={"contact-"+customerId} path={"/shipping/directory/customers/"+customerId+"/contacts"} value={contact} label={d("savedContact")}
               onChange={(id,row)=>{contactChanged.current=true;if((id||null)===contact)return;selectContact(id||null,row);}}/>
           </>}
