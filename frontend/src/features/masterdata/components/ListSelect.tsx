@@ -1,4 +1,6 @@
 "use client";
+import {Combobox} from "@/components/ui/Combobox";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import { localName } from "@/lib/local-name";
 import { ListCreateDialog } from "./ListCreateDialog";
@@ -31,15 +33,15 @@ export function ListSelect({ id, list, value, onChange, parent, required = false
   const choices = (all??[]).filter(i => i.active && (!parent || !i.parent_key || i.parent_key === parent));
   const current = value && !choices.some(i => i.key === value) ? all?.find(i => i.key === value) : undefined;
   return <span className={row.row}>
-    {all===null?<select id={id} aria-label={ariaLabel} disabled value=""><option value="">{t("loading")}</option></select>:all.length===0?
+    {all===null?<Combobox hideLabel label={ariaLabel??t("loading")} ariaLabel={ariaLabel??t("loading")} id={id} disabled value="" options={[]} onChange={()=>{}} loading/>:all.length===0?
       <input id={id} className={className} style={style} aria-label={ariaLabel} required={required} disabled={disabled} maxLength={120} value={value} onChange={e=>onChange(e.target.value)}/>:
-    <select id={id} className={className} style={style} aria-label={ariaLabel} required={required} disabled={disabled} value={value}
-      onChange={e => onChange(e.target.value, all.find(i => i.key === e.target.value))}>
+    <RecordCombobox id={id} className={className} style={style} aria-label={ariaLabel??listNames(`lists.names.${list}`)} required={required} disabled={disabled} value={value}
+      onChange={e => onChange(e, all.find(i => i.key === e))}>
       <option value="">{t("chooseItem")}</option>
       {choices.map(i => <option key={i.key} value={i.key}>{name(i)}</option>)}
       {value && !choices.some(i => i.key === value)
         ? <option value={value}>{current ? t("inactive", { name: name(current) }) : t("legacy", { value })}</option> : null}
-    </select>}
+    </RecordCombobox>}
     {canManage&&<button type="button" className={row.manage} disabled={disabled||all===null} onClick={()=>setCreating(true)} aria-label={t("addItemTo",{label:ariaLabel??listNames(`lists.names.${list}`)})}>{t("addItem")}</button>}
     {creating&&<ListCreateDialog list={list} parent={parent} onClose={()=>setCreating(false)} onCreated={item=>onChange(item.key,item)}/>}
   </span>;

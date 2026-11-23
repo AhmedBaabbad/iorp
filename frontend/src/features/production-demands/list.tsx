@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { customerDisplayName } from "@/lib/customer-name";
 import Link from "next/link";
 import { PlanningAllocation } from "./planning-allocation";
@@ -47,11 +48,12 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
   }, [config, visibleReady]);
   const [data, setData] = useState<Page | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerSearch,setCustomerSearch]=useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [revision, refresh] = useState(0);
-  useEffect(() => { let active = true; demandsApi.customers().then(v => { if (active) setCustomers(v); }).catch(e => { if (active) setError(errorKey(e)); }); return () => { active = false; }; }, []);
+  useEffect(() => { let active = true; const timer=setTimeout(()=>{demandsApi.customers(customerSearch).then(v => { if (active) setCustomers(v); }).catch(e => { if (active) setError(errorKey(e)); });},250); return () => { active = false;clearTimeout(timer); }; }, [customerSearch]);
   useEffect(() => {
     if (!visibleReady) return;
     let active = true; setBusy(true); setError("");
@@ -100,7 +102,7 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
     <section className={s.panel}>
       <div className={s.toolbar}>
         <label className={s.field}>{t("search")}<input value={filters.search ?? ""} onChange={e => filter("search", e.target.value)} /></label>
-        <label className={s.field}>{t("customer")}<select value={filters.customer_id ?? ""} onChange={e => filter("customer_id", e.target.value)}><option value="">{t("all")}</option>{customers.map(c => <option key={c.id} value={c.id}>{c.code} · {customerDisplayName(c, locale)}</option>)}</select></label>
+        <label className={s.field}>{t("customer")}<RecordCombobox onSearch={setCustomerSearch} aria-label={t("customer")} value={filters.customer_id ?? ""} onChange={e => filter("customer_id", e)}><option value="">{t("all")}</option>{customers.map(c => <option key={c.id} value={c.id}>{c.code} · {customerDisplayName(c, locale)}</option>)}</RecordCombobox></label>
         <label className={s.field}>{t("priority")}<select value={filters.priority ?? ""} onChange={e => filter("priority", e.target.value)}><option value="">{t("all")}</option>{priorities.map(v => <option key={v} value={v}>{t(`priorities.${v}`)}</option>)}</select></label>
         <StatusVisibilityPicker value={visible} defaults={config.defaults} onChange={changeVisible} />
         {planning && <><label className={s.field}>{t("productType")}<input value={filters.product_type ?? ""} onChange={e => filter("product_type", e.target.value)} /></label><label className={s.field}>{t("deliveryFrom")}<input type="date" value={filters.requested_delivery_from ?? ""} onChange={e => filter("requested_delivery_from", e.target.value)} /></label><label className={s.field}>{t("deliveryTo")}<input type="date" value={filters.requested_delivery_to ?? ""} onChange={e => filter("requested_delivery_to", e.target.value)} /></label></>}

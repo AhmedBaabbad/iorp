@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -82,8 +83,8 @@ function MaterialDialog({ value, onClose, onSaved }: { value: Material | null; o
       <div className={s.grid}>
         <label className={s.field}>{t("fields.name")}<input required autoFocus maxLength={255} value={v.name} disabled={busy} onChange={e => setV({ ...v, name: e.target.value })} /></label>
         <label className={s.field}>{t("fields.category")}
-          <select value={v.category} disabled={busy} onChange={e => setV({ ...v, category: e.target.value })}>
-            {categoryChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></label>
+          <RecordCombobox aria-label={t("fields.category")} value={v.category} disabled={busy} onChange={e => setV({ ...v, category: e })}>
+            {categoryChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</RecordCombobox></label>
         <label className={s.field}>{t("fields.unit")}<UnitSelect value={v.unit} onChange={u => setV({ ...v, unit: u })} ariaLabel={t("fields.unit")} /></label>
         <label className={s.field}>{t("fields.spec_product_type")}<ProductSelect ariaLabel={t("fields.spec_product_type")} kind="material" required={false}
           value={v.spec_product_type ?? ""} disabled={busy} onChange={key => setV({ ...v, spec_product_type: key })} /></label>

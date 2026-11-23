@@ -1,3 +1,4 @@
+import {changeControl,findRecordOption,recordOptions} from "./record-test-helpers";
 // MD-001: master data — products with their specification templates, choosing a product on other screens, mapping
 // legacy product types, and the VAT rate and default currency.
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
@@ -41,9 +42,9 @@ it("offers range opt-in only on numeric properties and clears it on type changes
   const range = within(group).getByRole("checkbox", { name: "Allows a range (from – to)" }) as HTMLInputElement;
   fireEvent.click(range);
   expect(range.checked).toBe(true);
-  fireEvent.change(within(group).getByLabelText("Type"), { target: { value: "text" } });
+  changeControl(within(group).getByLabelText("Type"), { target: { value: "text" } });
   expect(within(group).queryByRole("checkbox", { name: "Allows a range (from – to)" })).toBeNull();
-  fireEvent.change(within(group).getByLabelText("Type"), { target: { value: "number" } });
+  changeControl(within(group).getByLabelText("Type"), { target: { value: "number" } });
   expect((within(group).getByRole("checkbox", { name: "Allows a range (from – to)" }) as HTMLInputElement).checked).toBe(false);
 });
 
@@ -58,18 +59,18 @@ describe("products", () => {
   it("creates a product with its key from the English name and a specification template", async () => {
     api.apiClient.mockResolvedValue({ ...strap });
     ui(<ProductForm />);
-    fireEvent.change(screen.getByLabelText("Name (Arabic)"), { target: { value: "شريط تربيط PP" } });
-    fireEvent.change(screen.getByLabelText("Name (English)"), { target: { value: "PP Strap" } });
+    changeControl(screen.getByLabelText("Name (Arabic)"), { target: { value: "شريط تربيط PP" } });
+    changeControl(screen.getByLabelText("Name (English)"), { target: { value: "PP Strap" } });
     expect(screen.getByText(/Saved as: pp_strap/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Add property" }));
     const prop = screen.getByRole("group", { name: /New property/ });
-    fireEvent.change(within(prop).getByLabelText("Name (Arabic)"), { target: { value: "اللون" } });
-    fireEvent.change(within(prop).getByLabelText("Name (English)"), { target: { value: "Colour" } });
-    fireEvent.change(within(prop).getByLabelText("Key"), { target: { value: "color" } });
-    fireEvent.change(within(prop).getByLabelText("Type"), { target: { value: "choice" } });
+    changeControl(within(prop).getByLabelText("Name (Arabic)"), { target: { value: "اللون" } });
+    changeControl(within(prop).getByLabelText("Name (English)"), { target: { value: "Colour" } });
+    changeControl(within(prop).getByLabelText("Key"), { target: { value: "color" } });
+    changeControl(within(prop).getByLabelText("Type"), { target: { value: "choice" } });
     fireEvent.click(within(prop).getByRole("button", { name: "Add option" }));
-    fireEvent.change(within(prop).getByLabelText("Arabic label"), { target: { value: "أبيض" } });
-    fireEvent.change(within(prop).getByLabelText("English label"), { target: { value: "White" } });
+    changeControl(within(prop).getByLabelText("Arabic label"), { target: { value: "أبيض" } });
+    changeControl(within(prop).getByLabelText("English label"), { target: { value: "White" } });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save" })); });
     expect(sent("/masterdata/products", "POST")).toMatchObject({ key: "pp_strap", name_en: "PP Strap", kind: "finished",
       properties: [{ key: "color", kind: "choice", unit: null, options: [{ value: "white", label_ar: "أبيض", label_en: "White" }] }] });
@@ -91,7 +92,7 @@ describe("products", () => {
     ui(<ProductsList />, "ar");
     const panel = await screen.findByRole("region", { name: "أنواع منتجات كُتبت قبل القائمة" });
     expect(within(panel).getByText("المبيعات: 2 · الإنتاج: 1")).toBeTruthy();
-    fireEvent.change(within(panel).getByLabelText("ربط بـ"), { target: { value: "p1" } });
+    changeControl(within(panel).getByLabelText("ربط بـ"), { target: { value: "p1" } });
     await act(async () => { fireEvent.click(within(panel).getByRole("button", { name: "ربط" })); });
     expect(sent("/masterdata/products/legacy/map", "POST")).toEqual({ value: "اشرطة تربيط ", product_id: "p1" });  // exactly as stored
   });
@@ -106,10 +107,10 @@ describe("choosing a product on other screens", () => {
   it("offers the active products, and keeps a value written before the list", async () => {
     api.apiClient.mockResolvedValue([strap, old]);
     ui(<Harness initial="اشرطة تربيط" />, "ar");
-    await screen.findByRole("option", { name: "شريط تربيط PP" });
+    await findRecordOption("شريط تربيط PP");
     const select = screen.getByRole("combobox", { name: "Product type" }) as HTMLSelectElement;
-    expect(Array.from(select.options).map(o => o.textContent)).toEqual(["اختر منتجًا", "شريط تربيط PP", "اشرطة تربيط (مكتوب قبل القائمة)"]);
-    fireEvent.change(select, { target: { value: "pp_strap" } });
+    expect(recordOptions(select).map(o => o.textContent)).toEqual(["اختر منتجًا", "شريط تربيط PP", "اشرطة تربيط (مكتوب قبل القائمة)"]);
+    changeControl(select, { target: { value: "pp_strap" } });
     expect(screen.getByRole("status").textContent).toBe("pp_strap");
   });
 
@@ -117,7 +118,7 @@ describe("choosing a product on other screens", () => {
     api.apiClient.mockResolvedValue([]);
     ui(<Harness />);
     const input = await screen.findByRole("textbox", { name: "Product type" });
-    fireEvent.change(input, { target: { value: "strap" } });
+    changeControl(input, { target: { value: "strap" } });
     expect(screen.getByRole("status").textContent).toBe("strap");
     expect(screen.getByText(/No products are defined yet/)).toBeTruthy();
   });
@@ -125,8 +126,8 @@ describe("choosing a product on other screens", () => {
   it("writes the specification in the template's order with its choices", () => {
     const onChange = vi.fn();
     ui(<SpecEditor value="" template={strap.properties} onChange={onChange} />, "ar");
-    fireEvent.change(screen.getByLabelText("اللون"), { target: { value: "white" } });
-    fireEvent.change(screen.getByLabelText(/العرض/), { target: { value: "19" } });
+    changeControl(screen.getByLabelText("اللون"), { target: { value: "white" } });
+    changeControl(screen.getByLabelText(/العرض/), { target: { value: "19" } });
     expect(onChange).toHaveBeenLastCalledWith('{"width_mm":19,"color":"white"}');
   });
 });
@@ -139,8 +140,8 @@ describe("general settings", () => {
     ui(<GeneralSettings />);
     const rate = await screen.findByLabelText(/VAT rate/) as HTMLInputElement;
     expect(rate.value).toBe("15");
-    fireEvent.change(rate, { target: { value: "5" } });
-    fireEvent.change(screen.getByLabelText(/Default currency/), { target: { value: "USD" } });
+    changeControl(rate, { target: { value: "5" } });
+    changeControl(screen.getByLabelText(/Default currency/), { target: { value: "USD" } });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save" })); });
     expect(sent("/masterdata/settings", "PATCH")).toEqual({ vat_rate: "5", default_currency: "USD" });
     expect(screen.getByRole("status").textContent).toBe("Saved.");
@@ -161,9 +162,9 @@ describe("reference lists", () => {
   it("offers the cities of the chosen country", async () => {
     api.apiClient.mockResolvedValue(all);
     ui(<City country="sa" />, "ar");
-    await screen.findByRole("option", { name: "الرياض" });
+    await findRecordOption("الرياض");
     const select = screen.getByRole("combobox", { name: "City" }) as HTMLSelectElement;
-    expect(Array.from(select.options).map(o => o.textContent)).toEqual(["اختر…", "الرياض"]);  // not Dubai, not the inactive one
+    expect(recordOptions(select).map(o => o.textContent)).toEqual(["اختر…", "الرياض"]);  // not Dubai, not the inactive one
   });
 
   it("adds the usual values and maps a text written before the list", async () => {
@@ -178,7 +179,7 @@ describe("reference lists", () => {
     expect(screen.getByText("أُضيفت 1 قيمة.")).toBeTruthy();
     const panel = await screen.findByRole("region", { name: "قيم كُتبت قبل القائمة" });
     expect(within(panel).getByText("العملاء: 3")).toBeTruthy();
-    fireEvent.change(within(panel).getByLabelText("ربط بـ"), { target: { value: "sector-packaging" } });
+    changeControl(within(panel).getByLabelText("ربط بـ"), { target: { value: "sector-packaging" } });
     await act(async () => { fireEvent.click(within(panel).getByRole("button", { name: "ربط" })); });
     expect(sent("/masterdata/lists/sector/legacy/map", "POST")).toEqual({ value: "كرتون", item_id: "sector-packaging" });
   });

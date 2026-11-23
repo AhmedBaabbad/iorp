@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 /**
  * The security log (who signed in, from where, failures, locks, password changes) and the activity log (what happened
  * in the daily work), for an organization and for the platform. Every entry reads as a sentence with the person's name;
@@ -99,11 +100,11 @@ export function SeparatedLogPage(props: Props) {
         <option value="">{t("allAreas")}</option>
         {AREAS.map((a) => <option key={a} value={a}>{t(`areas.${a}`)}</option>)}
       </select>}
-      {businessLog && people.length > 0 && <select style={{ ...sharedStyles.input, flex: "0 1 200px" }} aria-label={t("person")} value={person}
-        onChange={(e) => { setPerson(e.target.value); setPage(1); }}>
+      {businessLog && people.length > 0 && <RecordCombobox style={{ ...sharedStyles.input, flex: "0 1 200px" }} aria-label={t("person")} value={person}
+        onChange={(e) => { setPerson(e); setPage(1); }}>
         <option value="">{t("allPeople")}</option>
         {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-      </select>}
+      </RecordCombobox>}
       <label style={{ display: "flex", alignItems: "center", gap: 6 }}>{logs("dateFrom")}
         <input style={sharedStyles.input} type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} /></label>
       <label style={{ display: "flex", alignItems: "center", gap: 6 }}>{logs("dateTo")}

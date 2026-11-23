@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { Dialog } from "@/components/ui/Dialog";
 
 import Link from "next/link";
@@ -422,8 +423,8 @@ function ActionDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: ()
       <label className={s.field}>{t("fields.kind")}
         <select value={kind} disabled={busy} onChange={e => setKind(e.target.value)}>{ACTION_KINDS.map(k => <option key={k} value={k}>{t(`kinds.${k}`)}</option>)}</select></label>
       <label className={s.field}>{t("fields.owner")}
-        <select value={owner} disabled={busy} onChange={e => setOwner(e.target.value)}>
-          <option value="">{t("placeholders.outsideOwner")}</option>{users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
+        <RecordCombobox aria-label={t("fields.owner")} value={owner} disabled={busy} onChange={e => setOwner(e)}>
+          <option value="">{t("placeholders.outsideOwner")}</option>{users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</RecordCombobox></label>
       {!owner && <label className={s.field}>{t("fields.owner_name")}<input maxLength={200} value={outside} disabled={busy} onChange={e => setOutside(e.target.value)} /></label>}
       <label className={s.field}>{t("fields.due_date")}<input type="date" value={due} disabled={busy} onChange={e => setDue(e.target.value)} /></label>
     </div>

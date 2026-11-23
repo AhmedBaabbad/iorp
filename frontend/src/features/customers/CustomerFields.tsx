@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, type CSSProperties } from "react";
@@ -62,11 +63,11 @@ export function CustomerFields({ values, onChange, disabled, canAssignOwner, eli
       </label>
       <label style={sharedStyles.field}><span style={sharedStyles.label}>{t("fields.salesOwner")}{canAssignOwner && <span style={styles.required} aria-hidden="true"> *</span>}</span>
         {canAssignOwner ? loadingOwners ? <p style={styles.note}>{t("loadingEligibleUsers")}</p> : eligibleOwners.length === 0 ? <p style={styles.note}>{t("noEligibleOwners")}</p> :
-          <select style={sharedStyles.input} value={values.sales_owner_user_id} disabled={disabled} required
-            onChange={event => onChange({ sales_owner_user_id: event.target.value })}>
+          <RecordCombobox aria-label={t("fields.salesOwner")} style={sharedStyles.input} value={values.sales_owner_user_id} disabled={disabled} required
+            onChange={event => onChange({ sales_owner_user_id: event })}>
             <option value="">{t("selectSalesOwner")}</option>
             {eligibleOwners.map(owner => <option key={owner.id} value={owner.id}>{owner.full_name}{owner.roles[0]?.name ? ` — ${owner.roles[0].name}` : ""}</option>)}
-          </select> : <><input style={sharedStyles.input} value={ownerName ?? t("noOwner")} disabled readOnly />
+          </RecordCombobox> : <><input style={sharedStyles.input} value={ownerName ?? t("noOwner")} disabled readOnly />
             {autoAssigned && <span style={styles.note}>{t("salesOwnerAutoAssigned")}</span>}</>}
       </label>
       {text("key_influencer_name", t("fields.keyInfluencerName"))}

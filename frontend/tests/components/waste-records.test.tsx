@@ -1,3 +1,4 @@
+import {changeControl,recordOptions} from "./record-test-helpers";
 // PROD-WASTE-001: waste records tied to a production order, optionally a run; Arabic labels use «هالك».
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
@@ -81,8 +82,8 @@ describe("recording waste", () => {
   it("offers only running orders and requires the order", async () => {
     ui(<WasteRecordForm />);
     const select = await screen.findByRole("combobox", { name: "Production order" });
-    await waitFor(() => expect((select as HTMLSelectElement).options.length).toBe(2));
-    expect(Array.from((select as HTMLSelectElement).options).map(o => o.textContent)).toEqual(["Select a production order", "PO-1 — film"]);
+    await waitFor(() => expect(recordOptions(select as HTMLInputElement).length).toBe(1));
+    expect(recordOptions(select as HTMLInputElement).map(o => o.textContent)).toEqual(["PO-1film"]);
     const asked = api.apiClient.mock.calls.map(([p]) => String(p)).find(p => p.startsWith("/production/production-orders/lookup"))!;
     expect(new URLSearchParams(asked.split("?")[1]).getAll("statuses")).toEqual(["in_progress", "on_hold", "completed"]);
     expect((screen.getByRole("button", { name: "Record waste" }) as HTMLButtonElement).disabled).toBe(true);
@@ -92,16 +93,16 @@ describe("recording waste", () => {
     nav.params = new URLSearchParams("order=po1");
     ui(<WasteRecordForm />);
     const run = await screen.findByLabelText("Production run (optional)");
-    await waitFor(() => expect((run as HTMLSelectElement).options.length).toBe(2));  // the cancelled run is not offered
-    fireEvent.change(run, { target: { value: "r1" } });
+    await waitFor(() => expect(recordOptions(run as HTMLInputElement).length).toBe(2));  // the cancelled run is not offered
+    changeControl(run, { target: { value: "r1" } });
     const center = screen.getByLabelText("Work center") as HTMLSelectElement;
     expect(center.disabled).toBe(true);
-    expect(center.value).toBe("wc2");
+    expect(center.value).toBe("EX2 — Extruder 2");
     // One type alone takes the whole quantity.
     fireEvent.click(screen.getByRole("checkbox", { name: "Process waste (trim, edges)" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Changeover waste" }));
     expect(screen.getByText(/Material lost when changing product, colour, die or mould./)).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Quantity wasted"), { target: { value: "8.25" } });
+    changeControl(screen.getByLabelText("Quantity wasted"), { target: { value: "8.25" } });
     fireEvent.click(screen.getByRole("button", { name: "Record waste" }));
     await waitFor(() => expect(nav.push).toHaveBeenCalledWith("/waste-records/new1"));
     expect(posted("/production/waste-records")).toMatchObject({ production_order_id: "po1", production_run_id: "r1", work_center_id: null,
@@ -111,14 +112,14 @@ describe("recording waste", () => {
   it("splits the quantity across several types and only saves when the shares add up", async () => {
     nav.params = new URLSearchParams("order=po1");
     ui(<WasteRecordForm />);
-    fireEvent.change(await screen.findByLabelText("Quantity wasted"), { target: { value: "10" } });
+    changeControl(await screen.findByLabelText("Quantity wasted"), { target: { value: "10" } });
     fireEvent.click(screen.getByRole("checkbox", { name: "Changeover waste" }));
     const save = screen.getByRole("button", { name: "Record waste" }) as HTMLButtonElement;
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Quantity Process waste (trim, edges)" }), { target: { value: "6" } });
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Quantity Changeover waste" }), { target: { value: "3" } });
+    changeControl(screen.getByRole("spinbutton", { name: "Quantity Process waste (trim, edges)" }), { target: { value: "6" } });
+    changeControl(screen.getByRole("spinbutton", { name: "Quantity Changeover waste" }), { target: { value: "3" } });
     expect(screen.getByText("Shares: 9 of 10 — remaining 1")).toBeTruthy();
     expect(save.disabled).toBe(true);
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Quantity Changeover waste" }), { target: { value: "4" } });
+    changeControl(screen.getByRole("spinbutton", { name: "Quantity Changeover waste" }), { target: { value: "4" } });
     expect(save.disabled).toBe(false);
     fireEvent.click(save);
     await waitFor(() => expect(nav.push).toHaveBeenCalledWith("/waste-records/new1"));
@@ -134,7 +135,7 @@ describe("recording waste", () => {
     });
     nav.params = new URLSearchParams("order=po1");
     ui(<WasteRecordForm />, "ar");
-    fireEvent.change(await screen.findByLabelText("الكمية المهدرة"), { target: { value: "3" } });
+    changeControl(await screen.findByLabelText("الكمية المهدرة"), { target: { value: "3" } });
     fireEvent.click(screen.getByRole("button", { name: "تسجيل هدر" }));
     expect((await screen.findByRole("alert")).textContent).toBe("الأمر مغلق، فلا يمكن تغيير سجلات الهدر الخاصة به.");
   });
@@ -170,7 +171,7 @@ describe("waste unit from the central list", () => {
     expect(unit.value).toBe("");
     expect(Array.from(unit.options).some(o => o.value === "roll")).toBe(true);
     expect((screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.change(unit, { target: { value: "roll" } });
+    changeControl(unit, { target: { value: "roll" } });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(api.apiClient.mock.calls.some(([p, o]) => p === "/production/waste-records/w1" && o?.method === "PATCH")).toBe(true));
     const body = api.apiClient.mock.calls.find(([p, o]) => p === "/production/waste-records/w1" && o?.method === "PATCH")![1].body;
@@ -214,7 +215,7 @@ describe("waste on the order page", () => {
       :path==='/production/production-orders/po1'?order:path.includes('/production-orders/lookup')?[order]:[]);
     ui(<OrderWasteSection order={{id:'po1',status:'in_progress'}}/>);
     fireEvent.click(await screen.findByRole('button',{name:'Record waste'}));const dialog=await screen.findByRole('dialog');
-    fireEvent.change(within(dialog).getByLabelText('Quantity wasted'),{target:{value:'2.5'}});
+    changeControl(within(dialog).getByLabelText('Quantity wasted'),{target:{value:'2.5'}});
     expect((within(dialog).getByRole('combobox',{name:'Production order'}) as HTMLSelectElement).disabled).toBe(true);
     fireEvent.click(within(dialog).getByRole('button',{name:'Record waste'}));
     await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());

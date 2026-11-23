@@ -1,3 +1,4 @@
+import {changeControl,findRecordOption} from "./record-test-helpers";
 import { cleanup,fireEvent,render,screen,waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach,beforeEach,expect,it,vi } from 'vitest';
@@ -21,7 +22,7 @@ function Form({initial={}}:{initial?:TransportValues}){const [v,set]=useState<Tr
 
 it('allows internal one-off entry without creating a driver or user account',async()=>{
   render(<Form/>);
-  fireEvent.change(screen.getByLabelText('Driver affiliation'),{target:{value:'internal'}});
+  changeControl(screen.getByLabelText('Driver affiliation'),{target:{value:'internal'}});
   expect(screen.getByRole('status').textContent).toContain('internal');
   await waitFor(()=>expect(mocks.api).toHaveBeenCalled());
   expect(mocks.api.mock.calls.every(([,options])=>!options?.method)).toBe(true);
@@ -31,7 +32,7 @@ it('selects a saved external driver and prevents changing its affiliation',async
   mocks.api.mockImplementation((path:string)=>Promise.resolve(path.includes('/drivers/')?[{id:'d1',name:'Driver',affiliation:'external'}]:[]));
   render(<Form/>);
   fireEvent.focus(screen.getByRole('combobox',{name:'Saved driver'}));
-  fireEvent.click(await screen.findByRole('option',{name:/Driver.*External/}));
+  fireEvent.click(await findRecordOption(/Driver.*External/));
   expect(screen.queryByLabelText('Driver affiliation')).toBeNull();
   expect(screen.getByRole('status').textContent).toContain('"driver_id":"d1"');
 });
@@ -46,7 +47,7 @@ it('keeps document snapshot fields when the same saved driver is selected again'
   const copy=vi.fn(),change=vi.fn();
   render(<TransportSelection value={{driver_id:'same'}} onChange={change} onRecord={copy}/>);
   fireEvent.focus(screen.getByRole('combobox',{name:'Saved driver'}));
-  fireEvent.click(await screen.findByRole('option',{name:/Current name/}));
+  fireEvent.click(await findRecordOption(/Current name/));
   expect(copy).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button',{name:/Enter manually for this transaction/}));
   expect(copy).toHaveBeenCalledWith('driver');
@@ -73,7 +74,8 @@ it('does not show write actions without permission',async()=>{
 it('keeps saved method text when the reference catalog is renamed',async()=>{
   mocks.api.mockResolvedValue([{id:'m1',name_en:'New method',name_ar:'طريقة جديدة',active:true}]);
   render(<ReferenceTextSelect list="test_method" value="Old method" onChange={()=>{}} ariaLabel="Method"/>);
-  await screen.findByRole('option',{name:'Old method'});
+  await findRecordOption('Old method');
+  fireEvent.blur(screen.getByLabelText('Method'));
   expect((screen.getByLabelText('Method') as HTMLSelectElement).value).toBe('Old method');
 });
 
@@ -83,8 +85,8 @@ it('adds an external driver quickly and selects the default vehicle',async()=>{
     ?{id:'quick1',name:'New driver',affiliation:'external',default_vehicle_id:'v1'}:[]));
   render(<Form/>);
   fireEvent.click(screen.getByRole('button',{name:'+ New driver'}));
-  fireEvent.change(screen.getByLabelText('Name'),{target:{value:'New driver'}});
-  fireEvent.change(screen.getByLabelText('National ID / Iqama'),{target:{value:'N1'}});
+  changeControl(screen.getByLabelText('Name'),{target:{value:'New driver'}});
+  changeControl(screen.getByLabelText('National ID / Iqama'),{target:{value:'N1'}});
   fireEvent.click(screen.getByRole('button',{name:'Save and select'}));
   await waitFor(()=>expect(screen.getByRole('status').textContent).toContain('"driver_id":"quick1"'));
   expect(screen.getByRole('status').textContent).toContain('"vehicle_id":"v1"');
@@ -98,7 +100,7 @@ it('autofills only an empty vehicle and warns about expired licenses without blo
     ?[{id:'d1',name:'Expired driver',affiliation:'external',default_vehicle_id:'suggested',license_expiry:'2000-01-01'}]:[]));
   render(<Form initial={{vehicle_id:'chosen'}}/>);
   fireEvent.focus(screen.getByRole('combobox',{name:'Saved driver'}));
-  fireEvent.click(await screen.findByRole('option',{name:/Expired driver.*External/}));
+  fireEvent.click(await findRecordOption(/Expired driver.*External/));
   expect(screen.getByText('Driver license expired')).toBeTruthy();
   expect(screen.getByText(/"vehicle_id":"chosen"/)).toBeTruthy();
 });
@@ -109,8 +111,8 @@ it('offers to select the existing driver after a duplicate identity response',as
     :Promise.resolve(path.includes('/drivers/')?[{id:'existing',name:'Existing driver',affiliation:'external'}]:[]));
   render(<Form/>);
   fireEvent.click(screen.getByRole('button',{name:'+ New driver'}));
-  fireEvent.change(screen.getByLabelText('Name'),{target:{value:'Duplicate'}});
-  fireEvent.change(screen.getByLabelText('National ID / Iqama'),{target:{value:'N1'}});
+  changeControl(screen.getByLabelText('Name'),{target:{value:'Duplicate'}});
+  changeControl(screen.getByLabelText('National ID / Iqama'),{target:{value:'N1'}});
   fireEvent.click(screen.getByRole('button',{name:'Save and select'}));
   expect(await screen.findByText('This driver is already registered')).toBeTruthy();
   fireEvent.click(screen.getByRole('button',{name:'Select it'}));

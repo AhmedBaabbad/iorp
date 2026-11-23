@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import { ReferenceTextSelect } from "@/features/reference-directory/ReferenceTextSelect";
 import {EditorSurface} from "@/components/forms/EditorSurface";
@@ -110,16 +111,16 @@ export function DowntimeEventFields({editor}:{editor:ReturnType<typeof useDownti
             emptyLabel={t("placeholders.noOrder")} ariaLabel={t("fields.orderOptional")} />
         </label>
         {canReadRuns && <label className={s.field}>{t("fields.runOptional")}
-          <select value={values.run} disabled={busy || locked || !values.order} onChange={e => set("run", e.target.value)}>
+          <RecordCombobox aria-label={t("fields.runOptional")} value={values.run} disabled={busy || locked || !values.order} onChange={e => set("run", e)}>
             <option value="">{runs.length ? t("placeholders.noRun") : t("placeholders.noRuns")}</option>
             {runs.map(r => <option key={r.id} value={r.id}>{t("runOption", { date: fmt.date(r.run_date), center: centers.find(c => c.id === r.work_center_id)?.name ?? "—" })}</option>)}
-          </select>
+          </RecordCombobox>
         </label>}
         <label className={s.field}>{t("fields.workCenter")}
-          <select required value={center} disabled={busy || locked || Boolean(run)} onChange={e => set("center", e.target.value)}>
+          <RecordCombobox aria-label={t("fields.workCenter")} required value={center} disabled={busy || locked || Boolean(run)} onChange={e => set("center", e)}>
             <option value="">{t("placeholders.selectWorkCenter")}</option>
             {centers.map(c => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
-          </select>
+          </RecordCombobox>
         </label>
         <label className={s.field}>{t("fields.startTime")}<input type="datetime-local" required value={values.start} disabled={busy || locked} onChange={e => set("start", e.target.value)} /></label>
         <label className={s.field}>{t("fields.endTimeOptional")}<input type="datetime-local" value={values.end} min={values.start || undefined} disabled={busy || locked} onChange={e => set("end", e.target.value)} /></label>

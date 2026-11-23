@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 import { localName } from "@/lib/local-name";
 import {useUnitLabel} from "@/components/UnitLabel";
@@ -164,10 +165,10 @@ export function SpecificationForm({ specId }: { specId?: string }) {
         <datalist id="order-spec-keys">{ORDER_SPEC_KEYS.map(k => <option key={k} value={k} />)}</datalist>
         {!locked && unused.length > 0 && <div className={s.actions}>
           <label className={s.field}>{t("addLine")}
-            <select value={adding} disabled={busy} onChange={e => setAdding(e.target.value)}>
+            <RecordCombobox aria-label={t("addLine")} value={adding} disabled={busy} onChange={e => setAdding(e)}>
               <option value="">—</option>
               {unused.map(p => <option key={p.id} value={p.id}>{name(p)}{p.unit ? ` (${unitText(p.unit)})` : ""}</option>)}
-            </select>
+            </RecordCombobox>
           </label>
           <button type="button" className={s.button} disabled={!adding || busy} onClick={() => addLine(adding)}>{t("add")}</button>
           <button type="button" className={s.button} disabled={busy} onClick={() => setLines(old => [...old, ...unused.map(p => emptyLine(p.id))])}>{t("addAll")}</button>

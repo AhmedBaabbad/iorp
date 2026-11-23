@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import {EditorSurface} from "@/components/forms/EditorSurface";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -109,23 +110,23 @@ export function QualityCheckFields({editor}:{editor:ReturnType<typeof useQuality
           <input type="datetime-local" required value={values.datetime} disabled={busy || locked} onChange={e => set("datetime", e.target.value)} />
         </label>
         {isSample ? <label className={s.field}>{t("fields.sample")}
-          <select required value={values.sample} disabled={busy || locked} onChange={e => set("sample", e.target.value)}>
+          <RecordCombobox aria-label={t("fields.sample")} required value={values.sample} disabled={busy || locked} onChange={e => set("sample", e)}>
             <option value="">{samples.length ? t("placeholders.selectSample") : t("placeholders.noSamples")}</option>
             {samples.map(x => <option key={x.id} value={x.id}>{x.code} — {x.customer} — {x.product_type}</option>)}
-          </select>
+          </RecordCombobox>
         </label> : <>
           <label className={s.field}>{orderRequired ? t("fields.productionOrder") : t("fields.productionOrderOptional")}
             {editing ? <input readOnly value={existing?.order_number ?? "—"} />
-              : <select required={orderRequired} value={values.order} disabled={busy || Boolean(orderId)} onChange={e => set("order", e.target.value)}>
+              : <RecordCombobox aria-label={orderRequired ? t("fields.productionOrder") : t("fields.productionOrderOptional")} required={orderRequired} value={values.order} disabled={busy || Boolean(orderId)} onChange={e => set("order", e)}>
                 <option value="">{orders.length ? t("placeholders.selectOrder") : t("placeholders.noOrders")}</option>
                 {orders.map(o => <option key={o.id} value={o.id}>{o.number} — {o.product_type} ({orderStatus(o.status)})</option>)}
-              </select>}
+              </RecordCombobox>}
           </label>
           {(order?.items.length ?? 0) > 0 && <label className={s.field}>{t("fields.lineOptional")}
-            <select value={values.item} disabled={busy || locked} onChange={e => set("item", e.target.value)}>
+            <RecordCombobox aria-label={t("fields.lineOptional")} value={values.item} disabled={busy || locked} onChange={e => set("item", e)}>
               <option value="">{t("placeholders.wholeOrder")}</option>
               {order!.items.map(l => <option key={l.id} value={l.id}>{t("lineOption", { no: String(l.line_no), quantity: fmt.quantity(l.planned_quantity, l.unit) })}</option>)}
-            </select>
+            </RecordCombobox>
           </label>}
         </>}
         <label className={s.field}>{unit ? t("fields.qtyInspectedUnit", { unit }) : t("fields.qtyInspected")}

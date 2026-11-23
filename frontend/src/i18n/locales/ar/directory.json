@@ -1,4 +1,5 @@
 {
+  "searchResults": "نتائج البحث عن {label}",
   "reload": "إعادة التحميل",
   "errors": {
     "DIRECTORY_DUPLICATE": "اللوحة أو الاسم مسجل مسبقاً.",

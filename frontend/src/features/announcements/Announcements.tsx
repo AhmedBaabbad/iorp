@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 /**
  * Announcements (PROJECT-NOTIFY-001): a message written by a holder of notifications:announcements:send to named users,
  * a role's members or the whole organization; its author (and a holder of :manage, for every announcement) follows who
@@ -137,10 +138,10 @@ export function AnnouncementForm() {
           {(["everyone", "role", "users"] as const).map((a) => <option key={a} value={a}>{t(`audience.${a}`)}</option>)}
         </select></label>
       {form.audience === "role" && <label style={sharedStyles.field}>{label("role")}
-        <select style={sharedStyles.input} required value={form.role_id} onChange={(e) => set("role_id", e.target.value)}>
+        <RecordCombobox aria-label={t("fields.role")} style={sharedStyles.input} required value={form.role_id} onChange={(e) => set("role_id", e)}>
           <option value="">{t("choose")}</option>
           {options?.roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-        </select></label>}
+        </RecordCombobox></label>}
       {form.audience === "users" && <fieldset style={{ ...sharedStyles.field, gridColumn: "1 / -1", border: "1px solid var(--border)", borderRadius: 10, padding: 12 }}>
         <legend style={sharedStyles.label}>{t("fields.users")}</legend>
         <div style={{ display: "grid", gap: 6, gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", maxHeight: 220, overflowY: "auto" }}>

@@ -1,4 +1,5 @@
 from decimal import Decimal
+from app.production.domain.units import checked_unit
 from types import SimpleNamespace
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError, OperationalError
@@ -36,6 +37,11 @@ class PlanningOrderService:
                 raise AllocationError("PRODUCT_TYPE_REQUIRED")
             rows.append((item, demand, alloc.allocated_quantity))
         # Product type and unit must match; differing specifications become separate lines.
+        for item, _, _ in rows:
+            try:
+                checked_unit(item.unit)
+            except ValueError as exc:
+                raise AllocationError("UNIT_UNKNOWN", 422) from exc
         self.checker.validate_compatibility([item for item, _, _ in rows])
         return rows
 

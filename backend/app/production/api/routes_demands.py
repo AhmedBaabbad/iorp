@@ -13,7 +13,7 @@ from app.dependencies import get_current_tenant, get_db, get_customer_lookup, ge
 from app.production.domain import permissions as P
 from app.production.domain.enums import ProductionDemandStatus
 from app.production.api.demand_schemas import (
-    CreateDemandRequest, DemandFromSalesOrderRequest, UpdateDemandRequest, CreateDemandItemRequest, UpdateDemandItemRequest,
+    CreateDemandRequest, DemandFromSalesOrderRequest, UpdateDemandRequest, CreateDemandItemRequest, UpdateDemandItemRequest, DemandItemFields,
     DemandResponse, DemandDetailResponse, DemandItemResponse, PaginatedDemandList,
     PaginatedPlanningList, DemandStatusRequest, ReorderRequest, PlanningFilters, SalesOrderLookup,
 )
@@ -29,8 +29,9 @@ class DemandRoute(APIRoute):
                 return await handler(request)
             except DemandError as exc:
                 return JSONResponse(status_code=exc.status, content={"detail": {"code": exc.code}})
-            except RequestValidationError:
-                return JSONResponse(status_code=400, content={"detail": {"code": "invalid_request"}})
+            except RequestValidationError as exc:
+                code = "UNIT_UNKNOWN" if any(error["type"] == "UNIT_UNKNOWN" for error in exc.errors()) else "invalid_request"
+                return JSONResponse(status_code=400, content={"detail": {"code": code}})
             except IntegrityError:
                 return JSONResponse(status_code=409, content={"detail": {"code": "conflicting_data"}})
         return handle
@@ -61,7 +62,7 @@ def quotes(customer_id: UUID, svc=Depends(service)):
     return [{"id": q.id, "number": q.quote_number, "status": q.status} for q in svc.quotes.find_quotes(svc.db, customer_id, svc.org_id)]
 
 
-@router.get("/demand-lookups/quotes/{quote_id}/items", response_model=list[CreateDemandItemRequest], dependencies=[Depends(require_any_permission([P.DEMANDS_CREATE, P.DEMANDS_UPDATE]))])
+@router.get("/demand-lookups/quotes/{quote_id}/items", response_model=list[DemandItemFields], dependencies=[Depends(require_any_permission([P.DEMANDS_CREATE, P.DEMANDS_UPDATE]))])
 def quote_items(quote_id: UUID, customer_id: UUID, svc=Depends(service)):
     return svc.quote_items(customer_id, quote_id)
 

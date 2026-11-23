@@ -7,11 +7,12 @@
 .fields>label,.combo{display:flex;flex-direction:column;gap:.45rem}
 .combo{position:relative}
 .comboControl{display:flex;min-width:0;gap:.25rem}
-.comboControl input{flex:1;min-width:0;width:100%}
+.comboControl input{flex:1;min-width:0;width:100%;min-block-size:var(--control-height);box-sizing:border-box;padding:.65rem .8rem;border:1px solid var(--control-border);border-radius:var(--control-radius);background:var(--surface);color:var(--text);font:inherit}
 .comboControl button{flex-shrink:0;min-width:44px;min-block-size:var(--control-height);border:1px solid var(--control-border);border-radius:var(--control-radius);background:var(--surface);color:var(--text);font:inherit;cursor:pointer}
 .options{position:absolute;z-index:40;inset-inline:0;top:100%;margin:0;padding:.25rem;list-style:none;border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-sm);background:var(--surface);color:var(--text);max-height:250px;overflow:auto;overscroll-behavior:contain}
 .options li{padding:.65rem;cursor:pointer;overflow-wrap:anywhere}
 .options li:hover,.highlight{background:var(--accent-soft);color:var(--text)}
+.options li[aria-disabled=true]{opacity:.55;cursor:default}
 .options li span,.options small{display:block}
 .options small{color:var(--text-muted);font-size:.85em;margin-top:.2rem}
 .error{color:var(--danger);margin-bottom:.75rem}

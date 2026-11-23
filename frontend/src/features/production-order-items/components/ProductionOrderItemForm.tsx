@@ -1,4 +1,5 @@
 "use client";
+import {UnitSelect} from "@/components/forms/UnitSelect";
 import { SpecEditor } from "@/components/forms/SpecEditor";
 import { useProducts } from "@/features/masterdata";
 
@@ -133,14 +134,7 @@ export function ProductionOrderItemForm({
           <span style={sharedStyles.label}>
             {t("fields.unit")} <span aria-hidden="true" style={{ color: "var(--danger)" }}>*</span>
           </span>
-          <input
-            style={sharedStyles.input}
-            value={values.unit}
-            onChange={(event) => updateField("unit", event.target.value)}
-            maxLength={32}
-            disabled={isSubmitting}
-            required
-          />
+          <UnitSelect style={sharedStyles.input} ariaLabel={t("fields.unit")} value={values.unit} onChange={unit=>updateField("unit",unit)} disabled={isSubmitting} required/>
         </label>
       </div>
 

@@ -1,3 +1,4 @@
+import {changeControl,findRecordOption} from "./record-test-helpers";
 // COMPLAINTS-001: the complaint screens in the reader's language, a history worded from its facts (never an id or a code),
 // lines whose agreed values come from the customer's sales order line or sample, and the measurements of the investigation.
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -63,7 +64,7 @@ it('offers only the actions the server allows and sends a reopening with the ver
   ui(<ComplaintDetail id="c1" />);
   fireEvent.click(await screen.findByRole('button', { name: 'Reopen' }));
   expect(screen.queryByRole('button', { name: 'Update the investigation' })).toBeNull();
-  fireEvent.change(screen.getByLabelText('Reason for the decision'), { target: { value: 'Customer reports recurrence' } });
+  changeControl(screen.getByLabelText('Reason for the decision'), { target: { value: 'Customer reports recurrence' } });
   fireEvent.click(screen.getByRole('button', { name: 'Confirm and save' }));
   await waitFor(() => expect(api.call).toHaveBeenCalledWith('/commercial/complaints/c1/transitions',
     { method: 'POST', body: { version: 4, action: 'reopen', reason: 'Customer reports recurrence' } }));
@@ -74,28 +75,29 @@ it('sends the measured values and the confirmed quantity with the investigation'
   api.call.mockImplementation((path: string) => Promise.resolve(path.endsWith('/products') ? [] : open));
   ui(<ComplaintDetail id="c1" />);
   fireEvent.click(await screen.findByRole('button', { name: 'Update the investigation' }));
-  fireEvent.change(screen.getByLabelText('Findings and evidence'), { target: { value: 'Lab test' } });
-  fireEvent.change(screen.getByLabelText('Thickness — Measured'), { target: { value: '36' } });
-  fireEvent.change(screen.getByLabelText('Quantity confirmed as affected'), { target: { value: '90' } });
+  changeControl(screen.getByLabelText('Findings and evidence'), { target: { value: 'Lab test' } });
+  changeControl(screen.getByLabelText('Thickness — Measured'), { target: { value: '36' } });
+  changeControl(screen.getByLabelText('Quantity confirmed as affected'), { target: { value: '90' } });
   fireEvent.click(screen.getByRole('button', { name: 'Confirm and save' }));
   await waitFor(() => expect(api.call).toHaveBeenCalledWith('/commercial/complaints/c1/investigate', expect.objectContaining({ method: 'POST',
     body: expect.objectContaining({ version: 4, items: [{ item_id: 'i1', confirmed_quantity: '90', measurements: [{ key: 'thickness', measured: '36' }] }] }) })));
 });
 
 it('takes the agreed values from the chosen sales order line and keeps the reported value typed', async () => {
-  const products = [{ key: 'film', name_en: 'Film', name_ar: 'فيلم', default_unit: 'kg',
+  const products = [{ id:'film',active:true,kind:'finished',key: 'film', name_en: 'Film', name_ar: 'فيلم', default_unit: 'kg',
     properties: [{ key: 'thickness', name_en: 'Thickness', name_ar: 'السماكة', unit: null, kind: 'number' }] }];
   const sources = [{ kind: 'order', id: 'o1', label: 'RFS-2026-0007 / 2', product_key: 'film', unit: 'kg', quantity: '500', spec: { thickness: '40' } }];
   api.call.mockImplementation((path: string) => Promise.resolve(path.endsWith('/products') ? products : path.includes('/sources') ? sources : []));
   ui(<ComplaintCreate customerId="k1" />);
   fireEvent.click(screen.getByRole('button', { name: 'Add a product' }));
-  await screen.findByRole('option', { name: 'Film' });
-  fireEvent.change(screen.getByLabelText('Product'), { target: { value: 'film' } });
-  fireEvent.change(await screen.findByLabelText('Agreed specification from'), { target: { value: 'order:o1' } });
+  await findRecordOption('Film');
+  expect(api.call.mock.calls.some(([path])=>String(path).startsWith('/masterdata/products'))).toBe(false);
+  changeControl(screen.getByLabelText('Product'), { target: { value: 'film' } });
+  changeControl(await screen.findByLabelText('Agreed specification from'), { target: { value: 'order:o1' } });
   expect(screen.getByText('Agreed values taken from Sales order RFS-2026-0007 / 2')).toBeTruthy();
   expect(screen.queryByLabelText('Thickness — Agreed')).toBeNull();
   expect(screen.getByRole('cell', { name: '40' })).toBeTruthy();
-  fireEvent.change(screen.getByLabelText('Thickness — Customer report'), { target: { value: '34' } });
+  changeControl(screen.getByLabelText('Thickness — Customer report'), { target: { value: '34' } });
   expect((screen.getByLabelText('Thickness — Customer report') as HTMLInputElement).value).toBe('34');
 });
 
@@ -108,7 +110,7 @@ it('leads with the one next step and sends contact with the customer as a reply'
   const buttons = screen.getAllByRole('button').map(b => b.textContent);
   expect(buttons.indexOf('Assign responsibility')).toBeLessThan(buttons.indexOf('Cancel the complaint'));
   fireEvent.click(screen.getByRole('button', { name: 'Record contact' }));
-  fireEvent.change(screen.getByLabelText('What was said or done'), { target: { value: 'Acknowledged by phone' } });
+  changeControl(screen.getByLabelText('What was said or done'), { target: { value: 'Acknowledged by phone' } });
   fireEvent.click(screen.getByLabelText('This was sent to the customer (it counts as the reply)'));
   fireEvent.click(screen.getByRole('button', { name: 'Confirm and save' }));
   await waitFor(() => expect(api.call).toHaveBeenCalledWith('/commercial/complaints/c1/communications',

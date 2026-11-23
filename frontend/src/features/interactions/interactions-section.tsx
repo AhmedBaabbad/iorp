@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import { useTranslations } from "next-intl";
 import type { CSSProperties, FormEvent } from "react";
@@ -203,13 +204,13 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
         <div style={styles.formGrid}>
           <label style={sharedStyles.field}>
             <span style={sharedStyles.label}>{t("fields.interactionType")}</span>
-            <select
+            <RecordCombobox aria-label={t("fields.interactionType")}
               style={sharedStyles.input}
               value={values.interaction_type}
               onChange={(event) =>
                 updateField(
                   "interaction_type",
-                  event.target.value as InteractionFormValues["interaction_type"],
+                  event as InteractionFormValues["interaction_type"],
                 )
               }
               disabled={isSubmitting}
@@ -219,7 +220,7 @@ export function CustomerInteractionsSection({ customerId }: CustomerInteractions
                   {choice.label}
                 </option>
               ))}
-            </select>
+            </RecordCombobox>
           </label>
 
           <label style={sharedStyles.field}>

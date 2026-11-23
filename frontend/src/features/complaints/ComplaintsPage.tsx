@@ -1,4 +1,6 @@
 "use client";
+import {ProductSelect} from "@/features/masterdata/components/ProductSelect";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { customerDisplayName } from "@/lib/customer-name";
 import { localName } from "@/lib/local-name";
 import Link from 'next/link';
@@ -149,10 +151,10 @@ function SearchSelect({ endpoint, value, onChange, title }: { endpoint: string; 
   }, [endpoint, value]);
   const shown = chosen && !options.some(o => o.id === chosen.id) ? [chosen, ...options] : options;
   return <Field name={title}>
-    <input aria-label={t('picker.search', { title })} placeholder={t('picker.placeholder')} value={search} onChange={e => setSearch(e.target.value)} />
-    <select required value={value} onChange={e => { onChange(e.target.value); setChosen(options.find(o => o.id === e.target.value) || null); }}>
+
+    <RecordCombobox onSearch={setSearch} aria-label={title} required value={value} onChange={e => { onChange(e); setChosen(options.find(o => o.id === e) || null); }}>
       <option value="">{t('picker.choose')}</option>{shown.map(o => <option key={o.id} value={o.id}>{customerDisplayName(o, locale) || o.label}</option>)}
-    </select>
+    </RecordCombobox>
     {error && <small role="alert">{t('picker.unavailable')}</small>}
   </Field>;
 }
@@ -170,8 +172,10 @@ export const draftOf = (item: Item): ItemDraft => ({ id: item.id, product_key: i
  * The complaint's product lines. The agreed values come from a sales order line or a sample of the customer when one is
  * chosen (the server copies them), otherwise they are typed; the customer's reported value is typed in every case.
  */
-function ItemsEditor({ customerId, products, items, onChange }: { customerId: string; products: Product[]; items: ItemDraft[]; onChange: (items: ItemDraft[]) => void }) {
+function ItemsEditor({ customerId, products: savedProducts, items, onChange }: { customerId: string; products: Product[]; items: ItemDraft[]; onChange: (items: ItemDraft[]) => void }) {
   const { t, ar, unit, named } = useWords();
+  const [createdProducts,setCreatedProducts]=useState<Product[]>([]);
+  const products=[...savedProducts,...createdProducts.filter(product=>!savedProducts.some(saved=>saved.key===product.key))];
   const [sources, setSources] = useState<Source[]>([]);
   useEffect(() => {
     if (!customerId) { setSources([]); return; }
@@ -180,8 +184,8 @@ function ItemsEditor({ customerId, products, items, onChange }: { customerId: st
     return () => { live = false; };
   }, [customerId]);
   const patch = (i: number, change: Partial<ItemDraft>) => onChange(items.map((r, n) => (n === i ? { ...r, ...change } : r)));
-  const choose = (i: number, key: string) => {
-    const p = products.find(x => x.key === key);
+  const choose = (i: number, key: string, created?:Product) => {
+    const p = created??products.find(x => x.key === key);
     patch(i, { product_key: key, source_kind: 'manual', source_id: null, unit: p?.default_unit || '', properties: p?.properties.map(x => ({ key: x.key, expected: '', reported: '' })) || [] });
   };
   const pickSource = (i: number, value: string) => {
@@ -199,16 +203,14 @@ function ItemsEditor({ customerId, products, items, onChange }: { customerId: st
       return <section className={s.panel} key={item.id ?? `new-${i}`}>
         <div className={s.grid}>
           <Field name={t('items.product')}>
-            <select required value={item.product_key} onChange={e => choose(i, e.target.value)}>
-              <option value="">{t('items.chooseProduct')}</option>
-              {products.map(p => <option key={p.key} value={p.key}>{localName(p, ar ? "ar" : "en")}</option>)}
-            </select>
+            <ProductSelect catalogOptions={products.map(product=>({...product,active:true}))} allowFreeText={false} required value={item.product_key} ariaLabel={t("items.product")}
+              onChange={(key,created)=>{if(created)setCreatedProducts(old=>[...old.filter(product=>product.key!==created.key),created]);choose(i,key,created);}}/>
           </Field>
           {item.product_key && <Field name={t('items.source')}>
-            <select value={item.source_id ? `${item.source_kind}:${item.source_id}` : ''} onChange={e => pickSource(i, e.target.value)}>
+            <RecordCombobox aria-label={t('items.source')} value={item.source_id ? `${item.source_kind}:${item.source_id}` : ''} onChange={e => pickSource(i, e)}>
               <option value="">{t('items.manual')}</option>
               {matching.map(x => <option key={x.kind + x.id} value={`${x.kind}:${x.id}`}>{`${t(`kinds.${x.kind}`)} ${x.label}`}</option>)}
-            </select>
+            </RecordCombobox>
           </Field>}
           <Field name={t('items.unit')}><UnitSelect value={item.unit} onChange={v => patch(i, { unit: v })} required /></Field>
           <Field name={t('items.delivered')}><input required type="number" min="0" step="0.001" value={item.delivered_quantity} onChange={e => patch(i, { delivered_quantity: e.target.value })} /></Field>
@@ -263,8 +265,8 @@ export function ComplaintCreate({ customerId = '' }: { customerId?: string }) {
         <SearchSelect endpoint={root + '/customers'} value={values.customer_id} onChange={v => { set('customer_id', v); setItems(rows => rows.map(r => ({ ...r, source_kind: 'manual', source_id: null }))); }} title={t('fields.customer')} />
         <Field name={t('fields.subject')}><input required maxLength={255} value={values.title} onChange={e => set('title', e.target.value)} /></Field>
         <Field name={t('fields.receivedDate')}><input required type="date" value={values.received_date} onChange={e => set('received_date', e.target.value)} /></Field>
-        <Field name={t('fields.category')}><select value={values.category} onChange={e => set('category', e.target.value)}>
-          {categoryChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></Field>
+        <Field name={t('fields.category')}><RecordCombobox aria-label={t('fields.category')} value={values.category} onChange={e => set('category', e)}>
+          {categoryChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</RecordCombobox></Field>
         <Field name={t('fields.priority')}>{select('priority', 'priorities', PRIORITIES)}</Field>
         <Field name={t('fields.channel')}>{select('channel', 'channels', CHANNELS)}</Field>
         <Field name={t('fields.resolutionDue')}><input type="date" min={values.received_date} value={values.due_date} onChange={e => set('due_date', e.target.value)} /></Field>

@@ -1,0 +1,811 @@
+[
+  {
+    "file": "components/dashboard/DashboardKit.tsx",
+    "maps": [
+      "available"
+    ],
+    "reason": "Notification-kind category filter derived from displayed items, not a record choice."
+  },
+  {
+    "file": "components/forms/SpecEditor.tsx",
+    "maps": [
+      "(p.options ?? [])"
+    ],
+    "reason": "Product-template attribute value enumeration, not record identifiers."
+  },
+  {
+    "file": "components/forms/UnitSelect.tsx",
+    "maps": [
+      "shown",
+      "UNIT_GROUPS[group]",
+      "UNIT_GROUPS[group]"
+    ],
+    "reason": "Official shared unit enumeration, not API records."
+  },
+  {
+    "file": "components/pagination/ListToolbar.tsx",
+    "maps": [
+      "statuses"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "components/pagination/Pagination.tsx",
+    "maps": [
+      "PAGE_SIZES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/admin-audit/AuditLogPage.tsx",
+    "maps": [
+      "ENTITIES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/admin-audit/AuditLogPage.tsx",
+    "maps": [
+      "actions"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/announcements/Announcements.tsx",
+    "maps": [
+      "([\"live\", \"expired\", \"withdrawn\"] as const)"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/announcements/Announcements.tsx",
+    "maps": [
+      "([\"info\", \"important\", \"urgent\"] as const)"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/announcements/Announcements.tsx",
+    "maps": [
+      "([\"everyone\", \"role\", \"users\"] as const)"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/complaints/ComplaintsPage.tsx",
+    "maps": [
+      "STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/complaints/ComplaintsPage.tsx",
+    "maps": [
+      "DEPARTMENTS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/complaints/ComplaintsPage.tsx",
+    "maps": [
+      "keys"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/complaints/ComplaintsPage.tsx",
+    "maps": [
+      "DEPARTMENTS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/complaints/ComplaintsPage.tsx",
+    "maps": [
+      "FINDINGS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/complaints/ComplaintsPage.tsx",
+    "maps": [
+      "KINDS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/customers/CustomerFields.tsx",
+    "maps": [
+      "choices"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/customers/customers-list-page.tsx",
+    "maps": [
+      "STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/customers/customers-list-page.tsx",
+    "maps": [
+      "STAGES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/delegations/DelegationsPage.tsx",
+    "maps": [
+      "STATES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/followups/followups-list-page.tsx",
+    "maps": [
+      "statusOptions"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/followups/followups-list-page.tsx",
+    "maps": [
+      "editPriorityOptions"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/followups/followups-section.tsx",
+    "maps": [
+      "priorityOptions"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/logs/SeparatedLogPages.tsx",
+    "maps": [
+      "kinds.map((k) => ({ k, label: operation(k) })).sort((a, b) => a.label.localeCompare(b.label, locale))",
+      "kinds"
+    ],
+    "reason": "Operation kinds and module areas, not person records; people use RecordCombobox."
+  },
+  {
+    "file": "features/logs/SeparatedLogPages.tsx",
+    "maps": [
+      "AREAS"
+    ],
+    "reason": "Operation kinds and module areas, not person records; people use RecordCombobox."
+  },
+  {
+    "file": "features/organization-profile/organization-profile-page.tsx",
+    "maps": [
+      "TIMEZONES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/organization-profile/organization-profile-page.tsx",
+    "maps": [
+      "[1, 2, 3, 4, 5]"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/platform/platform-audit-page.tsx",
+    "maps": [
+      "[\"identity\",\"organization\",\"authentication\",\"authorization\",\"security\",\"configuration\",\"audit\"]"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/platform/platform-audit-page.tsx",
+    "maps": [
+      "[\"success\",\"failure\",\"denied\"]"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/platform/platform-audit-page.tsx",
+    "maps": [
+      "[\"info\",\"warning\",\"critical\"]"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/platform/platform-organizations-page.tsx",
+    "maps": [
+      "[\"active\", \"suspended\", \"inactive\", \"archived\", \"provisioning\"]"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/platform/platform-organizations-page.tsx",
+    "maps": [
+      "PAGE_SIZES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/production-demands/form.tsx",
+    "maps": [
+      "priorities"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/production-demands/form.tsx",
+    "maps": [
+      "(q.options ?? [])"
+    ],
+    "reason": "Product-template attribute value enumeration, not record identifiers."
+  },
+  {
+    "file": "features/production-demands/from-sales-order.tsx",
+    "maps": [
+      "priorities"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/production-demands/list.tsx",
+    "maps": [
+      "priorities"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/production-demands/planning-allocation.tsx",
+    "maps": [
+      "priorities"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/reports/ReportForm.tsx",
+    "maps": [
+      "options"
+    ],
+    "reason": "Finite JSON-schema field.enum or report audience enumeration; record Lookup uses RecordCombobox."
+  },
+  {
+    "file": "features/reports/ReportForm.tsx",
+    "maps": [
+      "definition.audiences"
+    ],
+    "reason": "Finite JSON-schema field.enum or report audience enumeration; record Lookup uses RecordCombobox."
+  },
+  {
+    "file": "features/setup/SetupWizard.tsx",
+    "maps": [
+      "TIMEZONES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/admin-permissions/components/AdminPermissionsList.tsx",
+    "maps": [
+      "groups"
+    ],
+    "reason": "Code-managed permission module group filter; individual permission records use searchable selection."
+  },
+  {
+    "file": "features/admin-roles/components/AdminRolePermissionsManager.tsx",
+    "maps": [
+      "[\"all\", \"assigned\", \"unassigned\"]"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/admin-roles/components/AdminRolePermissionsManager.tsx",
+    "maps": [
+      "SCOPE_OPTIONS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/admin-users/components/EffectiveAccessPanel.tsx",
+    "maps": [
+      "modules"
+    ],
+    "reason": "Code-managed permission module group filter; individual permission records use searchable selection."
+  },
+  {
+    "file": "features/commercial-orders/components/CommercialOrderForm.tsx",
+    "maps": [
+      "([\"SAR\", \"USD\"] as const)"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/downtime-events/components/DowntimeEventForm.tsx",
+    "maps": [
+      "LOSS_CATEGORIES",
+      "PLANNED_CATEGORIES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/downtime-events/components/DowntimeEventsList.tsx",
+    "maps": [
+      "ALL_CATEGORIES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/masterdata/components/GeneralSettings.tsx",
+    "maps": [
+      "v.currencies"
+    ],
+    "reason": "Server-published finite supported currency codes (SAR/USD), not currency records."
+  },
+  {
+    "file": "features/masterdata/components/ProductFormFields.tsx",
+    "maps": [
+      "PRODUCT_KINDS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/masterdata/components/ProductFormFields.tsx",
+    "maps": [
+      "PROPERTY_KINDS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/ncr-reports/components/CorrectiveActionsList.tsx",
+    "maps": [
+      "([\"open\", \"done\", \"cancelled\"] as const)"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/ncr-reports/components/NcrReportDetail.tsx",
+    "maps": [
+      "ROOT_CAUSE_CATEGORIES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/ncr-reports/components/NcrReportDetail.tsx",
+    "maps": [
+      "ROOT_CAUSE_METHODS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/ncr-reports/components/NcrReportDetail.tsx",
+    "maps": [
+      "REVIEW_DAYS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/ncr-reports/components/NcrReportDetail.tsx",
+    "maps": [
+      "ACTION_KINDS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/ncr-reports/components/NcrReportDetail.tsx",
+    "maps": [
+      "DISPOSITIONS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/ncr-reports/components/NcrReportForm.tsx",
+    "maps": [
+      "NCR_SOURCES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/ncr-reports/components/NcrReportForm.tsx",
+    "maps": [
+      "NCR_TYPES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/ncr-reports/components/NcrReportForm.tsx",
+    "maps": [
+      "SEVERITIES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/ncr-reports/components/NcrReportForm.tsx",
+    "maps": [
+      "SUPPLIER_ACTIONS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/ncr-reports/components/NcrReportForm.tsx",
+    "maps": [
+      "DISPOSITIONS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/ncr-reports/components/NcrReportForm.tsx",
+    "maps": [
+      "CLAIM_STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/ncr-reports/components/NcrReportsList.tsx",
+    "maps": [
+      "NCR_STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/ncr-reports/components/NcrReportsList.tsx",
+    "maps": [
+      "NCR_SOURCES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/ncr-reports/components/NcrReportsList.tsx",
+    "maps": [
+      "SEVERITIES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/procurement/components/PurchaseOrders.tsx",
+    "maps": [
+      "ORDER_STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/procurement/components/PurchaseOrders.tsx",
+    "maps": [
+      "CURRENCIES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/procurement/components/PurchaseOrders.tsx",
+    "maps": [
+      "PAYMENT_TERMS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/procurement/components/PurchaseOrders.tsx",
+    "maps": [
+      "INCOTERMS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/procurement/components/Receipts.tsx",
+    "maps": [
+      "RECEIPT_STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/procurement/components/Suppliers.tsx",
+    "maps": [
+      "SUPPLIER_STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/production-orders/components/ProductionOrdersList.tsx",
+    "maps": [
+      "PRODUCTION_ORDER_STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/production-results/components/ResultEntryDialog.tsx",
+    "maps": [
+      "DISPOSITIONS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/quality-certificates/components/CertificatesList.tsx",
+    "maps": [
+      "CERTIFICATE_STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/quality-checks/components/QualityCheckDetail.tsx",
+    "maps": [
+      "CHECK_RESULTS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/quality-checks/components/QualityCheckForm.tsx",
+    "maps": [
+      "allowedTypes"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/quality-checks/components/QualityChecksList.tsx",
+    "maps": [
+      "CHECK_STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/quality-checks/components/QualityChecksList.tsx",
+    "maps": [
+      "CHECK_TYPES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/quality-checks/components/QualityChecksList.tsx",
+    "maps": [
+      "CHECK_RESULTS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/quality-defects/components/QualityDefectForm.tsx",
+    "maps": [
+      "SEVERITIES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/quality-rejections/components/QualityRejectionDetail.tsx",
+    "maps": [
+      "DISPOSITIONS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/quality-rejections/components/QualityRejectionsList.tsx",
+    "maps": [
+      "DISPOSITION_STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/quality-rejections/components/QualityRejectionsList.tsx",
+    "maps": [
+      "DISPOSITIONS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/quality-specifications/components/SpecificationForm.tsx",
+    "maps": [
+      "TARGET_SOURCES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/quality-specifications/components/SpecificationsList.tsx",
+    "maps": [
+      "SPEC_STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/quotes/components/QuoteEditForm.tsx",
+    "maps": [
+      "CURRENCY_OPTIONS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/quotes/components/QuoteForm.tsx",
+    "maps": [
+      "CURRENCY_OPTIONS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/samples/components/SampleEditForm.tsx",
+    "maps": [
+      "sampleStatusEditOptions.filter(s => s === initialStatus || hasPermission(SAMPLE_STATUS_PERMISSION[s]))"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/samples/components/SampleEditForm.tsx",
+    "maps": [
+      "sampleDecisionOptions"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/samples/components/SampleForm.tsx",
+    "maps": [
+      "sampleStatusOptions.filter(s => s === 'requested' || hasPermission(SAMPLE_STATUS_PERMISSION[s]))"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/samples/components/SampleProperties.tsx",
+    "maps": [
+      "p.options"
+    ],
+    "reason": "Product-template attribute value enumeration, not record identifiers."
+  },
+  {
+    "file": "features/shifts/components/ShiftEditForm.tsx",
+    "maps": [
+      "SHIFT_TYPES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/shifts/components/ShiftEditForm.tsx",
+    "maps": [
+      "SHIFT_STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/shifts/components/ShiftForm.tsx",
+    "maps": [
+      "([\"morning\", \"evening\", \"night\", \"custom\"] as ShiftType[])"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/shipments/components/Attachments.tsx",
+    "maps": [
+      "kinds"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/shipments/components/ReturnForm.tsx",
+    "maps": [
+      "CUSTOMER_REASONS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/shipments/components/ReturnsList.tsx",
+    "maps": [
+      "([\"delivery\", \"customer\"] as const)"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/shipments/components/ReturnsList.tsx",
+    "maps": [
+      "RETURN_STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/shipments/components/ShipmentDetail.tsx",
+    "maps": [
+      "DELIVERY_REASONS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/shipments/components/ShipmentDetail.tsx",
+    "maps": [
+      "DELIVERY_REASONS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/shipments/components/ShipmentDetail.tsx",
+    "maps": [
+      "DELIVERY_METHODS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/shipments/components/ShipmentForm.tsx",
+    "maps": [
+      "DELIVERY_METHODS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/shipments/components/ShipmentsList.tsx",
+    "maps": [
+      "SHIPMENT_STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/shipments/components/ShipmentsList.tsx",
+    "maps": [
+      "DELIVERY_METHODS"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/waste-records/components/WasteRecordsList.tsx",
+    "maps": [
+      "WASTE_CATEGORIES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/work-centers/components/WorkCenterEditForm.tsx",
+    "maps": [
+      "CENTER_TYPES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/work-centers/components/WorkCenterEditForm.tsx",
+    "maps": [
+      "CENTER_STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/work-centers/components/WorkCenterForm.tsx",
+    "maps": [
+      "CENTER_TYPES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/work-centers/components/WorkCenterForm.tsx",
+    "maps": [
+      "CENTER_STATUSES"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/workforce/components/WorkforceMemberForm.tsx",
+    "maps": [
+      "workerTypes"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/workforce/components/WorkforceMemberForm.tsx",
+    "maps": [
+      "employmentTypes"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/workforce/components/WorkforceMemberForm.tsx",
+    "maps": [
+      "statuses"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/workforce/components/WorkforceMembersList.tsx",
+    "maps": [
+      "workerTypes"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/workforce/components/WorkforceMembersList.tsx",
+    "maps": [
+      "employmentTypes"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  },
+  {
+    "file": "features/workforce/components/WorkforceMembersList.tsx",
+    "maps": [
+      "statuses"
+    ],
+    "reason": "Fixed short enumeration (status, priority, category, schema choice, time zone or page size), not API record identifiers."
+  }
+]

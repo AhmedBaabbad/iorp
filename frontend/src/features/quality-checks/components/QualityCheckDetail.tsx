@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { Dialog } from "@/components/ui/Dialog";
 
 import {useUnitLabel} from "@/components/UnitLabel";
@@ -215,9 +216,9 @@ function CloseDialog({ check, busy, onClose, onConfirm }: { check: QualityCheckD
     {failedMeasurements > 0 && <p className={s.muted} style={{ margin: 0 }}>{t("closeDialog.measurementsFailed", { count: String(failedMeasurements) })}</p>}
     {hasRejected && <>
       <label className={s.field}>{t("closeDialog.rejectionReason")}
-        <select value={reason} disabled={busy} onChange={e => setReason(e.target.value)}>
+        <RecordCombobox aria-label={t("closeDialog.rejectionReason")} value={reason} disabled={busy} onChange={e => setReason(e)}>
           {reasonChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-        </select>
+        </RecordCombobox>
       </label>
       <p className={s.muted} style={{ margin: 0 }}>{t("closeDialog.rejectionHint")}</p>
     </>}

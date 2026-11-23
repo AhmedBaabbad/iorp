@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
 import { TransportSelection, DriverAffiliation, type TransportValues } from "@/features/reference-directory/DirectorySelect";
@@ -229,16 +230,16 @@ export function ReceiptForm({ receiptId, supplierId, orderId }: { receiptId?: st
       <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0 }}>
         <section className={s.panel}>
           <div className={s.grid}>
-            <label className={s.field}>{t("receipts.findSupplier")}<input value={query} placeholder={t("suppliers.searchPlaceholder")} onChange={e => setQuery(e.target.value)} /></label>
+
             <label className={s.field}>{t("fields.supplier")}
-              <select required value={supplier} onChange={e => { setSupplier(e.target.value); setOrder(""); }}>
+              <RecordCombobox onSearch={setQuery} aria-label={t("fields.supplier")} required value={supplier} onChange={e => { setSupplier(e); setOrder(""); }}>
                 <option value="">{t("receipts.chooseSupplier")}</option>
-                {suppliers.map(o => <option key={o.id} value={o.id}>{o.name}{o.supplier_code ? ` — ${o.supplier_code}` : ""}</option>)}</select></label>
+                {suppliers.map(o => <option key={o.id} value={o.id}>{o.name}{o.supplier_code ? ` — ${o.supplier_code}` : ""}</option>)}</RecordCombobox></label>
             <label className={s.field}>{t("fields.date")}<input type="date" required value={date} onChange={e => setDate(e.target.value)} /></label>
             {(orders.length > 0 || order) && <label className={s.field}>{t("receipts.purchaseOrder")}
-              <select value={order} onChange={e => chooseOrder(e.target.value)}>
+              <RecordCombobox aria-label={t("receipts.purchaseOrder")} value={order} onChange={e => chooseOrder(e)}>
                 <option value="">{t("receipts.noOrder")}</option>
-                {orders.map(o => <option key={o.id} value={o.id}>{o.po_number}</option>)}</select></label>}
+                {orders.map(o => <option key={o.id} value={o.id}>{o.po_number}</option>)}</RecordCombobox></label>}
             {input("supplier_delivery_no", { maxLength: 80, dir: "ltr" })}
             {input("supplier_invoice_no", { maxLength: 80, dir: "ltr" })}
             {!order && input("purchase_reference", { maxLength: 80, dir: "ltr" })}
@@ -259,8 +260,8 @@ export function ReceiptForm({ receiptId, supplierId, orderId }: { receiptId?: st
             </div>
             <div className={s.grid}>
               <label className={s.field}>{t("fields.material")}
-                <select value={l.material_id} onChange={e => setLine(i, "material_id", e.target.value)}>
-                  <option value="">{t("receipts.otherItem")}</option>{materials.map(m => <option key={m.id} value={m.id}>{m.name} — {m.material_code}</option>)}</select></label>
+                <RecordCombobox aria-label={t("fields.material")} value={l.material_id} onChange={e => setLine(i, "material_id", e)}>
+                  <option value="">{t("receipts.otherItem")}</option>{materials.map(m => <option key={m.id} value={m.id}>{m.name} — {m.material_code}</option>)}</RecordCombobox></label>
               {!l.material_id && <label className={s.field}>{t("fields.description")}<input maxLength={255} value={l.description} onChange={e => setLine(i, "description", e.target.value)} /></label>}
               <label className={s.field}>{t("fields.supplier_lot")}<input dir="ltr" maxLength={80} value={l.supplier_lot} onChange={e => setLine(i, "supplier_lot", e.target.value)} /></label>
               <label className={s.field}>{t("fields.quantity")}<input required inputMode="decimal" dir="ltr" value={l.quantity} onChange={e => setLine(i, "quantity", e.target.value)} /></label>

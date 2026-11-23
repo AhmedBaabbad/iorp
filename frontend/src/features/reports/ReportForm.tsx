@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Definition, Schema, getDefinitions, getLookups, reportRequest } from './api';
@@ -11,7 +12,6 @@ export function resolveSchema(field: Schema, root: Schema): Schema {
 }
 
 function Lookup({ kind, value, onChange, required, label, module }: { module: string; kind: string; value: string; onChange: (v: string) => void; required: boolean; label: string }) {
-  const t = useTranslations('reports.form');
   const [query, setQuery] = useState(''); const [options, setOptions] = useState<{ id: string; label: string }[]>([]);
   useEffect(() => {
     let active = true;
@@ -19,12 +19,12 @@ function Lookup({ kind, value, onChange, required, label, module }: { module: st
     return () => { active = false; clearTimeout(timer); };
   }, [kind, query, module]);
   return <>
-    <input aria-label={t('searchFor', { field: label })} value={query} onChange={e => setQuery(e.target.value)} placeholder={t('search')} />
-    <select aria-label={label} required={required} value={value} onChange={e => onChange(e.target.value)}>
+
+    <RecordCombobox onSearch={setQuery} aria-label={label} required={required} value={value} onChange={e => onChange(e)}>
       <option value="">—</option>
       {value && !options.some(o => o.id === value) && <option value={value}>{value}</option>}
       {options.map(o => <option value={o.id} key={o.id}>{o.label}</option>)}
-    </select>
+    </RecordCombobox>
   </>;
 }
 

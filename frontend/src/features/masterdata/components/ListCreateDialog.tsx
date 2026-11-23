@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import Link from "next/link";
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -23,11 +24,11 @@ export function ListCreateDialog({list,parent,onCreated,onClose}:{list:ListName;
     }}>
     <label>{t("fields.name_ar")}<input required dir="rtl" maxLength={120} value={nameAr} onChange={e=>setNameAr(e.target.value)}/></label>
     <label>{t("fields.name_en")}<input required dir="ltr" maxLength={120} value={nameEn} onChange={e=>setNameEn(e.target.value)}/></label>
-    {list==="city"&&<label>{t("select.parentCountry")}<select required value={parentKey} onChange={e=>setParentKey(e.target.value)}>
+    {list==="city"&&<label>{t("select.parentCountry")}<RecordCombobox aria-label={t("select.parentCountry")} required value={parentKey} onChange={e=>setParentKey(e)}>
       <option value="">{t("select.chooseItem")}</option>
       {countries?.filter(item=>item.active||item.key===parentKey).map(item=><option key={item.id} value={item.key}>{localName(item,locale)}</option>)}
       {parentKey&&!countries?.some(item=>item.key===parentKey)&&<option value={parentKey}>{parentKey}</option>}
-    </select></label>}
+    </RecordCombobox></label>}
     <Link href={`/master-data/lists?list=${list}`} target="_blank" rel="noopener noreferrer">{t("select.manageInNewTab")}</Link>
   </RecordDialog>;
 }

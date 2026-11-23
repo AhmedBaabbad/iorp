@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -103,8 +104,8 @@ function AddItem({ list, parents, onAdded }: { list: ListName; parents: ListItem
     <label className={s.field}>{t("fields.name_ar")}<input dir="rtl" maxLength={200} value={v.name_ar} onChange={e => setV({ ...v, name_ar: e.target.value })} /></label>
     <label className={s.field}>{t("fields.name_en")}<input dir="ltr" maxLength={200} value={v.name_en} onChange={e => setV({ ...v, name_en: e.target.value })} /></label>
     {needsParent && <label className={s.field}>{t(`names.${PARENT[list]}`)}
-      <select value={v.parent_key} onChange={e => setV({ ...v, parent_key: e.target.value })}><option value="">—</option>
-        {parents.filter(p => p.active).map(p => <option key={p.key} value={p.key}>{locale === "ar" ? p.name_ar : p.name_en}</option>)}</select></label>}
+      <RecordCombobox aria-label={t(`names.${PARENT[list]}`)} value={v.parent_key} onChange={e => setV({ ...v, parent_key: e })}><option value="">—</option>
+        {parents.filter(p => p.active).map(p => <option key={p.key} value={p.key}>{locale === "ar" ? p.name_ar : p.name_en}</option>)}</RecordCombobox></label>}
     <button type="submit" className={`${s.button} ${s.primary}`} disabled={!valid || busy}>{t("add")}</button>
     {needsParent && parents.length === 0 && <span className={s.muted}>{t("parentFirst")}</span>}
     {error && <span role="alert" className={s.error}>{error}</span>}
@@ -142,8 +143,8 @@ function Row({ item, parents, canManage, onSaved, onDeleted, parentName }: { ite
     <td>{editing ? <input aria-label={t("fields.name_ar")} dir="rtl" value={v.name_ar} onChange={e => setV({ ...v, name_ar: e.target.value })} /> : item.name_ar}</td>
     <td>{editing ? <input aria-label={t("fields.name_en")} dir="ltr" value={v.name_en} onChange={e => setV({ ...v, name_en: e.target.value })} /> : item.name_en}</td>
     <td><bdi dir="ltr">{item.key}</bdi></td>
-    {hasParent && <td>{editing ? <select aria-label={t(`names.${PARENT[item.list]}`)} value={v.parent_key} onChange={e => setV({ ...v, parent_key: e.target.value })}>
-      {parents.map(p => <option key={p.key} value={p.key}>{locale === "ar" ? p.name_ar : p.name_en}</option>)}</select> : parentName(item.parent_key)}</td>}
+    {hasParent && <td>{editing ? <RecordCombobox aria-label={t(`names.${PARENT[item.list]}`)} value={v.parent_key} onChange={e => setV({ ...v, parent_key: e })}>
+      {parents.map(p => <option key={p.key} value={p.key}>{locale === "ar" ? p.name_ar : p.name_en}</option>)}</RecordCombobox> : parentName(item.parent_key)}</td>}
     <td>{uses}</td>
     <td>{canManage ? <input type="checkbox" aria-label={t("fields.active")} checked={item.active} onChange={e => void save({ active: e.target.checked })} />
       : item.active ? t("yes") : t("no")}</td>
@@ -189,9 +190,9 @@ function Legacy({ list, items, onMapped }: { list: ListName; items: ListItem[]; 
       <tbody>{rows.map(r => <tr key={r.value}>
         <td><bdi>«{r.value}»</bdi></td>
         <td>{Object.entries(r.uses).map(([module, count]) => t("use", { module: lt(`modules.${module}`), count: String(count) })).join(" · ")}</td>
-        <td><select aria-label={t("mapTo")} value={chosen[r.value] ?? ""} onChange={e => setChosen(old => ({ ...old, [r.value]: e.target.value }))}>
+        <td><RecordCombobox aria-label={t("mapTo")} value={chosen[r.value] ?? ""} onChange={e => setChosen(old => ({ ...old, [r.value]: e }))}>
           <option value="">—</option>{items.filter(i => i.active).map(i => <option key={i.id} value={i.id}>{locale === "ar" ? i.name_ar : i.name_en}</option>)}
-        </select></td>
+        </RecordCombobox></td>
         <td><button type="button" className={`${s.button} ${s.primary}`} disabled={!chosen[r.value] || busy} onClick={() => void map(r.value)}>{t("map")}</button></td>
       </tr>)}</tbody>
     </table></div>

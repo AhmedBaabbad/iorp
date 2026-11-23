@@ -1,3 +1,4 @@
+import {changeControl} from "./record-test-helpers";
 // QUAL-001: inspections close with balanced quantities, rejections need a final decision, and both keep a production order from closing.
 import { act, cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
@@ -74,8 +75,8 @@ it("records a rejection in the check dialog and updates its list without navigat
   fireEvent.click(await screen.findByRole('button',{name:'Record another rejection'}));
   const dialog=await screen.findByRole('dialog',{name:'Record a rejection'});
   await within(dialog).findByLabelText('Source');
-  fireEvent.change(within(dialog).getByLabelText('Rejected quantity (kg)'),{target:{value:'2'}});
-  fireEvent.change(within(dialog).getByLabelText('Reason details'),{target:{value:'Retained samples failed'}});
+  changeControl(within(dialog).getByLabelText('Rejected quantity (kg)'),{target:{value:'2'}});
+  changeControl(within(dialog).getByLabelText('Reason details'),{target:{value:'Retained samples failed'}});
   fireEvent.click(within(dialog).getByRole('button',{name:'Record rejection'}));
   expect(await screen.findByRole('link',{name:'QR-INLINE'})).toBeTruthy();
   expect(posted('/quality/quality-rejections')).toMatchObject({quality_check_id:'c1',quantity_rejected:'2'});
@@ -114,13 +115,13 @@ describe("quality checks", () => {
     ui(<QualityCheckDetail qualityCheckId="c1" />);
     fireEvent.click(await screen.findByRole("button", { name: "Close with result" }));
     const dialog = screen.getByRole("dialog", { name: "Close the check with its result" });
-    fireEvent.change(within(dialog).getByLabelText("Result"), { target: { value: "accepted" } });
+    changeControl(within(dialog).getByLabelText("Result"), { target: { value: "accepted" } });
     // Accepted 92 of 100 leaves 8 rejected: an "accepted" result cannot carry it.
-    fireEvent.change(within(dialog).getByLabelText(/^Accepted/), { target: { value: "92" } });
+    changeControl(within(dialog).getByLabelText(/^Accepted/), { target: { value: "92" } });
     expect(within(dialog).getByText("An accepted result cannot have a rejected quantity.")).toBeTruthy();
     expect((within(dialog).getByRole("button", { name: "Close with result" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.change(within(dialog).getByLabelText("Result"), { target: { value: "rejected" } });
-    fireEvent.change(within(dialog).getByLabelText("Rejection reason"), { target: { value: "out_of_spec" } });
+    changeControl(within(dialog).getByLabelText("Result"), { target: { value: "rejected" } });
+    changeControl(within(dialog).getByLabelText("Rejection reason"), { target: { value: "out_of_spec" } });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Close with result" })); });
     expect(posted("/quality/quality-checks/c1/close")).toMatchObject({ result: "rejected", qty_inspected: "100.000", qty_accepted: "92", qty_rejected: "8", rejection_reason: "out_of_spec" });
   });
@@ -142,11 +143,11 @@ describe("quality rejections", () => {
     ui(<QualityRejectionDetail qualityRejectionId="r1" />, "ar");
     fireEvent.click(await screen.findByRole("button", { name: "اتخاذ القرار" }));
     const dialog = screen.getByRole("dialog", { name: "قرار التصرف" });
-    fireEvent.change(within(dialog).getByLabelText("قرار التصرف"), { target: { value: "use_as_is" } });
+    changeControl(within(dialog).getByLabelText("قرار التصرف"), { target: { value: "use_as_is" } });
     const save = within(dialog).getByRole("button", { name: "حفظ القرار" }) as HTMLButtonElement;
     expect(save.disabled).toBe(true);
-    fireEvent.change(within(dialog).getByLabelText("الموافق على الاستثناء"), { target: { value: "مدير الجودة" } });
-    fireEvent.change(within(dialog).getByLabelText("مبرر الاستثناء"), { target: { value: "ضمن تفاوت مقبول لدى العميل" } });
+    changeControl(within(dialog).getByLabelText("الموافق على الاستثناء"), { target: { value: "مدير الجودة" } });
+    changeControl(within(dialog).getByLabelText("مبرر الاستثناء"), { target: { value: "ضمن تفاوت مقبول لدى العميل" } });
     await act(async () => { fireEvent.click(save); });
     expect(posted("/quality/quality-rejections/r1/decide")).toEqual({ disposition: "use_as_is", decision_notes: "ضمن تفاوت مقبول لدى العميل", concession_approved_by: "مدير الجودة" });
     expect(await screen.findByRole("button", { name: "تسجيل التنفيذ" })).toBeTruthy();
@@ -239,11 +240,11 @@ describe("measurements", () => {
     // One box per required reading, with a counter; nothing is sent until "save measurements".
     expect(within(section).getByText("0 من 3 قراءات")).toBeTruthy();
     expect((within(section).getByRole("button", { name: "حفظ القياسات" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.change(within(section).getByLabelText("القراءة 1 — العرض"), { target: { value: "٥٫٠٢" } });
-    fireEvent.change(within(section).getByLabelText("القراءة 2 — العرض"), { target: { value: "4,98" } });
-    fireEvent.change(within(section).getByLabelText("القراءة 3 — العرض"), { target: { value: "5.01" } });
+    changeControl(within(section).getByLabelText("القراءة 1 — العرض"), { target: { value: "٥٫٠٢" } });
+    changeControl(within(section).getByLabelText("القراءة 2 — العرض"), { target: { value: "4,98" } });
+    changeControl(within(section).getByLabelText("القراءة 3 — العرض"), { target: { value: "5.01" } });
     expect(within(section).getByText("3 من 3 قراءات")).toBeTruthy();
-    fireEvent.change(within(section).getByLabelText("نتيجة اللون"), { target: { value: "conforming" } });
+    changeControl(within(section).getByLabelText("نتيجة اللون"), { target: { value: "conforming" } });
     await act(async () => { fireEvent.click(within(section).getByRole("button", { name: "حفظ القياسات (2)" })); });
     const puts = api.apiClient.mock.calls.filter(([, o]) => o?.method === "PUT").map(([p, o]) => [p, o.body]);
     expect(puts).toEqual([
@@ -258,7 +259,7 @@ describe("measurements", () => {
     ui(<QualityCheckDetail qualityCheckId="c1" />);
     fireEvent.click(await screen.findByRole("button", { name: "Close with result" }));
     const dialog = screen.getByRole("dialog", { name: "Close the check with its result" });
-    fireEvent.change(within(dialog).getByLabelText("Result"), { target: { value: "accepted" } });
+    changeControl(within(dialog).getByLabelText("Result"), { target: { value: "accepted" } });
     expect(within(dialog).getByText("1 parameters of the plan are not measured yet.")).toBeTruthy();
     expect((within(dialog).getByRole("button", { name: "Close with result" }) as HTMLButtonElement).disabled).toBe(true);
   });
@@ -284,16 +285,16 @@ describe("specification form", () => {
     api.apiClient.mockImplementation((path: string, o?: { method?: string }) => Promise.resolve(o?.method === "POST" ? { id: "s1" }
       : path.startsWith("/masterdata/") ? [] : parameters));  // no products defined yet: the product type is typed
     ui(<SpecificationForm />);
-    fireEvent.change(await screen.findByLabelText("Specification no."), { target: { value: "ROF-TDS-PP-001" } });
-    fireEvent.change(screen.getByLabelText("Title"), { target: { value: "PP strap" } });
+    changeControl(await screen.findByLabelText("Specification no."), { target: { value: "ROF-TDS-PP-001" } });
+    changeControl(screen.getByLabelText("Title"), { target: { value: "PP strap" } });
     // ProductSelect first renders a disabled loading select; wait for its editable no-catalog input.
-    fireEvent.change(await screen.findByRole("textbox", { name: "Product" }), { target: { value: "PP strap" } });
+    changeControl(await screen.findByRole("textbox", { name: "Product" }), { target: { value: "PP strap" } });
     fireEvent.click(screen.getByRole("button", { name: "Add all parameters" }));
-    fireEvent.change(screen.getByLabelText("Target from"), { target: { value: "order_line" } });
-    fireEvent.change(screen.getByLabelText("Order line key"), { target: { value: "width_mm" } });
-    fireEvent.change(screen.getByLabelText("Tolerance below (−)"), { target: { value: "0.2" } });
-    fireEvent.change(screen.getByLabelText("Tolerance above (+)"), { target: { value: "0.2" } });
-    fireEvent.change(screen.getByLabelText("Requirement"), { target: { value: "As approved sample" } });
+    changeControl(screen.getByLabelText("Target from"), { target: { value: "order_line" } });
+    changeControl(screen.getByLabelText("Order line key"), { target: { value: "width_mm" } });
+    changeControl(screen.getByLabelText("Tolerance below (−)"), { target: { value: "0.2" } });
+    changeControl(screen.getByLabelText("Tolerance above (+)"), { target: { value: "0.2" } });
+    changeControl(screen.getByLabelText("Requirement"), { target: { value: "As approved sample" } });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save draft" })); });
     const body = api.apiClient.mock.calls.find(([p, o]) => p === "/quality/quality-specifications" && o?.method === "POST")?.[1]?.body;
     expect(body).toMatchObject({ code: "ROF-TDS-PP-001", product_type: "PP strap", lines: [
@@ -315,8 +316,8 @@ describe("plan for a lot without sizes", () => {
     expect(await screen.findByText(/وليست لمنتج الأمر/)).toBeTruthy();
     const apply = screen.getByRole("button", { name: "تطبيق خطة القياس" }) as HTMLButtonElement;
     expect(apply.disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText("العرض (مم)"), { target: { value: "5" } });
-    fireEvent.change(screen.getByLabelText("السماكة (مم)"), { target: { value: "0.35" } });
+    changeControl(screen.getByLabelText("العرض (مم)"), { target: { value: "5" } });
+    changeControl(screen.getByLabelText("السماكة (مم)"), { target: { value: "0.35" } });
     await act(async () => { fireEvent.click(apply); });
     expect(api.apiClient.mock.calls.find(([p]) => p === "/quality/quality-checks/c1/plan")?.[1]?.body)
       .toEqual({ specification_id: "s1", lot_values: { thickness_mm: "0.35", width_mm: "5" } });
@@ -328,7 +329,7 @@ describe("invalid readings", () => {
   it("flags a reading that is not a number and does not save", async () => {
     api.apiClient.mockResolvedValue(check({ actions: ["edit", "measure", "close", "cancel"], specification_code: "X", specification_revision: 1, measurements: [measurement()] }));
     ui(<QualityCheckDetail qualityCheckId="c1" />);
-    fireEvent.change(await screen.findByLabelText("Width reading 1"), { target: { value: "5 mm" } });
+    changeControl(await screen.findByLabelText("Width reading 1"), { target: { value: "5 mm" } });
     expect(screen.getByText("Invalid reading: enter a number only (e.g. 5.02).")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Save measurements (1)" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Add a reading for Width" }));
@@ -373,11 +374,11 @@ describe("returned goods", () => {
     fireEvent.click(screen.getByRole("button", { name: "Decide on the returned goods" }));
     const dialog = screen.getByRole("dialog", { name: "Decision on the returned goods" });
     const confirm = within(dialog).getByRole("button", { name: "Record the decision" }) as HTMLButtonElement;
-    fireEvent.change(within(dialog).getByLabelText(/^Back to stock/), { target: { value: "8" } });
-    fireEvent.change(within(dialog).getByLabelText(/^Scrap/), { target: { value: "5" } });
+    changeControl(within(dialog).getByLabelText(/^Back to stock/), { target: { value: "8" } });
+    changeControl(within(dialog).getByLabelText(/^Scrap/), { target: { value: "5" } });
     expect(within(dialog).getByText("Total 13 of 18")).toBeTruthy();
     expect(confirm.disabled).toBe(true);
-    fireEvent.change(within(dialog).getByLabelText(/^Rework/), { target: { value: "5" } });
+    changeControl(within(dialog).getByLabelText(/^Rework/), { target: { value: "5" } });
     await act(async () => { fireEvent.click(confirm); });
     expect(posted("/quality/quality-checks/c1/return-decision")).toEqual({ to_stock: "8", use_as_is: "0", rework: "5", return_to_process: "0",
       scrap: "5", hold: "0", notes: null, concession_approved_by: null, open_ncr: true });

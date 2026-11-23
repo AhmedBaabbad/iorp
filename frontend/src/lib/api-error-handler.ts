@@ -64,7 +64,7 @@ function readErrorCode(details: unknown): string | undefined {
   const record = details as { error_code?: unknown; code?: unknown; detail?: unknown; type?: unknown };
   const value = record.error_code ?? record.code;
   if (typeof value === "string") return value;
-  const codes = ["SPEC_RANGE_NOT_ALLOWED", "SPEC_RANGE_SHAPE", "SPEC_RANGE_NUMBER", "SPEC_RANGE_REVERSED", "RANGE_ONLY_FOR_NUMBER","CUSTOMER_NAME_REQUIRED", "CITY_OTHER_REQUIRED", "CITY_COUNTRY_MISMATCH", "LOCATION_URL_INVALID", "CONTACT_NAME_REQUIRED", "DIRECTORY_DUPLICATE", "DRIVER_IDENTITY_EXISTS", "DRIVER_IDENTITY_REQUIRED", "DRIVER_EMAIL_INVALID", "DEFAULT_MUST_BE_ACTIVE", "CONTACT_NOT_IN_CUSTOMER", "ACTIVE_WORKER_REQUIRED", "EXTERNAL_DRIVER_CANNOT_REFERENCE_EMPLOYEE", "TRANSPORT_RECORD_UNAVAILABLE", "REFERENCE_VALUE_UNAVAILABLE", "PHONE_INVALID", "DIRECTORY_CHANGED"];
+  const codes = ["UNIT_UNKNOWN","SPEC_RANGE_NOT_ALLOWED", "SPEC_RANGE_SHAPE", "SPEC_RANGE_NUMBER", "SPEC_RANGE_REVERSED", "RANGE_ONLY_FOR_NUMBER","CUSTOMER_NAME_REQUIRED", "CITY_OTHER_REQUIRED", "CITY_COUNTRY_MISMATCH", "LOCATION_URL_INVALID", "CONTACT_NAME_REQUIRED", "DIRECTORY_DUPLICATE", "DRIVER_IDENTITY_EXISTS", "DRIVER_IDENTITY_REQUIRED", "DRIVER_EMAIL_INVALID", "DEFAULT_MUST_BE_ACTIVE", "CONTACT_NOT_IN_CUSTOMER", "ACTIVE_WORKER_REQUIRED", "EXTERNAL_DRIVER_CANNOT_REFERENCE_EMPLOYEE", "TRANSPORT_RECORD_UNAVAILABLE", "REFERENCE_VALUE_UNAVAILABLE", "PHONE_INVALID", "DIRECTORY_CHANGED"];
   if (typeof record.type === "string" && codes.includes(record.type)) return record.type;
   if (typeof record.detail === "string" && codes.includes(record.detail)) return record.detail;
   return readErrorCode(record.detail);
@@ -73,6 +73,7 @@ function readErrorCode(details: unknown): string | undefined {
 function mapErrorCode(code: string, t: (key: string) => string): string | null {
   const map: Record<string, string> = {
     PHONE_INVALID: t("validation.phoneInvalid"),
+    UNIT_UNKNOWN: t("validation.unitUnknown"),
     SPEC_RANGE_NOT_ALLOWED: t("validation.SPEC_RANGE_NOT_ALLOWED"),
     SPEC_RANGE_SHAPE: t("validation.SPEC_RANGE_SHAPE"),
     SPEC_RANGE_NUMBER: t("validation.SPEC_RANGE_NUMBER"),

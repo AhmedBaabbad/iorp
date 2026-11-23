@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
@@ -104,9 +105,9 @@ export function AdminUserRolesManager({ userId, userName, isOrganizationRoot, as
 
       {showAssign ? <div style={sharedStyles.modalOverlay}><div style={sharedStyles.modal}>
         <h3>{t("assignRole")}</h3>
-        {assignable.length ? <select style={sharedStyles.input} value={selectedRoleId} onChange={(event) => setSelectedRoleId(event.target.value)} aria-label={t("selectRole")}>
+        {assignable.length ? <RecordCombobox style={sharedStyles.input} value={selectedRoleId} onChange={(event) => setSelectedRoleId(event)} aria-label={t("selectRole")}>
           {assignable.map((role) => <option key={role.id} value={role.id}>{roleName(role)} · {role.code} · {t("permissionCount", { count: role.permission_count })}</option>)}
-        </select> : <p>{t("noAssignableRoles")}</p>}
+        </RecordCombobox> : <p>{t("noAssignableRoles")}</p>}
         {restrictedCount > 0 ? <p>{t("someRolesRestricted")}</p> : null}
         <div style={sharedStyles.modalActions}>
           <button type="button" style={sharedStyles.secondaryButton} onClick={() => setShowAssign(false)}>{common("actions.cancel")}</button>

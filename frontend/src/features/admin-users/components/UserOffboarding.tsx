@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import Link from "next/link";
 import {useCallback,useEffect,useState,type FormEvent} from "react";
@@ -55,7 +56,7 @@ export function UserOffboarding({user,onChanged,onReload,allowOffboarding=true}:
   function start(next:typeof action){setReason("");setAction(next);}
   function state(done:boolean,available:boolean){return t(done?"completed":available?"current":"locked");}
   function transferControls(kind:"customers"|"followUps",allowed:boolean,options:Option[],value:string,set:(value:string)=>void){return allowed?<div style={{display:"grid",gap:"var(--form-gap, 18px)",gridTemplateColumns:"repeat(auto-fit, minmax(min(220px, 100%), 1fr))"}}>
-    <label style={s.field}><span style={s.label}>{t("toUser")}</span><select style={s.input} value={value} disabled={busy||archived} onChange={e=>set(e.target.value)}><option value="">{t("chooseUser")}</option>{options.map(option=><option key={option.id} value={option.id}>{option.full_name} ({option.email})</option>)}</select></label>
+    <label style={s.field}><span style={s.label}>{t("toUser")}</span><RecordCombobox aria-label={t("toUser")} style={s.input} value={value} disabled={busy||archived} onChange={e=>set(e)}><option value="">{t("chooseUser")}</option>{options.map(option=><option key={option.id} value={option.id}>{option.full_name} ({option.email})</option>)}</RecordCombobox></label>
     <button type="button" style={s.secondaryButton} disabled={!value||busy||archived} onClick={()=>void transfer(kind)}>{t("transfer")}</button>
     {!options.length&&<p>{t("noCandidates")}</p>}
   </div>:<p role="note">{t("noTransferPermission")}</p>;}

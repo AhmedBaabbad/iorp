@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { useEffect, useState } from "react";
 import { useLocale } from "next-intl";
 import { apiClient } from "@/lib/api-client";
@@ -12,8 +13,8 @@ export function ReferenceTextSelect({list,value,onChange,disabled,ariaLabel}: {l
   if(error)return <span role="alert">{ar?"تعذر تحميل القائمة؛ تحقق من صلاحية عرض القوائم المرجعية.":"Could not load list; check reference-list read permission."}</span>;
   if(rows===null)return <select disabled aria-label={ariaLabel}><option>{ar?"جار التحميل":"Loading"}</option></select>;
   if(!rows.length)return <input aria-label={ariaLabel} maxLength={200} value={value} onChange={e=>onChange(e.target.value)} disabled={disabled}/>;
-  return <select aria-label={ariaLabel} value={value} onChange={e=>onChange(e.target.value)} disabled={disabled}><option value="">—</option>
+  return <RecordCombobox aria-label={ariaLabel} value={value} onChange={e=>onChange(e)} disabled={disabled}><option value="">—</option>
     {value&&!rows.some(r=>r.name_en===value)&&<option value={value}>{value}</option>}
     {rows.filter(r=>r.active||r.name_en===value).map(r=><option key={r.id} value={r.name_en}>{ar?r.name_ar:r.name_en}</option>)}
-  </select>;
+  </RecordCombobox>;
 }

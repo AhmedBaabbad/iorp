@@ -1,3 +1,4 @@
+import {changeControl} from "./record-test-helpers";
 // PROD-QUALITY-FIX-001 item 5: several defects per inspection (each type once) and per rejection; severity = the highest.
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
@@ -58,7 +59,7 @@ describe("inspections list", () => {
     const more = within(table).getByText("+1");
     expect(more.getAttribute("title")).toBe("Surface Defect");
     // The filter goes into the address with the page (ARCH-PAGE-001); the list follows the address.
-    fireEvent.change(screen.getByLabelText("Defect type"), { target: { value: "surface" } });
+    changeControl(screen.getByLabelText("Defect type"), { target: { value: "surface" } });
     expect(nav.replace).toHaveBeenCalledWith("/?defect_category=surface", { scroll: false });
     cleanup();
     nav.params = new URLSearchParams("defect_category=surface");
@@ -73,12 +74,13 @@ describe("recording defects", () => {
     const onCreated = vi.fn().mockResolvedValue(undefined);
     ui(<QualityDefectForm qualityCheckId="c1" recordedCategories={["dimension"]} onCreated={onCreated} onCancel={() => undefined} />);
     const first = screen.getByRole("group", { name: "Defect 1" });
-    expect((within(first).getByRole("option", { name: "Dimension" }) as HTMLOptionElement).disabled).toBe(true);
-    fireEvent.change(within(first).getByLabelText("Description"), { target: { value: "Gauge low" } });
+    fireEvent.focus(within(first).getByRole("combobox",{name:"Category"}));
+    expect(within(first).getByRole("option", { name: "Dimension" }).getAttribute("aria-disabled")).toBe("true");
+    changeControl(within(first).getByLabelText("Description"), { target: { value: "Gauge low" } });
     fireEvent.click(screen.getByRole("button", { name: "Add another defect type" }));
     const second = screen.getByRole("group", { name: "Defect 2" });
-    fireEvent.change(within(second).getByLabelText("Severity"), { target: { value: "critical" } });
-    fireEvent.change(within(second).getByLabelText("Description"), { target: { value: "Scratches" } });
+    changeControl(within(second).getByLabelText("Severity"), { target: { value: "critical" } });
+    changeControl(within(second).getByLabelText("Description"), { target: { value: "Scratches" } });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Record 2 defects" })); });
     const body = sent("/quality/quality-checks/c1/defects/batch", "POST") as { defects: { defect_category: string; severity: string }[] };
     expect(body.defects.map(d => [d.defect_category, d.severity])).toEqual([["thickness", "minor"], ["surface", "critical"]]);
@@ -109,15 +111,16 @@ describe("rejection defects", () => {
       return Promise.resolve([]);
     });
     ui(<QualityRejectionForm rejectionId="r1" />);
-    const available = await screen.findByRole("list", { name: "Defects of the inspection" });
-    fireEvent.change(screen.getByLabelText("Find a defect"), { target: { value: "scr" } });
-    expect(within(available).getAllByRole("button")).toHaveLength(1);
-    fireEvent.click(within(available).getByRole("button", { name: "Add Surface Defect" }));
-    fireEvent.change(screen.getByLabelText("Find a defect"), { target: { value: "" } });
-    fireEvent.click(within(available).getByRole("button", { name: "Add Thickness / Gauge" }));
-    fireEvent.click(within(available).getByRole("button", { name: "Add Color Deviation" }));
+    const available = await screen.findByRole("combobox", { name: "Defects of the inspection" });
+    changeControl(available, { target: { value: "scr" } });
+    expect(screen.getAllByRole("option")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("option", { name: /Surface Defect.*Scratches/ }));
+    fireEvent.focus(available);
+    fireEvent.click(screen.getByRole("option", { name: /Thickness.*Gauge low/ }));
+    fireEvent.focus(available);
+    fireEvent.click(screen.getByRole("option", { name: /Color Deviation.*Light colour/ }));
     fireEvent.click(screen.getByRole("button", { name: "Remove Color Deviation" }));
-    fireEvent.change(screen.getByLabelText("Affected quantity for Thickness / Gauge"), { target: { value: "8" } });
+    changeControl(screen.getByLabelText("Affected quantity for Thickness / Gauge"), { target: { value: "8" } });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save" })); });
     expect((sent("/quality/quality-rejections/r1", "PATCH") as { defects: unknown[] }).defects).toEqual([
       { quality_defect_id: "d2", affected_quantity: null }, { quality_defect_id: "d1", affected_quantity: "8" }]);

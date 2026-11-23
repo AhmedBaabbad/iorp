@@ -1,4 +1,5 @@
 {
+  "searchResults": "Search results for {label}",
   "reload": "Reload",
   "errors": {
     "DIRECTORY_DUPLICATE": "This plate or name already exists.",

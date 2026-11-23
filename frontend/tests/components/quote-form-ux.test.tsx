@@ -1,3 +1,4 @@
+import {changeControl,findRecordOption} from "./record-test-helpers";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -38,10 +39,10 @@ it("uses the organization policy and follows issue date until validity is manual
   const { container } = render(<QuoteForm />);
   const [issue, valid] = Array.from(container.querySelectorAll<HTMLInputElement>('input[type="datetime-local"]'));
   await waitFor(() => expect(valid.value).toContain("2026-11-23"));
-  fireEvent.change(issue, { target: { value: "2026-12-01T09:00" } });
+  changeControl(issue, { target: { value: "2026-12-01T09:00" } });
   expect(valid.value).toBe("2026-12-13T09:00");
-  fireEvent.change(valid, { target: { value: "2026-12-05T09:00" } });
-  fireEvent.change(issue, { target: { value: "2026-12-02T09:00" } });
+  changeControl(valid, { target: { value: "2026-12-05T09:00" } });
+  changeControl(issue, { target: { value: "2026-12-02T09:00" } });
   expect(valid.value).toBe("2026-12-05T09:00");
 });
 
@@ -68,10 +69,10 @@ it("recomputes edited validity only until a manual override", async () => {
   const { container } = render(<QuoteEditForm />);
   await screen.findByRole("button", { name: "updateButton" });
   const [issue, valid] = Array.from(container.querySelectorAll<HTMLInputElement>('input[type="datetime-local"]'));
-  fireEvent.change(issue, { target: { value: "2026-12-01T09:00" } });
+  changeControl(issue, { target: { value: "2026-12-01T09:00" } });
   expect(valid.value).toBe("2026-12-13T09:00");
-  fireEvent.change(valid, { target: { value: "2026-12-06T09:00" } });
-  fireEvent.change(issue, { target: { value: "2026-12-02T09:00" } });
+  changeControl(valid, { target: { value: "2026-12-06T09:00" } });
+  changeControl(issue, { target: { value: "2026-12-02T09:00" } });
   expect(valid.value).toBe("2026-12-06T09:00");
 });
 
@@ -79,8 +80,8 @@ async function chooseSample() {
   api.samples.mockResolvedValue([{ id: "s1", customer_id: "c1", sample_code: "S-1", product_type: "film", requested_spec_json: { width: 20 } }]);
   await waitFor(() => expect(screen.getByRole("button", { name: "actions.create" }).hasAttribute("disabled")).toBe(false));
   fireEvent.click(screen.getByRole("button", { name: "fields.customer" }));
-  await screen.findByRole("option", { name: /S-1/ });
-  fireEvent.change(screen.getByRole("combobox", { name: "fields.sample" }), { target: { value: "s1" } });
+  await findRecordOption(/S-1/);
+  changeControl(screen.getByRole("combobox", { name: "fields.sample" }), { target: { value: "s1" } });
 }
 
 it("copies sample product/specification into an empty editable line", async () => {
@@ -88,13 +89,13 @@ it("copies sample product/specification into an empty editable line", async () =
   await chooseSample();
   expect(screen.getByLabelText("items.fields.productType")).toHaveProperty("value", "film");
   expect(screen.getByLabelText("Specification")).toHaveProperty("value", '{"width":20}');
-  fireEvent.change(screen.getByLabelText("Specification"), { target: { value: '{"width":25}' } });
+  changeControl(screen.getByLabelText("Specification"), { target: { value: '{"width":25}' } });
   expect(screen.getByLabelText("Specification")).toHaveProperty("value", '{"width":25}');
 });
 
 it("preserves written lines and adds the sample only on explicit request", async () => {
   render(<QuoteForm />);
-  fireEvent.change(screen.getByLabelText("Specification"), { target: { value: '{"keep":true}' } });
+  changeControl(screen.getByLabelText("Specification"), { target: { value: '{"keep":true}' } });
   await chooseSample();
   expect(screen.getByLabelText("Specification")).toHaveProperty("value", '{"keep":true}');
   fireEvent.click(screen.getByRole("button", { name: "items.addFromSample" }));

@@ -12,9 +12,15 @@ Detail pages with multiple sections use the shared accessible `Tabs`. Tabs suppo
 
 Long documents, including shipments, quotations and sales orders, keep full-page forms with clear sections. Use the shared searchable `Combobox` for record selection, including secondary option details and a clear action. A selected saved record shows its copied fields read-only. A labelled manual-entry action removes the binding; the server remains authoritative for saved snapshots.
 
-This change applies these patterns only to customer contacts/sites, the transport directory and shipments. Other modules will migrate in separate PRs. Existing manual tabs in `NotificationCenter.tsx`, `followups-list-page.tsx`, and `NotificationsPage.tsx` remain unchanged and are future migration candidates.
+The dialog/tab rollout currently covers customer contacts/sites, the transport directory and shipments. Other modules will migrate in separate PRs; the searchable-record-choice rule below applies across all modules. Existing manual tabs in `NotificationCenter.tsx`, `followups-list-page.tsx`, and `NotificationsPage.tsx` remain unchanged and are future migration candidates.
 
 Record selection must retain the active-default and explicit-contact rules from PR #24. Changing a site must never replace a contact the user selected. Existing document snapshots must not be refreshed just by opening an edit form. Quantity rendering uses `formatQuantity` and preserves up to three decimal places without trailing zeros.
+
+## Searchable record choices and units
+
+Every API-backed record choice uses one searchable `Combobox`, a domain picker, `ProductSelect`, or `ListSelect`. Do not pair a separate search input with a native select. `RecordCombobox` adapts existing option labels to the same accessible control; it renders no native select. The displayed name is separate from the submitted identifier. Its clear button resets filters to all records. Customer and production-order pickers debounce server searches by 250 ms, retain the chosen name, and hydrate saved identifiers on edit. Fixed, short enumerations such as status, priority and yes/no remain native selects; product-template attribute options are enumerated values rather than records.
+
+Business quantity units use `UnitSelect` and the official `src/lib/units.ts` / `app.core.units.UNITS` symbols. New or changed production units must be official; exactly unchanged historical values remain editable. Technical test-parameter units in `ParameterFormFields` and `TestParametersPage` remain free text because values such as µm, %, N and MPa describe measurements rather than production quantities. A separate dimension-aware technical-unit registry is the proposed future replacement.
 
 ## Current API boundary
 

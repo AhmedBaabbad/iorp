@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import { UnitLabel } from "@/components/UnitLabel";
 import { ReferenceTextSelect } from "@/features/reference-directory/ReferenceTextSelect";
@@ -122,22 +123,22 @@ export function WasteRecordFields({editor}:{editor:ReturnType<typeof useWasteRec
         </label>
 
         {(order?.lines?.length ?? 0) > 0 && <label className={s.field}>{t("fields.lineOptional")}
-          <select value={values.item} disabled={busy || locked} onChange={e => set("item", e.target.value)}>
+          <RecordCombobox aria-label={t("fields.lineOptional")} value={values.item} disabled={busy || locked} onChange={e => set("item", e)}>
             <option value="">{t("placeholders.wholeOrder")}</option>
             {order!.lines!.map(l => <option key={l.id} value={l.id}>{t("lineOption", { no: String(l.line_no), unit: l.unit })}</option>)}
-          </select>
+          </RecordCombobox>
         </label>}
         {canReadRuns && <label className={s.field}>{t("fields.runOptional")}
-          <select value={values.run} disabled={busy || locked || !values.order} onChange={e => set("run", e.target.value)}>
+          <RecordCombobox aria-label={t("fields.runOptional")} value={values.run} disabled={busy || locked || !values.order} onChange={e => set("run", e)}>
             <option value="">{runs.length ? t("placeholders.noRun") : t("placeholders.noRuns")}</option>
             {runs.map(r => <option key={r.id} value={r.id}>{t("runOption", { date: fmt.date(r.run_date), center: centers.find(c => c.id === r.work_center_id)?.name ?? "—" })}</option>)}
-          </select>
+          </RecordCombobox>
         </label>}
         <label className={s.field}>{t("fields.workCenter")}
-          <select value={run ? run.work_center_id : values.center} disabled={busy || locked || Boolean(run)} onChange={e => set("center", e.target.value)}>
+          <RecordCombobox aria-label={t("fields.workCenter")} value={run ? run.work_center_id : values.center} disabled={busy || locked || Boolean(run)} onChange={e => set("center", e)}>
             <option value="">{t("placeholders.orderWorkCenter")}</option>
             {centers.map(c => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
-          </select>
+          </RecordCombobox>
         </label>
         <label className={s.field}>{t("fields.wasteDate")}<input type="date" required value={values.date} disabled={busy || locked} onChange={e => set("date", e.target.value)} /></label>
         <label className={s.field}>{t("fields.quantityWasted")}

@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
@@ -87,19 +88,19 @@ export function DemandFromSalesOrder() {
         <legend>{tf("title")}</legend>
         <p className={s.muted} style={{ marginTop: 0 }}>{tf("hint")}</p>
         <div className={s.grid}>
-          <label className={s.field}>{t("searchCustomer")}<input value={search} onChange={(e) => setSearch(e.target.value)} /></label>
+
           <label className={s.field}>{t("customer")}
-            <select required value={customerId} onChange={(e) => { setCustomerId(e.target.value); setOrderId(""); }}>
+            <RecordCombobox onSearch={setSearch} aria-label={t("customer")} required value={customerId} onChange={(e) => { setCustomerId(e); setOrderId(""); }}>
               <option value="">{t("selectCustomer")}</option>
               {customerOptions.map((c) => <option key={c.id} value={c.id}>{c.code ? `${c.code} · ` : ""}{c.name}</option>)}
-            </select>
+            </RecordCombobox>
           </label>
           {customerId && (
             <label className={s.field}>{tf("salesOrder")}
-              <select required value={orderId} onChange={(e) => setOrderId(e.target.value)}>
+              <RecordCombobox aria-label={tf("salesOrder")} required value={orderId} onChange={(e) => setOrderId(e)}>
                 <option value="">{orders.length ? tf("selectSalesOrder") : tf("noSalesOrders")}</option>
                 {orders.map((o) => <option key={o.id} value={o.id}>{o.number}</option>)}
-              </select>
+              </RecordCombobox>
               {loadingOrders && <span className={s.muted}>{t("loading")}</span>}
             </label>
           )}

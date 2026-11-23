@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
 import { quoteValidUntil, useQuoteValidity, quoteValidityError } from "../quote-validity";
@@ -351,10 +352,11 @@ export function QuoteEditForm() {
             <div style={styles.formGrid}>
               <div style={sharedStyles.field}>
                 <span style={sharedStyles.label}>{t("fields.sample")}</span>
-                <select
+                <RecordCombobox
+                  aria-label={t("fields.sample")}
                   style={sharedStyles.input}
                   value={values.sample_id}
-                  onChange={(event) => updateField("sample_id", event.target.value)}
+                  onChange={(event) => updateField("sample_id", event)}
                   disabled={isSubmitting || isLoadingSamples}
                 >
                   <option value="">{t("fields.noSample")}</option>
@@ -363,7 +365,7 @@ export function QuoteEditForm() {
                       {sample.sample_code} — {sample.product_type}
                     </option>
                   ))}
-                </select>
+                </RecordCombobox>
               </div>
 
               <label style={sharedStyles.field}>

@@ -1,4 +1,5 @@
 "use client";
+import {ProductSelect} from "@/features/masterdata/components/ProductSelect";
 import { localName } from "@/lib/local-name";
 import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
 import { formatSpecValue, isSpecRange, numericSpecOrText } from "@/lib/spec-value";
@@ -71,12 +72,7 @@ export function SampleProductFields({ productKey, values, original, unchanged = 
   const extra = Object.fromEntries(Object.entries(values).filter(([key]) => !product?.properties.some(p => p.key === key)));
   return <section style={{ display: 'grid', gap: 16 }}>
     <label style={sharedStyles.field}><span style={sharedStyles.label}>{t('product')} *</span>
-      <select style={sharedStyles.input} aria-label={t('product')} value={productKey} required disabled={disabled || loading || failed}
-        onChange={e => { const p = products.find(p => p.key === e.target.value); onChange(e.target.value, {}, p?.default_unit); }}>
-        <option value="">{loading ? t('loading') : t('choose')}</option>
-        {products.map(p => <option key={p.key} value={p.key}>{localName(p, ar ? "ar" : "en")}</option>)}
-        {productKey && !products.some(p => p.key === productKey) && <option value={productKey}>{product ? (localName(product, ar ? "ar" : "en")) : productKey} — {t('legacy')}</option>}
-      </select>
+      <ProductSelect catalogOptions={products} allowFreeText={false} style={sharedStyles.input} ariaLabel={t("product")} value={productKey} required disabled={disabled || loading || failed} onChange={(key,created)=>{if(created)setProducts(old=>old.some(p=>p.key===key)?old:[...old,created]);const selected=created??products.find(p=>p.key===key);onChange(key,{},selected?.default_unit);}}/>
     </label>
     {failed && <div role="alert">{t('loadError')} <button type="button" onClick={() => setRetry(n => n + 1)}>{t('retry')}</button></div>}
     {!loading && !failed && !products.length && <p>{t('noProducts')}</p>}

@@ -425,7 +425,10 @@ class ProductionOrderService:
         if production_order is None:
             return None
 
+        data.validate_unit_change(production_order.unit)
         payload = data.model_dump(exclude_unset=True)
+        if payload.get("unit") == production_order.unit:
+            payload.pop("unit", None)
         if "target_spec_json" in payload:
             validate_specification_values(self.db, tenant.organization_id, [{**payload, "product_type": payload.get("product_type", production_order.product_type)}], "target_spec_json")
         if production_order.status in (ProductionOrderStatus.CLOSED, ProductionOrderStatus.CANCELLED):
@@ -553,6 +556,7 @@ class ProductionOrderItemService:
         if item is None:
             return None
 
+        data.validate_unit_change(item.unit)
         payload = data.model_dump(exclude_unset=True)
         if "target_spec_json" in payload:
             validate_specification_values(self.db, tenant.organization_id, [{**payload, "product_type": production_order.product_type}], "target_spec_json")

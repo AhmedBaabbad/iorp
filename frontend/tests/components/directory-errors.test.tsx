@@ -52,12 +52,14 @@ it.each(["vehicles","carriers"])("refreshes driver reference names after saving 
 });
 
 it.each(Object.entries(en.errors))("renders the specific %s message",async(code,message)=>{
+  mocks.api.mockClear();
   mocks.api.mockImplementation((_path:string,options?:{method?:string})=>options?.method
     ?Promise.reject(new ApiClientError("failed",code==="DIRECTORY_CHANGED"?409:422,{detail:code}))
     :Promise.resolve([]));
   render(<NextIntlClientProvider locale="en" messages={{directory:en,messages:{},common}}>
     <DirectoryPanel path="/shipping/directory/carriers" kind="carriers" writePermission="shipping:directory:write"/>
   </NextIntlClientProvider>);
+  await waitFor(()=>expect(mocks.api).toHaveBeenCalledWith("/shipping/directory/carriers?page=1&search="));
   fireEvent.click(screen.getByRole("button",{name:"Add"}));
   fireEvent.change(screen.getByLabelText("Name"),{target:{value:"Carrier"}});
   fireEvent.click(screen.getByRole("button",{name:"Save"}));

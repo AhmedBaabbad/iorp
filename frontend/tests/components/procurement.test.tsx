@@ -1,3 +1,4 @@
+import {changeControl,findRecordOption} from "./record-test-helpers";
 // PROC-001: procurement — suppliers and their standing, goods receipts from draft to received, materials.
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
@@ -90,7 +91,7 @@ describe("suppliers", () => {
     fireEvent.click(within(dialog).getByLabelText("Blocked"));
     const confirm = within(dialog).getByRole("button", { name: "Confirm" }) as HTMLButtonElement;
     expect(confirm.disabled).toBe(true);
-    fireEvent.change(within(dialog).getByLabelText("Reason"), { target: { value: "Repeated contamination" } });
+    changeControl(within(dialog).getByLabelText("Reason"), { target: { value: "Repeated contamination" } });
     await act(async () => { fireEvent.click(confirm); });
     expect(sent("/procurement/suppliers/s1/status", "POST")).toEqual({ status: "blocked", reason: "Repeated contamination" });
   });
@@ -103,15 +104,15 @@ describe("goods receipts", () => {
         : path.startsWith("/procurement/suppliers/lookup") ? [{ id: "s1", supplier_code: "SUP-0001", name: "Gulf Polymers", status: "conditional" }] : []));
     ui(<ReceiptForm />);
     const supplierSelect = screen.getByLabelText("Supplier");
-    await screen.findByRole("option", { name: "Gulf Polymers — SUP-0001" });
-    fireEvent.change(supplierSelect, { target: { value: "s1" } });
+    await findRecordOption("Gulf Polymers — SUP-0001");
+    changeControl(supplierSelect, { target: { value: "s1" } });
     expect(screen.getByText(/This supplier is not on the approved list/)).toBeTruthy();
-    await screen.findByRole("option", { name: "PP homopolymer H030 — MAT-0001" });
-    fireEvent.change(screen.getByLabelText("Material"), { target: { value: "m1" } });
+    await findRecordOption("PP homopolymer H030 — MAT-0001");
+    changeControl(screen.getByLabelText("Material"), { target: { value: "m1" } });
     expect(screen.getByText("This material is inspected on arrival.")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Supplier's lot"), { target: { value: "SUP-7781" } });
-    fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "20000" } });
-    fireEvent.change(screen.getByLabelText("Packages"), { target: { value: "800" } });
+    changeControl(screen.getByLabelText("Supplier's lot"), { target: { value: "SUP-7781" } });
+    changeControl(screen.getByLabelText("Quantity"), { target: { value: "20000" } });
+    changeControl(screen.getByLabelText("Packages"), { target: { value: "800" } });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save draft" })); });
     expect(sent("/procurement/receipts", "POST")).toMatchObject({ supplier_id: "s1",
       lines: [{ material_id: "m1", description: null, supplier_lot: "SUP-7781", quantity: "20000", unit: "kg", package_count: 800, weight: null, weight_unit: "kg" }] });
