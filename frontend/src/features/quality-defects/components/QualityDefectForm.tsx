@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import type { CSSProperties, FormEvent } from "react";
 import { useTranslations } from "next-intl";
@@ -96,11 +97,11 @@ export function QualityDefectForm({ qualityCheckId, recordedCategories = [], onC
         <fieldset key={row.key} style={styles.row} disabled={isSubmitting} aria-label={t("defectNumber", { number: index + 1 })}>
           <label style={sharedStyles.field}>
             <span style={sharedStyles.label}>{t("fields.defectCategory")}</span>
-            <select style={sharedStyles.input} value={row.defect_category} required
-              onChange={e => update(row.key, { defect_category: e.target.value as DefectCategory })}>
+            <RecordCombobox aria-label={t("fields.defectCategory")} style={sharedStyles.input} value={row.defect_category} required
+              onChange={e => update(row.key, { defect_category: e as DefectCategory })}>
               <option value="">{t("chooseCategory")}</option>
               {categories.map(c => <option key={c.key} value={c.key} disabled={taken(row).has(c.key)}>{c.label}</option>)}
-            </select>
+            </RecordCombobox>
           </label>
           <label style={sharedStyles.field}>
             <span style={sharedStyles.label}>{t("fields.severity")}</span>

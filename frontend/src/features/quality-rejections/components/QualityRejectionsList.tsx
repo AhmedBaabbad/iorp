@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -76,10 +77,10 @@ export function QualityRejectionsList() {
         </select>
       </label>
       <label className={s.field}>{t("fields.rejectionReason")}
-        <select value={filters.rejection_reason} onChange={e => set("rejection_reason", e.target.value)}>
+        <RecordCombobox aria-label={t("fields.rejectionReason")} value={filters.rejection_reason} onChange={e => set("rejection_reason", e)}>
           <option value="">{t("filters.allReasons")}</option>
           {reasonChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-        </select>
+        </RecordCombobox>
       </label>
       <label className={s.field}>{t("filters.dateFrom")}<input type="date" value={filters.date_from} onChange={e => set("date_from", e.target.value)} /></label>
       <label className={s.field}>{t("filters.dateTo")}<input type="date" value={filters.date_to} min={filters.date_from || undefined} onChange={e => set("date_to", e.target.value)} /></label>

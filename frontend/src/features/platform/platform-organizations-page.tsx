@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 /* eslint-disable @next/next/no-img-element -- authenticated blob URLs and local previews cannot use next/image. */
 
 import Link from "next/link";
@@ -283,7 +284,7 @@ function PlatformOrganizationsContent() {
     <section className={css.toolbar}>
       <label className={css.search}><span>{icons.search}</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("console.searchPlaceholder")} aria-label={t("console.searchLabel")} />{query && <button type="button" onClick={() => setQuery("")} aria-label={t("console.clearSearch")}>×</button>}</label>
       <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} aria-label={t("console.filters.statusLabel")}><option value="all">{t("console.filters.allStatuses")}</option>{["active", "suspended", "inactive", "archived", "provisioning"].map((status) => <option key={status} value={status}>{t(`status.${status}`)}</option>)}</select>
-      {industries.length > 1 && <select value={industryFilter} onChange={(event) => setIndustryFilter(event.target.value)} aria-label={t("console.filters.industryLabel")}><option value="all">{t("console.filters.allIndustries")}</option>{industries.map((industry) => <option key={industry} value={industry}>{industry}</option>)}</select>}
+      {industries.length > 1 && <RecordCombobox value={industryFilter} onChange={(event) => setIndustryFilter(event)} aria-label={t("console.filters.industryLabel")}><option value="all">{t("console.filters.allIndustries")}</option>{industries.map((industry) => <option key={industry} value={industry}>{industry}</option>)}</RecordCombobox>}
       {(query || statusFilter !== "all" || industryFilter !== "all") && <button type="button" style={styles.secondaryButton} onClick={() => { setQuery(""); setStatusFilter("all"); setIndustryFilter("all"); }}>{t("console.filters.clearAll")}</button>}
       {canCreate && <button type="button" className={css.primaryButton} onClick={() => setShowCreate(true)}>{icons.plus}<span>{t("console.createButton")}</span></button>}
     </section>

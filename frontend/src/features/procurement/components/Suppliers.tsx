@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import Link from "next/link";
 import { cityLabel } from "@/components/forms/CountryCityFields";
@@ -68,8 +69,8 @@ export function SuppliersList() {
         <select value={filters.status} onChange={e => set("status", e.target.value)}>
           <option value="">{t("all")}</option>{SUPPLIER_STATUSES.map(v => <option key={v} value={v}>{t(`supplierStatuses.${v}`)}</option>)}</select></label>
       <label className={s.field}>{t("fields.category")}
-        <select value={filters.category} onChange={e => set("category", e.target.value)}>
-          <option value="">{t("all")}</option>{categoryChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></label>
+        <RecordCombobox aria-label={t("fields.category")} value={filters.category} onChange={e => set("category", e)}>
+          <option value="">{t("all")}</option>{categoryChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</RecordCombobox></label>
     </section>
     {error && <p role="alert" className={s.error}>{error}</p>}
     {rows === null && !error && <p className={s.muted}>{messages("loading.default")}</p>}
@@ -138,8 +139,8 @@ export function SupplierForm({ supplierId }: { supplierId?: string }) {
         <FormSection title={t("suppliers.detailsSection")}>
           {input("name", { required: true, maxLength: 255 })}
           <label className={s.field}>{t("fields.category")}
-            <select value={category} onChange={e => setCategory(e.target.value)}>
-              {categoryChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></label>
+            <RecordCombobox aria-label={t("fields.category")} value={category} onChange={e => setCategory(e)}>
+              {categoryChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</RecordCombobox></label>
           {input("supplies", { maxLength: 500, placeholder: t("suppliers.suppliesPlaceholder") })}
           {input("contact_name", { maxLength: 200 })}
           {input("phone", { maxLength: 30, dir: "ltr", inputMode: "tel", placeholder: "05xxxxxxxx" })}

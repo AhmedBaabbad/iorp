@@ -1,3 +1,4 @@
+import {changeControl} from "./record-test-helpers";
 // PROJECT-NOTIFY-001: the bell shows the unread count; its panel reads each notification in the screen's language, with
 // who did it; opening one marks it read and goes to its document; an announcement requiring acknowledgement stays in
 // front of the reader until confirmed; an announcement is written to a role and its author is told how many received it.
@@ -80,10 +81,10 @@ it("keeps an announcement requiring acknowledgement in front until the reader co
 
 it("sends an announcement to a role's members and says how many received it", async () => {
   ui(<AnnouncementForm />);
-  fireEvent.change(await screen.findByLabelText("العنوان"), { target: { value: "تحديث سياسة الجودة" } });
-  fireEvent.change(screen.getByLabelText("الرسالة"), { target: { value: "يرجى قراءة السياسة الجديدة." } });
-  fireEvent.change(screen.getByLabelText("إرسال إلى"), { target: { value: "role" } });
-  fireEvent.change(await screen.findByLabelText("الدور"), { target: { value: "r1" } });
+  changeControl(await screen.findByLabelText("العنوان"), { target: { value: "تحديث سياسة الجودة" } });
+  changeControl(screen.getByLabelText("الرسالة"), { target: { value: "يرجى قراءة السياسة الجديدة." } });
+  changeControl(screen.getByLabelText("إرسال إلى"), { target: { value: "role" } });
+  changeControl(await screen.findByLabelText("الدور"), { target: { value: "r1" } });
   fireEvent.click(screen.getByLabelText("يجب أن يؤكد القارئ اطلاعه"));
   await act(async () => { fireEvent.click(screen.getByRole("button", { name: "إرسال الإعلان" })); });
   await waitFor(() => expect(api.call).toHaveBeenCalledWith("/announcements", expect.objectContaining({ method: "POST",

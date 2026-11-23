@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { useCustomerNames } from "@/features/customers/use-customer-names";
 import {useUnitLabel} from "@/components/UnitLabel";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
@@ -92,16 +93,13 @@ export function OrderLines({ order, onChanged }: { order: ProductionOrderData; o
       })() : undefined}
       actionsCell={releasing_allowed ? a => a.status === "released" ? null : <button type="button" className={s.button} disabled={busy} onClick={() => setReleasing(byId.get(a.key) ?? null)}>{t("removeFromOrder")}</button> : undefined} />
     {editing && <form className={s.toolbar} onSubmit={add} aria-label={t("addDemand")} style={{ marginTop: 16 }}>
-      <label className={s.field}>{t("findDemand")}
-        <input type="search" value={search} disabled={busy} placeholder={t("findDemandHint")} onChange={e => setSearch(e.target.value)} />
-      </label>
       <label className={s.field}>{t("addDemand")}
-        <select value={addItem} disabled={busy} onChange={e => { setAddItem(e.target.value); setAddQuantity(options.find(o => o.id === e.target.value)?.remaining ?? ""); }}>
+        <RecordCombobox onSearch={setSearch} loading={searching} aria-label={t("addDemand")} value={addItem} disabled={busy} onChange={e => { setAddItem(e); setAddQuantity(options.find(o => o.id === e)?.remaining ?? ""); }}>
           <option value="">{searching ? t("searching") : options.length ? t("selectDemandItem") : search.trim() ? t("noMatches") : t("noCandidates")}</option>
           {/* The chosen item stays listed while another search runs. */}
           {addItem && !chosen && <option value={addItem}>{t("chosenItem")}</option>}
           {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-        </select>
+        </RecordCombobox>
       </label>
       <label className={s.field}>{t("quantity")}<input type="number" min="0.001" step="0.001" value={addQuantity} disabled={busy || !addItem} onChange={e => setAddQuantity(e.target.value)} /></label>
       <button className={`${s.button} ${s.primary}`} disabled={busy || !addItem || !QUANTITY.test(addQuantity) || Number(addQuantity) <= 0}>{t("addToOrder")}</button>

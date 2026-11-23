@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -69,10 +70,10 @@ export function DowntimeEventsList() {
     action={canWrite ? <Link href={`/downtime-events/new${newQuery ? `?${newQuery}` : ""}`} className={`${s.button} ${s.primary}`}>{t("actions.record")}</Link> : undefined}>
     <section className={s.toolbar} aria-label={t("filtersLabel")}>
       <label className={s.field}>{t("fields.workCenter")}
-        <select value={filters.work_center_id} onChange={e => set("work_center_id", e.target.value)}>
+        <RecordCombobox aria-label={t("fields.workCenter")} value={filters.work_center_id} onChange={e => set("work_center_id", e)}>
           <option value="">{t("filters.allWorkCenters")}</option>
           {centers.map(c => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
-        </select>
+        </RecordCombobox>
       </label>
       <label className={s.field}>{t("fields.productionOrder")}
         <ProductionOrderPicker value={filters.production_order_id} onChange={id => set("production_order_id", id)} emptyLabel={t("filters.allOrders")}

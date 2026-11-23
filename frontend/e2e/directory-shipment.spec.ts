@@ -52,7 +52,11 @@ test("creates a shipment with immediate saved contact, site and driver fields",a
   await page.getByLabel("Description",{exact:true}).fill("Browser shipment");
   await page.getByLabel("Quantity",{exact:true}).fill("40");
   await page.getByLabel("Net weight per unit",{exact:true}).fill("2.5");
+  const saved=page.waitForResponse(response=>response.url().endsWith("/api/v1/shipping/shipments")&&response.request().method()==="POST");
   await page.getByRole("button",{name:"Save draft",exact:true}).click();
+  const response=await saved;
+  expect(response.status()).toBe(201);
+  expect((await response.json()).id).toBe("s1");
   await expect(page).toHaveURL(/\/shipments\/s1/);
   await page.getByRole("tab",{name:"Items and weights"}).click();
   await expect(page.getByRole("cell",{name:"2.5 kg",exact:true})).toBeVisible();

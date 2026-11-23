@@ -1,4 +1,6 @@
 "use client";
+import {UnitSelect} from "@/components/forms/UnitSelect";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { Dialog } from "@/components/ui/Dialog";
 
 import { useId, useState, type FormEvent } from "react";
@@ -55,10 +57,10 @@ export function ResultEntryDialog({ view, entry, busy, error, onSave, onClose }:
     </label>
     <p className={s.muted} style={{ margin: 0 }}>{t(`dispositionHints.${disposition}`)}</p>
     {multi && <label className={s.field}>{t("fields.item")}
-      <select required value={itemId} disabled={busy} onChange={e => setItemId(e.target.value)}>
+      <RecordCombobox aria-label={t("fields.item")} required value={itemId} disabled={busy} onChange={e => setItemId(e)}>
         <option value="">{t("dialog.selectItem")}</option>
         {view.items.map(i => <option key={i.id} value={i.id}>{t("dialog.itemOption", { no: String(i.line_no), spec: specSummary(i.target_spec_json) || "—", unit: i.unit })}</option>)}
-      </select>
+      </RecordCombobox>
     </label>}
     <label className={s.field}>{t("fields.quantityWithUnit", { unit })}
       <input type="number" required min="0.001" step="0.001" inputMode="decimal" value={quantity} disabled={busy} onChange={e => setQuantity(e.target.value)} />
@@ -79,7 +81,7 @@ export function ResultEntryDialog({ view, entry, busy, error, onSave, onClose }:
         <input type="number" min="0.001" step="0.001" value={secondaryQuantity} disabled={busy} onChange={e => setSecondaryQuantity(e.target.value)} />
       </label>
       <label className={s.field}>{t("fields.secondaryUnit")}
-        <input maxLength={32} value={secondaryUnit} disabled={busy} onChange={e => setSecondaryUnit(e.target.value)} />
+        <UnitSelect ariaLabel={t("fields.secondaryUnit")} value={secondaryUnit} disabled={busy} onChange={setSecondaryUnit} required={false}/>
       </label>
     </div>
     {secondaryPartial && <p className={s.muted} style={{ margin: 0 }}>{t("dialog.secondaryBoth")}</p>}

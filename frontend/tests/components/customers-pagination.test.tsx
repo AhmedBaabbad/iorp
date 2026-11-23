@@ -1,3 +1,4 @@
+import {changeControl} from "./record-test-helpers";
 // ARCH-PAGE-001: the customers list comes from the server one page at a time; search, filters and the page live in the
 // address, and pickers search instead of loading every customer.
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -52,9 +53,9 @@ describe("customers list", () => {
     nav.params = new URLSearchParams("page=2");
     api.apiClient.mockImplementation((path: string) => Promise.resolve(path.startsWith("/masterdata") ? [] : page(2)));
     ui(<CustomersListPage />);
-    fireEvent.change(await screen.findByPlaceholderText("Code, name, phone or e-mail"), { target: { value: "gulf" } });
+    changeControl(await screen.findByPlaceholderText("Code, name, phone or e-mail"), { target: { value: "gulf" } });
     await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/customers?search=gulf", { scroll: false }));
-    fireEvent.change(screen.getByRole("combobox", { name: "Status" }), { target: { value: "inactive" } });
+    changeControl(screen.getByRole("combobox", { name: "Status" }), { target: { value: "inactive" } });
     expect(nav.replace).toHaveBeenLastCalledWith("/customers?status=inactive", { scroll: false });
   });
 });
@@ -64,9 +65,9 @@ describe("customer picker", () => {
     api.apiClient.mockResolvedValue([{ id: "c7", customer_code: "CUST-7", name: "Gulf Packaging", status: "active" }]);
     const chosen = vi.fn();
     ui(<CustomerPicker value="" onChange={chosen} ariaLabel="Customer" />);
-    fireEvent.change(screen.getByPlaceholderText("Search by name or code"), { target: { value: "gulf" } });
+    changeControl(screen.getByPlaceholderText("Search by name or code"), { target: { value: "gulf" } });
     await waitFor(() => expect(api.apiClient).toHaveBeenCalledWith("/commercial/customers/lookup?limit=20&search=gulf"));
-    fireEvent.change(await screen.findByRole("combobox", { name: "Customer" }), { target: { value: "c7" } });
+    changeControl(await screen.findByRole("combobox", { name: "Customer" }), { target: { value: "c7" } });
     expect(chosen).toHaveBeenCalledWith("c7", expect.objectContaining({ name: "Gulf Packaging" }));
   });
 });
@@ -88,7 +89,7 @@ describe("quotations list", () => {
     expect(await screen.findByText("Gulf Packaging")).toBeTruthy();
     expect(api.apiClient).toHaveBeenCalledWith("/commercial/quotes?page=1&page_size=50&status=issued");
     expect(screen.getByText("Showing 1 to 50 of 61")).toBeTruthy();
-    fireEvent.change(screen.getByPlaceholderText("Quotation number, customer name or code"), { target: { value: "gulf" } });
+    changeControl(screen.getByPlaceholderText("Quotation number, customer name or code"), { target: { value: "gulf" } });
     await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/customers?status=issued&search=gulf", { scroll: false }));
   });
 });

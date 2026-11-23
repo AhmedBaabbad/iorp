@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -159,7 +160,7 @@ export function RoleDetailPage({ id }: { id: string }) {
             <PermissionGuard code="foundation:roles:write">
               {availablePerms.length > 0 ? (
                 <div style={styles.addRow}>
-                  <select style={sharedStyles.input} value={selectedPermId} onChange={(e) => setSelectedPermId(e.target.value)}>
+                  <RecordCombobox aria-label={t("permissionsTitle")} style={sharedStyles.input} value={selectedPermId} onChange={setSelectedPermId}>
                     <option value="">{t("permissionsTitle")}</option>
                     {permGroups.map((group) =>
                       group.permissions.filter((p) => !assignedPermIds.has(p.id)).length > 0 ? (
@@ -170,7 +171,7 @@ export function RoleDetailPage({ id }: { id: string }) {
                         </optgroup>
                       ) : null
                     )}
-                  </select>
+                  </RecordCombobox>
                   <button type="button" style={sharedStyles.button} onClick={() => void handleAssignPermission()} disabled={!selectedPermId || isAssigning}>
                     {t("permissionsTitle")}
                   </button>

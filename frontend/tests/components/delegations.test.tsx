@@ -1,3 +1,4 @@
+import {changeControl,recordOptions} from "./record-test-helpers";
 // PROJECT-GOV-004: governed delegations — a holder asks, a manager agrees (or the holder agrees to a manager's
 // proposal). The list is paged by the server and shows what waits for the user's answer; a new delegation has its own
 // page; every action ends with a notification in the screen's language.
@@ -52,14 +53,14 @@ it("a holder asks on the new-delegation page, is told it awaits a manager, and r
   OPTIONS = { ...OPTIONS, manages: false };
   ui(<DelegationForm />, "ar");
   const from = await screen.findByLabelText("بالتفويض عن") as HTMLSelectElement;
-  await waitFor(() => expect(from.value).toBe("m1"));
+  await waitFor(() => expect(from.value).toBe("Production Manager"));
   expect(from.disabled).toBe(true);
   const to = screen.getByLabelText("المفوَّض إليه") as HTMLSelectElement;
-  expect([...to.options].map((o) => o.value)).toEqual(["", "u2"]);
-  fireEvent.change(screen.getByLabelText("الاعتماد"), { target: { value: "procurement:purchase_orders:approve" } });
-  fireEvent.change(to, { target: { value: "u2" } });
-  fireEvent.change(screen.getByLabelText(/^إلى/), { target: { value: "2026-10-31" } });
-  fireEvent.change(screen.getByLabelText("السبب"), { target: { value: "إجازة سنوية" } });
+  expect(recordOptions(to).map((o) => o.value)).toEqual(["", "u2"]);
+  changeControl(screen.getByLabelText("الاعتماد"), { target: { value: "procurement:purchase_orders:approve" } });
+  changeControl(to, { target: { value: "u2" } });
+  changeControl(screen.getByLabelText(/^إلى/), { target: { value: "2026-10-31" } });
+  changeControl(screen.getByLabelText("السبب"), { target: { value: "إجازة سنوية" } });
   await act(async () => { fireEvent.click(screen.getByRole("button", { name: "إرسال للموافقة" })); });
   await waitFor(() => expect(api.call).toHaveBeenCalledWith("/delegations", expect.objectContaining({ method: "POST",
     body: expect.objectContaining({ delegator_user_id: "m1", delegate_user_id: "u2", permission_code: "procurement:purchase_orders:approve" }) })));
@@ -73,7 +74,7 @@ it("approves at once and rejects with a reason, each with its message", async ()
   await waitFor(() => expect(api.call).toHaveBeenCalledWith("/delegations/d2/approve", { method: "POST", body: { reason: "" } }));
   expect(await screen.findByText("The delegation is approved and in force.")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Reject" }));
-  fireEvent.change(screen.getByLabelText("Why it is rejected"), { target: { value: "No cover needed" } });
+  changeControl(screen.getByLabelText("Why it is rejected"), { target: { value: "No cover needed" } });
   fireEvent.click(screen.getAllByRole("button", { name: "Reject" }).at(-1)!);
   await waitFor(() => expect(api.call).toHaveBeenCalledWith("/delegations/d2/reject", { method: "POST", body: { reason: "No cover needed" } }));
   expect(await screen.findByText("The delegation was rejected.")).toBeTruthy();

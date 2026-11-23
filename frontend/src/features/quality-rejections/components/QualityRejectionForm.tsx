@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import {EditorSurface} from "@/components/forms/EditorSurface";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -102,23 +103,23 @@ export function QualityRejectionFields({editor}:{editor:ReturnType<typeof useQua
       <div className={s.grid}>
         {source ? <label className={s.field}>{t("fields.source")}<input readOnly value={source} /></label> : <>
           <label className={s.field}>{t("fields.productionOrder")}
-            <select required value={values.order} disabled={busy} onChange={e => set("order", e.target.value)}>
+            <RecordCombobox aria-label={t("fields.productionOrder")} required value={values.order} disabled={busy} onChange={e => set("order", e)}>
               <option value="">{orders.length ? t("placeholders.selectOrder") : t("placeholders.noOrders")}</option>
               {orders.map(o => <option key={o.id} value={o.id}>{o.number} — {o.product_type} ({orderStatus(o.status)})</option>)}
-            </select>
+            </RecordCombobox>
           </label>
           {(order?.items.length ?? 0) > 0 && <label className={s.field}>{t("fields.lineOptional")}
-            <select value={values.item} disabled={busy} onChange={e => set("item", e.target.value)}>
+            <RecordCombobox aria-label={t("fields.lineOptional")} value={values.item} disabled={busy} onChange={e => set("item", e)}>
               <option value="">{t("placeholders.wholeOrder")}</option>
               {order!.items.map(l => <option key={l.id} value={l.id}>{t("lineOption", { no: String(l.line_no), quantity: fmt.quantity(l.planned_quantity, l.unit) })}</option>)}
-            </select>
+            </RecordCombobox>
           </label>}
         </>}
         <label className={s.field}>{t("fields.rejectionDate")}<input type="date" required value={values.date} disabled={busy || locked} onChange={e => set("date", e.target.value)} /></label>
         <label className={s.field}>{t("fields.rejectionReason")}
-          <select required value={values.reason} disabled={busy || locked} onChange={e => set("reason", e.target.value)}>
+          <RecordCombobox aria-label={t("fields.rejectionReason")} required value={values.reason} disabled={busy || locked} onChange={e => set("reason", e)}>
             {reasonChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-          </select>
+          </RecordCombobox>
         </label>
         <label className={s.field}>{unit ? t("fields.quantityRejectedUnit", { unit }) : t("fields.quantityRejected")}
           <input type="number" required min="0.001" step="0.001" inputMode="decimal" value={values.quantity} disabled={busy || locked} onChange={e => set("quantity", e.target.value)} />

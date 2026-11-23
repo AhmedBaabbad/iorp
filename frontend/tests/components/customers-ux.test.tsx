@@ -1,3 +1,4 @@
+import {changeControl} from "./record-test-helpers";
 import { useState, type ReactNode } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
@@ -29,22 +30,23 @@ it("orders country before city, disables city until selected and filters cities"
   const city=screen.getByRole("combobox",{name:"City"}) as HTMLSelectElement;
   expect(screen.getAllByRole("combobox")).toEqual([country,city]);
   expect(city.disabled).toBe(true);
-  fireEvent.change(country,{target:{value:"ae"}});
+  changeControl(country,{target:{value:"ae"}});
   expect(city.disabled).toBe(false);
+  fireEvent.focus(city);
   expect(screen.queryByRole("option",{name:"Riyadh"})).toBeNull();
   expect(screen.getByRole("option",{name:"Dubai"})).toBeTruthy();
 });
 it("requires Other city name and clears both fields when the country changes", () => {
   ui(<Location country="sa"/>);
   const city=screen.getByRole("combobox",{name:"City"}) as HTMLSelectElement;
-  fireEvent.change(city,{target:{value:"sa_other"}});
+  changeControl(city,{target:{value:"sa_other"}});
   const other=screen.getByRole("textbox",{name:"City name"}) as HTMLInputElement;
   expect(other.required).toBe(true);
-  fireEvent.change(other,{target:{value:"Synthetic city"}});
-  fireEvent.change(screen.getByRole("combobox",{name:"Country"}),{target:{value:"ae"}});
+  changeControl(other,{target:{value:"Synthetic city"}});
+  changeControl(screen.getByRole("combobox",{name:"Country"}),{target:{value:"ae"}});
   expect(city.value).toBe("");
   expect(screen.queryByRole("textbox",{name:"City name"})).toBeNull();
-  fireEvent.change(city,{target:{value:"ae_other"}});
+  changeControl(city,{target:{value:"ae_other"}});
   expect((screen.getByRole("textbox",{name:"City name"}) as HTMLInputElement).value).toBe("");
 });
 function Customer({canAssignOwner=true}:{canAssignOwner?:boolean}) {
@@ -59,11 +61,11 @@ it("accepts either name and keeps Arabic RTL and English LTR", () => {
   expect(ar.dir).toBe("rtl"); expect(en.dir).toBe("ltr");
   expect(ar.checkValidity()).toBe(false); expect(en.checkValidity()).toBe(false);
   expect(ar.validationMessage).toContain("at least one");
-  fireEvent.change(en,{target:{value:"Customer"}});
+  changeControl(en,{target:{value:"Customer"}});
   expect(ar.checkValidity()).toBe(true); expect(en.checkValidity()).toBe(true);
-  fireEvent.change(en,{target:{value:" "}});
+  changeControl(en,{target:{value:" "}});
   expect(en.checkValidity()).toBe(false);
-  fireEvent.change(ar,{target:{value:"عميل"}});
+  changeControl(ar,{target:{value:"عميل"}});
   expect(ar.checkValidity()).toBe(true); expect(en.checkValidity()).toBe(true);
 });
 it.each([true,false])("keeps the original single grid, field order and full-width notes (assign owner: %s)", canAssignOwner => {
@@ -77,7 +79,7 @@ it.each([true,false])("keeps the original single grid, field order and full-widt
   const fields=(messages.commercial as {customers:{fields:Record<string,string>}}).customers.fields;
   expect(labels()).toEqual([fields.nameAr,fields.nameEn,fields.sector,"Country","City",fields.status,fields.relationshipStage,
     fields.priority,fields.opportunitySource,fields.salesOwner,fields.keyInfluencerName]);
-  fireEvent.change(screen.getByRole("combobox",{name:"City"}),{target:{value:"sa_other"}});
+  changeControl(screen.getByRole("combobox",{name:"City"}),{target:{value:"sa_other"}});
   expect(labels().slice(0,6)).toEqual([fields.nameAr,fields.nameEn,fields.sector,"Country","City","City name"]);
   expect((screen.getByRole("textbox",{name:"City name"}) as HTMLInputElement).required).toBe(true);
   expect(form.children[1].tagName).toBe("P");

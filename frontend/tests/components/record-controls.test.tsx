@@ -49,3 +49,22 @@ it("searches, shows secondary option details, selects and clears a combobox",()=
   fireEvent.click(screen.getByRole("button",{name:"Clear Contact"}));
   expect((input as HTMLInputElement).value).toBe("");
 });
+
+it("requires an actual record choice and supports choosing it with the keyboard",()=>{
+  function Form(){const[value,set]=useState("");return <Combobox label="Required record" required value={value} onChange={set} options={[{id:"a",name:"Alpha"}]}/>;}
+  ui(<Form/>);
+  const input=screen.getByRole("combobox") as HTMLInputElement;
+  fireEvent.change(input,{target:{value:"Alpha"}});
+  expect(input.checkValidity()).toBe(false);
+  fireEvent.keyDown(input,{key:"ArrowDown"});fireEvent.keyDown(input,{key:"Enter"});
+  expect(input.value).toBe("Alpha");expect(input.checkValidity()).toBe(true);
+});
+
+it("cannot choose from an open popup after its parent fieldset becomes disabled",()=>{
+  const changed=vi.fn();
+  function Form(){const[disabled,set]=useState(false);return <><button onClick={()=>set(true)}>Saving</button><fieldset disabled={disabled}><Combobox label="Record" value="" onChange={changed} options={[{id:"a",name:"Alpha"}]}/></fieldset></>;}
+  ui(<Form/>);fireEvent.focus(screen.getByRole("combobox"));
+  fireEvent.click(screen.getByRole("button",{name:"Saving"}));
+  fireEvent.click(screen.getByRole("option",{name:"Alpha"}));
+  expect(changed).not.toHaveBeenCalled();
+});

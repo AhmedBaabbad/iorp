@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
 import { parseNumericSpec, formatSpecValue, numericSpecOrText } from "@/lib/spec-value";
 
@@ -94,10 +95,10 @@ export function MeasurementsSection({ check, onChange }: { check: QualityCheckDa
       : <>
         <div className={s.toolbar} style={{ marginBottom: 0 }}>
           <label className={s.field}>{t("chooseSpecification")}
-            <select value={choice} disabled={busy} onChange={e => setChoice(e.target.value)}>
+            <RecordCombobox aria-label={t("chooseSpecification")} value={choice} disabled={busy} onChange={e => setChoice(e)}>
               {matching.length > 0 && <optgroup label={t("matchingGroup")}>{matching.map(option)}</optgroup>}
               {others.length > 0 && <optgroup label={t("otherGroup")}>{others.map(option)}</optgroup>}
-            </select>
+            </RecordCombobox>
           </label>
           {missing.map(key => <label key={key} className={s.field}>{keyLabel(key)}
             <NumericSpecInput required allowsRange style={{ width: 120 }} value={lotValues[key] ?? ""} disabled={busy}

@@ -96,7 +96,8 @@
       "search": "Search by name or code",
       "choose": "Choose the customer",
       "none": "No matches",
-      "loading": "Searching..."
+      "loading": "Searching...",
+      "loadFailed": "Could not load customers. Try again."
     }
   },
   "interactions": {

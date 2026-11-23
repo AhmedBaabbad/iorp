@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 /**
  * Approval delegations (PROJECT-GOV-004), governed: whoever holds an approval asks to delegate it and a delegation
  * manager agrees; a manager proposes one on a holder's behalf and the holder agrees; the organization's administrator
@@ -186,21 +187,21 @@ export function DelegationForm() {
     {!options ? <p>{t("loading")}</p> : options.delegators.length === 0 ? <p>{t("nothingToDelegate")}</p> :
       <section style={CARD}><form onSubmit={create} style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
         <label style={sharedStyles.field}><span style={sharedStyles.label}>{t("fields.delegator")}</span>
-          <select style={sharedStyles.input} required value={form.delegator_user_id} disabled={!options.manages}
-            onChange={(e) => { set("delegator_user_id", e.target.value); set("permission_code", ""); }}>
+          <RecordCombobox aria-label={t("fields.delegator")} style={sharedStyles.input} required value={form.delegator_user_id} disabled={!options.manages}
+            onChange={(e) => { set("delegator_user_id", e); set("permission_code", ""); }}>
             <option value="">{t("choose")}</option>
             {options.delegators.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select></label>
+          </RecordCombobox></label>
         <label style={sharedStyles.field}><span style={sharedStyles.label}>{t("fields.permission")}</span>
-          <select style={sharedStyles.input} required value={form.permission_code} onChange={(e) => set("permission_code", e.target.value)}>
+          <RecordCombobox aria-label={t("fields.permission")} style={sharedStyles.input} required value={form.permission_code} onChange={(e) => set("permission_code", e)}>
             <option value="">{t("choose")}</option>
             {(delegator?.permissions ?? []).map((code) => <option key={code} value={code}>{permission(code)}</option>)}
-          </select></label>
+          </RecordCombobox></label>
         <label style={sharedStyles.field}><span style={sharedStyles.label}>{t("fields.delegate")}</span>
-          <select style={sharedStyles.input} required value={form.delegate_user_id} onChange={(e) => set("delegate_user_id", e.target.value)}>
+          <RecordCombobox aria-label={t("fields.delegate")} style={sharedStyles.input} required value={form.delegate_user_id} onChange={(e) => set("delegate_user_id", e)}>
             <option value="">{t("choose")}</option>
             {options.delegates.filter((u) => u.id !== form.delegator_user_id).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-          </select></label>
+          </RecordCombobox></label>
         <label style={sharedStyles.field}><span style={sharedStyles.label}>{t("fields.from")}</span>
           <input style={sharedStyles.input} type="date" required min={today()} value={form.effective_from} onChange={(e) => set("effective_from", e.target.value)} /></label>
         <label style={sharedStyles.field}><span style={sharedStyles.label}>{t("fields.to")}</span>

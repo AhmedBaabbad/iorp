@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { customerDisplayName } from "@/lib/customer-name";
 
 import Link from "next/link";
@@ -612,11 +613,11 @@ export function FollowUpsListPage() {
                                 {canAssign ? (
                                   <label style={sharedStyles.field}>
                                     <span style={sharedStyles.label}>{t("selectAssignee")}</span>
-                                    <select
+                                    <RecordCombobox aria-label={t("selectAssignee")}
                                       style={sharedStyles.input}
                                       value={editValues.assigned_user_id}
                                       onChange={(event) =>
-                                        updateEditField("assigned_user_id", event.target.value)
+                                        updateEditField("assigned_user_id", event)
                                       }
                                       disabled={isSavingEdit}
                                     >
@@ -628,7 +629,7 @@ export function FollowUpsListPage() {
                                             : assignee.full_name}
                                         </option>
                                       ))}
-                                    </select>
+                                    </RecordCombobox>
                                   </label>
                                 ) : null}
                               </div>

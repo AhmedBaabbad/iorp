@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -72,10 +73,10 @@ export function WasteRecordsList() {
         </select>
       </label>
       <label className={s.field}>{t("fields.workCenter")}
-        <select value={filters.work_center_id} onChange={e => set("work_center_id", e.target.value)}>
+        <RecordCombobox aria-label={t("fields.workCenter")} value={filters.work_center_id} onChange={e => set("work_center_id", e)}>
           <option value="">{t("filters.allWorkCenters")}</option>
           {centers.map(c => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
-        </select>
+        </RecordCombobox>
       </label>
       <label className={s.field}>{t("filters.dateFrom")}<input type="date" value={filters.date_from} onChange={e => set("date_from", e.target.value)} /></label>
       <label className={s.field}>{t("filters.dateTo")}<input type="date" value={filters.date_to} min={filters.date_from || undefined} onChange={e => set("date_to", e.target.value)} /></label>

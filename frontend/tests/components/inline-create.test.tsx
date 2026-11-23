@@ -1,3 +1,4 @@
+import {changeControl,findRecordOption} from "./record-test-helpers";
 import {useState,type ReactNode} from "react";
 import Link from "next/link";
 import {cleanup,fireEvent,render,screen,waitFor,within} from "@testing-library/react";
@@ -57,21 +58,22 @@ it.each(["customer","shipment"])("adds a city inside the %s form without losing 
   ui(<>{form==="customer"?<Customer/>:<ShipmentForm/>}<Observer/></>);
   if(form==="shipment"){
     fireEvent.click(screen.getByLabelText("Unregistered customer"));
-    fireEvent.change(screen.getByLabelText("Customer name"),{target:{value:"Kept customer"}});
-    await screen.findByRole("option",{name:"Saudi Arabia"});
-    fireEvent.change(screen.getByLabelText("Country"),{target:{value:"sa"}});
-  }else fireEvent.change(screen.getByLabelText("Name in Arabic"),{target:{value:"Kept customer"}});
-  fireEvent.change(screen.getByLabelText("Notes"),{target:{value:"Keep these notes"}});
+    changeControl(screen.getByLabelText("Customer name"),{target:{value:"Kept customer"}});
+    await findRecordOption("Saudi Arabia");
+    changeControl(screen.getByLabelText("Country"),{target:{value:"sa"}});
+  }else changeControl(screen.getByLabelText("Name in Arabic"),{target:{value:"Kept customer"}});
+  changeControl(screen.getByLabelText("Notes"),{target:{value:"Keep these notes"}});
   await waitFor(()=>expect((screen.getByRole("button",{name:"Add to City"}) as HTMLButtonElement).disabled).toBe(false));
   fireEvent.click(screen.getByRole("button",{name:"Add to City"}));
   const dialog=await screen.findByRole("dialog",{name:"New list item"});
-  expect((within(dialog).getByLabelText("Country") as HTMLSelectElement).value).toBe("sa");
-  fireEvent.change(within(dialog).getByLabelText("Name (Arabic)"),{target:{value:"مدينة جديدة"}});
-  fireEvent.change(within(dialog).getByLabelText("Name (English)"),{target:{value:"New city"}});
+  await waitFor(()=>expect((within(dialog).getByLabelText("Country") as HTMLInputElement).value).toBe("Saudi Arabia"));
+  changeControl(within(dialog).getByLabelText("Name (Arabic)"),{target:{value:"مدينة جديدة"}});
+  changeControl(within(dialog).getByLabelText("Name (English)"),{target:{value:"New city"}});
   fireEvent.click(within(dialog).getByRole("button",{name:"Save"}));
   await waitFor(()=>expect(screen.queryByRole("dialog")).toBeNull());
-  expect((screen.getByLabelText("City") as HTMLSelectElement).value).toBe("new_city");
-  expect(within(screen.getByLabelText("Other city selector")).getByRole("option",{name:"New city"})).toBeTruthy();
+  expect((screen.getByLabelText("City") as HTMLInputElement).value).toBe("New city");
+  fireEvent.focus(screen.getByLabelText("Other city selector"));
+  expect(screen.getByRole("option",{name:"New city"})).toBeTruthy();
   expect((screen.getByLabelText("Notes") as HTMLTextAreaElement).value).toBe("Keep these notes");
   expect((screen.getByLabelText(form==="customer"?"Name in Arabic":"Customer name") as HTMLInputElement).value).toBe("Kept customer");
   expect(nav.push).not.toHaveBeenCalled();
@@ -81,13 +83,13 @@ async function addProduct(){
   await waitFor(()=>expect((screen.getByRole("button",{name:"+ Add a product"}) as HTMLButtonElement).disabled).toBe(false));
   fireEvent.click(screen.getByRole("button",{name:"+ Add a product"}));
   const dialog=await screen.findByRole("dialog",{name:"New product"});
-  fireEvent.change(within(dialog).getByLabelText("Name (Arabic)"),{target:{value:"منتج جديد"}});
-  fireEvent.change(within(dialog).getByLabelText("Name (English)"),{target:{value:"New product"}});
+  changeControl(within(dialog).getByLabelText("Name (Arabic)"),{target:{value:"منتج جديد"}});
+  changeControl(within(dialog).getByLabelText("Name (English)"),{target:{value:"New product"}});
   fireEvent.click(within(dialog).getByRole("button",{name:"Add property"}));
   const property=within(dialog).getByRole("group",{name:/New property/});
-  fireEvent.change(within(property).getByLabelText("Name (Arabic)"),{target:{value:"العرض"}});
-  fireEvent.change(within(property).getByLabelText("Name (English)"),{target:{value:"Inline width"}});
-  fireEvent.change(within(property).getByLabelText("Key"),{target:{value:"inline_width"}});
+  changeControl(within(property).getByLabelText("Name (Arabic)"),{target:{value:"العرض"}});
+  changeControl(within(property).getByLabelText("Name (English)"),{target:{value:"Inline width"}});
+  changeControl(within(property).getByLabelText("Key"),{target:{value:"inline_width"}});
   fireEvent.click(within(dialog).getByRole("button",{name:"Save"}));
   await waitFor(()=>expect(screen.queryByRole("dialog")).toBeNull());
 }
@@ -95,9 +97,9 @@ it.each([false,true])("adds a product and immediately displays its template in a
   if(existing)products=[{id:"old",code:"PRD-OLD",key:"old_product",name_en:"Old product",name_ar:"قديم",kind:"finished",active:true,properties:[],default_unit:null,notes:null,actions:["edit"],created_at:"",updated_at:""}];
   ui(<QuoteForm/>);
   await waitFor(()=>expect((screen.getByRole("button",{name:"+ Add a product"}) as HTMLButtonElement).disabled).toBe(false));
-  fireEvent.change(screen.getByLabelText("Notes"),{target:{value:"Quote notes retained"}});
+  changeControl(screen.getByLabelText("Notes"),{target:{value:"Quote notes retained"}});
   await addProduct();
-  expect((screen.getByLabelText("Product Type") as HTMLSelectElement).value).toBe("new_product");
+  expect((screen.getByLabelText("Product Type") as HTMLInputElement).value).toBe("New product");
   expect(await screen.findByLabelText("Inline width")).toBeTruthy();
   expect((screen.getByLabelText("Notes") as HTMLTextAreaElement).value).toBe("Quote notes retained");
   expect(nav.push).not.toHaveBeenCalled();
@@ -116,18 +118,18 @@ it("fixes the inline product kind and refreshes every product subscriber",async(
   ui(<Form/>);await waitFor(()=>expect((screen.getByRole("button",{name:"+ Add a product"}) as HTMLButtonElement).disabled).toBe(false));fireEvent.click(screen.getByRole("button",{name:"+ Add a product"}));
   const dialog=await screen.findByRole("dialog");expect((within(dialog).getByLabelText("Kind") as HTMLSelectElement).disabled).toBe(true);
   expect((within(dialog).getByLabelText("Kind") as HTMLSelectElement).value).toBe("material");
-  fireEvent.change(within(dialog).getByLabelText("Name (Arabic)"),{target:{value:"مادة"}});fireEvent.change(within(dialog).getByLabelText("Name (English)"),{target:{value:"Material"}});
+  changeControl(within(dialog).getByLabelText("Name (Arabic)"),{target:{value:"مادة"}});changeControl(within(dialog).getByLabelText("Name (English)"),{target:{value:"Material"}});
   fireEvent.click(within(dialog).getByRole("button",{name:"Save"}));
   await waitFor(()=>expect(screen.getByLabelText("Observed products").textContent).toBe("Material"));
-  expect((screen.getByLabelText("Material") as HTMLSelectElement).value).toBe("material");
+  expect((screen.getByLabelText("Material") as HTMLInputElement).value).toBe("Material");
 });
 
 it("adds and selects a test parameter without discarding specification fields",async()=>{
-  ui(<SpecificationForm/>);const title=await screen.findByLabelText("Title");fireEvent.change(title,{target:{value:"Keep specification title"}});
+  ui(<SpecificationForm/>);const title=await screen.findByLabelText("Title");changeControl(title,{target:{value:"Keep specification title"}});
   fireEvent.click(screen.getByRole("button",{name:"+ Test parameter"}));const dialog=await screen.findByRole("dialog");
-  fireEvent.change(within(dialog).getByLabelText("Code"),{target:{value:"INLINE"}});
-  fireEvent.change(within(dialog).getByLabelText("Arabic name"),{target:{value:"قياس"}});
-  fireEvent.change(within(dialog).getByLabelText("English name"),{target:{value:"Inline parameter"}});
+  changeControl(within(dialog).getByLabelText("Code"),{target:{value:"INLINE"}});
+  changeControl(within(dialog).getByLabelText("Arabic name"),{target:{value:"قياس"}});
+  changeControl(within(dialog).getByLabelText("English name"),{target:{value:"Inline parameter"}});
   fireEvent.click(within(dialog).getByRole("button",{name:"Save"}));
   expect(await screen.findByRole("group",{name:/Inline parameter/})).toBeTruthy();
   expect((title as HTMLInputElement).value).toBe("Keep specification title");expect(nav.push).not.toHaveBeenCalled();
@@ -141,7 +143,7 @@ it("hides inline creation from users without permission",async()=>{
 it("guards a keyboard-only customer selection in a shipment",async()=>{
   ui(<ShipmentForm/>);
   const customer=screen.getByRole("combobox",{name:"Customer"});
-  fireEvent.focus(customer);await screen.findByRole("option",{name:/Customer.*C1/});
+  fireEvent.focus(customer);await findRecordOption(/Customer.*C1/);
   fireEvent.keyDown(customer,{key:"ArrowDown"});fireEvent.keyDown(customer,{key:"Enter"});
   await waitFor(()=>expect((customer as HTMLInputElement).value).toContain("Customer"));
   const event=new Event("beforeunload",{cancelable:true});window.dispatchEvent(event);expect(event.defaultPrevented).toBe(true);
@@ -150,7 +152,7 @@ it("guards a keyboard-only customer selection in a shipment",async()=>{
 it("guards refresh, cancel and sidebar links, preserves data on stay, and stops warning after save",async()=>{
   function Form(){const[value,set]=useState("");const guard=useUnsavedFormChanges(value);return <><Link href="/dashboard">Sidebar</Link><form onChangeCapture={guard.onInteraction} onClickCapture={guard.onInteraction} onSubmit={e=>e.preventDefault()}>
     {guard.confirmation}<label>Draft<input value={value} onChange={e=>set(e.target.value)}/></label><Link href="/quotes">Cancel</Link><button type="button" onClick={guard.markSaved}>Save draft</button></form></>;}
-  ui(<Form/>);fireEvent.change(screen.getByLabelText("Draft"),{target:{value:"Keep me"}});
+  ui(<Form/>);changeControl(screen.getByLabelText("Draft"),{target:{value:"Keep me"}});
   const unloading=new Event("beforeunload",{cancelable:true});window.dispatchEvent(unloading);expect(unloading.defaultPrevented).toBe(true);
   fireEvent.click(screen.getByRole("link",{name:"Cancel"}));expect(await screen.findByRole("alertdialog")).toBeTruthy();
   fireEvent.click(screen.getByRole("button",{name:"Keep editing"}));expect((screen.getByLabelText("Draft") as HTMLInputElement).value).toBe("Keep me");
@@ -158,6 +160,6 @@ it("guards refresh, cancel and sidebar links, preserves data on stay, and stops 
   fireEvent.click(screen.getByRole("button",{name:"Save draft"}));
   const saved=new Event("beforeunload",{cancelable:true});window.dispatchEvent(saved);expect(saved.defaultPrevented).toBe(false);
   expect(screen.queryByRole("alertdialog")).toBeNull();
-  fireEvent.change(screen.getByLabelText("Draft"),{target:{value:"Another edit"}});
+  changeControl(screen.getByLabelText("Draft"),{target:{value:"Another edit"}});
   const editedAgain=new Event("beforeunload",{cancelable:true});window.dispatchEvent(editedAgain);expect(editedAgain.defaultPrevented).toBe(true);
 });

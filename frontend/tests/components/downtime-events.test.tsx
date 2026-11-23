@@ -1,3 +1,4 @@
+import {changeControl,findRecordOption,recordOptions} from "./record-test-helpers";
 // PROD-DOWNTIME-001: machine stops — planned vs. availability loss, open/close, report figures, Arabic labels.
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
@@ -64,8 +65,8 @@ it("records downtime in a dialog on the order and refreshes the same section",as
   ui(<OrderDowntimeSection order={{id:'po1',status:'in_progress'}}/>);
   fireEvent.click(await screen.findByRole('button',{name:'Record downtime'}));
   const dialog=await screen.findByRole('dialog');
-  await within(dialog).findByRole('option',{name:'EX1 — Extruder 1'});
-  fireEvent.change(within(dialog).getByLabelText('Work center (machine)'),{target:{value:'wc1'}});
+  await findRecordOption('EX1 — Extruder 1');
+  changeControl(within(dialog).getByLabelText('Work center (machine)'),{target:{value:'wc1'}});
   expect((within(dialog).getByRole('combobox',{name:'Production order (optional)'}) as HTMLSelectElement).disabled).toBe(true);
   fireEvent.click(within(dialog).getByRole('button',{name:'Record downtime'}));
   await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
@@ -87,7 +88,7 @@ describe("downtime list and report figures", () => {
     expect(within(cards).getByText("فقد التوافر").nextElementSibling?.textContent).toBe("115 min");
     expect(screen.getByRole("table", { name: "التوقف حسب الماكينة" })).toBeTruthy();
     // The filter goes into the address (page 1); the list and its figures follow the address.
-    fireEvent.change(screen.getByLabelText("النوع"), { target: { value: "true" } });
+    changeControl(screen.getByLabelText("النوع"), { target: { value: "true" } });
     expect(nav.replace).toHaveBeenCalledWith("/?planned=true", { scroll: false });
   });
 
@@ -120,14 +121,14 @@ describe("recording a stop", () => {
     expect(groups).toEqual([["فقد في التوافر", ["عطل", "تغيير المنتج والضبط", "نقص المواد", "انتظار المشغّل", "مشكلة جودة", "المرافق (كهرباء، هواء، ماء)", "أخرى"]],
       ["توقف مخطط", ["صيانة مخططة", "استراحة أو اجتماع", "لا يوجد عمل مجدول"]]]);
     expect((screen.getByRole("button", { name: "تسجيل توقف" }) as HTMLButtonElement).disabled).toBe(true);
-    await waitFor(() => expect(screen.getByRole("combobox", { name: "أمر الإنتاج (اختياري)" }).querySelectorAll("option").length).toBe(2));  // the draft order is not offered
+    await waitFor(() => expect(recordOptions(screen.getByRole("combobox", { name: "أمر الإنتاج (اختياري)" }) as HTMLInputElement).length).toBe(1));  // the draft order is not offered
   });
 
   it("records an open stop on a machine, with times in UTC", async () => {
     ui(<DowntimeEventForm />);
-    await waitFor(() => expect(screen.getByRole("option", { name: "EX1 — Extruder 1" })).toBeTruthy());
-    fireEvent.change(screen.getByLabelText("Work center (machine)"), { target: { value: "wc1" } });
-    fireEvent.change(screen.getByLabelText("Start"), { target: { value: "2026-09-29T08:00" } });
+    await findRecordOption("EX1 — Extruder 1");
+    changeControl(screen.getByLabelText("Work center (machine)"), { target: { value: "wc1" } });
+    changeControl(screen.getByLabelText("Start"), { target: { value: "2026-09-29T08:00" } });
     expect(screen.getByText(/stays open \(ongoing\)/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Record downtime" }));
     await waitFor(() => expect(nav.push).toHaveBeenCalledWith("/downtime-events/new1"));
@@ -140,11 +141,11 @@ describe("recording a stop", () => {
     nav.params = new URLSearchParams("order=po1");
     ui(<DowntimeEventForm />);
     const run = await screen.findByLabelText("Production run (optional)");
-    await waitFor(() => expect((run as HTMLSelectElement).options.length).toBe(2));
-    fireEvent.change(run, { target: { value: "r1" } });
+    await waitFor(() => expect(recordOptions(run as HTMLInputElement).length).toBe(2));
+    changeControl(run, { target: { value: "r1" } });
     const machine = screen.getByLabelText("Work center (machine)") as HTMLSelectElement;
-    expect(machine.disabled && machine.value === "wc2").toBe(true);
-    fireEvent.change(screen.getByLabelText("Cause"), { target: { value: "planned_maintenance" } });
+    expect(machine.disabled && machine.value === "EX2 — Extruder 2").toBe(true);
+    changeControl(screen.getByLabelText("Cause"), { target: { value: "planned_maintenance" } });
     expect(screen.getByText(/does not reduce availability/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Record downtime" }));
     await waitFor(() => expect(sent("/production/downtime-events")).toMatchObject({ production_run_id: "r1", work_center_id: null, production_order_id: null, category: "planned_maintenance" }));
@@ -157,7 +158,7 @@ describe("recording a stop", () => {
     });
     nav.params = new URLSearchParams("work_center=wc1");
     ui(<DowntimeEventForm />, "ar");
-    await waitFor(() => expect((screen.getByLabelText("مركز العمل (الماكينة)") as HTMLSelectElement).value).toBe("wc1"));
+    await waitFor(() => expect((screen.getByLabelText("مركز العمل (الماكينة)") as HTMLSelectElement).value).toBe("EX1 — Extruder 1"));
     fireEvent.click(screen.getByRole("button", { name: "تسجيل توقف" }));
     expect((await screen.findByRole("alert")).textContent).toBe("لهذه الماكينة توقف في نفس الفترة. لا يكون للماكينة إلا توقف واحد في الوقت نفسه.");
   });
@@ -169,7 +170,7 @@ describe("stop detail", () => {
     ui(<DowntimeEventDetail eventId="d1" />);
     fireEvent.click(await screen.findByRole("button", { name: "End the stop" }));
     const dialog = screen.getByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText("End"), { target: { value: "2026-09-29T08:42" } });
+    changeControl(within(dialog).getByLabelText("End"), { target: { value: "2026-09-29T08:42" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "End the stop" }));
     await waitFor(() => expect(sent("/production/downtime-events/d1/close")?.end_time).toMatch(/Z$/));
   });

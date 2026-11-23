@@ -1,3 +1,4 @@
+import {changeControl} from "./record-test-helpers";
 import {render,screen,fireEvent,waitFor,cleanup} from "@testing-library/react";
 import {beforeAll,beforeEach,afterEach,it,expect,vi} from "vitest";
 import {NextIntlClientProvider} from "next-intl";
@@ -19,7 +20,7 @@ const candidate={id:"replacement",full_name:"Replacement",email:"next@example.co
 beforeEach(()=>{vi.clearAllMocks();mocks.denied.clear();mocks.impact.mockResolvedValue(clear);mocks.owners.mockResolvedValue([candidate]);mocks.assignees.mockResolvedValue([candidate]);mocks.customers.mockResolvedValue({reassigned_count:1});mocks.followUps.mockResolvedValue({reassigned_count:1});mocks.deactivate.mockResolvedValue({...user,status:"inactive"});mocks.archive.mockResolvedValue({...user,status:"inactive",archived_at:"2026-11-14T13:00:00Z"});});
 afterEach(cleanup);
 function ui(person=user,onChanged=vi.fn(),onReload=vi.fn()){return <NextIntlClientProvider locale="en" messages={messages} timeZone="UTC"><UserOffboarding user={person} onChanged={onChanged} onReload={onReload}/></NextIntlClientProvider>;}
-function confirm(){const dialog=screen.getByRole("dialog");fireEvent.change(dialog.querySelector("textarea")!,{target:{value:"Employment ended"}});fireEvent.submit(dialog);}
+function confirm(){const dialog=screen.getByRole("dialog");changeControl(dialog.querySelector("textarea")!,{target:{value:"Employment ended"}});fireEvent.submit(dialog);}
 
 it("locks deactivation until transfer refreshes impact, then allows archive only after deactivation",async()=>{
   mocks.impact.mockResolvedValueOnce(blocked).mockResolvedValue(clear);
@@ -27,7 +28,7 @@ it("locks deactivation until transfer refreshes impact, then allows archive only
   await screen.findByText("Assigned customers: 1");
   expect((screen.getByRole("button",{name:"Deactivate"}) as HTMLButtonElement).disabled).toBe(true);
   expect((screen.getByRole("button",{name:"Archive"}) as HTMLButtonElement).disabled).toBe(true);
-  fireEvent.change(await screen.findByRole("combobox",{name:"To user"}),{target:{value:candidate.id}});
+  changeControl(await screen.findByRole("combobox",{name:"To user"}),{target:{value:candidate.id}});
   fireEvent.click(screen.getByRole("button",{name:"Transfer"}));
   await waitFor(()=>expect(mocks.customers).toHaveBeenCalledWith(user.id,candidate.id));
   await waitFor(()=>expect(mocks.impact).toHaveBeenCalledTimes(2));expect(reload).toHaveBeenCalledTimes(1);
@@ -44,7 +45,7 @@ it("locks deactivation until transfer refreshes impact, then allows archive only
 it("transfers follow-ups through their module API and reloads impact",async()=>{
   mocks.impact.mockResolvedValueOnce({...blocked,dependencies:{...clear.dependencies,open_follow_ups:1}}).mockResolvedValue(clear);
   render(ui());await screen.findByText("Open follow-ups: 1");
-  fireEvent.change(screen.getByRole("combobox",{name:"To user"}),{target:{value:candidate.id}});fireEvent.click(screen.getByRole("button",{name:"Transfer"}));
+  changeControl(screen.getByRole("combobox",{name:"To user"}),{target:{value:candidate.id}});fireEvent.click(screen.getByRole("button",{name:"Transfer"}));
   await waitFor(()=>expect(mocks.followUps).toHaveBeenCalledWith(user.id,candidate.id));
   await waitFor(()=>expect(mocks.impact).toHaveBeenCalledTimes(2));
 });
@@ -53,7 +54,7 @@ it("keeps deactivation locked until the transfer's detail refresh finishes",asyn
   mocks.impact.mockResolvedValueOnce(blocked).mockResolvedValue(clear);
   let finish!:()=>void;const reload=vi.fn(()=>new Promise<void>(resolve=>{finish=resolve;}));
   render(ui(user,vi.fn(),reload));await screen.findByText("Assigned customers: 1");
-  fireEvent.change(screen.getByRole("combobox",{name:"To user"}),{target:{value:candidate.id}});fireEvent.click(screen.getByRole("button",{name:"Transfer"}));
+  changeControl(screen.getByRole("combobox",{name:"To user"}),{target:{value:candidate.id}});fireEvent.click(screen.getByRole("button",{name:"Transfer"}));
   await waitFor(()=>expect(reload).toHaveBeenCalledTimes(1));
   expect((screen.getByRole("button",{name:"Deactivate"}) as HTMLButtonElement).disabled).toBe(true);
   finish();await waitFor(()=>expect((screen.getByRole("button",{name:"Deactivate"}) as HTMLButtonElement).disabled).toBe(false));

@@ -1,3 +1,4 @@
+import {changeControl,findRecordOption} from "./record-test-helpers";
 // PROC-003: purchase orders — written in riyals with VAT or in dollars without, approved, and received against.
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
@@ -55,13 +56,13 @@ describe("purchase order form", () => {
   it("writes a local order in riyals with 15% VAT", async () => {
     api.apiClient.mockImplementation(answer);
     ui(<OrderForm supplierId="s1" />);
-    await screen.findByRole("option", { name: "Gulf Polymers — SUP-0001" });
-    await screen.findByRole("option", { name: "PP homopolymer H030 — MAT-0001" });
+    await findRecordOption("Gulf Polymers — SUP-0001");
+    await findRecordOption("PP homopolymer H030 — MAT-0001");
     expect((screen.getByLabelText("Apply VAT (15%)") as HTMLInputElement).checked).toBe(true);
-    fireEvent.change(screen.getByLabelText("Material"), { target: { value: "m1" } });
+    changeControl(screen.getByLabelText("Material"), { target: { value: "m1" } });
     expect((screen.getByLabelText("Description") as HTMLInputElement).value).toBe("PP homopolymer H030");
-    fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "20000" } });
-    fireEvent.change(screen.getByLabelText("Unit price (SAR)"), { target: { value: "5.425" } });
+    changeControl(screen.getByLabelText("Quantity"), { target: { value: "20000" } });
+    changeControl(screen.getByLabelText("Unit price (SAR)"), { target: { value: "5.425" } });
     const totals = screen.getByRole("region", { name: "Totals" });
     expect(within(totals).getByText("Total including VAT").parentElement!.textContent).toContain("124775.00");  // 108,500 + 15%
     expect(within(totals).getAllByRole("img", { name: "Saudi Riyal" }).length).toBeGreaterThan(0);
@@ -74,15 +75,15 @@ describe("purchase order form", () => {
   it("an import in dollars has no VAT unless chosen", async () => {
     api.apiClient.mockImplementation(answer);
     ui(<OrderForm supplierId="s1" />);
-    await screen.findByRole("option", { name: "Gulf Polymers — SUP-0001" });
-    fireEvent.change(screen.getByLabelText("Currency"), { target: { value: "USD" } });
+    await findRecordOption("Gulf Polymers — SUP-0001");
+    changeControl(screen.getByLabelText("Currency"), { target: { value: "USD" } });
     expect((screen.getByLabelText("Apply VAT (15%)") as HTMLInputElement).checked).toBe(false);
     expect(screen.getByText(/an import from abroad/)).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "LLDPE 218W" } });
-    fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "24" } });
-    fireEvent.change(screen.getByLabelText("Unit"), { target: { value: "ton" } });
-    fireEvent.change(screen.getByLabelText("Unit price (USD)"), { target: { value: "1180" } });
-    fireEvent.change(screen.getByLabelText("Delivery terms (Incoterms)"), { target: { value: "CIF" } });
+    changeControl(screen.getByLabelText("Description"), { target: { value: "LLDPE 218W" } });
+    changeControl(screen.getByLabelText("Quantity"), { target: { value: "24" } });
+    changeControl(screen.getByLabelText("Unit"), { target: { value: "ton" } });
+    changeControl(screen.getByLabelText("Unit price (USD)"), { target: { value: "1180" } });
+    changeControl(screen.getByLabelText("Delivery terms (Incoterms)"), { target: { value: "CIF" } });
     const totals = screen.getByRole("region", { name: "Totals" });
     expect(within(totals).getByText("Total").parentElement!.textContent).toBe("Total$ 28320.00");
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save draft" })); });
@@ -110,7 +111,7 @@ describe("purchase order detail", () => {
     expect(screen.queryByRole("button", { name: "Cancel order" })).toBeNull();
     fireEvent.click(await screen.findByRole("button", { name: "Close order" }));
     const dialog = screen.getByRole("dialog");
-    fireEvent.change(within(dialog).getByRole("textbox"), { target: { value: "The supplier cannot deliver the rest" } });
+    changeControl(within(dialog).getByRole("textbox"), { target: { value: "The supplier cannot deliver the rest" } });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Close order" })); });
     expect(sent("/procurement/purchase-orders/o1/close", "POST")).toEqual({ reason: "The supplier cannot deliver the rest" });
   });
@@ -127,8 +128,8 @@ describe("goods receipt against a purchase order", () => {
     expect(await screen.findByDisplayValue("12000")).toBeTruthy();
     expect(screen.getByText(/order line 1/)).toBeTruthy();
     expect(screen.queryByLabelText("Purchase reference")).toBeNull();
-    fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "11950" } });
-    await screen.findByRole("option", { name: "Gulf Polymers — SUP-0001" });
+    changeControl(screen.getByLabelText("Quantity"), { target: { value: "11950" } });
+    await findRecordOption("Gulf Polymers — SUP-0001");
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save draft" })); });
     expect(sent("/procurement/receipts", "POST")).toMatchObject({ supplier_id: "s1", purchase_order_id: "o1",
       lines: [{ material_id: "m1", quantity: "11950", unit: "kg", po_line_id: "l1" }] });

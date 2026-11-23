@@ -1,6 +1,6 @@
-.row { display: flex; align-items: start; gap: var(--field-gap); min-inline-size: 0; inline-size: 100%; }
-.row > input, .row > select { flex: 1 1 0; min-inline-size: 0; inline-size: 0; }
+.row { display: flex; align-items: flex-start; gap: var(--field-gap); min-inline-size: 0; inline-size: 100%; }
+.row > input, .row > select, .row > div { flex: 1 1 0; min-inline-size: 0; inline-size: 0; }
 .manage { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; min-inline-size: var(--control-height); block-size: var(--control-height); padding-inline: .65rem; box-sizing: border-box; border: 1px solid var(--control-border); border-radius: var(--control-radius); background: var(--surface); color: var(--text); text-decoration: none; font: inherit; cursor: pointer; }
 .manage:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.directoryRow { display: flex; flex-wrap: wrap; align-items: start; gap: var(--field-gap); min-inline-size: 0; inline-size: 100%; }
-div.directoryRow > input, div.directoryRow > select { flex: 1 1 10rem; min-inline-size: min(10rem, 100%); }
+.directoryRow { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--field-gap); min-inline-size: 0; inline-size: 100%; }
+div.directoryRow > input, div.directoryRow > select, div.directoryRow > div { flex: 1 1 10rem; min-inline-size: min(10rem, 100%); }

@@ -3,8 +3,9 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.production.api.unit_validation import ProductionUnitUpdate, known_new_unit
 from app.core.types import ISODatetime
 from app.production.domain.enums import (
     ProductionOrderPriority,
@@ -123,7 +124,10 @@ class ProductionOrderCreate(BaseModel):
     notes: str | None = None
 
 
-class ProductionOrderUpdate(BaseModel):
+    _known_unit = field_validator("unit")(known_new_unit)
+
+
+class ProductionOrderUpdate(ProductionUnitUpdate):
     model_config = ConfigDict(extra="forbid")
     production_order_number: str | None = Field(default=None, min_length=1, max_length=64)
     work_center_id: UUID | None = None
@@ -179,7 +183,10 @@ class ProductionOrderItemCreate(BaseModel):
     notes: str | None = None
 
 
-class ProductionOrderItemUpdate(BaseModel):
+    _known_unit = field_validator("unit")(known_new_unit)
+
+
+class ProductionOrderItemUpdate(ProductionUnitUpdate):
     line_no: int | None = Field(default=None, ge=1)
     # Line-specific variation only; product_type lives on the ProductionOrder header.
     target_spec_json: dict[str, Any] | None = None

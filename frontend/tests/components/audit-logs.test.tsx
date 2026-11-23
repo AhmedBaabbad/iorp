@@ -1,3 +1,4 @@
+import {changeControl,findRecordOption} from "./record-test-helpers";
 // ORG-AUDIT-002: the audit trail, the security log and the activity log read as sentences in the screen's language —
 // never a raw code, an untranslated key or an id — and their details show as labelled values, before → after.
 import { cleanup, fireEvent, render, renderHook, screen } from "@testing-library/react";
@@ -113,8 +114,8 @@ it("any operation the system may write reads as words, in both languages", () =>
 it("the activity log reads by department and person, opens a record, and archives a month past its retention", async () => {
   ui(<SeparatedLogPage scope="tenant" kind="activity" namespace="tenantActivity" permission="foundation:activity_log:read" />);
   expect(await screen.findByRole("link", { name: "PO-2026-0003" })).toBeTruthy();
-  expect((await screen.findByRole("option", { name: "Sara" }))).toBeTruthy();
-  fireEvent.change(screen.getByRole("combobox", { name: "القسم" }), { target: { value: "quality" } });
+  expect((await findRecordOption("Sara"))).toBeTruthy();
+  changeControl(screen.getByRole("combobox", { name: "القسم" }), { target: { value: "quality" } });
   await vi.waitFor(() => expect(api.call).toHaveBeenCalledWith(expect.stringContaining("area=quality")));
   expect(await screen.findByText("سبتمبر 2025")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "تأكدت من حفظ الملف — احذف" })).toBeNull();  // not before downloading

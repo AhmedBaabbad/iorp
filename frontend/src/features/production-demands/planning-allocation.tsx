@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { customerDisplayName } from "@/lib/customer-name";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -6,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { usePermission } from "@/features/auth/permission-hooks";
 import { getWorkCenters } from "@/features/work-centers";
 import { apiClient, ApiClientError } from "@/lib/api-client";
+import {apiErrorCode} from "@/lib/api-error-handler";
 import type { Demand, Item } from "./api";
 import { Specs, priorities } from "./shared";
 import { ArrangementTable, type ArrangedLine } from "./arrangement-table";
@@ -29,6 +31,8 @@ export function PlanningAllocation({ demands, busy, onRefresh }: { demands: Dema
   const d = useTranslations("production.demands");
   const p = useTranslations("production.productionOrders");
   const common = useTranslations("common");
+  const messages=useTranslations("messages");
+  const errorText=(code:string)=>code==="UNIT_UNKNOWN"?messages("validation.unitUnknown"):t(code);
   const canAllocate = usePermission(P.PLANNING_ALLOCATE);
   const canCreate = usePermission(P.ORDERS_CREATE);
   const router = useRouter();
@@ -65,7 +69,7 @@ export function PlanningAllocation({ demands, busy, onRefresh }: { demands: Dema
     const timer = setTimeout(() => {
       apiClient<{ lines: PreviewLine[] }>("/production/planning/preview-production-order", { method: "POST", body: { allocations: JSON.parse(payload) } })
         .then(result => { if (active) { setLines(result.lines); setPreviewError(""); } })
-        .catch(e => { if (active) { setLines([]); setPreviewError(e instanceof ApiClientError && e.status === 409 ? "conflict" : "error"); } });
+        .catch(e => { if (active) { setLines([]); setPreviewError(apiErrorCode(e)==="UNIT_UNKNOWN"?"UNIT_UNKNOWN":e instanceof ApiClientError && e.status === 409 ? "conflict" : "error"); } });
     }, 250);
     return () => { active = false; clearTimeout(timer); };
   }, [review, valid, compatible, payload]);
@@ -86,13 +90,13 @@ export function PlanningAllocation({ demands, busy, onRefresh }: { demands: Dema
       sessionStorage.setItem("production-order-created", order.id);
       router.push(`/production-orders/${order.id}`);
     } catch (e) {
-      setError(e instanceof ApiClientError && e.status === 409 ? "conflict" : "error");
+      setError(apiErrorCode(e)==="UNIT_UNKNOWN"?"UNIT_UNKNOWN":e instanceof ApiClientError && e.status === 409 ? "conflict" : "error");
       setReview(false);
     } finally { setSending(false); }
   }
   if (!canAllocate) return null;
   return <section className={s.panel}><h2>{t("title")}</h2><p>{t("select")}</p>
-    {error && <div role="alert" className={s.error}>{t(error)} <button className={s.button} onClick={onRefresh}>{t("refresh")}</button></div>}
+    {error && <div role="alert" className={s.error}>{errorText(error)} <button className={s.button} onClick={onRefresh}>{t("refresh")}</button></div>}
     <div className={s.tableWrap}><table className={s.table}><thead><tr><th>{t("select")}</th><th>{d("customer")}</th><th>{d("demandNumber")}</th><th>{d("lineNo")}</th><th>{d("productType")}</th><th>{d("specifications")}</th><th>{t("required")}</th><th>{t("allocated")}</th><th>{t("remaining")}</th><th>{t("quantity")}</th></tr></thead>
       <tbody>{demands.flatMap(demand => demand.items.map(item => { const id = item.id!; return <tr key={id}>
         <td><input type="checkbox" aria-label={`${t("select")} ${demand.demand_number} ${item.line_no}`} disabled={busy || sending || Number(item.remaining_quantity) <= 0 || !item.product_type} checked={!!selected[id]} onChange={e => setSelected(old => { const next = { ...old }; if (e.target.checked) next[id] = { demand, item, quantity: item.remaining_quantity ?? "0" }; else delete next[id]; return next; })} /></td>
@@ -111,13 +115,13 @@ export function PlanningAllocation({ demands, busy, onRefresh }: { demands: Dema
       <h2 id="allocation-review-title">{t("review")}</h2>
       <p>{d("productType")}: <strong>{base?.product_type}</strong> · {t("total")}: <strong>{total} {base?.unit}</strong> · {t("lineCount", { count: arranged.length })}</p>
       <h3>{t("arrangement")}</h3><p className={s.muted}>{t("arrangementHint")}</p>
-      {previewError && <p role="alert" className={s.error}>{t(previewError)}</p>}
+      {previewError && <p role="alert" className={s.error}>{errorText(previewError)}</p>}
       {!valid && <p role="alert">{t("invalid")}</p>}
       <ArrangementTable lines={arranged}
         quantityCell={a => <input aria-label={`${t("quantity")} ${a.demand_number} ${a.demand_item_line_no}`} type="number" min="0.001" step="0.001" value={selected[a.key]?.quantity ?? a.allocated_quantity} disabled={sending} onChange={e => setQuantity(a.key, e.target.value)} />}
         actionsCell={a => <button type="button" className={s.button} disabled={sending} onClick={() => remove(a.key)}>{t("removeFromOrder")}</button>} />
       <form onSubmit={submit}><fieldset disabled={sending} className={s.grid}>
-        <label className={s.field}>{p("fields.workCenter")}<select name="work_center_id" required defaultValue=""><option value="">{t("selectCenter")}</option>{centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+        <label className={s.field}>{p("fields.workCenter")}<RecordCombobox aria-label={p("fields.workCenter")} name="work_center_id" required defaultValue=""><option value="">{t("selectCenter")}</option>{centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</RecordCombobox></label>
         <label className={s.field}>{d("priority")}<select name="priority" defaultValue="normal">{priorities.map(v => <option key={v} value={v}>{d(`priorities.${v}`)}</option>)}</select></label>
         <label className={s.field}>{p("fields.plannedStartDate")}<input name="start" type="date" required /></label>
         <label className={s.field}>{p("fields.plannedEndDate")}<input name="end" type="date" required /></label>

@@ -1,3 +1,4 @@
+import {changeControl,findRecordOption} from "./record-test-helpers";
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import { useState } from 'react';
@@ -6,6 +7,7 @@ import { loadMessages } from '@/i18n/messages';
 import { SampleProductFields, SamplePropertyValues } from '@/features/samples/components/SampleProperties';
 import type { RequestedSpec, SampleProductDefinition } from '@/features/samples/types';
 
+vi.mock('@/features/auth/permission-hooks',()=>({usePermission:()=>false}));
 const api = vi.hoisted(() => ({ products: vi.fn(), changed: vi.fn(), ready: vi.fn() }));
 vi.mock('@/features/samples/api/samples-api', () => ({ getSampleProducts: api.products }));
 let messages: Awaited<ReturnType<typeof loadMessages>>;
@@ -27,13 +29,13 @@ function ui(node: React.ReactNode) { return render(<NextIntlClientProvider local
 
 it('loads arbitrary Master Data fields and emits typed numbers and choice values', async () => {
   const { container } = ui(<Editor />);
-  await screen.findByRole('option', { name: 'Custom product' });
-  fireEvent.change(screen.getByRole('combobox'), { target: { value: 'custom' } });
+  await findRecordOption('Custom product');
+  changeControl(screen.getByRole('combobox'), { target: { value: 'custom' } });
   const size = screen.getByLabelText('Size') as HTMLInputElement;
   expect(size.type).toBe('text'); expect(size.inputMode).toBe('decimal'); expect(size.required).toBe(true);
-  fireEvent.change(size, { target: { value: '12.5' } });
-  fireEvent.change(screen.getByLabelText('Finish'), { target: { value: 'smooth' } });
-  fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Trial' } });
+  changeControl(size, { target: { value: '12.5' } });
+  changeControl(screen.getByLabelText('Finish'), { target: { value: 'smooth' } });
+  changeControl(screen.getByLabelText('Description'), { target: { value: 'Trial' } });
   expect(api.changed).toHaveBeenLastCalledWith('custom', { size: 12.5, finish: 'smooth', memo: 'Trial' }, undefined);
   expect(container.querySelector('textarea')).toBeNull();
   expect(container.textContent).not.toContain('requested_spec_json');
@@ -42,7 +44,7 @@ it('loads arbitrary Master Data fields and emits typed numbers and choice values
 it('clears incompatible property values when selecting another product', async () => {
   ui(<Editor selected="custom" initial={{ size: 5 }} />);
   await screen.findByLabelText('Size');
-  fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'other' } });
+  changeControl(screen.getAllByRole('combobox')[0], { target: { value: 'other' } });
   expect(api.changed).toHaveBeenLastCalledWith('other', {}, 'kg');
   expect(screen.queryByLabelText('Size')).toBeNull();
 });
@@ -51,7 +53,7 @@ it('restores saved fields and preserves historical nested values read-only', asy
   ui(<Editor selected="custom" initial={{ size: 5, historical: { note: 'Original value' } }} unchanged />);
   expect((await screen.findByLabelText('Size') as HTMLInputElement).value).toBe('5');
   expect(screen.getByText('Original value')).toBeTruthy();
-  fireEvent.change(screen.getByLabelText('Size'), { target: { value: '6' } });
+  changeControl(screen.getByLabelText('Size'), { target: { value: '6' } });
   expect(api.changed).toHaveBeenLastCalledWith('custom', { size: 6, historical: { note: 'Original value' } }, undefined);
 });
 
@@ -59,9 +61,11 @@ it('does not permit free text products when the catalog is empty', async () => {
   api.products.mockResolvedValue([]);
   const { container } = ui(<Editor />);
   await waitFor(() => expect((screen.getByRole('combobox') as HTMLSelectElement).disabled).toBe(false));
+  fireEvent.focus(screen.getByRole('combobox'));
   expect(screen.getAllByRole('option')).toHaveLength(1);
   expect(api.ready).toHaveBeenLastCalledWith(false);
-  expect(container.querySelector('input')).toBeNull();
+  expect(container.querySelector('select')).toBeNull();
+  expect((screen.getByRole('combobox') as HTMLInputElement).checkValidity()).toBe(false);
 });
 
 it('blocks new specifications on catalog failure and supports retry', async () => {
@@ -70,7 +74,7 @@ it('blocks new specifications on catalog failure and supports retry', async () =
   await screen.findByRole('alert');
   expect(api.ready).toHaveBeenLastCalledWith(false);
   fireEvent.click(screen.getByRole('button'));
-  await screen.findByRole('option', { name: 'Custom product' });
+  await findRecordOption('Custom product');
   expect(screen.queryByRole('alert')).toBeNull();
 });
 

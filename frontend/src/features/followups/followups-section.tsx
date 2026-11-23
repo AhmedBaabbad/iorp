@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -326,10 +327,10 @@ export function CustomerFollowUpsSection({
             ) : eligibleAssignees.length === 0 ? (
               <p style={styles.note}>{t("noEligibleAssignees")}</p>
             ) : (
-              <select
+              <RecordCombobox aria-label={t("selectAssignee")}
                 style={sharedStyles.input}
                 value={values.assigned_user_id}
-                onChange={(event) => updateField("assigned_user_id", event.target.value)}
+                onChange={(event) => updateField("assigned_user_id", event)}
                 disabled={isSubmitting}
                 required
               >
@@ -341,7 +342,7 @@ export function CustomerFollowUpsSection({
                       : assignee.full_name}
                   </option>
                 ))}
-              </select>
+              </RecordCombobox>
             )}
             {customerSalesOwnerId ? (
               <span style={styles.note}>{t("defaultFromSalesOwner")}</span>

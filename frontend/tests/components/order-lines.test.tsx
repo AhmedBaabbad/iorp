@@ -1,3 +1,4 @@
+import {changeControl,recordOptions} from "./record-test-helpers";
 // Mixed-specification orders: review arrangement before creating, and draft-order line editing.
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
@@ -79,7 +80,7 @@ describe("review before creating an order", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create production order" }));
     const table = await screen.findByRole("table", { name: "Production arrangement" });
     await within(table).findByText(/PD-2/);
-    fireEvent.change(within(table).getByRole("spinbutton", { name: "Allocate now PD-2 1" }), { target: { value: "400" } });
+    changeControl(within(table).getByRole("spinbutton", { name: "Allocate now PD-2 1" }), { target: { value: "400" } });
     await waitFor(() => expect(api.apiClient.mock.calls.some(([, o]) => JSON.stringify(o?.body).includes('"400"'))).toBe(true));
     const removeWide = within(table).getAllByRole("button", { name: "Remove" })[1];
     await act(async () => { fireEvent.click(removeWide); });
@@ -133,7 +134,7 @@ describe("order lines on a production order", () => {
     const onChanged = vi.fn();
     api.apiClient.mockImplementation((path: string) => Promise.resolve(isEligible(path) ? queue : {}));
     ui(<OrderLines order={order()} onChanged={onChanged} />);
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Allocate now PD-1 1" }), { target: { value: "250" } });
+    changeControl(screen.getByRole("spinbutton", { name: "Allocate now PD-1 1" }), { target: { value: "250" } });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save" })); });
     expect(api.apiClient).toHaveBeenCalledWith("/production/allocations/a1", { method: "PATCH", body: { allocated_quantity: "250" } });
     expect(onChanged).toHaveBeenCalled();
@@ -145,8 +146,8 @@ describe("order lines on a production order", () => {
     ui(<OrderLines order={order()} onChanged={onChanged} />);
     const form = screen.getByRole("form", { name: "Add a demand" });
     const picker = within(form).getByRole("combobox");
-    await waitFor(() => expect(within(picker).getAllByRole("option").length).toBe(2));
-    fireEvent.change(picker, { target: { value: "new-item" } });
+    await waitFor(() => expect(recordOptions(picker as HTMLInputElement).length).toBe(2));
+    changeControl(picker, { target: { value: "new-item" } });
     expect((within(form).getByRole("spinbutton") as HTMLInputElement).value).toBe("250");
     await act(async () => { fireEvent.click(within(form).getByRole("button", { name: "Add to order" })); });
     expect(api.apiClient).toHaveBeenCalledWith("/production/orders/po1/allocations", { method: "POST", body: { production_demand_item_id: "new-item", allocated_quantity: "250" } });
@@ -163,10 +164,10 @@ describe("order lines on a production order", () => {
     ui(<OrderLines order={order()} />);
     const form = screen.getByRole("form", { name: "Add a demand" });
     const picker = within(form).getByRole("combobox");
-    await waitFor(() => expect(within(picker).getAllByRole("option").length).toBe(2));
-    await act(async () => { fireEvent.change(within(form).getByRole("searchbox"), { target: { value: "PD-0150" } }); await new Promise(r => setTimeout(r, 300)); });
-    await waitFor(() => expect(within(picker).getByRole("option", { name: /PD-0150/ })).toBeTruthy());
-    expect(within(picker).queryByRole("option", { name: /PD-9/ })).toBeNull();
+    await waitFor(() => expect(recordOptions(picker as HTMLInputElement).length).toBe(2));
+    await act(async () => { changeControl(picker, { target: { value: "PD-0150" } }); await new Promise(r => setTimeout(r, 300)); });
+    await waitFor(() => expect(screen.getByRole("option", { name: /PD-0150/ })).toBeTruthy());
+    expect(screen.queryByRole("option", { name: /PD-9/ })).toBeNull();
     const asked = api.apiClient.mock.calls.map(([path]) => String(path)).filter(isEligible).pop()!;
     expect(new URLSearchParams(asked.split("?")[1]).get("limit")).toBe("20");
   });

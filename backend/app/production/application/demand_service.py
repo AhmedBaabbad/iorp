@@ -1,6 +1,7 @@
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal
+from app.production.domain.units import checked_unit
 from pydantic import ValidationError
 from sqlalchemy import select
 from app.core.pagination import page_of
@@ -9,7 +10,7 @@ from app.core.utils import utc_now
 from app.core.interfaces import sales_order_source
 from app.core.interfaces.product_catalog import unknown_product_types
 from app.core import numbering
-from app.production.api.demand_schemas import CreateDemandItemRequest
+from app.production.api.demand_schemas import DemandItemFields
 from app.production.infrastructure.models import ProductionDemand, ProductionDemandItem
 from app.production.infrastructure.demand_repository import ProductionDemandRepository, PLANNABLE
 
@@ -159,7 +160,11 @@ class ProductionDemandService:
         """A quotation's lines carry their product types over, even those written before the product list."""
         return [i.product_type for i in self.quotes.get_quote_items(self.db, row.quote_id, self.org_id)] if row.quote_id else []
 
-    def _add_item(self, row, data, keep=()):
+    def _add_item(self, row, data, keep=(), previous_unit=None):
+        try:
+            checked_unit(data.unit, previous_unit)
+        except ValueError as exc:
+            raise DemandError("UNIT_UNKNOWN", 422) from exc
         self._assert_products([data.product_type], keep)
         from app.core.interfaces.product_catalog import validate_specification_values, ProductSpecificationError
         try:
@@ -170,7 +175,7 @@ class ProductionDemandService:
         line = data.line_no or max(used, default=0) + 1
         if line in used:
             raise DemandError("duplicate_line_number", 409)
-        item = ProductionDemandItem(**deepcopy(data.model_dump(exclude={"line_no"})), line_no=line)
+        item = ProductionDemandItem(**deepcopy(data.model_dump(exclude={"line_no", "id"})), line_no=line)
         row.items.append(item)
         row.updated_at = utc_now()
         return item
@@ -203,10 +208,28 @@ class ProductionDemandService:
         if data.items is not None:
             if not data.items and row.status == "ready_for_planning":
                 raise DemandError("items_required")
+            by_id = {item.id: item for item in row.items}
+            by_line = {item.line_no: item for item in row.items}
+            previous_units = []
+            matched_items = set()
+            for item in data.items:
+                previous = by_id.get(item.id) if item.id else by_line.get(item.line_no)
+                if item.id and previous is None:
+                    raise DemandError("item_not_found", 404)
+                if previous is not None:
+                    if previous.id in matched_items:
+                        raise DemandError("duplicate_line_number", 409)
+                    matched_items.add(previous.id)
+                unit = previous.unit if previous else None
+                try:
+                    item.validate_unit_change(unit)
+                except ValueError as exc:
+                    raise DemandError("UNIT_UNKNOWN", 422) from exc
+                previous_units.append(unit)
             row.items.clear()
             self.db.flush()
-            for item in data.items:
-                self._add_item(row, item)
+            for item, previous_unit in zip(data.items, previous_units):
+                self._add_item(row, item, previous_unit=previous_unit)
         for key, value in values.items():
             setattr(row, key, value)
         row.updated_at = utc_now()
@@ -243,6 +266,10 @@ class ProductionDemandService:
                 raise DemandError("items_required")
             row.items.remove(item)
         else:
+            try:
+                data.validate_unit_change(item.unit)
+            except ValueError as exc:
+                raise DemandError("UNIT_UNKNOWN", 422) from exc
             values = data.model_dump(exclude_unset=True)
             if item.source_order_item_id:
                 if any(key in values and values[key] != getattr(item, key) for key in ("product_type", "target_spec_json", "unit")):
@@ -271,7 +298,7 @@ class ProductionDemandService:
     def quote_items(self, customer_id, quote_id):
         self.validate_references(customer_id, quote_id)
         try:
-            return [CreateDemandItemRequest(product_type=i.product_type, target_spec_json=deepcopy(i.target_spec_json), required_quantity=i.quantity, unit=i.unit, notes=i.notes) for i in self.quotes.get_quote_items(self.db, quote_id, self.org_id)]
+            return [DemandItemFields(product_type=i.product_type, target_spec_json=deepcopy(i.target_spec_json), required_quantity=i.quantity, unit=i.unit, notes=i.notes) for i in self.quotes.get_quote_items(self.db, quote_id, self.org_id)]
         except ValidationError as exc:
             raise DemandError("invalid_request") from exc
 

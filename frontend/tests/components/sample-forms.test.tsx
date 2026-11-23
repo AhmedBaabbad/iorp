@@ -1,3 +1,4 @@
+import {changeControl,findRecordOption} from "./record-test-helpers";
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import type { ReactNode } from 'react';
@@ -6,6 +7,7 @@ import { loadMessages } from '@/i18n/messages';
 
 const api = vi.hoisted(() => ({ products: vi.fn(), create: vi.fn(), get: vi.fn(), update: vi.fn() }));
 const access = vi.hoisted(() => ({ allowed: true }));
+vi.mock('@/features/auth/permission-hooks',()=>({usePermission:()=>false}));
 vi.mock('@/features/auth', () => ({ useAuth: () => ({ hasPermission: () => access.allowed }) }));
 vi.mock('@/features/samples/api/samples-api', () => ({ getSampleProducts: api.products, createSample: api.create, getSampleById: api.get, updateSample: api.update }));
 // ARCH-PAGE-001: the customer is chosen with the picker (a server search); here it chooses the one customer.
@@ -44,9 +46,9 @@ it('restricts lifecycle choices and disables decisions without action permission
 
 it('submits typed property values from the creation screen without a JSON editor', async () => {
   const { container } = ui(<SampleForm />);
-  const option = await screen.findByRole('option', { name: 'Generic product' });
-  fireEvent.change(option.parentElement!, { target: { value: 'generic' } });
-  fireEvent.change(screen.getByLabelText('Dimension'), { target: { value: '14.25' } });
+  const option = await findRecordOption('Generic product');
+  fireEvent.click(option);
+  changeControl(screen.getByLabelText('Dimension'), { target: { value: '14.25' } });
   fireEvent.submit(container.querySelector('form')!);
   await waitFor(() => expect(api.create).toHaveBeenCalled());
   expect(api.create.mock.calls[0][0]).toMatchObject({ customer_id: 'c1', product_type: 'generic', property_values: { dimension: 14.25 } });
@@ -58,7 +60,7 @@ it('loads saved values and sends changed specifications on edit', async () => {
   const { container } = ui(<SampleEditForm />);
   const field = await screen.findByLabelText('Dimension');
   expect((field as HTMLInputElement).value).toBe('9');
-  fireEvent.change(field, { target: { value: '10' } });
+  changeControl(field, { target: { value: '10' } });
   fireEvent.submit(container.querySelector('form')!);
   await waitFor(() => expect(api.update).toHaveBeenCalledWith('s1', expect.objectContaining({ product_type: 'generic', property_values: { dimension: 10 } })));
 });
@@ -67,7 +69,7 @@ it('keeps legacy specifications out of unrelated edits', async () => {
   api.get.mockResolvedValue({ ...saved, product_type: 'Old label', product_definition: null, property_values: { old: 'Historical value' } });
   const { container } = ui(<SampleEditForm />);
   await screen.findByText('Historical value');
-  fireEvent.change(container.querySelector('textarea')!, { target: { value: 'New notes' } });
+  changeControl(container.querySelector('textarea')!, { target: { value: 'New notes' } });
   fireEvent.submit(container.querySelector('form')!);
   await waitFor(() => expect(api.update).toHaveBeenCalled());
   const body = api.update.mock.calls[0][1];
@@ -85,14 +87,14 @@ it('loads the saved template for an inactive product absent from the choices', a
 
 it('uses the shared unit choices when requesting a physical sample', async () => {
   const { container } = ui(<SampleForm />);
-  const option = await screen.findByRole('option', { name: 'Generic product' });
-  fireEvent.change(option.parentElement!, { target: { value: 'generic' } });
+  const option = await findRecordOption('Generic product');
+  fireEvent.click(option);
   fireEvent.click(screen.getByRole('checkbox'));
   const unit = container.querySelector('select[aria-label="Unit"]') as HTMLSelectElement;
   expect(unit).toBeTruthy();
   expect(unit.value).toBe('kg');
   expect(unit.querySelector('option[value="mm"]')).toBeTruthy();
-  fireEvent.change(unit, { target: { value: 'mm' } });
+  changeControl(unit, { target: { value: 'mm' } });
   fireEvent.submit(container.querySelector('form')!);
   await waitFor(() => expect(api.create).toHaveBeenCalled());
   expect(api.create.mock.calls[0][0].unit).toBe('mm');

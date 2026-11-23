@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -182,10 +183,10 @@ export function ProductionOrdersList() {
 
         <label style={sharedStyles.field}>
           <span style={sharedStyles.label}>{t("fields.workCenter")}</span>
-          <select
+          <RecordCombobox aria-label={t("fields.workCenter")}
             style={sharedStyles.input}
             value={filters.work_center_id}
-            onChange={(event) => updateFilter("work_center_id", event.target.value)}
+            onChange={(event) => updateFilter("work_center_id", event)}
           >
             <option value="">{t("allWorkCenters")}</option>
             {workCenters.map((workCenter) => (
@@ -193,7 +194,7 @@ export function ProductionOrdersList() {
                 {workCenter.code} - {workCenter.name}
               </option>
             ))}
-          </select>
+          </RecordCombobox>
         </label>
       </section>
 

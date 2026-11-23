@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
 import Link from "next/link";
@@ -34,6 +35,7 @@ export function NcrReportForm({ reportId }: { reportId?: string }) {
   const editing = Boolean(reportId);
   // Opened from a supplier or a goods receipt: the supplier, the receipt and lot, and the item are filled in.
   const [v, setV] = useState<Text>({ ...EMPTY, report_date: todayIso(), supplier_id: params.get("supplier") ?? "", reference_code: params.get("reference") ?? "" });
+  const [supplierSearch,setSupplierSearch]=useState("");
   const [suppliers, setSuppliers] = useState<{ id: string; supplier_code: string; name: string }[]>([]);
   const [source, setSource] = useState<NcrSourceType>("incoming_material");
   const [type, setType] = useState<NcrReportType>("material_non_conformance");
@@ -48,7 +50,7 @@ export function NcrReportForm({ reportId }: { reportId?: string }) {
   const [error, setError] = useState("");
 
   useEffect(() => { getNcrUsers().then(setUsers).catch(() => setUsers([])); }, []);
-  useEffect(() => { getNcrSuppliers().then(setSuppliers).catch(() => setSuppliers([])); }, []);
+  useEffect(() => {let live=true;const timer=setTimeout(()=>{getNcrSuppliers(supplierSearch).then(rows=>{if(live)setSuppliers(rows);}).catch(()=>{if(live)setSuppliers([]);});},250);return()=>{live=false;clearTimeout(timer);};}, [supplierSearch]);
   useEffect(() => {
     if (!reportId) return;
     let active = true;
@@ -116,9 +118,9 @@ export function NcrReportForm({ reportId }: { reportId?: string }) {
           <div className={s.grid}>
             {supplier ? <>
               <label className={s.field}>{t("fields.registered_supplier")}
-                <select value={v.supplier_id} onChange={e => set("supplier_id", e.target.value)}>
+                <RecordCombobox onSearch={setSupplierSearch} aria-label={t("fields.registered_supplier")} value={v.supplier_id} onChange={e => set("supplier_id", e)}>
                   <option value="">{t("placeholders.unregisteredSupplier")}</option>
-                  {suppliers.map(o => <option key={o.id} value={o.id}>{o.name} — {o.supplier_code}</option>)}</select></label>
+                  {suppliers.map(o => <option key={o.id} value={o.id}>{o.name} — {o.supplier_code}</option>)}</RecordCombobox></label>
               {!v.supplier_id && input("supplier_name", { maxLength: 255 })}
               {input("supplier_reference", { maxLength: 120, dir: "auto", placeholder: t("placeholders.supplierReference") })}
               <label className={s.field}>{t("fields.supplier_action")}
@@ -126,8 +128,8 @@ export function NcrReportForm({ reportId }: { reportId?: string }) {
                   {SUPPLIER_ACTIONS.map(o => <option key={o} value={o}>{t(`supplierActions.${o}`)}</option>)}</select></label>
             </> : input("customer_name", { maxLength: 255 })}
             <label className={s.field}>{t("fields.owner")}
-              <select value={v.owner_user_id} onChange={e => set("owner_user_id", e.target.value)}>
-                <option value="">{t("placeholders.noOwner")}</option>{users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
+              <RecordCombobox aria-label={t("fields.owner")} value={v.owner_user_id} onChange={e => set("owner_user_id", e)}>
+                <option value="">{t("placeholders.noOwner")}</option>{users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</RecordCombobox></label>
             {input("due_date", { type: "date" })}
           </div>
           {supplier && supplierAction !== "none" && <>

@@ -1,3 +1,4 @@
+import {changeControl,recordOptions} from "./record-test-helpers";
 // PROD-QUALITY-FIX-001 item 2: production lists are server pages kept in the address; pickers search the server.
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
@@ -36,7 +37,7 @@ describe("production orders list", () => {
     expect(api.apiClient).toHaveBeenCalledWith("/production/production-orders?page=2&page_size=25&status=draft");
     expect(screen.getByRole("status").textContent).toBe("Showing 26 to 50 of 60");
     // A new filter goes back to page 1 (in the address).
-    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "released" } });
+    changeControl(screen.getByLabelText("Status"), { target: { value: "released" } });
     expect(nav.replace).toHaveBeenCalledWith("/production-orders?page_size=25&status=released", { scroll: false });
     fireEvent.click(screen.getByRole("button", { name: "Page 3" }));
     expect(nav.replace).toHaveBeenLastCalledWith("/production-orders?page=3&page_size=25&status=draft", { scroll: false });
@@ -49,20 +50,20 @@ describe("production order picker", () => {
     const onChange = vi.fn();
     ui(<ProductionOrderPicker value="" onChange={onChange} statuses={["in_progress", "on_hold"]} ariaLabel="Order" />);
     const select = await screen.findByRole("combobox", { name: "Order" }) as HTMLSelectElement;
-    await waitFor(() => expect(select.options.length).toBe(3));
-    await act(async () => { fireEvent.change(screen.getByRole("searchbox"), { target: { value: "PO-7" } }); await new Promise(r => setTimeout(r, 300)); });
-    await waitFor(() => expect(Array.from(select.options).map(o => o.textContent)).toEqual(["Choose an order", "PO-7 — strap"]));
+    await waitFor(() => expect(recordOptions(select).length).toBe(2));
+    await act(async () => { changeControl(select, { target: { value: "PO-7" } }); await new Promise(r => setTimeout(r, 300)); });
+    await waitFor(() => expect(recordOptions(select).map(o => o.textContent)).toEqual(["PO-7strap"]));
     const asked = api.apiClient.mock.calls.map(([p]) => String(p));
     expect(asked.every(p => p.startsWith("/production/production-orders/lookup?"))).toBe(true);
     const last = new URLSearchParams(asked[asked.length - 1].split("?")[1]);
     expect([last.get("search"), last.get("limit"), last.getAll("statuses")]).toEqual(["PO-7", "20", ["in_progress", "on_hold"]]);
-    fireEvent.change(select, { target: { value: "po7" } });
+    changeControl(select, { target: { value: "po7" } });
     expect(onChange).toHaveBeenCalledWith("po7", expect.objectContaining({ production_order_number: "PO-7" }));
   });
 
   it("shows an order chosen earlier by its number even when it is not among the matches", async () => {
     api.apiClient.mockImplementation((path: string) => Promise.resolve(path.includes("ids=po9") ? [order(9, "completed")] : []));
     ui(<ProductionOrderPicker value="po9" onChange={() => undefined} ariaLabel="Order" />);
-    await waitFor(() => expect(screen.getByRole("option", { name: "PO-9 — strap" })).toBeTruthy());
+    await waitFor(() => expect((screen.getByRole("combobox",{name:"Order"}) as HTMLInputElement).value).toBe("PO-9"));
   });
 });

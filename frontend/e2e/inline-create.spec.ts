@@ -13,6 +13,7 @@ test('adds a product inside an Arabic quotation and keeps the draft on mobile',a
     if(path==='/auth/me')result={id:'user',organization_id:'org',organization_name:'Inline test',organization_code:'TEST',organization_timezone:'UTC',full_name:'Browser tester',email:'test@example.test',status:'active',is_organization_root:true,roles:['organization_admin'],permissions:['commercial:quotes:read','commercial:quotes:create','masterdata:products:read','masterdata:products:create','masterdata:lists:read'],preferred_locale:'ar',effective_locale:'ar',organization:{id:'org',name:'Inline test',code:'TEST',has_logo:false,default_locale:'ar'}};
     else if(path==='/masterdata/products'&&req.method()==='POST'){result={...req.postDataJSON(),id:'product',code:'PRD-1',actions:['edit'],created_at:'',updated_at:''};products.push(result as Record<string,unknown>);}
     else if(path==='/masterdata/products')result=products;
+    else if(path==='/commercial/customers/lookup')result=[{id:'customer',customer_code:'C-SEARCH',name:'Search customer',name_ar:'عميل البحث',name_en:'Search customer',status:'active'}];
     else if(path==='/masterdata/settings')result={vat_rate:'15',default_currency:'SAR'};
     else if(path==='/commercial/quote-settings/validity')result={quote_validity_days:10,document_language:'ar'};
     else if(path==='/commercial/quotes'&&req.method()==='POST'){quoteWrites++;result={id:'quote'};}
@@ -21,6 +22,13 @@ test('adds a product inside an Arabic quotation and keeps the draft on mobile',a
   });
   await page.goto('/quotes/new');
   await page.addStyleTag({content:'nextjs-portal { display: none !important; }'});
+  const customer=page.getByRole('combobox',{name:ar.customers.picker.choose,exact:true});
+  const lookup=page.waitForRequest(request=>request.url().includes('/commercial/customers/lookup')&&new URL(request.url()).searchParams.get('search')==='البحث');
+  await customer.fill('البحث');
+  await lookup;
+  await page.getByRole('option',{name:/عميل البحث/}).click();
+  await expect(customer).toHaveValue('عميل البحث');
+  await expect(page.locator('input[type="search"]')).toHaveCount(0);
   await page.getByRole('textbox',{name:ar.quotes.fields.notes,exact:true}).fill('ملاحظات العرض باقية');
   const add=page.getByRole('button',{name:md.select.add,exact:true});
   expect((await add.boundingBox())!.height).toBeGreaterThanOrEqual(44);
@@ -41,7 +49,7 @@ test('adds a product inside an Arabic quotation and keeps the draft on mobile',a
   }
   await dialog.getByRole('button',{name:directory.save,exact:true}).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByLabel(ar.quotes.items.fields.productType,{exact:true})).toHaveValue('inline_product');
+  await expect(page.getByLabel(ar.quotes.items.fields.productType,{exact:true})).toHaveValue('منتج جديد');
   await expect(page.getByLabel('عرض إضافي',{exact:true})).toBeVisible();
   await expect(page.getByRole('textbox',{name:ar.quotes.fields.notes,exact:true})).toHaveValue('ملاحظات العرض باقية');
   await expect(page).toHaveURL(/\/quotes\/new$/);expect(quoteWrites).toBe(0);

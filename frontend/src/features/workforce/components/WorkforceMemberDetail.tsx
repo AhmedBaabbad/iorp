@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -452,10 +453,11 @@ export function WorkforceMemberDetail() {
                     <>
                       <p style={styles.linkSubtitle}>{t("linkUserTitle")}</p>
                       <div style={styles.linkActions}>
-                        <select
+                        <RecordCombobox
+                          aria-label={t("linkUserTitle")}
                           style={{ ...sharedStyles.input, maxWidth: "420px" }}
                           value={userId}
-                          onChange={(event) => setUserId(event.target.value)}
+                          onChange={(event) => setUserId(event)}
                           disabled={isSavingLink}
                         >
                           <option value="">{t("selectUserPlaceholder")}</option>
@@ -464,7 +466,7 @@ export function WorkforceMemberDetail() {
                               {user.full_name} ({user.email})
                             </option>
                           ))}
-                        </select>
+                        </RecordCombobox>
                         <button
                           type="button"
                           style={sharedStyles.button}

@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import { useCustomerNames } from "@/features/customers/use-customer-names";
 import Link from "next/link";
@@ -53,9 +54,9 @@ export function CheckCertificatesSection({ checkId }: { checkId: string }) {
     {total > rows.length && <p><Link href={`/quality-certificates?quality_check_id=${checkId}`}>{t("allForCheck", { count: total })}</Link></p>}
     {canCreate && sources && (sources.certifiable ? <div className={s.toolbar} style={{ marginBottom: 0 }}>
       {sources.customers.length > 0 && <label className={s.field}>{t("fields.customer")}
-        <select value={customer} disabled={busy} onChange={e => setCustomer(e.target.value)}>
+        <RecordCombobox aria-label={t("fields.customer")} value={customer} disabled={busy} onChange={e => setCustomer(e)}>
           {sources.customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        </RecordCombobox>
       </label>}
       <label className={s.field}>{t("fields.customerPo")}<input dir="ltr" maxLength={80} value={po} disabled={busy} onChange={e => setPo(e.target.value)} /></label>
       <button type="button" className={`${s.button} ${s.primary}`} disabled={busy} onClick={() => void create()}>{t("actions.create")}</button>

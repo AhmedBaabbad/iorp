@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import { localName } from "@/lib/local-name";
 import Link from "next/link";
@@ -93,9 +94,9 @@ function LegacyValues({ products, onMapped }: { products: Product[]; onMapped: (
       <tbody>{rows.map(r => <tr key={r.value}>
         <td><bdi>«{r.value}»</bdi></td>
         <td>{Object.entries(r.uses).map(([module, count]) => t("use", { module: t(`modules.${module}`), count: String(count) })).join(" · ")}</td>
-        <td>{canMap ? <select aria-label={t("mapTo")} value={chosen[r.value] ?? ""} onChange={e => setChosen(old => ({ ...old, [r.value]: e.target.value }))}>
+        <td>{canMap ? <RecordCombobox aria-label={t("mapTo")} value={chosen[r.value] ?? ""} onChange={e => setChosen(old => ({ ...old, [r.value]: e }))}>
           <option value="">—</option>{products.filter(p => p.active).map(p => <option key={p.id} value={p.id}>{localName(p, locale)}</option>)}
-        </select> : "—"}</td>
+        </RecordCombobox> : "—"}</td>
         <td><span className={s.actions}>
           {canMap && <button type="button" className={`${s.button} ${s.primary}`} disabled={!chosen[r.value] || busy !== null} onClick={() => void map(r.value)}>{t("map")}</button>}
           {canCreate && <Link className={s.button} href={`/master-data/products/new?name=${encodeURIComponent(r.value.trim())}&key=${encodeURIComponent(r.suggested_key)}`}>

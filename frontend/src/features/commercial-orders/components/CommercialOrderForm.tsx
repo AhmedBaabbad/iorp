@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
 import Link from "next/link";
@@ -183,10 +184,10 @@ export function CommercialOrderForm({ order }: { order?: CommercialOrderData }) 
             </fieldset>
             {values.source === "quote" && (
               <label className={s.field}>{t("fields.quote")} *
-                <select value={values.quote_id} disabled={busy || loadingQuote || !values.customer_id} onChange={(e) => void chooseQuote(e.target.value)}>
+                <RecordCombobox aria-label={t("fields.quote")} value={values.quote_id} disabled={busy || loadingQuote || !values.customer_id} onChange={(e) => void chooseQuote(e)}>
                   <option value="">{quotes.length ? t("fields.selectQuote") : t("fields.noAcceptedQuotes")}</option>
                   {quotes.map((q) => <option key={q.id} value={q.id}>{q.quote_number}</option>)}
-                </select>
+                </RecordCombobox>
                 {loadingQuote && <span className={s.muted}>{messages("loading.fetching")}</span>}
               </label>
             )}

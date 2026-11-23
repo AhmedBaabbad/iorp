@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
@@ -117,10 +118,10 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
 
   const workerLabel = (w: Worker) => `${w.employee_code} — ${w.full_name}${w.status === "active" ? "" : ` ${t("inactiveWorker")}`}`;
   // Only active workers can join a team; the current value stays visible when it is locked.
-  const workerSelect = (value: string, change: (id: string) => void, { optional = false, activeOnly = true, locked = false } = {}) => <select aria-label={t("worker")} style={styles.input} value={value} onChange={e => change(e.target.value)} required={!optional} disabled={locked}>
+  const workerSelect = (value: string, change: (id: string) => void, { optional = false, activeOnly = true, locked = false } = {}) => <RecordCombobox aria-label={t("worker")} style={styles.input} value={value} onChange={e => change(e)} required={!optional} disabled={locked}>
     <option value="">{t("selectWorker")}</option>
     {workers.filter(w => !activeOnly || w.status === "active" || w.id === value).map(w => <option key={w.id} value={w.id}>{workerLabel(w)}</option>)}
-  </select>;
+  </RecordCombobox>;
   const memberFields = (m: Member, change: (m: Member) => void, locked = false) => <>
     {workerSelect(m.workforce_member_id, id => change({ ...m, workforce_member_id: id }), { locked })}
     <input style={styles.input} aria-label={t("role")} placeholder={t("role")} value={orderId ? m.role_code ?? "" : m.role_note ?? ""} onChange={e => change({ ...m, [orderId ? "role_code" : "role_note"]: e.target.value })} required={Boolean(orderId)} maxLength={orderId ? 64 : 255} />
@@ -160,11 +161,11 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
     }} style={{ display: "grid", gap: 12, marginTop: 20 }}>
       <h3>{replacement ? t("replacementRoster") : t("newRecord")}</h3>
       {!orderId && <label>{t("name")}<input style={styles.input} value={name} onChange={e => setName(e.target.value)} maxLength={255} /></label>}
-      <label>{t("shift")}<select aria-label={t("shift")} style={styles.input} required={!orderId} value={shift} disabled={Boolean(replacement)} onChange={e => { setShift(e.target.value); setRoster(""); }}><option value="">{t("selectShift")}</option>{shifts.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+      <label>{t("shift")}<RecordCombobox aria-label={t("shift")} style={styles.input} required={!orderId} value={shift} disabled={Boolean(replacement)} onChange={e => { setShift(e); setRoster(""); }}><option value="">{t("selectShift")}</option>{shifts.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</RecordCombobox></label>
       <label>{t("dateFrom")}<input style={styles.input} type="date" required value={day} onChange={e => { setDay(e.target.value); setRoster(""); }} /></label>
       {!orderId && <label>{t("effectiveTo")}<input style={styles.input} type="date" min={day} value={until} onChange={e => setUntil(e.target.value)} /></label>}
-      {orderId && <><label>{t("workCenter")}<select aria-label={t("workCenter")} style={styles.input} required value={center} onChange={e => setCenter(e.target.value)}><option value="">—</option>{centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
-        <label>{t("roster")}<select aria-label={t("roster")} style={styles.input} value={roster} onChange={e => { setRoster(e.target.value); const r = rosters.find(r => r.id === e.target.value); if (r) setShift(r.shift_definition_id || ""); }}><option value="">—</option>{rosters.filter(r => (!shift || r.shift_definition_id === shift) && day && r.effective_from! <= day && (!r.effective_to || r.effective_to >= day)).map(r => <option key={r.id} value={r.id}>{r.shift_name} — {r.name || r.effective_from}</option>)}</select></label>
+      {orderId && <><label>{t("workCenter")}<RecordCombobox aria-label={t("workCenter")} style={styles.input} required value={center} onChange={e => setCenter(e)}><option value="">—</option>{centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</RecordCombobox></label>
+        <label>{t("roster")}<RecordCombobox aria-label={t("roster")} style={styles.input} value={roster} onChange={e => { setRoster(e); const r = rosters.find(r => r.id === e); if (r) setShift(r.shift_definition_id || ""); }}><option value="">—</option>{rosters.filter(r => (!shift || r.shift_definition_id === shift) && day && r.effective_from! <= day && (!r.effective_to || r.effective_to >= day)).map(r => <option key={r.id} value={r.id}>{r.shift_name} — {r.name || r.effective_from}</option>)}</RecordCombobox></label>
         <button style={styles.secondaryButton} type="button" disabled={!roster} onClick={() => {
           const r = rosters.find(r => r.id === roster);
           const active = new Set(workers.filter(w => w.status === "active").map(w => w.id));

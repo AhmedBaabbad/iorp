@@ -1,8 +1,9 @@
 from datetime import date
 from decimal import Decimal
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
+from app.production.api.unit_validation import ProductionUnitUpdate, known_new_unit
 from app.core.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.core.types import ISODatetime
 from app.production.domain.enums import ProductionAllocationStatus, ProductionDemandPriority, ProductionDemandStatus
@@ -12,21 +13,30 @@ class DemandInput(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 
-class CreateDemandItemRequest(DemandInput):
+class DemandItemFields(DemandInput):
     line_no: int | None = Field(default=None, ge=1)
     product_type: str | None = Field(default=None, max_length=100)
     target_spec_json: dict[str, Any] | None = None
     required_quantity: Decimal = Field(gt=0, max_digits=15, decimal_places=3)
-    unit: str = Field(min_length=1, max_length=20)
+    unit: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=20)
     notes: str | None = None
 
 
-class UpdateDemandItemRequest(DemandInput):
+class CreateDemandItemRequest(DemandItemFields):
+    _known_unit = field_validator("unit")(known_new_unit)
+
+
+class ReplaceDemandItemRequest(DemandItemFields, ProductionUnitUpdate):
+    # Identifies the saved line when an edit reorders it. Legacy clients may still use line_no.
+    id: UUID | None = None
+
+
+class UpdateDemandItemRequest(DemandInput, ProductionUnitUpdate):
     line_no: int | None = Field(default=None, ge=1)
     product_type: str | None = Field(default=None, max_length=100)
     target_spec_json: dict[str, Any] | None = None
     required_quantity: Decimal | None = Field(default=None, gt=0, max_digits=15, decimal_places=3)
-    unit: str | None = Field(default=None, min_length=1, max_length=20)
+    unit: Annotated[str | None, StringConstraints(strip_whitespace=False)] = Field(default=None, min_length=1, max_length=20)
     notes: str | None = None
 
     @model_validator(mode="after")
@@ -91,7 +101,7 @@ class UpdateDemandRequest(DemandInput):
     priority: ProductionDemandPriority | None = None
     notes: str | None = None
     # An atomic replacement is used by the edit form; individual item routes remain available.
-    items: list[CreateDemandItemRequest] | None = None
+    items: list[ReplaceDemandItemRequest] | None = None
 
     @model_validator(mode="after")
     def required_values(self):
@@ -114,7 +124,7 @@ class DemandItemAllocationResponse(BaseModel):
     release_reason: str | None
 
 
-class DemandItemResponse(CreateDemandItemRequest):
+class DemandItemResponse(DemandItemFields):
     source_order_item_id: UUID | None = None
     # allocated_quantity is kept as an alias of active_allocated_quantity for existing clients.
     allocated_quantity: Decimal

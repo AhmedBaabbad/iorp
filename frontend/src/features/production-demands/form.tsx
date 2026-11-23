@@ -1,4 +1,5 @@
 "use client";
+import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
 import { numericSpecOrText, formatSpecValue } from "@/lib/spec-value";
@@ -7,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import {UnitSelect} from "@/components/forms/UnitSelect";
 import { PageFrame } from "@/components/layout/page-frame";
 import { ProductSelect, useProductName, useProducts } from "@/features/masterdata";
 import { SpecList } from "@/features/commercial-orders/components/sales-lifecycle";
@@ -92,7 +94,7 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
         const spec: unknown = JSON.parse(row.specText);
         if (!spec || Array.isArray(spec) || typeof spec !== "object") throw new Error();
         if (!(Number(row.required_quantity) > 0) || !row.unit.trim() || !row.product_type?.trim()) { setError("invalid_item"); return; }
-        items.push({ line_no: index + 1, product_type: row.product_type || null, target_spec_json: spec as Record<string, unknown>, required_quantity: row.required_quantity, unit: row.unit, notes: row.notes || null });
+        items.push({ ...(row.id && (id || savedId) ? {id:row.id} : {}), line_no: index + 1, product_type: row.product_type || null, target_spec_json: spec as Record<string, unknown>, required_quantity: row.required_quantity, unit: row.unit, notes: row.notes || null });
       }
     } catch { setError("invalid_specs"); return; }
     setBusy(true);
@@ -115,8 +117,8 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
     {notice && <p className={s.success} role="status">{notice}</p>}
     {loading ? <p>{t("loading")}</p> : !editable ? <ErrorMessage code="demand_not_editable" /> : <form onKeyDownCapture={unsaved.onKeyboardInteraction} onChangeCapture={unsaved.onInteraction} onClickCapture={unsaved.onInteraction} onSubmit={save}>{unsaved.confirmation}
       <fieldset disabled={busy} className={s.panel}><legend>{t("details")}</legend><div className={s.grid}>
-        <label className={s.field}>{t("searchCustomer")}<input disabled={status !== "draft"} value={search} onChange={e => setSearch(e.target.value)} /></label>
-        <label className={s.field}>{t("customer")}<select required disabled={status !== "draft" || !!salesOrder} value={customerId} onChange={e => { setCustomer(e.target.value); setSelectedCustomer(customers.find(c => c.id === e.target.value) ?? null); }}><option value="">{t("selectCustomer")}</option>{customerOptions.map(c => <option key={c.id} value={c.id}>{c.code} · {customerDisplayName(c, locale)}</option>)}</select></label>
+
+        <label className={s.field}>{t("customer")}<RecordCombobox onSearch={setSearch} aria-label={t("customer")} required disabled={status !== "draft" || !!salesOrder} value={customerId} onChange={e => { setCustomer(e); setSelectedCustomer(customers.find(c => c.id === e) ?? null); }}><option value="">{t("selectCustomer")}</option>{customerOptions.map(c => <option key={c.id} value={c.id}>{c.code} · {customerDisplayName(c, locale)}</option>)}</RecordCombobox></label>
         {salesOrder && <div className={s.field}>{t("fromSalesOrder.salesOrder")}<a href={`/commercial-orders/${salesOrder.id}`}><bdi>{salesOrder.number}</bdi></a></div>}
         <label className={s.field}>{t("requestDate")}<input type="date" required value={requestDate} onChange={e => setRequestDate(e.target.value)} /></label>
         <label className={s.field}>{t("requestedDeliveryDate")}<input type="date" value={delivery} onChange={e => setDelivery(e.target.value)} /></label>
@@ -138,7 +140,7 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
         <label className={s.field}>{t("productType")}<ProductSelect ariaLabel={t("productType")} value={row.product_type ?? ""}
           onChange={(key, product) => update(row.key, { product_type: key, ...(product?.default_unit && !row.unit ? { unit: product.default_unit } : {}) })} /></label>
         <label className={s.field}>{t("quantity")}<input required type="number" min="0.001" step="0.001" value={row.required_quantity} onChange={e => update(row.key, { required_quantity: e.target.value })} /></label>
-        <label className={s.field}>{t("unit")}<input list="demand-units" required maxLength={20} value={row.unit} onChange={e => update(row.key, { unit: e.target.value })} /></label>
+        <label className={s.field}>{t("unit")}<UnitSelect ariaLabel={t("unit")} value={row.unit} onChange={unit=>update(row.key,{unit})}/></label>
         {(products?.find(x => x.key === row.product_type)?.properties ?? []).map(q => <label key={q.key} className={s.field}>
           {locale === "ar" ? q.name_ar : q.name_en}{q.unit ? ` (${units.has(q.unit) ? units(q.unit) : q.unit})` : ""}
           {q.kind === "choice" ? <select value={specValue(row, q.key)} onChange={e => updateSpec(row, q.key, e.target.value)}><option value="">—</option>
@@ -148,7 +150,6 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
         <label className={s.field}>{t("itemNotes")}<textarea value={row.notes ?? ""} onChange={e => update(row.key, { notes: e.target.value })} /></label>
       </div><button type="button" className={s.button} onClick={() => setRows(old => old.filter(r => r.key !== row.key))}>{t("removeItem")}</button></section>)}
       </fieldset>}
-      <datalist id="demand-units">{["kg", "roll", "pcs", "m"].map(v => <option key={v} value={v}>{t(`units.${v}`)}</option>)}</datalist>
       <div className={s.toolbar}><button disabled={busy} className={`${s.button} ${s.primary}`} type="submit" value="draft">{id || savedId ? t("saveChanges") : t("saveDraft")}</button>{canRelease && status === "draft" && <button disabled={busy} className={s.button} type="submit" value="ready">{t("saveAndReady")}</button>}</div>
     </form>}
   </PageFrame>;
