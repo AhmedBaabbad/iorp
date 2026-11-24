@@ -61,6 +61,7 @@ export type ProductionOrderListItem = {
 };
 
 export type ProductionOrderData = ProductionOrderListItem & {
+  reschedule_history?: OrderRescheduleHistoryEntry[];
   allocations: { id: string; production_demand_id: string; production_demand_item_id: string; demand_number: string; customer_id?: string | null; customer_name: string | null; demand_item_line_no: number; allocated_quantity: string; unit: string; status: "active" | "released"; allocated_at: string; released_at: string | null; release_reason: string | null; target_spec_json?: Record<string, unknown> | null; production_order_item_id?: string | null; order_line_no?: number | null;
     // The order's status when the allocation was made; added_after_start: made while the order was in progress or on hold.
     order_status_at_allocation?: string; added_after_start?: boolean }[];
@@ -74,6 +75,11 @@ export type ProductionOrderData = ProductionOrderListItem & {
   lifecycle?: OrderLifecycle | null;
   target_spec_json: Record<string, unknown> | null;
   notes: string | null;
+};
+
+export type OrderRescheduleHistoryEntry = {
+  id:string;created_at:string;actor_user_id:string|null;actor_name:string|null;
+  old_start:string;new_start:string;old_end:string;new_end:string;reason:string|null;
 };
 
 export type CreateProductionOrderRequest = {

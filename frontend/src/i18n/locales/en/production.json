@@ -281,6 +281,36 @@
       "choose": "Choose an order",
       "none": "No matching orders",
       "loadFailed": "Could not load production orders. Try again."
+    },
+    "reschedule": {
+      "title": "Reschedule planning",
+      "edit": "Edit planning",
+      "extend": "Extend",
+      "extendStart": "Reschedule overdue start",
+      "extendFinish": "Extend overdue finish",
+      "start": "Planned start date",
+      "end": "Planned finish date",
+      "reason": "Reason for rescheduling",
+      "reasonHint": "Required, 3–500 characters.",
+      "startLocked": "The order has started; its planned start date is locked.",
+      "fromTo": "From <date>{from}</date> to <date>{to}</date>",
+      "daysChange": "Planned finish change: {days} days",
+      "extendEnd": "Extend the planned finish date",
+      "confirmAttach": "Confirm allocation",
+      "overdue": "Overdue",
+      "historyAction": "Planning rescheduled",
+      "reasonNotProvided": "No reason supplied through the general update",
+      "errors": {
+        "RESCHEDULE_NOT_ALLOWED": "Completed, closed or cancelled orders cannot be rescheduled.",
+        "PLANNED_START_LOCKED": "The order has already started. Its planned start date cannot change.",
+        "INVALID_PLANNED_DATES": "The planned finish cannot be before the planned start.",
+        "NOTHING_CHANGED": "The planned dates have not changed.",
+        "RESCHEDULE_REASON_INVALID": "Enter a reason between 3 and 500 characters.",
+        "INVALID_EXTENSION_DATE": "Choose a finish date later than the current planned finish.",
+        "FORBIDDEN": "You do not have permission to reschedule this order.",
+        "PRODUCTION_ORDER_NOT_FOUND": "The production order is no longer available.",
+        "request_failed": "The planning could not be saved. Try again."
+      }
     }
   },
   "downtimeEvents": {

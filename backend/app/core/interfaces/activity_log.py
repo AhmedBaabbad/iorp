@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 
 class ActivityLogInterface(Protocol):
+    def log_activity_strict(self, db: Session, organization_id: UUID, action: str, entity_type: str, **kwargs) -> None: ...
     def log_activity(
         self, db: Session, organization_id: UUID, action: str, entity_type: str,
         entity_id: UUID | None = None, entity_name: str | None = None,
@@ -16,6 +17,9 @@ class ActivityLogInterface(Protocol):
 
 
 class NullActivityLogger:
+    def log_activity_strict(self, *args, **kwargs) -> None:
+        raise RuntimeError("Required activity logger unavailable")
+
     def log_activity(self, *args, **kwargs) -> None:
         return None
 

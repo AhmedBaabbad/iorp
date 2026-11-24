@@ -218,7 +218,11 @@
     "auto_locked_until": "Locked until",
     "month": "Month",
     "rows": "Rows",
-    "automatic": "Automatically"
+    "automatic": "Automatically",
+    "old_start": "Previous planned start",
+    "new_start": "New planned start",
+    "old_end": "Previous planned finish",
+    "new_end": "New planned finish"
   },
   "values": {
     "added": "added",

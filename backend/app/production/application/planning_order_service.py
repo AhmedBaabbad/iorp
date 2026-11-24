@@ -115,6 +115,9 @@ class PlanningOrderService:
     def eligible_orders(self, demand_item_id):
         """Open orders a demand item may join: same organization, product type and unit, specifications compatible with
         the order's current allocations, and the item not already in the order."""
+        from app.production.application.order_status_service import organization_today
+        from app.production.domain.order_lifecycle import finish_overdue
+        today = organization_today(self.db, self.org_id)
         item = self.db.scalar(select(ProductionDemandItem).join(ProductionDemand).where(
             ProductionDemand.organization_id == self.org_id, ProductionDemandItem.id == demand_item_id))
         if item is None:
@@ -137,7 +140,8 @@ class PlanningOrderService:
             WorkCenter.organization_id == self.org_id, WorkCenter.id.in_({o.work_center_id for o in eligible}))).all()) if eligible else {}
         return [dict(id=o.id, production_order_number=o.production_order_number, status=ProductionOrderStatus(o.status).value,
                      work_center_name=centers.get(o.work_center_id), product_type=o.product_type, unit=o.unit, planned_quantity=o.planned_quantity,
-                     planned_start_date=o.planned_start_date, planned_end_date=o.planned_end_date) for o in eligible]
+                     planned_start_date=o.planned_start_date, planned_end_date=o.planned_end_date,
+                     finish_overdue=finish_overdue(o.status, o.planned_end_date, today)) for o in eligible]
 
     def _audit(self, action, order, **details):
         get_registered_activity_logger().log_activity(self.db, self.org_id, action, "production_order", order.id, order.production_order_number,

@@ -427,6 +427,12 @@ class ProductionOrderService:
 
         data.validate_unit_change(production_order.unit)
         payload = data.model_dump(exclude_unset=True)
+        old_start, old_end = production_order.planned_start_date, production_order.planned_end_date
+        new_start, new_end = payload.get("planned_start_date", old_start), payload.get("planned_end_date", old_end)
+        schedule_changed = (new_start, new_end) != (old_start, old_end)
+        if schedule_changed:
+            from app.production.domain.order_lifecycle import validate_reschedule
+            validate_reschedule(production_order, new_start, new_end)
         if payload.get("unit") == production_order.unit:
             payload.pop("unit", None)
         if "target_spec_json" in payload:
@@ -458,10 +464,16 @@ class ProductionOrderService:
             setattr(production_order, field, value)
 
         try:
+            if schedule_changed:
+                from app.production.application.order_reschedule_service import audit_reschedule
+                audit_reschedule(self.db, tenant, production_order, old_start, old_end)
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
             raise ValueError("Production order could not be saved due to invalid or duplicate data.") from exc
+        except Exception:
+            self.db.rollback()
+            raise
 
         self.db.refresh(production_order)
         return production_order

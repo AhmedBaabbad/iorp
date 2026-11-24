@@ -1643,6 +1643,10 @@
     "category": "tenant_resource_operation",
     "isolation_coverage": "requires_route_specific_evidence"
   },
+  "POST /api/v1/production/production-orders/{production_order_id}/reschedule": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "requires_route_specific_evidence"
+  },
   "POST /api/v1/production/production-orders/{production_order_id}/result/entries": {
     "category": "tenant_resource_operation",
     "isolation_coverage": "requires_route_specific_evidence"

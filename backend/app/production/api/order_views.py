@@ -4,6 +4,7 @@ from app.core.permission import has_permission
 from app.dependencies import CurrentUserContext, get_current_user
 from app.production.application.order_status_service import OrderStatusService
 from app.production.application.planning_order_service import order_response
+from app.production.application.order_reschedule_service import reschedule_history
 
 
 def permission_check(current: CurrentUserContext = Depends(get_current_user)):
@@ -15,6 +16,7 @@ def with_lifecycle(order, db, tenant, customers, can):
     """Order detail plus its lifecycle: status version, actual dates, late flags and allowed actions."""
     result = order_response(order, db, tenant, customers)
     result["lifecycle"] = OrderStatusService(db, tenant).describe(order, can)
+    result["reschedule_history"] = reschedule_history(db, tenant.organization_id, order.id)
     return result
 
 
