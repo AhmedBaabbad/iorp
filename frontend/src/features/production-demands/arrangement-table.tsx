@@ -1,4 +1,5 @@
 "use client";
+import {formatSpecValue,formatSpecification} from "@/lib/spec-value";
 import { useCustomerNames } from "@/features/customers/use-customer-names";
 import {useUnitLabel} from "@/components/UnitLabel";
 import type { ReactNode } from "react";
@@ -14,11 +15,11 @@ export type ArrangedLine = { key: string; line_no: number; target_spec_json: Rec
 
 function specValue(spec: Record<string, unknown> | null, column: string) {
   const name = ALIASES[column].find(key => spec?.[key] !== undefined && spec?.[key] !== null && spec?.[key] !== "");
-  return name ? String(spec![name]) : "—";
+  return name ? formatSpecValue(spec![name]) : "—";
 }
 function otherSpecs(spec: Record<string, unknown> | null) {
   const known = new Set(Object.values(ALIASES).flat());
-  return Object.entries(spec ?? {}).filter(([key]) => !known.has(key)).map(([key, value]) => `${key}: ${typeof value === "object" ? JSON.stringify(value) : String(value)}`).join(" · ");
+  return formatSpecification(Object.fromEntries(Object.entries(spec??{}).filter(([key])=>!known.has(key))));
 }
 
 // One row per specification line (width -> color -> thickness -> weight), then the demands feeding it.

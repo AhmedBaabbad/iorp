@@ -1,5 +1,6 @@
 // Pure helpers for the result screens. The server enforces every rule; these only guide the user.
 import { fromMilli, toMilli } from "@/features/production-demands/planning-lifecycle";
+import {formatSpecification} from "@/lib/spec-value";
 import type { Disposition, OrderResult, ResultOriginal } from "./types";
 import {  } from "@/lib/production-permissions";
 
@@ -44,8 +45,7 @@ export function exceeds(room: CustomerRoom | null, quantity: string) {
 }
 
 export function specSummary(spec: Record<string, unknown> | null | undefined) {
-  return Object.entries(spec ?? {}).filter(([, v]) => v !== null && v !== "" && v !== undefined)
-    .map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`).join(" · ");
+  return formatSpecification(spec);
 }
 
 export function isNegative(value: string) {

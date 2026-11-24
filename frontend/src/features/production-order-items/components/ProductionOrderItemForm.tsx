@@ -1,4 +1,5 @@
 "use client";
+import {normalizeSpecDraft} from "@/lib/spec-rows";
 import {UnitSelect} from "@/components/forms/UnitSelect";
 import { SpecEditor } from "@/components/forms/SpecEditor";
 import { useProducts } from "@/features/masterdata";
@@ -95,7 +96,8 @@ export function ProductionOrderItemForm({
     setIsSubmitting(true);
 
     try {
-      await createItem(productionOrderId, toCreateRequest(values, t));
+      const request=toCreateRequest(values,t);
+      await createItem(productionOrderId,{...request,target_spec_json:normalizeSpecDraft(request.target_spec_json,products?.find(p=>p.key===productType)?.properties)});
       setValues(defaultValues);
       await onCreated();
     } catch (caughtError) {

@@ -35,6 +35,29 @@ def test_normalize_and_format_preserve_scalar_values():
     assert format_spec_value({'min': .55, 'max': .6}, 'mm', 'en') == '0.55 – 0.60 mm'
 
 
+@pytest.mark.parametrize('lang', ['ar', 'en'])
+def test_report_paths_keep_shared_trailing_zero_precision(lang):
+    from app.core.units import spec_text
+    from app.core.specifications import thickness_value
+    from app.commercial.reporting.quotation.builder import spec_in
+    from app.production.reporting.demand_export import _spec
+    from app.quality.reporting.certificate import _limits
+    from app.quality.reporting.builders import spec_text as quality_spec_text
+    value={'min': .7, 'max': .75}
+    spec={'thickness_mm':value}
+    expected='0.70 – 0.75'
+    assert format_spec_value(value)==expected
+    assert spec_text(spec)==expected
+    assert spec_in(None,spec,lang)==expected
+    assert expected in _spec(spec)
+    assert expected in quality_spec_text(spec,lang)
+    assert _limits({'lower': '0.70','upper':'0.75'},lang=='ar')==expected
+    # Delivery and return PDFs use this same conversion; production PDFs use shared columns.
+    assert format_spec_value(thickness_value(Decimal('.70'),Decimal('.75')))==expected
+    item=NS(product_type='film',requested_spec_json=spec)
+    assert specification_columns([item],{},lang).rows==[[f'thickness_mm: {expected}']]
+
+
 def test_template_opt_in_and_property_validation():
     prop = PropertyInput(key='thickness', name_ar='السماكة', name_en='Thickness', kind='text', allows_range=True)
     with pytest.raises(MasterDataError, match='RANGE_ONLY_FOR_NUMBER'):

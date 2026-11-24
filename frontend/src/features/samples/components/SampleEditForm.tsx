@@ -1,4 +1,5 @@
 "use client";
+import {normalizeSpecDraft, type SpecTemplateProperty} from "@/lib/spec-rows";
 import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
 import Link from "next/link";
@@ -114,6 +115,7 @@ export function SampleEditForm() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [specReady, setSpecReady] = useState(false);
+  const [specTemplate,setSpecTemplate]=useState<SpecTemplateProperty[]>([]);
   const [specChanged, setSpecChanged] = useState(false);
   const [productDefinition, setProductDefinition] = useState<SampleProductDefinition | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -191,7 +193,7 @@ export function SampleEditForm() {
 
     try {
       const payload: UpdateSampleRequest = {
-        ...(specChanged ? { product_type: values.product_type, property_values: values.property_values } : {}),
+        ...(specChanged ? { product_type: values.product_type, property_values: normalizeSpecDraft(values.property_values,specTemplate) } : {}),
         sample_decision: values.sample_decision,
         is_sample_requested: values.is_sample_requested,
         requested_sample_quantity: values.is_sample_requested
@@ -356,7 +358,7 @@ export function SampleEditForm() {
                 />
               </label>
             </div>
-          <SampleProductFields productKey={values.product_type} values={values.property_values} original={productDefinition} unchanged={!specChanged} disabled={isSubmitting} onReady={setSpecReady}
+          <SampleProductFields productKey={values.product_type} values={values.property_values} original={productDefinition} unchanged={!specChanged} disabled={isSubmitting} onReady={setSpecReady} onTemplate={setSpecTemplate}
             onChange={(key, specs, unit) => { setSpecChanged(true); setValues(v => ({ ...v, product_type: key, property_values: specs, ...(unit !== undefined ? { unit: unit ?? "" } : {}) })); }} />
 
 

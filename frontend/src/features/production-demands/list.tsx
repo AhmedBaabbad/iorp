@@ -1,4 +1,5 @@
 "use client";
+import {formatSpecValue} from "@/lib/spec-value";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { customerDisplayName } from "@/lib/customer-name";
 import Link from "next/link";
@@ -124,7 +125,7 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
         const position = (page - 1) * 20 + index + 1;
         return <tr key={d.id} className={overdue ? s.overdue : ""}>
           {planning && <td>{d.planning_sequence ?? position}</td>}<td>{canRead ? <Link href={`/production/demands/${d.id}`}>{d.demand_number}</Link> : d.demand_number}</td><td>{customerDisplayName(d.customer, locale)}<div className={s.muted}>{d.customer.code}</div></td>
-          {planning ? <><td>{d.items?.map(i => i.product_type).filter(Boolean).join(", ")}</td>{["width_mm", "thickness_mm", "color", "roll_weight_kg"].map(k => <td key={k}>{String(d.spec_summary?.[k] ?? "")}</td>)}<td><Specs value={d.spec_summary ?? null} /></td><PlanningQuantities demand={d} /></> : <><td>{d.quote?.number ?? t("none")}</td><td>{d.request_date}</td><td>{t("itemCount", { count: d.item_count })}</td></>}
+          {planning ? <><td>{d.items?.map(i => i.product_type).filter(Boolean).join(", ")}</td>{["width_mm", "thickness_mm", "color", "roll_weight_kg"].map(k => <td key={k}>{formatSpecValue(d.spec_summary?.[k])}</td>)}<td><Specs value={d.spec_summary ?? null} /></td><PlanningQuantities demand={d} /></> : <><td>{d.quote?.number ?? t("none")}</td><td>{d.request_date}</td><td>{t("itemCount", { count: d.item_count })}</td></>}
           {!planning && <><td>{Object.entries(d.quantities_by_unit ?? {}).map(([unit, quantity]) => <div key={unit}>{quantity} {unit}</div>)}</td><td>{new Date(d.created_at).toLocaleDateString()}</td></>}
           <td>{d.requested_delivery_date ?? t("none")}{overdue && <div>{p("overdue")}</div>}</td><td><Badge value={d.priority} priority /></td><td><Badge value={d.status} /></td>
           {!planning && <td><div className={s.actions}><Link className={s.button} href={`/production/demands/${d.id}`}>{t("detailTitle")}</Link>{canUpdate && <>{["draft", "ready_for_planning"].includes(d.status) && <Link className={s.button} href={`/production/demands/${d.id}/edit`}>{t("editTitle")}</Link>}{d.status === "draft" && <button disabled={busy} className={s.button} onClick={() => changeStatus(d.id, "ready_for_planning")}>{t("markReady")}</button>}{["draft", "ready_for_planning"].includes(d.status) && <button disabled={busy} className={s.button} onClick={() => changeStatus(d.id, "cancelled")}>{t("cancel")}</button>}</>}</div></td>}

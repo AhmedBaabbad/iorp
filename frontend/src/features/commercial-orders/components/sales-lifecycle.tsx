@@ -1,5 +1,5 @@
 "use client";
-import { formatSpecValue, isSpecRange } from "@/lib/spec-value";
+import { specificationRows } from "@/lib/spec-value";
 
 import { useLocale, useTranslations } from "next-intl";
 
@@ -59,27 +59,9 @@ export function SpecList({ productKey, spec }: { productKey: string; spec: Recor
   const locale = useLocale();
   const units = useTranslations("common.units.units");
   const product = useProducts()?.find((p) => p.key === productKey);
-  const entries = Object.entries(spec ?? {}).filter(([, v]) => v !== null && v !== "");
-  if (entries.length === 0) return null;
-  const ordered = product
-    ? [...entries].sort(([a], [b]) => indexOf(product.properties, a) - indexOf(product.properties, b))
-    : entries;
-  return (
-    <ul style={{ margin: "6px 0 0", paddingInlineStart: 18 }} className={s.muted}>
-      {ordered.map(([key, raw]) => {
-        const prop = product?.properties.find((p) => p.key === key);
-        const name = prop ? (locale === "ar" ? prop.name_ar : prop.name_en) : key;
-        const option = prop?.options?.find((o) => o.value === raw);
-        const value = option ? (locale === "ar" ? option.label_ar : option.label_en)
-          : formatSpecValue(raw);
-        const unit = prop?.unit ? ` ${units.has(prop.unit) ? units(prop.unit) : prop.unit}` : "";
-        return <li key={key}><strong>{name}</strong>: <bdi dir={isSpecRange(raw) ? "ltr" : "auto"}>{value}{unit}</bdi></li>;
-      })}
-    </ul>
-  );
-}
-
-function indexOf(properties: { key: string }[], key: string) {
-  const i = properties.findIndex((p) => p.key === key);
-  return i === -1 ? properties.length : i;
+  const rows=specificationRows(spec,{properties:product?.properties,locale,unitLabel:unit=>units.has(unit)?units(unit):unit});
+  if(!rows.length)return null;
+  return <ul style={{margin:"6px 0 0",paddingInlineStart:18}} className={s.muted}>
+    {rows.map(row=><li key={row.key}><strong>{row.name}</strong>: <bdi dir={row.range?"ltr":"auto"}>{row.valueWithUnit}</bdi></li>)}
+  </ul>;
 }

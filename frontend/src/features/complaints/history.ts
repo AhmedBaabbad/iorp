@@ -4,6 +4,7 @@
  * a waiting reason) still read.
  */
 import type { ComplaintEvent } from './api';
+import {formatSpecification} from '@/lib/spec-value';
 
 type T = (key: string, values?: Record<string, string | number>) => string;
 type Has = (key: string) => boolean;
@@ -33,7 +34,7 @@ export function describeEvent(event: ComplaintEvent, t: T, has: Has, date: (valu
     for (const key of FIELDS) if (fields[key]) lines.push(t('history.field', { field: t(`investigation.${key}`), value: text(fields[key]) }));
     for (const item of (d.items ?? []) as Record<string, unknown>[]) {
       const measured = ((ar ? item.measured : item.measured_en) ?? {}) as Record<string, unknown>;
-      const values = Object.entries(measured).map(([name, value]) => `${name} ${text(value)}`).join(ar ? '، ' : ', ');
+      const values = formatSpecification(measured,{separator:ar?'، ':', '});
       if (values) lines.push(t('history.measured', { product: text(item.product), values }));
       if (item.confirmed_quantity) lines.push(t('history.confirmed', { product: text(item.product), quantity: text(item.confirmed_quantity) }));
     }

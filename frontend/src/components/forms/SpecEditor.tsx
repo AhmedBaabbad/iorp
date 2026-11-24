@@ -7,6 +7,9 @@ import { useEffect, useRef, useState } from "react";
 import { sharedStyles } from "@/styles/shared-styles";
 
 import { rowsToSpec, specToRows, templateSpec, type Row, type SpecTemplateProperty } from "@/lib/spec-rows";
+import {formatSpecValue} from "@/lib/spec-value";
+
+function storedSpec(value:string):Record<string,unknown>{try{const parsed=JSON.parse(value||"{}");return parsed&&typeof parsed==="object"&&!Array.isArray(parsed)?parsed:{};}catch{return {};}}
 
 function split(value: string, template: SpecTemplateProperty[]): { values: Record<string, string>; extra: Row[] } {
   const known = new Set(template.map(p => p.key));
@@ -29,12 +32,14 @@ export function SpecEditor({ value, onChange, disabled, template }: {
   const [values, setValues] = useState<Record<string, string>>(() => split(value, props).values);
   const [rows, setRows] = useState<Row[]>(() => split(value, props).extra);
   const emitted = useRef(value);
+  const original=useRef(storedSpec(value));
   const shape = props.map(p => p.key).join("|");
 
   // A value loaded later (edit form) or another product's template replaces the fields; our own edits do not.
   useEffect(() => {
     if (value !== emitted.current) {
       emitted.current = value;
+      original.current=storedSpec(value);
       const next = split(value, props);
       setValues(next.values); setRows(next.extra);
     }
@@ -46,14 +51,20 @@ export function SpecEditor({ value, onChange, disabled, template }: {
 
   function emit(nextValues: Record<string, string>, nextRows: Row[]) {
     setValues(nextValues); setRows(nextRows);
-    const json = props.length ? templateSpec(props, nextValues, nextRows) : rowsToSpec(nextRows);
+    const json = JSON.stringify(Object.fromEntries([...Object.entries(nextValues).filter(([,text])=>text!==""),...nextRows.filter(row=>row.key.trim()).map(row=>[row.key.trim(),untouchedExtra(row)])]));
     emitted.current = json;
     onChange(json);
+  }
+  function untouchedExtra(row:Row){return row.key in original.current&&formatSpecValue(original.current[row.key])===row.value?original.current[row.key]:row.value;}
+  function commit(){
+    const parsed=storedSpec(props.length?templateSpec(props,values,rows):rowsToSpec(rows));
+    for(const row of rows)if(row.key in parsed&&untouchedExtra(row)!==row.value)parsed[row.key]=untouchedExtra(row);
+    const json=Object.keys(parsed).length?JSON.stringify(parsed):"";emitted.current=json;onChange(json);
   }
   const label = (p: SpecTemplateProperty) => `${locale === "ar" ? p.name_ar : p.name_en}${p.unit ? ` (${units.has(p.unit) ? units(p.unit) : p.unit})` : ""}${p.required ? " *" : ""}`;
 
   return (
-    <fieldset style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "12px", display: "grid", gap: "8px" }}>
+    <fieldset onBlur={commit} style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "12px", display: "grid", gap: "8px" }}>
       <legend style={{ padding: "0 6px", fontWeight: 600 }}>{t("title")}</legend>
       {props.length ? (
         <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(min(180px, 100%), 1fr))" }}>

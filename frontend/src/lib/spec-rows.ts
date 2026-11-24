@@ -20,7 +20,7 @@ export function specToRows(json: string): Row[] {
   if (!json.trim()) return [];
   try {
     const parsed = JSON.parse(json) as Record<string, unknown>;
-    return Object.entries(parsed).map(([key, value]) => ({ key, value: typeof value === "object" && value !== null ? formatSpecValue(value) : typeof value === "string" ? value : JSON.stringify(value) }));
+    return Object.entries(parsed).map(([key, value]) => ({ key, value: formatSpecValue(value) }));
   } catch {
     return [];
   }
@@ -37,6 +37,15 @@ export type SpecTemplateProperty = {
   key: string; name_ar: string; name_en: string; kind: "number" | "text" | "choice"; unit: string | null; required: boolean; allows_range?: boolean;
   options: { value: string; label_ar: string; label_en: string }[] | null;
 };
+
+/** Convert numeric draft text at the save boundary, never while a user is typing. */
+export function normalizeSpecDraft(spec:Record<string,unknown>|null|undefined,template:readonly SpecTemplateProperty[]=[]):Record<string,unknown>|null {
+  if(!spec)return null;
+  return Object.fromEntries(Object.entries(spec).map(([key,value])=>{
+    const prop=template.find(p=>p.key===key);
+    return [key,prop?.kind==="number"&&typeof value==="string"?numericSpecOrText(value,prop.allows_range):value];
+  }));
+}
 
 /** The template's values first, in its order, then any other row: the order a document prints. Empty values are left out. */
 export function templateSpec(template: SpecTemplateProperty[], values: Record<string, string>, extra: Row[]): string {

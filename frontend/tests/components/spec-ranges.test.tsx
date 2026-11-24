@@ -6,6 +6,7 @@ import { loadMessages } from "@/i18n/messages";
 import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
 import { formatSpecValue, parseNumericSpec, thicknessFields } from "@/lib/spec-value";
 import { parseSpecValue, rowsToSpec, specToRows, templateSpec } from "@/lib/spec-rows";
+import {SpecEditor} from "@/components/forms/SpecEditor";
 
 let messages: Awaited<ReturnType<typeof loadMessages>>;
 beforeAll(async () => { messages = await loadMessages("en"); });
@@ -49,8 +50,31 @@ it("keeps incomplete input editable and reports translated validity errors", () 
   const input = screen.getByRole("textbox", { name: "Thickness" }) as HTMLInputElement;
   fireEvent.change(input, { target: { value: "0.60-0.55" } });
   expect(input.checkValidity()).toBe(false);
+  fireEvent.blur(input);
   expect(screen.getByRole("alert").textContent).toContain("minimum");
   fireEvent.change(input, { target: { value: "٠٫٥٥-٠٫٦٠" } });
   expect(input.checkValidity()).toBe(true);
   expect(screen.queryByRole("alert")).toBeNull();
+});
+
+it("keeps every typed trailing zero and emits a numeric interval only on blur",()=>{
+  let latest='';
+  const template=[{key:'thickness_mm',name_ar:'السماكة',name_en:'Thickness',kind:'number' as const,unit:null,required:false,allows_range:true,options:null}];
+  function Editor(){const [value,setValue]=useState('');return <SpecEditor value={value} template={template} onChange={next=>{latest=next;setValue(next);}}/>;}
+  render(<NextIntlClientProvider locale="en" messages={messages}><Editor/></NextIntlClientProvider>);
+  const field=screen.getByRole('textbox',{name:'Thickness'}) as HTMLInputElement;
+  let typed='';for(const char of '0.70-0.75'){typed+=char;fireEvent.change(field,{target:{value:typed}});expect(field.value).toBe(typed);expect(JSON.parse(latest).thickness_mm).toBe(typed);}
+  fireEvent.blur(field);
+  expect(JSON.parse(latest)).toEqual({thickness_mm:{min:.7,max:.75}});
+  expect(field.value).toBe('0.70-0.75');
+});
+
+it("formats saved intervals and preserves untouched historical objects when another field changes",()=>{
+  let latest='';
+  const stored={thickness_mm:{min:.7,max:.75},legacy:{nested:'Kept'}};
+  render(<NextIntlClientProvider locale="en" messages={messages}><SpecEditor value={JSON.stringify(stored)} onChange={next=>{latest=next;}}/></NextIntlClientProvider>);
+  const values=screen.getAllByRole('textbox',{name:'Value'}) as HTMLInputElement[];
+  expect(values[0].value).toBe('0.70 – 0.75');
+  fireEvent.blur(values[0]);
+  expect(JSON.parse(latest)).toEqual(stored);
 });

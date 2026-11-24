@@ -1,3 +1,4 @@
+import {formatSpecification} from "./spec-value.ts";
 // Units of measure shared by every screen (quotations, shipments, ...); mirrors backend/app/core/units.py
 // (tests/quote-units.test.mjs keeps both identical). Labels: common.units.<code> in the locale files.
 export const UNIT_GROUPS = {
@@ -18,5 +19,5 @@ export const KILOGRAMS: Record<string, number> = { g: 0.001, kg: 1, ton: 1000, l
 
 /** A line's specification as printed: its values in order ("5 · 0.35 · Black"). */
 export function specText(spec: Record<string, unknown> | null | undefined, separator = " · ") {
-  return spec ? Object.values(spec).filter(v => v !== null && v !== "").map(String).join(separator) : "";
+  return formatSpecification(spec,{separator,valuesOnly:true});
 }

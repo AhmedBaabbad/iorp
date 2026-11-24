@@ -1,7 +1,7 @@
 "use client";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
-import { parseNumericSpec, formatSpecValue, numericSpecOrText } from "@/lib/spec-value";
+import { parseNumericSpec, formatSpecValue, formatSpecification, numericSpecOrText } from "@/lib/spec-value";
 
 import {UnitLabel} from "@/components/UnitLabel";
 import Link from "next/link";
@@ -153,7 +153,7 @@ function MeasurementTable({ check, ar, editable, busy, setBusy, setError, onChan
   }
 
   return <>
-    {check.lot_values && <p className={s.muted}>{t("lotValues", { values: Object.entries(check.lot_values).map(([k, v]) => `${keyLabel(k)}: ${formatSpecValue(v)}`).join(" · ") })}</p>}
+    {check.lot_values && <p className={s.muted}>{t("lotValues", { values: formatSpecification(check.lot_values,{label:keyLabel}) })}</p>}
     <p className={s.muted}>{t("summary", { pass: String(counts.pass), fail: String(counts.fail), pending: String(counts.pending) })}</p>
     <div className={s.tableWrap}><table className={s.table} aria-label={t("title")}>
       <thead><tr>{["parameter", "unit", "target", "acceptance", "result", "stats", "verdict"].map(c => <th key={c}>{t(`columns.${c}`)}</th>)}</tr></thead>

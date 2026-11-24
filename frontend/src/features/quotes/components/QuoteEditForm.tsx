@@ -1,4 +1,5 @@
 "use client";
+import {normalizeSpecDraft} from "@/lib/spec-rows";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
@@ -291,7 +292,7 @@ export function QuoteEditForm() {
         attention: optionalText(values.attention) ?? null,
         subject: optionalText(values.subject) ?? null,
         notes: optionalText(values.notes) ?? null,
-        items: values.items.map((item, index) => toItemRequest(item, index, messages)),
+        items: values.items.map((item,index)=>{const request=toItemRequest(item,index,messages);return {...request,requested_spec_json:normalizeSpecDraft(request.requested_spec_json,products?.find(p=>p.key===item.product_type)?.properties)};}),
       };
 
       await updateQuote(quoteId, payload);

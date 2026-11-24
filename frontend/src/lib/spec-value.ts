@@ -35,7 +35,28 @@ export function formatSpecValue(value: unknown): string {
     return `${(places <= 100 ? value.min.toFixed(places) : String(value.min))} – ${(places <= 100 ? value.max.toFixed(places) : String(value.max))}`;
   }
   if (value == null) return "";
-  return typeof value === "object" ? JSON.stringify(value) : String(value);
+  if (Array.isArray(value)) return value.map(formatSpecValue).join(", ");
+  return typeof value === "object" ? Object.entries(value).map(([key, item]) => `${key}: ${formatSpecValue(item)}`).join("; ") : String(value);
+}
+
+export type SpecDisplayProperty = {key:string;name_ar:string;name_en:string;unit?:string|null;options?:{value:string;label_ar:string;label_en:string}[]|null};
+export type SpecDisplayOptions = {properties?:readonly SpecDisplayProperty[];locale?:string;label?:(key:string)=>string;unitLabel?:(unit:string)=>string;separator?:string;valuesOnly?:boolean};
+/** One specification renderer: template order, translated names/choices, formatted values and units. */
+export function formatSpecification(spec:Record<string,unknown>|null|undefined,options:SpecDisplayOptions={}):string {
+  return specificationRows(spec,options).map(row=>options.valuesOnly?row.valueWithUnit:row.text).join(options.separator??" · ");
+}
+export function specificationRows(spec:Record<string,unknown>|null|undefined,options:SpecDisplayOptions={}) {
+  const properties=options.properties??[],ar=options.locale==="ar";
+  const keys=[...properties.map(p=>p.key),...Object.keys(spec??{}).filter(key=>!properties.some(p=>p.key===key))];
+  return keys.filter((key,index)=>keys.indexOf(key)===index&&spec?.[key]!=null&&spec[key]!=="").map(key=>{
+    const raw=spec![key],property=properties.find(p=>p.key===key),choice=property?.options?.find(o=>o.value===raw);
+    const name=property?(ar?property.name_ar:property.name_en):(options.label?.(key)??key);
+    const displayValue=choice?(ar?choice.label_ar:choice.label_en):raw;
+    const value=formatSpecValue(displayValue);
+    const unit=property?.unit?(options.unitLabel?.(property.unit)??property.unit):"";
+    const valueWithUnit=[value,unit].filter(Boolean).join(" ");
+    return {key,name,value,displayValue,unit,valueWithUnit,text:`${name}: ${valueWithUnit}`,range:isSpecRange(raw)};
+  });
 }
 
 export function formatThickness(minimum: string | number | null, maximum?: string | number | null): string {

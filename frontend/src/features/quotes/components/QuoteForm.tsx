@@ -1,4 +1,5 @@
 "use client";
+import {normalizeSpecDraft} from "@/lib/spec-rows";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
@@ -251,7 +252,9 @@ export function QuoteForm() {
     setIsSubmitting(true);
 
     try {
-      const createdQuote = await createQuote(toCreateRequest(values, messages, taxAmount, vatRate));
+      const request=toCreateRequest(values,messages,taxAmount,vatRate);
+      request.items=request.items.map(item=>({...item,requested_spec_json:normalizeSpecDraft(item.requested_spec_json,products?.find(p=>p.key===item.product_type)?.properties)}));
+      const createdQuote = await createQuote(request);
       unsaved.markSaved(); setSuccessRedirect(`/quotes/${createdQuote.id}`);
     } catch (caughtError) {
       setError(

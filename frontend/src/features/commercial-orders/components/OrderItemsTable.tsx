@@ -1,4 +1,5 @@
 "use client";
+import {SpecList} from "./sales-lifecycle";
 
 import type { CSSProperties } from "react";
 import { useTranslations } from "next-intl";
@@ -92,9 +93,7 @@ export function OrderItemsTable({ items, currency = "" }: OrderItemsTableProps) 
                 <td style={{ ...styles.td, textAlign: "start" }}>
                   {productName(item.product_type)}
                   {item.requested_spec_json ? (
-                    <pre style={styles.spec}>
-                      {JSON.stringify(item.requested_spec_json, null, 2)}
-                    </pre>
+                    <SpecList productKey={item.product_type} spec={item.requested_spec_json}/>
                   ) : null}
                 </td>
                 <td style={{ ...styles.td, textAlign: "center" }}>{fmt.number(item.quantity)}</td>
