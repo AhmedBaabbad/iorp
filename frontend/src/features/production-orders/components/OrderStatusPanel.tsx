@@ -12,6 +12,7 @@ import type { OrderLifecycle, ProductionOrderData } from "../types";
 import { ProductionOrderStatusBadge } from "./ProductionOrderStatusBadge";
 import s from "@/features/production-demands/demands.module.css";
 import { P } from "@/lib/production-permissions";
+import {RescheduleOrderButton} from "./OrderReschedule";
 
 type LifecycleAction = OrderLifecycle["actions"][number];
 
@@ -19,6 +20,7 @@ type LifecycleAction = OrderLifecycle["actions"][number];
 export function OrderStatusPanel({ order, onChanged }: { order: ProductionOrderData; onChanged?: () => void }) {
   const t = useTranslations("production.productionOrders.lifecycle");
   const fmt = useFormatter();
+  const scheduling=useTranslations("production.productionOrders.reschedule");
   const [pending, setPending] = useState<LifecycleAction | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -48,8 +50,8 @@ export function OrderStatusPanel({ order, onChanged }: { order: ProductionOrderD
         <div className={s.actions}>
           <strong>{t("title")}</strong>
           <ProductionOrderStatusBadge status={order.status} />
-          {lifecycle?.start_overdue && <span className={`${s.badge} ${s.urgent}`}>{t("startOverdue")}</span>}
-          {lifecycle?.finish_overdue && <span className={`${s.badge} ${s.urgent}`}>{t("finishOverdue")}</span>}
+          {lifecycle?.start_overdue && <><span className={`${s.badge} ${s.urgent}`}>{t("startOverdue")}</span><RescheduleOrderButton extend ariaLabel={scheduling("extendStart")} order={order} onChanged={onChanged}/></>}
+          {lifecycle?.finish_overdue && <><span className={`${s.badge} ${s.urgent}`}>{t("finishOverdue")}</span><RescheduleOrderButton extend ariaLabel={scheduling("extendFinish")} order={order} onChanged={onChanged}/></>}
         </div>
         <div className={s.actions}>
           {lifecycle?.actions.map((a) => (

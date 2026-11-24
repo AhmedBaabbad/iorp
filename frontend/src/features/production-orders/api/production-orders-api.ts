@@ -10,6 +10,10 @@ import type {
 
 const PRODUCTION_ORDERS_PATH = "/production/production-orders";
 
+export function rescheduleProductionOrder(id:string,body:{planned_start_date?:string;planned_end_date:string;reason:string}){
+  return apiClient<ProductionOrderData>(`${PRODUCTION_ORDERS_PATH}/${id}/reschedule`,{method:"POST",body});
+}
+
 // One page of orders (ARCH-PAGE-001): `query` carries page, page_size, search and the filters (useListQuery().apiQuery()).
 export function getProductionOrders(query = "") {
   return apiClient<Page<ProductionOrderListItem>>(`${PRODUCTION_ORDERS_PATH}${query ? `?${query}` : ""}`);
@@ -42,7 +46,7 @@ export function getProductionOrderStatusHistory(productionOrderId: string) {
 
 // Open orders (draft, released, in progress, on hold): add a demand item, or change how much of it the order takes.
 // A draft's lines rearrange on the server; an order on the floor keeps its lines and only adjusts them.
-export type EligibleOrder = { id: string; production_order_number: string; status: string; work_center_name: string | null; product_type: string; unit: string; planned_quantity: string; planned_start_date: string; planned_end_date: string };
+export type EligibleOrder = { id: string; production_order_number: string; status: string; work_center_name: string | null; product_type: string; unit: string; planned_quantity: string; planned_start_date: string; planned_end_date: string; finish_overdue?:boolean };
 
 // Demand items an open order may take, searched on the server (demand number or customer), at most `limit`:
 // never a first page of demands filtered in the browser.

@@ -1,11 +1,18 @@
 from datetime import date
 from decimal import Decimal
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 from app.production.domain.enums import ProductionOrderPriority
 from app.core.types import ISODatetime
 from app.production.api.schemas import ProductionOrderRead
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
+
+
+class RescheduleRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    planned_start_date: date | None = None
+    planned_end_date: date
+    reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=500)]
 
 
 class PlanningOrderRead(ProductionOrderRead):
@@ -20,6 +27,7 @@ class PlanningOrderRead(ProductionOrderRead):
     allocation_open: bool = False
     # Status, actual dates, late flags and the actions this user may take now.
     lifecycle: dict[str, Any] | None = None
+    reschedule_history: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class EligibleOrder(BaseModel):
@@ -32,6 +40,7 @@ class EligibleOrder(BaseModel):
     planned_quantity: Decimal
     planned_start_date: date
     planned_end_date: date
+    finish_overdue: bool = False
 
 
 class EligibleDemandItem(BaseModel):

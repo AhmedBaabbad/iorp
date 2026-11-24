@@ -87,3 +87,17 @@ def start_overdue(status: S | str, planned_start: date, today: date) -> bool:
 
 def finish_overdue(status: S | str, planned_end: date, today: date) -> bool:
     return S(status) in OPEN and today > planned_end
+
+
+def validate_reschedule(order, new_start: date, new_end: date, *, require_change=True):
+    """Date changes never alter status or actual dates; all write paths use these rules."""
+    if S(order.status) not in OPEN:
+        raise TransitionError("RESCHEDULE_NOT_ALLOWED", 409)
+    if new_start != order.planned_start_date and (order.actual_start_at is not None or S(order.status) not in NOT_STARTED):
+        raise TransitionError("PLANNED_START_LOCKED", 409)
+    if new_end < new_start:
+        raise TransitionError("INVALID_PLANNED_DATES", 400)
+    changed = (new_start, new_end) != (order.planned_start_date, order.planned_end_date)
+    if require_change and not changed:
+        raise TransitionError("NOTHING_CHANGED", 400)
+    return changed

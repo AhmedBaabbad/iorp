@@ -11,6 +11,8 @@ from app.production.domain import permissions as P
 from app.core.db import Base
 from app.production.api.planning_schemas import PlanningOrderRead, PlanningOrderCreate, ReleaseRequest, StatusHistoryRead, TransitionRequest
 from app.production.application.order_status_service import OrderStatusService
+from app.production.application.order_reschedule_service import OrderRescheduleService
+from app.production.api.planning_schemas import RescheduleRequest
 from app.production.api.order_views import lifecycle_errors, permission_check, with_lifecycle
 from app.production.application.planning_order_service import PlanningOrderService
 from app.production.domain.compatibility import AllocationError
@@ -103,11 +105,25 @@ def update_production_order(
     service = ProductionOrderService(db)
     try:
         production_order = service.update_production_order(tenant, production_order_id, payload)
+    except TransitionError as exc:
+        raise lifecycle_errors(exc) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if production_order is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Production order not found.")
     return production_order
+
+
+@router.post("/{production_order_id}/reschedule", response_model=PlanningOrderRead,
+    dependencies=[Depends(require_permission(P.ORDERS_UPDATE))])
+def reschedule_production_order(production_order_id: UUID, payload: RescheduleRequest,
+        tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db),
+        customers=Depends(get_customer_lookup), can=Depends(permission_check)):
+    try:
+        order = OrderRescheduleService(db, tenant).reschedule(production_order_id, payload)
+    except TransitionError as exc:
+        raise lifecycle_errors(exc) from exc
+    return with_lifecycle(order, db, tenant, customers, can)
 
 
 @router.post("/{production_order_id}/transitions", response_model=PlanningOrderRead,

@@ -13,6 +13,7 @@ import { addOrderAllocation, changeAllocationQuantity, getEligibleDemandItems, t
 import type { ProductionOrderData } from "../types";
 import s from "@/features/production-demands/demands.module.css";
 import { P } from "@/lib/production-permissions";
+import {ExtendEndFields,scheduleOverdue,schedulingError,useOrderExtension} from "./OrderReschedule";
 
 type Allocation = ProductionOrderData["allocations"][number];
 const QUANTITY = /^\d+(\.\d{1,3})?$/;
@@ -24,13 +25,15 @@ export function OrderLines({ order, onChanged }: { order: ProductionOrderData; o
   const d = useTranslations("production.demands");
   const canAllocate = usePermission(P.PLANNING_ALLOCATE);
   const canRelease = usePermission(P.PLANNING_RELEASE_ALLOCATION);
+  const canReschedule=usePermission(P.ORDERS_UPDATE),scheduleText=useTranslations("production.productionOrders.reschedule");
+  const extension=useOrderExtension(order,()=>onChanged?.());
   // The server says whether allocations are open; adding/changing and releasing each need their own permission.
   const open = Boolean(order.allocation_open);
   const editing = open && canAllocate;
   const releasing_allowed = open && canRelease;
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<unknown>(null);
   const [releasing, setReleasing] = useState<Allocation | null>(null);
   const [candidates, setCandidates] = useState<EligibleDemandItem[]>([]);
   const customerName = useCustomerNames([...order.allocations.map(a => a.customer_id), ...candidates.map(row => row.customer_id)]);
@@ -64,22 +67,22 @@ export function OrderLines({ order, onChanged }: { order: ProductionOrderData; o
   const chosen = useMemo(() => options.find(o => o.id === addItem), [options, addItem]);
 
   async function run(action: () => Promise<unknown>) {
-    setBusy(true); setError("");
+    setBusy(true); setError(null);
     try { await action(); setDrafts({}); onChanged?.(); return true; }
-    catch (e) { setError(lifecycleErrorCode(e)); return false; }
+    catch (e) { setError(e); return false; }
     finally { setBusy(false); }
   }
   async function add(event: FormEvent) {
     event.preventDefault();
     if (!addItem || !QUANTITY.test(addQuantity)) return;
-    if (await run(() => addOrderAllocation(order.id, addItem, addQuantity))) { setAddItem(""); setAddQuantity(""); }
+    if (await run(async()=>{await extension.beforeAttach();return addOrderAllocation(order.id, addItem, addQuantity);} )) { setAddItem(""); setAddQuantity(""); }
   }
 
   if (!lines.length && !editing) return null;
   const hint = !editing ? t("arrangementHint") : order.editable ? t("orderLinesEditHint") : t("orderLinesStartedHint");
   return <section className={s.panel}><h2>{t("orderLines")}</h2>
     <p className={s.muted}>{hint}</p>
-    {error && <p role="alert" className={s.error}>{t(`errors.${t.has(`errors.${error}`) ? error : "request_failed"}`)}</p>}
+    {Boolean(error) && <p role="alert" className={s.error}>{schedulingError(error,scheduleText,()=>{const code=lifecycleErrorCode(error);return t(`errors.${t.has(`errors.${code}`)?code:"request_failed"}`);})}</p>}
     <ArrangementTable lines={lines} caption={t("orderLines")}
       quantityCell={editing ? (a, line) => a.status === "released" ? `${a.allocated_quantity} ${unitText(line.unit)}` : (() => {
         const value = drafts[a.key] ?? a.allocated_quantity;
@@ -102,6 +105,7 @@ export function OrderLines({ order, onChanged }: { order: ProductionOrderData; o
         </RecordCombobox>
       </label>
       <label className={s.field}>{t("quantity")}<input type="number" min="0.001" step="0.001" value={addQuantity} disabled={busy || !addItem} onChange={e => setAddQuantity(e.target.value)} /></label>
+      {canReschedule&&scheduleOverdue(order)&&<fieldset disabled={busy} style={{border:0,padding:0,minWidth:0}}><ExtendEndFields order={order} extension={extension}/></fieldset>}
       <button className={`${s.button} ${s.primary}`} disabled={busy || !addItem || !QUANTITY.test(addQuantity) || Number(addQuantity) <= 0}>{t("addToOrder")}</button>
     </form>}
     {releasing && <ReasonDialog title={t("releaseTitle", { order: order.production_order_number })} description={t("releaseHint")} confirmLabel={t("release")} busy={busy}

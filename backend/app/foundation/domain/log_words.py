@@ -134,6 +134,10 @@ VERBS: dict[str, tuple[str, str]] = {
 }
 
 FIELDS: dict[str, tuple[str, str]] = {
+    'old_start': ('تاريخ البداية السابق', 'Previous planned start'),
+    'new_start': ('تاريخ البداية الجديد', 'New planned start'),
+    'old_end': ('تاريخ النهاية السابق', 'Previous planned finish'),
+    'new_end': ('تاريخ النهاية الجديد', 'New planned finish'),
     'from_status': ('من حالة', 'From'),
     'to_status': ('إلى حالة', 'To'),
     'status': ('الحالة', 'Status'),

@@ -7,6 +7,7 @@ import { OrderLines } from "./OrderLines";
 import { OrderReportButton } from '@/features/reports/OrderReportButton';
 import { OrderStatusPanel } from "./OrderStatusPanel";
 import { OrderStatusTimeline } from "./OrderStatusTimeline";
+import {RescheduleOrderButton} from "./OrderReschedule";
 import { OrderResultSection } from "@/features/production-results";
 import { OrderWasteSection } from "@/features/waste-records";
 import { OrderDowntimeSection } from "@/features/downtime-events";
@@ -14,7 +15,7 @@ import { OrderQualitySection } from "@/features/order-quality";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import type { CSSProperties, ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
 import { ProductionOrderItemsList } from "@/features/production-order-items";
@@ -98,6 +99,7 @@ export function ProductionOrderDetail() {
   const productName = useProductName();  // MD-001: the product's name, not its key
   const [created, setCreated] = useState(false);
   const [revision, setRevision] = useState(0);
+  const loadedOrderId=useRef<string|null>(null);
   useEffect(() => {
     if (sessionStorage.getItem("production-order-created") === productionOrderId) {
       setCreated(true);
@@ -110,13 +112,14 @@ export function ProductionOrderDetail() {
 
     async function loadProductionOrder() {
       try {
-        setIsLoading(true);
+        setIsLoading(loadedOrderId.current!==productionOrderId);
         setError(null);
         setIsNotFound(false);
         const orderResponse = await getProductionOrderById(productionOrderId);
 
         if (isMounted) {
           setOrder(orderResponse);
+          loadedOrderId.current=productionOrderId;
         }
 
         const workCentersResponse = await getWorkCenters().catch(() => []);
@@ -208,7 +211,7 @@ export function ProductionOrderDetail() {
               value={fmt.quantity(order.planned_quantity, order.unit)}
             />
             <DetailItem label={t("fields.plannedStartDate")} value={fmt.date(order.planned_start_date)} />
-            <DetailItem label={t("fields.plannedEndDate")} value={fmt.date(order.planned_end_date)} />
+            <DetailItem label={t("fields.plannedEndDate")} value={<>{fmt.date(order.planned_end_date)} <RescheduleOrderButton order={order} onChanged={()=>setRevision(value=>value+1)}/></>} />
             <DetailItem
               label={t("fields.workCenter")}
               value={
@@ -245,7 +248,7 @@ export function ProductionOrderDetail() {
               productionOrderStatus={order.status}
             />
           )}
-          <OrderStatusTimeline orderId={order.id} revision={revision} />
+          <OrderStatusTimeline orderId={order.id} revision={revision} reschedules={order.reschedule_history} />
         </>
       ) : null}
           {order && <Signatures resourceType="production_order" id={order.id} version={order.status} />}
