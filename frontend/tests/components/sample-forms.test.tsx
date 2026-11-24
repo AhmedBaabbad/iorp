@@ -56,6 +56,17 @@ it('submits typed property values from the creation screen without a JSON editor
   expect(container.querySelectorAll('textarea')).toHaveLength(1); // notes only
 });
 
+it('preserves each typed zero and saves an opted-in range from the sample form',async()=>{
+  api.products.mockResolvedValue([{...definition,properties:[{...definition.properties[0],allows_range:true}]}]);
+  const {container}=ui(<SampleForm/>);
+  fireEvent.click(await findRecordOption('Generic product'));
+  const field=screen.getByLabelText('Dimension') as HTMLInputElement;
+  let text='';for(const char of '0.70-0.75'){text+=char;fireEvent.change(field,{target:{value:text}});expect(field.value).toBe(text);}
+  fireEvent.submit(container.querySelector('form')!);
+  await waitFor(()=>expect(api.create).toHaveBeenCalled());
+  expect(api.create.mock.calls[0][0].property_values).toEqual({dimension:{min:.7,max:.75}});
+});
+
 it('loads saved values and sends changed specifications on edit', async () => {
   const { container } = ui(<SampleEditForm />);
   const field = await screen.findByLabelText('Dimension');

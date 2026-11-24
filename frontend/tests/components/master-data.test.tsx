@@ -128,6 +128,8 @@ describe("choosing a product on other screens", () => {
     ui(<SpecEditor value="" template={strap.properties} onChange={onChange} />, "ar");
     changeControl(screen.getByLabelText("اللون"), { target: { value: "white" } });
     changeControl(screen.getByLabelText(/العرض/), { target: { value: "19" } });
+    expect(JSON.parse(onChange.mock.lastCall![0]).width_mm).toBe('19');
+    fireEvent.blur(screen.getByLabelText(/العرض/));
     expect(onChange).toHaveBeenLastCalledWith('{"width_mm":19,"color":"white"}');
   });
 });

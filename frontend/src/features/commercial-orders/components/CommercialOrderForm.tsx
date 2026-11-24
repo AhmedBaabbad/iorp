@@ -1,4 +1,5 @@
 "use client";
+import {normalizeSpecDraft} from "@/lib/spec-rows";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
@@ -134,7 +135,7 @@ export function CommercialOrderForm({ order }: { order?: CommercialOrderData }) 
     if (values.source === "direct" && !values.customer_reference.trim()) { setError(errors("ORDER_SOURCE_REQUIRED")); return; }
     const items: CreateCommercialOrderItemRequest[] = values.lines.map((l, index) => ({
       line_no: index + 1, product_type: l.product_type, quantity: Number(l.quantity), unit: l.unit,
-      requested_spec_json: l.spec ? (JSON.parse(l.spec) as Record<string, unknown>) : null,
+      requested_spec_json: normalizeSpecDraft(l.spec ? (JSON.parse(l.spec) as Record<string, unknown>) : null,products?.find(p=>p.key===l.product_type)?.properties),
       agreed_unit_price: l.unit_price.trim() === "" ? null : Number(l.unit_price),
     }));
     const body = {

@@ -1,8 +1,9 @@
 "use client";
+import type {SpecTemplateProperty} from "@/lib/spec-rows";
 import {ProductSelect} from "@/features/masterdata/components/ProductSelect";
 import { localName } from "@/lib/local-name";
 import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
-import { formatSpecValue, isSpecRange, numericSpecOrText } from "@/lib/spec-value";
+import { formatSpecValue, isSpecRange, specificationRows } from "@/lib/spec-value";
 import {useUnitLabel} from "@/components/UnitLabel";
 import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
@@ -12,38 +13,30 @@ import type { RequestedSpec, SampleProductDefinition } from '../types';
 
 /** Render historical nested values without exposing raw JSON or enabling edits to unknown fields. */
 function ReadableValue({ value }: { value: unknown }) {
-  const unitText = useUnitLabel();
   const t = useTranslations('commercial.samples.properties');
   if (value === null || value === undefined || value === '') return <>—</>;
   if (typeof value === 'boolean') return <>{t(value ? 'yes' : 'no')}</>;
   if (Array.isArray(value)) return <ul>{value.map((v, i) => <li key={i}><ReadableValue value={v} /></li>)}</ul>;
   if (isSpecRange(value)) return <bdi dir="ltr">{formatSpecValue(value)}</bdi>;
   if (typeof value === 'object') return <dl>{Object.entries(value).map(([k, v]) => <div key={k}><dt>{k}</dt><dd><ReadableValue value={v} /></dd></div>)}</dl>;
-  return <bdi>{String(value)}</bdi>;
+  return <bdi>{formatSpecValue(value)}</bdi>;
 }
 
 export function SamplePropertyValues({ values, definition }: { values: RequestedSpec | null; definition?: SampleProductDefinition | null }) {
   const ar = useLocale() === 'ar';
   const unitText = useUnitLabel();
   const t = useTranslations('commercial.samples.properties');
-  const props = definition?.properties ?? [];
-  const keys = [...props.map(p => p.key).filter(k => values && k in values), ...Object.keys(values ?? {}).filter(k => !props.some(p => p.key === k))];
-  if (!keys.length) return <p>{t('empty')}</p>;
-  return <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
-    {keys.map(key => {
-      const prop = props.find(p => p.key === key);
-      const choice = prop?.options?.find(o => o.value === values?.[key]);
-      const label = prop ? (ar ? prop.name_ar : prop.name_en) : key;
-      return <div key={key}><dt style={{ fontWeight: 600 }}>{label}{prop?.unit ? ` (${unitText(prop.unit)})` : ''}</dt>
-        <dd style={{ margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}><ReadableValue value={choice ? (ar ? choice.label_ar : choice.label_en) : values?.[key]} /></dd></div>;
-    })}
+  const rows=specificationRows(values,{properties:definition?.properties,locale:ar?"ar":"en",unitLabel:unitText});
+  if(!rows.length)return <p>{t('empty')}</p>;
+  return <dl style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))',gap:16}}>
+    {rows.map(row=><div key={row.key}><dt style={{fontWeight:600}}>{row.name}{row.unit?` (${row.unit})`:''}</dt><dd style={{margin:0,whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}><ReadableValue value={row.displayValue}/></dd></div>)}
   </dl>;
 }
 
 /** Only schema-defined fields can be edited. Master Data owns names, kinds, required flags and options. */
-export function SampleProductFields({ productKey, values, original, unchanged = false, disabled, onChange, onReady }: {
+export function SampleProductFields({ productKey, values, original, unchanged = false, disabled, onChange, onReady, onTemplate }: {
   productKey: string; values: RequestedSpec; original?: SampleProductDefinition | null; unchanged?: boolean; disabled: boolean;
-  onChange: (key: string, values: RequestedSpec, unit?: string | null) => void; onReady: (ready: boolean) => void;
+  onChange: (key: string, values: RequestedSpec, unit?: string | null) => void; onReady: (ready: boolean) => void; onTemplate?:(properties:SpecTemplateProperty[])=>void;
 }) {
   const ar = useLocale() === 'ar';
   const unitText = useUnitLabel();
@@ -60,13 +53,10 @@ export function SampleProductFields({ productKey, values, original, unchanged = 
   }, [retry]);
   const product = products.find(p => p.key === productKey) ?? (original?.key === productKey ? original : undefined);
   useEffect(() => { onReady(unchanged || (!loading && !failed && Boolean(product))); }, [unchanged, loading, failed, product, onReady]);
+  useEffect(()=>{onTemplate?.(product?.properties??[]);},[product,onTemplate]);
   function changeProperty(key: string, value: unknown) {
     const next = { ...values, [key]: value };
-    for (const prop of product?.properties ?? []) {
-      const v = next[prop.key];
-      if (v === '') delete next[prop.key];
-      else if (prop.kind === 'number' && typeof v === 'string' && v.trim()) next[prop.key] = numericSpecOrText(v, prop.allows_range);
-    }
+    if(value==='')delete next[key];
     onChange(productKey, next);
   }
   const extra = Object.fromEntries(Object.entries(values).filter(([key]) => !product?.properties.some(p => p.key === key)));

@@ -1,5 +1,5 @@
 "use client";
-import { formatSpecValue } from "@/lib/spec-value";
+import {SpecList} from "@/features/commercial-orders/components/sales-lifecycle";
 
 import type { CSSProperties } from "react";
 import { useTranslations } from "next-intl";
@@ -149,11 +149,7 @@ export function ProductionOrderItemsList({
 
               {item.target_spec_json && Object.keys(item.target_spec_json).length > 0 ? (
                 <div style={styles.specs} aria-label={t("lineSpecsAria", { lineNo: item.line_no })}>
-                  {Object.entries(item.target_spec_json).map(([key, value]) => (
-                    <span key={key} style={styles.specChip}>
-                      {key}: {formatSpecValue(value)}
-                    </span>
-                  ))}
+                  <SpecList productKey={productType??""} spec={item.target_spec_json}/>
                 </div>
               ) : null}
 

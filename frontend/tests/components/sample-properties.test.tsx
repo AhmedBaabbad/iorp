@@ -27,7 +27,7 @@ function Editor({ initial = {}, selected = '', unchanged = false }: { initial?: 
 }
 function ui(node: React.ReactNode) { return render(<NextIntlClientProvider locale="en" messages={messages} timeZone="UTC">{node}</NextIntlClientProvider>); }
 
-it('loads arbitrary Master Data fields and emits typed numbers and choice values', async () => {
+it('loads arbitrary Master Data fields and keeps numeric draft text until saving', async () => {
   const { container } = ui(<Editor />);
   await findRecordOption('Custom product');
   changeControl(screen.getByRole('combobox'), { target: { value: 'custom' } });
@@ -36,7 +36,7 @@ it('loads arbitrary Master Data fields and emits typed numbers and choice values
   changeControl(size, { target: { value: '12.5' } });
   changeControl(screen.getByLabelText('Finish'), { target: { value: 'smooth' } });
   changeControl(screen.getByLabelText('Description'), { target: { value: 'Trial' } });
-  expect(api.changed).toHaveBeenLastCalledWith('custom', { size: 12.5, finish: 'smooth', memo: 'Trial' }, undefined);
+  expect(api.changed).toHaveBeenLastCalledWith('custom', { size: '12.5', finish: 'smooth', memo: 'Trial' }, undefined);
   expect(container.querySelector('textarea')).toBeNull();
   expect(container.textContent).not.toContain('requested_spec_json');
 });
@@ -54,7 +54,7 @@ it('restores saved fields and preserves historical nested values read-only', asy
   expect((await screen.findByLabelText('Size') as HTMLInputElement).value).toBe('5');
   expect(screen.getByText('Original value')).toBeTruthy();
   changeControl(screen.getByLabelText('Size'), { target: { value: '6' } });
-  expect(api.changed).toHaveBeenLastCalledWith('custom', { size: 6, historical: { note: 'Original value' } }, undefined);
+  expect(api.changed).toHaveBeenLastCalledWith('custom', { size: '6', historical: { note: 'Original value' } }, undefined);
 });
 
 it('does not permit free text products when the catalog is empty', async () => {

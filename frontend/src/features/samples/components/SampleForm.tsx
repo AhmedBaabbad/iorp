@@ -1,4 +1,5 @@
 "use client";
+import {normalizeSpecDraft, type SpecTemplateProperty} from "@/lib/spec-rows";
 import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
 import Link from "next/link";
@@ -103,6 +104,7 @@ export function SampleForm() {
   const [values, setValues] = useState<SampleFormValues>(defaultValues);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [specReady, setSpecReady] = useState(false);
+  const [specTemplate,setSpecTemplate]=useState<SpecTemplateProperty[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [successRedirect, setSuccessRedirect] = useState<string | null>(null);
 
@@ -128,7 +130,7 @@ export function SampleForm() {
     setIsSubmitting(true);
 
     try {
-      const createdSample = await createSample(toCreateRequest(values));
+      const createdSample = await createSample({...toCreateRequest(values),property_values:normalizeSpecDraft(values.property_values,specTemplate)});
       unsaved.markSaved(); setSuccessRedirect(`/samples/${createdSample.id}`);
     } catch (caughtError) {
       setError(
@@ -245,7 +247,7 @@ export function SampleForm() {
               />
             </label>
           </div>
-          <SampleProductFields productKey={values.product_type} values={values.property_values} disabled={isSubmitting} onReady={setSpecReady}
+          <SampleProductFields productKey={values.product_type} values={values.property_values} disabled={isSubmitting} onReady={setSpecReady} onTemplate={setSpecTemplate}
             onChange={(key, specs, unit) => { setValues(v => ({ ...v, product_type: key, property_values: specs, ...(unit !== undefined ? { unit: unit ?? "" } : {}) })); }} />
 
 

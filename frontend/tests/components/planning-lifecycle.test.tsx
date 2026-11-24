@@ -74,6 +74,13 @@ function routeApi(queue: (view: string | null, statuses: string[]) => Demand[]) 
 }
 
 describe("planning queue", () => {
+  it("formats a thickness interval in both the planning column and the specification summary",async()=>{
+    routeApi(()=>[demand({spec_summary:{thickness_mm:{min:.7,max:.75}}})]);
+    ui(<DemandList planning/>);
+    await screen.findByText('PD-2026-000001');
+    expect(screen.getAllByText('0.70 – 0.75').length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText('[object Object]')).toBeNull();
+  });
   it("requests the active view by default so completed planning is hidden", async () => {
     const planned = demand({ id: "d2", demand_number: "PD-PLANNED", status: "planned", total_remaining: "0" });
     routeApi(view => (view === "active" ? [demand()] : [demand(), planned]));
