@@ -1,3 +1,4 @@
+vi.mock("next/navigation",async()=> (await import("./list-navigation")).listNavigation);
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, expect, it, vi } from "vitest";
@@ -59,7 +60,7 @@ it.each(Object.entries(en.errors))("renders the specific %s message",async(code,
   render(<NextIntlClientProvider locale="en" messages={{directory:en,messages:{},common}}>
     <DirectoryPanel path="/shipping/directory/carriers" kind="carriers" writePermission="shipping:directory:write"/>
   </NextIntlClientProvider>);
-  await waitFor(()=>expect(mocks.api).toHaveBeenCalledWith("/shipping/directory/carriers?page=1&search="));
+  await waitFor(()=>expect(mocks.api).toHaveBeenCalledWith("/shipping/directory/carriers?page=1&page_size=50"));
   fireEvent.click(screen.getByRole("button",{name:"Add"}));
   fireEvent.change(screen.getByLabelText("Name"),{target:{value:"Carrier"}});
   fireEvent.click(screen.getByRole("button",{name:"Save"}));

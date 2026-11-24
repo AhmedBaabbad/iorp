@@ -1,3 +1,4 @@
+import {queryString, type PageQuery} from "@/lib/page-response";
 import { apiClient } from "@/lib/api-client";
 import type { Page } from "@/lib/pagination";
 import type {
@@ -64,9 +65,9 @@ export function recordMeasurement(id: string, measurementId: string, body: Measu
 }
 
 // QUAL-RET-001: returned goods received for quality, an inspection per returned line, the split decision, containment.
-export function getAwaitingReturns(search = "") {
-  return apiClient<AwaitingReturn[]>(`/quality/returns/awaiting?q=${encodeURIComponent(search)}`);
-}
+export function getAwaitingReturns(search:string,filters:PageQuery):Promise<Page<AwaitingReturn>>;
+export function getAwaitingReturns(search?:string):Promise<AwaitingReturn[]>;
+export function getAwaitingReturns(search="",filters?:PageQuery){return apiClient<AwaitingReturn[]|Page<AwaitingReturn>>(`/quality/returns/awaiting${queryString({...filters,q:search})}`);}
 
 export function openReturnInspection(returnLineId: string) {
   return apiClient<QualityCheckData>(`/quality/returns/lines/${returnLineId}/inspection`, { method: "POST" });
@@ -81,9 +82,9 @@ export function getBatchShipments(id: string) {
 }
 
 // QUAL-INC-001: received lots awaiting inspection, an inspection per lot, the lot decision.
-export function getAwaitingLots(search = "") {
-  return apiClient<AwaitingReceipt[]>(`/quality/incoming/awaiting?q=${encodeURIComponent(search)}`);
-}
+export function getAwaitingLots(search:string,filters:PageQuery):Promise<Page<AwaitingReceipt>>;
+export function getAwaitingLots(search?:string):Promise<AwaitingReceipt[]>;
+export function getAwaitingLots(search="",filters?:PageQuery){return apiClient<AwaitingReceipt[]|Page<AwaitingReceipt>>(`/quality/incoming/awaiting${queryString({...filters,q:search})}`);}
 
 export function openIncomingInspection(receiptLineId: string) {
   return apiClient<QualityCheckData>(`/quality/incoming/lines/${receiptLineId}/inspection`, { method: "POST" });

@@ -1,14 +1,13 @@
+import type {Page} from "@/lib/pagination";
+import {queryString,type PageQuery} from "@/lib/page-response";
 import { apiClient } from "@/lib/api-client";
 import type { BusinessSettings, LegacyValue, ListItem, ListItemInput, ListName, Product, ProductInput } from "./types";
 
 const ROOT = "/masterdata";
 
-const query = (filters: Record<string, string | boolean | undefined>) => {
-  const q = new URLSearchParams(Object.entries(filters).filter(([, v]) => Boolean(v)).map(([k, v]) => [k, String(v)]));
-  return q.size ? `?${q}` : "";
-};
-
-export const getProducts = (filters: { search?: string; kind?: string; active_only?: boolean } = {}) => apiClient<Product[]>(`${ROOT}/products${query(filters)}`);
+export function getProducts(filters:PageQuery):Promise<Page<Product>>;
+export function getProducts(filters?:{search?:string;kind?:string;active_only?:boolean}):Promise<Product[]>;
+export function getProducts(filters:object={}){return apiClient<Product[]|Page<Product>>(`${ROOT}/products${queryString(filters)}`);}
 export const getProduct = (id: string) => apiClient<Product>(`${ROOT}/products/${id}`);
 export const createProduct = (body: ProductInput) => apiClient<Product>(`${ROOT}/products`, { method: "POST", body });
 export const updateProduct = (id: string, body: Partial<Omit<ProductInput, "key">>) => apiClient<Product>(`${ROOT}/products/${id}`, { method: "PATCH", body });

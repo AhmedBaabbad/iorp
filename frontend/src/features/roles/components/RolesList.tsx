@@ -1,4 +1,6 @@
 "use client";
+import {useClientListPage} from "@/hooks/useClientListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -81,6 +83,7 @@ export function RolesList() {
   const messages = useTranslations("messages");
   const [roles, setRoles] = useState<RoleListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const page=useClientListPage(roles,row=>[row.code,row.name,row.description,t.has(`systemRoleNames.${row.code}`)?t(`systemRoleNames.${row.code}`):""].filter(Boolean).join(" "),!isLoading);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [roleToDelete, setRoleToDelete] = useState<RoleListItem | null>(null);
@@ -164,7 +167,8 @@ export function RolesList() {
           </PermissionGuard>
         }
       >
-        {isLoading ? <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>{t("loading")}</div> : null}
+        <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={common("listFilters.search")} onClear={page.clear}/>
+      {isLoading ? <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>{t("loading")}</div> : null}
 
         {!isLoading && successMessage ? (
           <div style={styles.success} role="status">{successMessage}</div>
@@ -179,7 +183,7 @@ export function RolesList() {
           </div>
         ) : null}
 
-        {!isLoading && !error && roles.length === 0 ? (
+        {!isLoading && !error && page.items.length === 0 ? (
           <section style={{ ...sharedStyles.state, background: "var(--surface)" }}>
             <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{t("empty")}</h2>
             <p style={{ margin: "0 0 18px" }}>{t("createFirst")}</p>
@@ -189,7 +193,7 @@ export function RolesList() {
           </section>
         ) : null}
 
-        {!isLoading && !error && roles.length > 0 ? (
+        {!isLoading && !error && page.items.length > 0 ? (
           <section style={styles.panel}>
             <div style={styles.tableWrap}>
               <table style={styles.table}>
@@ -204,7 +208,7 @@ export function RolesList() {
                   </tr>
                 </thead>
                 <tbody>
-                  {roles.map((role) => (
+                  {page.items.map((role) => (
                     <tr key={role.id}>
                       <td style={styles.td}>
                         <Link href={`/roles/${role.id}`} style={{ color: "var(--accent-strong)", fontWeight: 700, textDecoration: "none" }}>
@@ -237,7 +241,8 @@ export function RolesList() {
             </div>
           </section>
         ) : null}
-      </PageFrame>
+      <Pagination {...page.pagination}/>
+    </PageFrame>
     </>
   );
 }

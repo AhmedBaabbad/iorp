@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, optional_page_params, page_of
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, require_permission
 from app.workforce.api.schemas import (
@@ -41,10 +42,12 @@ def create_workforce_member(
 
 @router.get(
     "",
-    response_model=list[WorkforceMemberListItem],
+    response_model=Page[WorkforceMemberListItem] | list[WorkforceMemberListItem],
     dependencies=[Depends(require_permission("workforce:members:read"))],
 )
 def list_workforce_members(
+    page: PageParams | None = Depends(optional_page_params),
+    search: str = Query(default="", max_length=80),
     worker_type: WorkerType | None = None,
     status_filter: WorkforceMemberStatus | None = Query(default=None, alias="status"),
     employment_type: EmploymentType | None = None,
@@ -55,9 +58,10 @@ def list_workforce_members(
     db: Session = Depends(get_db),
 ) -> list[WorkforceMemberListItem]:
     service = WorkforceService(db)
-    return service.list_workforce_members(
+    result = service.list_workforce_members(
         tenant.organization_id,
         {
+            "page_params": page, "search": search,
             "worker_type": worker_type,
             "status": status_filter,
             "employment_type": employment_type,
@@ -66,6 +70,7 @@ def list_workforce_members(
             "offset": offset,
         },
     )
+    return page_of(*result, page) if page is not None else result
 
 
 @router.get(

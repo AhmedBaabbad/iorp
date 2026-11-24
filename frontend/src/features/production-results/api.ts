@@ -1,3 +1,5 @@
+import type {Page} from "@/lib/pagination";
+import {queryString, type PageQuery} from "@/lib/page-response";
 import { apiClient } from "@/lib/api-client";
 import type { OrderResult, ResultCorrectionInput, ResultEntryInput, ResultOverviewRow } from "./types";
 
@@ -26,6 +28,6 @@ export function correctResultEntry(orderId: string, entryId: string, body: Resul
 }
 
 // Completed and closed orders with their result totals, for the results screen.
-export function getResultsOverview(status?: "completed" | "closed") {
-  return apiClient<ResultOverviewRow[]>(`/production/production-results${status ? `?status=${status}` : ""}`);
-}
+export function getResultsOverview(status:"completed"|"closed"|undefined,filters:PageQuery):Promise<Page<ResultOverviewRow>>;
+export function getResultsOverview(status?:"completed"|"closed"):Promise<ResultOverviewRow[]>;
+export function getResultsOverview(status?:"completed"|"closed",filters?:PageQuery){return apiClient<ResultOverviewRow[]|Page<ResultOverviewRow>>(`/production/production-results${queryString({...filters,status})}`);}

@@ -174,7 +174,10 @@
     "search": "Search",
     "all": "All",
     "clear": "Clear filters",
-    "noMatches": "Nothing matches the search or filters."
+    "noMatches": "Nothing matches the search or filters.",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive"
   },
   "files": {
     "upTo": "{types} up to {size}",

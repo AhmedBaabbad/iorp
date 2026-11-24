@@ -11,6 +11,7 @@ from decimal import Decimal
 from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
 
+from app.core.pagination import paginate
 from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.core.interfaces.product_types import product_type_holders
 from app.core import numbering
@@ -44,7 +45,7 @@ class ProductService:
     def get(self, product_id) -> Product:
         return self._get(product_id)
 
-    def list(self, search=None, kind=None, active_only=False, limit=500) -> list[Product]:
+    def list(self, search=None, kind=None, active_only=False, limit=None, *, page=None) -> list[Product]:
         query = select(Product).options(selectinload(Product.properties)).where(Product.organization_id == self.org)
         if kind:
             query = query.where(Product.kind == kind)
@@ -53,7 +54,8 @@ class ProductService:
         if search:
             like = lambda column: column.icontains(search, autoescape=True)  # noqa: E731
             query = query.where(or_(like(Product.name_ar), like(Product.name_en), like(Product.key), like(Product.code)))
-        return list(self.db.scalars(query.order_by(Product.active.desc(), Product.name_ar).limit(limit)))
+        query = query.order_by(Product.active.desc(), Product.name_ar, Product.id)
+        return paginate(self.db, query, page) if page is not None else list(self.db.scalars(query.limit(limit)))
 
     def _next_code(self) -> str:
         # A master record: one sequence that never restarts (core/numbering.py takes it without a race).

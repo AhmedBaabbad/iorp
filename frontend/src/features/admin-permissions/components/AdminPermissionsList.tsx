@@ -1,4 +1,6 @@
 "use client";
+import {useClientListPage} from "@/hooks/useClientListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 
 import { useEnumLabel } from "@/i18n/enum-helpers";
 import { useLocale, useTranslations } from "next-intl";
@@ -28,23 +30,19 @@ export function AdminPermissionsList() {
       .catch((caughtError) => setError(getApiErrorMessage(caughtError, messages)))
       .finally(() => setIsLoading(false));
   }, [messages]);
-  const [search, setSearch] = useState("");
-  const [moduleFilter, setModuleFilter] = useState("all");
-  const filtered = useMemo(() => groups
-    .filter((group) => moduleFilter === "all" || group.module === moduleFilter)
-    .map((group) => ({ ...group, permissions: group.permissions.filter((permission) => {
-      const name = permissionName(permission.code);
-      return `${permission.code} ${name}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());
-    }) }))
-    .filter((group) => group.permissions.length > 0), [groups, moduleFilter, search, permissionName]);
+  const flat=useMemo(()=>groups.flatMap(group=>group.permissions.map(permission=>({module:group.module,permission}))),[groups]);
+  const page=useClientListPage(flat,row=>`${row.permission.code} ${permissionName(row.permission.code)}`,!isLoading,{search:"",module:"all"},(row,filters)=>filters.module==="all"||row.module===filters.module);
+  const moduleFilter=page.filters.module;
+  const filtered=groups.map(group=>({...group,permissions:page.items.filter(row=>row.module===group.module).map(row=>row.permission)})).filter(group=>group.permissions.length>0);
   const total = groups.reduce((count, group) => count + group.permissions.length, 0);
 
   return (
     <PageFrame section={t("section")} title={t("title")} subtitle={t("subtitle")}>
       <div style={{ ...sharedStyles.state, alignItems: "start", textAlign: "start", marginBottom: 16 }}>{t("codeManaged")}</div>
+      <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={t("searchPlaceholder")} onClear={page.clear} hasFilters={Boolean(page.filters.search||moduleFilter!=="all")}/>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
-        <input aria-label={t("searchPlaceholder")} style={{ ...sharedStyles.input, flex: "1 1 280px" }} value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("searchPlaceholder")} />
-        <select aria-label={t("filterByModule")} style={sharedStyles.input} value={moduleFilter} onChange={(event) => setModuleFilter(event.target.value)}>
+
+        <select aria-label={t("filterByModule")} style={sharedStyles.input} value={moduleFilter} onChange={(event) => page.set("module",event.target.value)}>
           <option value="all">{t("allModules")}</option>
           {groups.map((group) => <option key={group.module} value={group.module}>{locale === "ar" ? group.module_name_ar : group.module_name_en}</option>)}
         </select>
@@ -69,6 +67,7 @@ export function AdminPermissionsList() {
           </section>
         ))}
       </div>
+      <Pagination {...page.pagination} disabled={isLoading}/>
     </PageFrame>
   );
 }

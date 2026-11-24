@@ -1,3 +1,4 @@
+import {mockLogin} from "./fixtures/auth";
 import {test,expect} from '@playwright/test';
 import ar from '../src/i18n/locales/ar/commercial.json';
 import md from '../src/i18n/locales/ar/masterdata.json';
@@ -6,7 +7,7 @@ import common from '../src/i18n/locales/ar/common.json';
 
 test('adds a product inside an Arabic quotation and keeps the draft on mobile',async({page},testInfo)=>{
   const products:Array<Record<string,unknown>>=[];let quoteWrites=0;
-  await page.addInitScript(()=>{localStorage.setItem('iorp.access_token','inline-test-token');localStorage.setItem('iorp.last_activity',String(Date.now()));});
+  await mockLogin(page);
   await page.context().addCookies([{name:'IORP_LOCALE',value:'ar',domain:'127.0.0.1',path:'/'}]);
   await page.route('**/api/v1/**',async route=>{
     const req=route.request(),path=new URL(req.url()).pathname.replace('/api/v1','');let result:unknown=[];

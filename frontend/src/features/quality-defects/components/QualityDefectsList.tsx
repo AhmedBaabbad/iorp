@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 
 import type { CSSProperties } from "react";
 import { useTranslations } from "next-intl";
@@ -43,6 +45,8 @@ export function QualityDefectsList({
   const common = useTranslations("common");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
+  const page=useListPage<QualityDefectListItem>({search:""},{},qualityCheckId);
+  const {params,accept}=page;
   const [defects, setDefects] = useState<QualityDefectListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,9 +65,9 @@ export function QualityDefectsList({
     setError(null);
 
     try {
-      const response = await getDefectsByCheck(qualityCheckId);
+      const response = await getDefectsByCheck(qualityCheckId,params);
       if (isMountedRef.current) {
-        setDefects(response);
+        accept(response,setDefects);
       }
     } catch (caughtError) {
       if (isMountedRef.current) {
@@ -74,7 +78,7 @@ export function QualityDefectsList({
         setIsLoading(false);
       }
     }
-  }, [qualityCheckId, t]);
+  }, [qualityCheckId,params,accept,t,messages]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -122,6 +126,7 @@ export function QualityDefectsList({
         />
       ) : null}
 
+      <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={common("listFilters.search")} onClear={page.clear}/>
       {isLoading ? <div style={sharedStyles.state}>{t("loading")}</div> : null}
 
       {!isLoading && error ? (
@@ -167,6 +172,7 @@ export function QualityDefectsList({
           ))}
         </div>
       ) : null}
-    </SectionShell>
+      <Pagination {...page.pagination} disabled={isLoading||page.pending}/>
+  </SectionShell>
   );
 }

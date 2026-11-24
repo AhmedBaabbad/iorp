@@ -3,6 +3,7 @@ from uuid import UUID
 from sqlalchemy import Integer, func, select
 from sqlalchemy.orm import Session
 
+from app.core.pagination import paginate
 from app.production.domain.enums import (
     ProductionOrderPriority,
     ProductionOrderStatus,
@@ -41,13 +42,16 @@ class WorkCenterRepository:
         )
         return self.db.scalar(statement)
 
-    def list_by_organization(self, organization_id: UUID) -> list[WorkCenter]:
-        statement = (
-            select(WorkCenter)
-            .where(WorkCenter.organization_id == organization_id)
-            .order_by(WorkCenter.code.asc())
-        )
-        return list(self.db.scalars(statement))
+    def list_by_organization(self, organization_id: UUID, *, page=None, search="", status=None, center_type=None):
+        statement = select(WorkCenter).where(WorkCenter.organization_id == organization_id)
+        if search:
+            statement = statement.where(WorkCenter.code.icontains(search, autoescape=True) | WorkCenter.name.icontains(search, autoescape=True))
+        if status:
+            statement = statement.where(WorkCenter.status == status)
+        if center_type:
+            statement = statement.where(WorkCenter.center_type == center_type)
+        statement = statement.order_by(WorkCenter.code.asc(), WorkCenter.id)
+        return paginate(self.db, statement, page) if page is not None else list(self.db.scalars(statement))
 
     def get_highest_sequence_for_prefix(self, organization_id: UUID, prefix: str) -> int:
         pattern = f"^WC-{prefix}-([0-9]+)$"
@@ -132,13 +136,16 @@ class ShiftDefinitionRepository:
         )
         return self.db.scalar(statement)
 
-    def list_by_organization(self, organization_id: UUID) -> list[ShiftDefinition]:
-        statement = (
-            select(ShiftDefinition)
-            .where(ShiftDefinition.organization_id == organization_id)
-            .order_by(ShiftDefinition.code.asc())
-        )
-        return list(self.db.scalars(statement))
+    def list_by_organization(self, organization_id: UUID, *, page=None, search="", status=None, shift_type=None):
+        statement = select(ShiftDefinition).where(ShiftDefinition.organization_id == organization_id)
+        if search:
+            statement = statement.where(ShiftDefinition.code.icontains(search, autoescape=True) | ShiftDefinition.name.icontains(search, autoescape=True))
+        if status:
+            statement = statement.where(ShiftDefinition.status == status)
+        if shift_type:
+            statement = statement.where(ShiftDefinition.shift_type == shift_type)
+        statement = statement.order_by(ShiftDefinition.code.asc(), ShiftDefinition.id)
+        return paginate(self.db, statement, page) if page is not None else list(self.db.scalars(statement))
 
 
 

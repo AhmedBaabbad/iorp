@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 
 import { useCustomerNames } from "@/features/customers/use-customer-names";
 import Link from "next/link";
@@ -25,23 +27,24 @@ export function ReturnsList() {
   const fmt = useFormatter();
   const units = useTranslations("common.units.units");
   const unit = (code: string) => (units.has(code) ? units(code) : code);
-  const [filters, setFilters] = useState(EMPTY);
+  const page=useListPage<ReturnListItem>(EMPTY);
+  const {params,accept}=page;
+  const filters=page.filters as typeof EMPTY;
   const [rows, setRows] = useState<ReturnListItem[] | null>(null);
   const customerName = useCustomerNames((rows ?? []).map(row => row.customer_id));
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     setError("");
-    try { setRows(await getReturns(filters)); } catch (e) { setError(shippingErrorMessage(e, errors)); }
-  }, [filters, errors]);
+    try { accept(await getReturns(params),setRows); } catch (e) { setError(shippingErrorMessage(e, errors)); }
+  }, [params, accept, errors]);
   useEffect(() => { void load(); }, [load]);
-  const set = (field: keyof typeof EMPTY, value: string) => setFilters(old => ({ ...old, [field]: value }));
+  const set = (field: keyof typeof EMPTY, value: string) => page.set(field,value);
 
   return <PageFrame title={t("listTitle")} subtitle={t("subtitle")} action={<Link href="/shipments" className={s.button}>{shipping("backToList")}</Link>}>
+    <ListToolbar search={filters.search} onSearch={value=>page.set("search",value)} searchHint={t("searchPlaceholder")} onClear={page.clear} hasFilters={page.hasFilters}/>
     <section className={s.toolbar} aria-label={t("filtersAria")}>
-      <label className={s.field}>{shipping("filters.search")}
-        <input type="search" value={filters.search} placeholder={t("searchPlaceholder")} onChange={e => set("search", e.target.value)} />
-      </label>
+
       <label className={s.field}>{t("fields.kind")}
         <select value={filters.kind} onChange={e => set("kind", e.target.value)}>
           <option value="">{t("allKinds")}</option>
@@ -56,7 +59,6 @@ export function ReturnsList() {
       </label>
       <label className={s.field}>{shipping("filters.dateFrom")}<input type="date" value={filters.date_from} onChange={e => set("date_from", e.target.value)} /></label>
       <label className={s.field}>{shipping("filters.dateTo")}<input type="date" value={filters.date_to} min={filters.date_from || undefined} onChange={e => set("date_to", e.target.value)} /></label>
-      <button type="button" className={s.button} onClick={() => setFilters(EMPTY)}>{shipping("filters.clear")}</button>
     </section>
     {error && <div className={s.actions}><p role="alert" className={s.error}>{error}</p>
       <button type="button" className={s.button} onClick={() => void load()}>{common("actions.retry")}</button></div>}
@@ -79,5 +81,6 @@ export function ReturnsList() {
         </tr>)}</tbody>
       </table></div>
     </section>}
+    <Pagination {...page.pagination} disabled={rows===null||page.pending}/>
   </PageFrame>;
 }

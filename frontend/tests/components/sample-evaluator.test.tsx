@@ -1,3 +1,4 @@
+vi.mock("next/navigation",async()=> (await import("./list-navigation")).listNavigation);
 import { cleanup, render, screen } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, expect, it, vi } from 'vitest';

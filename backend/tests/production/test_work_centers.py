@@ -18,6 +18,14 @@ _BASE_WORK_CENTER = {
 }
 
 
+def test_paged_centers_preserve_array_contract(client, auth_headers):
+    from tests.pagination_assertions import assert_paged_contract
+    for number in range(3):
+        response = client.post("/api/v1/production/work-centers", json={**_BASE_WORK_CENTER, "name": f"Paging center {number}"}, headers=auth_headers)
+        assert response.status_code == 201, response.text
+    assert_paged_contract(client, "/api/v1/production/work-centers", headers=auth_headers, search="Paging")
+
+
 def _login(client, email: str, password: str) -> dict[str, str]:
     response = client.post(
         "/api/v1/auth/login",

@@ -96,10 +96,10 @@ class QualityDefectService:
     def list_defects_by_quality_check(
         self,
         tenant: TenantContext,
-        check_id: UUID,
+        check_id: UUID, **filters,
     ) -> list[QualityDefect]:
         self._validate_quality_check(tenant, check_id)
-        return self.defects.list_by_quality_check(tenant.organization_id, check_id)
+        return self.defects.list_by_quality_check(tenant.organization_id, check_id, **filters)
 
     def list_quality_defects(
         self,

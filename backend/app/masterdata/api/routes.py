@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, optional_page_params, page_of
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, permission_check, require_any_permission, require_permission
 from app.masterdata.api.schemas import (LegacyMapInput, LegacyMapResult, LegacyValue, ListItemCreate, ListItemRead, ListItemUpdate,
@@ -30,12 +31,15 @@ def _read(product, can) -> ProductRead:
                                        "actions": rules.product_actions(lambda a: can(M.PRODUCT_ACTIONS[a]))})
 
 
-@router.get("/products", response_model=list[ProductRead], dependencies=[Depends(require_permission(M.PRODUCTS_READ))])
+@router.get("/products", response_model=Page[ProductRead] | list[ProductRead], dependencies=[Depends(require_permission(M.PRODUCTS_READ))])
 def list_products(search: str | None = Query(default=None, max_length=60), kind: str | None = Query(default=None, pattern="^(finished|material)$"),
-                  active_only: bool = False, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db),
+                  active_only: bool = False, page: PageParams | None = Depends(optional_page_params), tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db),
                   can=Depends(permission_check)):
     """The organization's products with their specification templates (active_only for choosing one)."""
-    return [_read(p, can) for p in ProductService(db, tenant).list(search, kind, active_only)]
+    result = ProductService(db, tenant).list(search, kind, active_only, page=page)
+    rows, total = result if page is not None else (result, 0)
+    items = [_read(row, can) for row in rows]
+    return page_of(items, total, page) if page is not None else items
 
 
 @router.get("/products/legacy", response_model=list[LegacyValue],

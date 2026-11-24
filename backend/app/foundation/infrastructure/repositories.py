@@ -3,6 +3,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.pagination import paginate
 from app.foundation.infrastructure.models import (
     Organization,
     Permission,
@@ -70,15 +71,21 @@ class UserRepository:
             statement = statement.where(User.id != exclude_user_id)
         return self.db.scalar(statement.limit(1))
 
-    def list_by_organization(self, organization_id: UUID, *, active_only: bool = False) -> list[User]:
+    def list_by_organization(self, organization_id: UUID, *, active_only: bool = False, page=None, search="", status=None, include_archived=True) -> list[User]:
         statement = (
             select(User)
             .where(User.organization_id == organization_id)
-            .order_by(User.created_at.desc())
+            .order_by(User.created_at.desc(), User.id.desc())
         )
         if active_only:
             statement = statement.where(User.status == 'active', User.archived_at.is_(None))
-        return list(self.db.scalars(statement))
+        if not include_archived:
+            statement = statement.where(User.archived_at.is_(None))
+        if status:
+            statement = statement.where(User.status == status)
+        if search:
+            statement = statement.where(User.full_name.icontains(search, autoescape=True) | User.email.icontains(search, autoescape=True) | User.phone.icontains(search, autoescape=True))
+        return paginate(self.db, statement, page) if page is not None else list(self.db.scalars(statement))
 
     def count_organization_roots(
         self,

@@ -5,6 +5,7 @@ receipts made against the order's lines; ReceiptService calls refresh_received()
 Every write records the procurement history and the activity log.
 """
 from __future__ import annotations
+from app.core.pagination import paginate
 
 from decimal import Decimal
 
@@ -52,7 +53,7 @@ class PurchaseOrderService:
     def get(self, order_id) -> PurchaseOrder:
         return self._get(order_id)
 
-    def list(self, status=None, supplier_id=None, date_from=None, date_to=None, search=None, open_only=False, limit=500):
+    def list(self, status=None, supplier_id=None, date_from=None, date_to=None, search=None, open_only=False, limit=500, *, page=None):
         query = select(PurchaseOrder).options(selectinload(PurchaseOrder.lines)).where(PurchaseOrder.organization_id == self.org)
         if status:
             query = query.where(PurchaseOrder.status == status)
@@ -69,7 +70,8 @@ class PurchaseOrderService:
             items = select(PurchaseOrderLine.order_id).where(like(PurchaseOrderLine.description))
             query = query.where(or_(like(PurchaseOrder.po_number), like(PurchaseOrder.supplier_name), like(PurchaseOrder.supplier_quote_ref),
                                     like(PurchaseOrder.subject), PurchaseOrder.id.in_(items)))
-        return list(self.db.scalars(query.order_by(PurchaseOrder.order_date.desc(), PurchaseOrder.created_at.desc()).limit(limit)))
+        query = query.order_by(PurchaseOrder.order_date.desc(), PurchaseOrder.created_at.desc(), PurchaseOrder.id.desc())
+        return paginate(self.db, query, page) if page is not None else list(self.db.scalars(query.limit(limit)))
 
     def views(self, orders, can, detail=False) -> list[dict]:
         received = received_by_line(self.db, [line.id for o in orders for line in o.lines])

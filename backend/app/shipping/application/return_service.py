@@ -11,6 +11,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.core.pagination import paginate
 from app.core.interfaces import approvals
 from app.core.units import to_kilograms
 from app.core.utils import utc_now
@@ -74,7 +75,7 @@ class ReturnService:
     def for_shipment(self, shipment_id) -> list[ShipmentReturn]:
         return list(self.db.scalars(self._query().where(ShipmentReturn.shipment_id == shipment_id).order_by(ShipmentReturn.created_at)))
 
-    def list(self, status=None, kind=None, shipment_id=None, customer_id=None, date_from=None, date_to=None, search=None, limit=500):
+    def list(self, status=None, kind=None, shipment_id=None, customer_id=None, date_from=None, date_to=None, search=None, limit=500, *, page=None):
         query = self._query()
         for column, value in ((ShipmentReturn.status, status), (ShipmentReturn.kind, kind), (ShipmentReturn.shipment_id, shipment_id),
                               (ShipmentReturn.customer_id, customer_id)):
@@ -88,7 +89,10 @@ class ReturnService:
             notes = select(Shipment.id).where(Shipment.organization_id == self.org, Shipment.shipment_no.icontains(search, autoescape=True))
             query = query.where(ShipmentReturn.return_no.icontains(search, autoescape=True) | ShipmentReturn.customer_name.icontains(search, autoescape=True)
                                 | ShipmentReturn.customer_reference.icontains(search, autoescape=True) | ShipmentReturn.shipment_id.in_(notes))
-        return list(self.db.scalars(query.order_by(ShipmentReturn.created_at.desc()).limit(limit)))
+        query = query.order_by(ShipmentReturn.created_at.desc(), ShipmentReturn.id.desc())
+        if page is not None:
+            return paginate(self.db, query, page)
+        return list(self.db.scalars(query.limit(limit)))
 
     def views(self, found, can, detail=False) -> list[dict]:
         shipments = {s.id: s for s in self.db.scalars(select(Shipment).where(Shipment.id.in_({r.shipment_id for r in found})))} if found else {}

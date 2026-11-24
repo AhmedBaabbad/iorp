@@ -1,5 +1,7 @@
 "use client";
 import {formatSpecValue} from "@/lib/spec-value";
+import {useListQuery} from "@/lib/pagination";
+import {Pagination,ListToolbar} from "@/components/pagination";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { customerDisplayName } from "@/lib/customer-name";
 import Link from "next/link";
@@ -29,13 +31,8 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const [filters, setFilters] = useState<Record<string, string>>(() => {
-    const search = searchParams.get("search");
-    const initial: Record<string, string> = {};
-    if (search) initial.search = search;
-    return initial;
-  });
-  const [page, setPage] = useState(1);
+  const paging=useListQuery(["search","customer_id","priority","product_type","requested_delivery_from","requested_delivery_to"]);
+  const filters=paging.filters,page=paging.page,pageSize=paging.pageSize;
   // The statuses shown (hidden ones are only hidden, never deleted). Read from the URL now and from this
   // browser after mount (localStorage is not available while rendering on the server); nothing loads until known.
   const config = planning ? PLANNING : DEMANDS;
@@ -61,11 +58,11 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
     const query = listQuery();
     demandsApi.list(query, planning).then(v => { if (active) setData(v); }).catch(e => { if (active) setError(errorKey(e)); }).finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
-  }, [filters, page, planning, revision, visible, visibleReady]); // eslint-disable-line react-hooks/exhaustive-deps -- listQuery reads only these
-  const filter = (key: string, value: string) => { setFilters(old => ({ ...old, [key]: value })); setPage(1); };
+  }, [filters, page, pageSize, planning, revision, visible, visibleReady]); // eslint-disable-line react-hooks/exhaustive-deps -- listQuery reads only these
+  const filter = (key: keyof typeof filters, value: string) => paging.setFilter(key,value);
   // The screen's query; the Excel export sends the same filters without the page (every matching demand).
   function listQuery() {
-    return planning ? planningQuery(visible, filters, page) : new URLSearchParams([...Object.entries(filters).filter(([, v]) => v), ...statusQuery(visible), ["page", String(page)], ["page_size", "20"]]).toString();
+    return planning ? planningQuery(visible, filters, page, pageSize) : new URLSearchParams([...Object.entries(filters).filter(([, v]) => v), ...statusQuery(visible), ["page", String(page)], ["page_size", String(pageSize)]]).toString();
   }
   const [exporting, setExporting] = useState(false);
   async function exportExcel() {
@@ -77,8 +74,9 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
     finally { setExporting(false); }
   }
   const changeVisible = (next: DemandStatus[]) => {
-    setVisible(next); setPage(1); store(next, config.storageKey);
+    setVisible(next); store(next, config.storageKey);
     const params = withStatusesInUrl(searchParams.toString(), next, config.defaults);
+    params.delete("page");
     router.replace(params.size ? `${pathname}?${params}` : pathname, { scroll: false });
   };
   const hidden = data?.hidden_by_status ?? 0;
@@ -100,9 +98,10 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
     catch (e) { setError(errorKey(e)); setBusy(false); }
   }
   return <PageFrame title={planning ? p("title") : t("listTitle")} subtitle={planning ? p("subtitle") : t("listSubtitle")}>
+    <ListToolbar search={filters.search} onSearch={value=>filter("search",value)} searchHint={t("search")} onClear={paging.clearFilters} hasFilters={filtered}/>
     <section className={s.panel}>
       <div className={s.toolbar}>
-        <label className={s.field}>{t("search")}<input value={filters.search ?? ""} onChange={e => filter("search", e.target.value)} /></label>
+
         <label className={s.field}>{t("customer")}<RecordCombobox onSearch={setCustomerSearch} aria-label={t("customer")} value={filters.customer_id ?? ""} onChange={e => filter("customer_id", e)}><option value="">{t("all")}</option>{customers.map(c => <option key={c.id} value={c.id}>{c.code} · {customerDisplayName(c, locale)}</option>)}</RecordCombobox></label>
         <label className={s.field}>{t("priority")}<select value={filters.priority ?? ""} onChange={e => filter("priority", e.target.value)}><option value="">{t("all")}</option>{priorities.map(v => <option key={v} value={v}>{t(`priorities.${v}`)}</option>)}</select></label>
         <StatusVisibilityPicker value={visible} defaults={config.defaults} onChange={changeVisible} />
@@ -122,7 +121,7 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
         <th>{t("requestedDeliveryDate")}</th><th>{t("priority")}</th><th>{t("status")}</th>{(!planning || reorderable) && <th>{t("actions")}</th>}
       </tr></thead><tbody>{data?.items.map((d, index) => {
         const overdue = planning && !!d.requested_delivery_date && d.requested_delivery_date < today();
-        const position = (page - 1) * 20 + index + 1;
+        const position = (page - 1) * pageSize + index + 1;
         return <tr key={d.id} className={overdue ? s.overdue : ""}>
           {planning && <td>{d.planning_sequence ?? position}</td>}<td>{canRead ? <Link href={`/production/demands/${d.id}`}>{d.demand_number}</Link> : d.demand_number}</td><td>{customerDisplayName(d.customer, locale)}<div className={s.muted}>{d.customer.code}</div></td>
           {planning ? <><td>{d.items?.map(i => i.product_type).filter(Boolean).join(", ")}</td>{["width_mm", "thickness_mm", "color", "roll_weight_kg"].map(k => <td key={k}>{formatSpecValue(d.spec_summary?.[k])}</td>)}<td><Specs value={d.spec_summary ?? null} /></td><PlanningQuantities demand={d} /></> : <><td>{d.quote?.number ?? t("none")}</td><td>{d.request_date}</td><td>{t("itemCount", { count: d.item_count })}</td></>}
@@ -133,7 +132,7 @@ export function DemandList({ planning = false }: { planning?: boolean }) {
         </tr>;
       })}</tbody></table></div>
       {!busy && data?.total === 0 && <p>{planning ? p(`views.empty.${activeQueue ? "active" : "all"}`) : t("empty")}</p>}
-      <div className={s.toolbar}><button className={s.button} disabled={busy || page <= 1} onClick={() => setPage(v => v - 1)}>{t("previous")}</button><span>{t("page", { page, count: Math.max(1, Math.ceil((data?.total ?? 0) / 20)) })}</span><button className={s.button} disabled={busy || page * 20 >= (data?.total ?? 0)} onClick={() => setPage(v => v + 1)}>{t("next")}</button></div>
+      <Pagination page={page} pageSize={pageSize} total={data?.total??0} pages={data?.pages??Math.ceil((data?.total??0)/pageSize)} onPage={paging.setPage} onPageSize={paging.setPageSize} disabled={busy}/>
     </section>
     {activeQueue && data && <PlanningAllocation demands={allocatable} busy={busy} onRefresh={() => refresh(v => v + 1)} />}
   </PageFrame>;

@@ -1,11 +1,13 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, optional_page_params, page_of
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, require_permission
 from app.production.domain import permissions as P
+from app.production.domain.enums import WorkCenterStatus, WorkCenterType
 from app.production.api.schemas import (
     WorkCenterCreate,
     WorkCenterDeleteSummary,
@@ -33,14 +35,17 @@ def create_work_center(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
-@router.get("", response_model=list[WorkCenterListItem],
+@router.get("", response_model=Page[WorkCenterListItem] | list[WorkCenterListItem],
     dependencies=[Depends(require_permission(P.WORK_CENTERS_READ))])
 def list_work_centers(
+    page: PageParams | None = Depends(optional_page_params),
+    search: str = Query(default="", max_length=80), status_filter: WorkCenterStatus | None = Query(default=None, alias="status"),
+    center_type: WorkCenterType | None = Query(default=None),
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ) -> list[WorkCenterListItem]:
-    service = WorkCenterService(db)
-    return service.list_work_centers(tenant)
+    result = WorkCenterService(db).list_work_centers(tenant, page=page, search=search, status=status_filter, center_type=center_type)
+    return page_of(*result, page) if page is not None else result
 
 
 @router.get("/{work_center_id}", response_model=WorkCenterRead,

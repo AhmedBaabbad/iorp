@@ -1,9 +1,11 @@
 "use client";
+import {usePagedFilters} from "@/lib/pagination";
+import {Pagination,ListToolbar} from "@/components/pagination";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { customerDisplayName } from "@/lib/customer-name";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+
 import { useLocale, useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -154,10 +156,6 @@ type TabKey = "mine" | "today" | "upcoming" | "overdue" | "completed" | "cancell
 
 const statusOptions: FollowUpStatus[] = ["pending", "in_progress", "completed", "cancelled"];
 
-function StatusOptionLabel({ status }: { status: FollowUpStatus }) {
-  const tEnums = useTranslations();
-  return <>{tEnums(`enums.followUp.status.${status}`)}</>;
-}
 
 function buildTabFilters(tab: TabKey): FollowUpListFilters {
   const now = new Date();
@@ -193,10 +191,11 @@ function isTabKey(value: string | null): value is TabKey {
 export function FollowUpsListPage() {
   const locale = useLocale();
   const t = useTranslations("commercial.followUps");
+  const tEnums = useTranslations();
   const common = useTranslations("common");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
-  const searchParams = useSearchParams();
+
 
   const canUpdate = usePermission("commercial:follow_ups:update");
   const canCancel = usePermission("commercial:follow_ups:cancel");
@@ -205,15 +204,10 @@ export function FollowUpsListPage() {
   const canComplete = usePermission("commercial:follow_ups:complete");
   const canAssign = usePermission("commercial:follow_ups:assign");
 
-  const initialTab = searchParams.get("tab");
-  const [tab, setTab] = useState<TabKey>(isTabKey(initialTab) ? initialTab : "mine");
-  const [statusFilter, setStatusFilter] = useState<FollowUpStatus | "">("");
-  const [unassignedOnly, setUnassignedOnly] = useState(
-    searchParams.get("unassigned") === "true",
-  );
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const pageSize = 20;
+  const paging=usePagedFilters({tab:"mine",status:"",unassigned:false,search:""});
+  const tab=isTabKey(paging.filters.tab)?paging.filters.tab:"mine";
+  const statusFilter=paging.filters.status as FollowUpStatus|"",search=paging.filters.search,unassignedOnly=paging.filters.unassigned;
+  const page=paging.page,pageSize=paging.pageSize;
 
   const [items, setItems] = useState<FollowUp[]>([]);
   const [total, setTotal] = useState(0);
@@ -258,7 +252,7 @@ export function FollowUpsListPage() {
         setIsLoading(false);
       }
     }
-  }, [tab, statusFilter, search, unassignedOnly, page, messages]);
+  }, [tab, statusFilter, search, unassignedOnly, page, pageSize, messages]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -284,9 +278,7 @@ export function FollowUpsListPage() {
   }, [canAssign]);
 
   function selectTab(nextTab: TabKey) {
-    setTab(nextTab);
-    setStatusFilter("");
-    setPage(1);
+    paging.setMany({tab:nextTab,status:""});
   }
 
   function startEdit(followUp: FollowUp) {
@@ -377,31 +369,11 @@ export function FollowUpsListPage() {
         ))}
       </div>
 
+      <ListToolbar search={search} onSearch={value=>paging.set("search",value)} searchHint={t("filters.searchPlaceholder")}
+        status={statusFilter} onStatus={value=>paging.set("status",value)} statusLabel={common("listFilters.status")}
+        statuses={statusOptions.map(value=>({value,label:tEnums(`enums.followUp.status.${value}`)}))}
+        onClear={()=>paging.setMany({search:"",status:"",unassigned:false})} hasFilters={Boolean(search||statusFilter||unassignedOnly)}/>
       <div style={styles.filtersRow}>
-        <input
-          style={{ ...sharedStyles.input, maxWidth: "280px" }}
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setPage(1);
-          }}
-          placeholder={t("filters.searchPlaceholder")}
-        />
-        <select
-          style={{ ...sharedStyles.input, maxWidth: "200px" }}
-          value={statusFilter}
-          onChange={(event) => {
-            setStatusFilter(event.target.value as FollowUpStatus | "");
-            setPage(1);
-          }}
-        >
-          <option value="">{t("filters.allStatuses")}</option>
-          {statusOptions.map((status) => (
-            <option key={status} value={status}>
-              <StatusOptionLabel status={status} />
-            </option>
-          ))}
-        </select>
         {canAssign ? (
           <label style={sharedStyles.field}>
             <span style={sharedStyles.label}>{t("filters.assignmentStatus")}</span>
@@ -409,8 +381,7 @@ export function FollowUpsListPage() {
               style={{ ...sharedStyles.input, maxWidth: "220px" }}
               value={unassignedOnly ? "unassigned" : "all"}
               onChange={(event) => {
-                setUnassignedOnly(event.target.value === "unassigned");
-                setPage(1);
+                paging.set("unassigned",event.target.value === "unassigned");
               }}
             >
               <option value="all">{t("filters.assignmentStatus")}</option>
@@ -673,33 +644,7 @@ export function FollowUpsListPage() {
               </tbody>
             </table>
           </div>
-          <div style={styles.pagination}>
-            <span style={sharedStyles.meta}>
-              {common("pagination.showing", {
-                from: (page - 1) * pageSize + 1,
-                to: Math.min(page * pageSize, total),
-                total,
-              })}
-            </span>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              <button
-                type="button"
-                style={sharedStyles.secondaryButton}
-                disabled={page <= 1}
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-              >
-                {common("pagination.previous")}
-              </button>
-              <button
-                type="button"
-                style={sharedStyles.secondaryButton}
-                disabled={page >= totalPages}
-                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-              >
-                {common("pagination.next")}
-              </button>
-            </div>
-          </div>
+          <Pagination page={page} pageSize={pageSize} total={total} pages={totalPages} onPage={paging.setPage} onPageSize={paging.setPageSize} disabled={isLoading}/>
         </section>
       ) : null}
     </PageFrame>

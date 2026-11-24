@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 
 import {UnitLabel} from "@/components/UnitLabel";
 import Link from "next/link";
@@ -22,26 +24,20 @@ export function ResultsList() {
   const common = useTranslations("common");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
-  const [filter, setFilter] = useState<Filter>("");
+  const page=useListPage<ResultOverviewRow>({status:"",search:""});
+  const {params,accept}=page;
   const [rows, setRows] = useState<ResultOverviewRow[] | null>(null);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     setError("");
-    try { setRows(await getResultsOverview(filter || undefined)); } catch (e) { setError(resultErrorMessage(e, t)); }
-  }, [filter, t]);
+    try { accept(await getResultsOverview((params.status||undefined) as Exclude<Filter,"">|undefined,params),setRows); } catch (e) { setError(resultErrorMessage(e, t)); }
+  }, [params,accept,t]);
   useEffect(() => { void load(); }, [load]);
 
   return <PageFrame title={t("list.title")} subtitle={t("list.subtitle")}>
-    <section className={s.toolbar} aria-label={t("list.filters")}>
-      <label className={s.field}>{t("list.status")}
-        <select value={filter} onChange={e => setFilter(e.target.value as Filter)}>
-          <option value="">{t("list.allStatuses")}</option>
-          <option value="completed">{orders("completed")}</option>
-          <option value="closed">{orders("closed")}</option>
-        </select>
-      </label>
-    </section>
+    <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={common("listFilters.search")}
+      status={page.filters.status} onStatus={value=>page.set("status",value)} statuses={["completed","closed"].map(value=>({value,label:orders(value)}))} statusLabel={t("list.status")} onClear={page.clear}/>
     {error && <div className={s.actions}><p role="alert" className={s.error}>{error}</p>
       <button type="button" className={s.button} onClick={() => void load()}>{common("actions.retry")}</button></div>}
     {!error && rows === null && <p className={s.muted}>{messages("loading.default")}</p>}
@@ -76,5 +72,6 @@ export function ResultsList() {
         </tr>))}</tbody>
       </table></div>
     </section>}
+    <Pagination {...page.pagination} disabled={rows===null||page.pending}/>
   </PageFrame>;
 }

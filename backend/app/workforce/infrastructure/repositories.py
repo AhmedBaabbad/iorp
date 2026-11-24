@@ -4,6 +4,7 @@ from sqlalchemy import Integer, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.core.pagination import paginate
 from app.workforce.infrastructure.models import WorkforceCodeCounter, WorkforceMember
 from app.workforce.domain.enums import WorkforceMemberStatus
 
@@ -63,7 +64,12 @@ class WorkforceRepository:
                 WorkforceMember.is_system_user == filters["is_system_user"],
             )
 
-        statement = statement.order_by(WorkforceMember.employee_code.asc())
+        if filters.get('search'):
+            term = filters['search']
+            statement = statement.where(WorkforceMember.employee_code.icontains(term, autoescape=True) | WorkforceMember.full_name.icontains(term, autoescape=True) | WorkforceMember.phone.icontains(term, autoescape=True) | WorkforceMember.national_id.icontains(term, autoescape=True))
+        statement = statement.order_by(WorkforceMember.employee_code.asc(), WorkforceMember.id)
+        if filters.get('page_params') is not None:
+            return paginate(self.db, statement, filters['page_params'])
 
         limit = filters.get("limit")
         offset = filters.get("offset")

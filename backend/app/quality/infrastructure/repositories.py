@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.pagination import paginate
 from app.quality.domain.enums import (
     DefectCategory,
     DefectSeverity,
@@ -117,7 +118,7 @@ class QualityDefectRepository:
     def list_by_quality_check(
         self,
         organization_id: UUID,
-        quality_check_id: UUID,
+        quality_check_id: UUID, *, page=None, search="", severity=None,
     ) -> list[QualityDefect]:
         statement = (
             select(QualityDefect)
@@ -127,9 +128,13 @@ class QualityDefectRepository:
                 QualityDefect.organization_id == organization_id,
                 QualityCheck.organization_id == organization_id,
             )
-            .order_by(QualityDefect.defect_date.desc(), QualityDefect.created_at.desc())
+            .order_by(QualityDefect.defect_date.desc(), QualityDefect.created_at.desc(), QualityDefect.id.desc())
         )
-        return list(self.db.scalars(statement))
+        if search:
+            statement = statement.where(QualityDefect.description.icontains(search, autoescape=True) | QualityDefect.defect_category.icontains(search, autoescape=True))
+        if severity:
+            statement = statement.where(QualityDefect.severity == severity)
+        return paginate(self.db, statement, page) if page is not None else list(self.db.scalars(statement))
 
     def list_by_organization(
         self,

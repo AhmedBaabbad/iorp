@@ -42,6 +42,13 @@ def code(r):
     return r.json()["detail"]["code"]
 
 
+def test_paged_products_preserve_catalog_contract(md):
+    from tests.pagination_assertions import assert_paged_contract
+    for number in range(3):
+        product(md, key=f"paging_product_{number}", name_en=f"Paging product {number}", name_ar=f"Paging product {number}")
+    assert_paged_contract(md.client, f"{ROOT}/products", search="Paging", ctx=md.ctx)
+
+
 def test_a_product_has_a_fixed_key_and_a_specification_template(md):
     p = product(md)
     assert (p["code"], p["key"], p["name_en"], p["default_unit"]) == ("PRD-0001", "pp_strap", "PP Strap", "roll")

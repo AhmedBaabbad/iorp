@@ -1,3 +1,5 @@
+import type {Page} from "@/lib/pagination";
+import {queryString, type PageQuery} from "@/lib/page-response";
 import { apiClient } from "@/lib/api-client";
 import type {
   Attachment, CustomerOption, DeliveryMethod, DeliveryReason, ProductionOrderOption, ReturnInput, ReturnKind, ReturnListItem, ReturnStatus,
@@ -7,14 +9,12 @@ import type {
 const PATH = "/shipping/shipments";
 const RETURNS = "/shipping/returns";
 
-const query = (filters: Record<string, string | undefined>) => {
-  const q = new URLSearchParams(Object.entries(filters).filter(([, v]) => Boolean(v)) as [string, string][]);
-  return q.size ? `?${q}` : "";
-};
 
 export type ShipmentFilters = { status?: ShipmentStatus | ""; method?: DeliveryMethod | ""; date_from?: string; date_to?: string; search?: string };
 
-export const getShipments = (filters: ShipmentFilters = {}) => apiClient<ShipmentListItem[]>(`${PATH}${query(filters)}`);
+export function getShipments(filters: ShipmentFilters & PageQuery):Promise<Page<ShipmentListItem>>;
+export function getShipments(filters?: ShipmentFilters):Promise<ShipmentListItem[]>;
+export function getShipments(filters: ShipmentFilters | (ShipmentFilters & PageQuery) = {}){return apiClient<ShipmentListItem[]|Page<ShipmentListItem>>(`${PATH}${queryString(filters)}`);}
 export const getShipment = (id: string) => apiClient<Shipment>(`${PATH}/${id}`);
 // Registered customers, with the contacts a delivery note copies.
 export const getShippingCustomers = (search = "") => apiClient<CustomerOption[]>(`${PATH}/lookups/customers?q=${encodeURIComponent(search)}`);
@@ -49,7 +49,9 @@ export const updateShippingSettings = (body: Partial<ShippingSettings>) => apiCl
 
 // ── returns ─────────────────────────────────────────────────────────────────────────────────────
 export type ReturnFilters = { status?: ReturnStatus | ""; kind?: ReturnKind | ""; shipment_id?: string; date_from?: string; date_to?: string; search?: string };
-export const getReturns = (filters: ReturnFilters = {}) => apiClient<ReturnListItem[]>(`${RETURNS}${query(filters)}`);
+export function getReturns(filters: ReturnFilters & PageQuery):Promise<Page<ReturnListItem>>;
+export function getReturns(filters?: ReturnFilters):Promise<ReturnListItem[]>;
+export function getReturns(filters: ReturnFilters | (ReturnFilters & PageQuery) = {}){return apiClient<ReturnListItem[]|Page<ReturnListItem>>(`${RETURNS}${queryString(filters)}`);}
 export const getReturn = (id: string) => apiClient<ShipmentReturn>(`${RETURNS}/${id}`);
 export const createReturn = (body: ReturnInput) => apiClient<ShipmentReturn>(RETURNS, { method: "POST", body });
 const returnStep = <B,>(id: string, name: string, body: B) => apiClient<ShipmentReturn>(`${RETURNS}/${id}/${name}`, { method: "POST", body });

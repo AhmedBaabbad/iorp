@@ -44,9 +44,10 @@ class ReturnInspectionService:
         return {c.return_line_id: c for c in rows}
 
     # ── reads ──────────────────────────────────────────────────────────────────────────────────
-    def awaiting(self, search="", include_done=False) -> list[dict]:
+    def awaiting(self, search="", include_done=False, *, page=None) -> list[dict]:
         """Returns received for quality, grouped, each line with its inspection (if one was opened)."""
-        lines = [line for line in self.shipping.received_for_quality(search) if line["awaiting_quality"]]
+        found, total = self.shipping.received_for_quality_page(page, search, include_done) if page is not None else (self.shipping.received_for_quality(search), 0)
+        lines = [line for line in found if line["awaiting_quality"]]
         checks = self._checks_by_line([line["line_id"] for line in lines])
         grouped: dict = {}
         for line in lines:
@@ -64,7 +65,7 @@ class ReturnInspectionService:
         out = list(grouped.values())
         if not include_done:  # a return leaves the list once every line's inspection is closed
             out = [r for r in out if any(line["inspection_status"] != S.CLOSED.value for line in r["lines"])]
-        return out
+        return (out, total) if page is not None else out
 
     def batch(self, check: QualityCheck) -> list[dict]:
         return self.shipping.batch(check.production_order_id)

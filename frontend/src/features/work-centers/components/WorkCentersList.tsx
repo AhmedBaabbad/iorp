@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -189,6 +191,8 @@ export function WorkCentersList() {
   const common = useTranslations("common");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
+  const page=useListPage<WorkCenterListItem>({search:"",status:""});
+  const {params,accept}=page;
   const [workCenters, setWorkCenters] = useState<WorkCenterListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -205,14 +209,14 @@ export function WorkCentersList() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await getWorkCenters();
-      if (isMountedRef.current) setWorkCenters(response);
+      const response = await getWorkCenters(params);
+      if (isMountedRef.current) accept(response,setWorkCenters);
     } catch (caughtError) {
       if (isMountedRef.current) setError(getApiErrorMessage(caughtError, messages));
     } finally {
       if (isMountedRef.current) setIsLoading(false);
     }
-  }, []);
+  }, [params,accept,messages]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -361,7 +365,10 @@ export function WorkCentersList() {
           </Link>
         ) : undefined}
       >
-        {isLoading ? (
+        <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={common("listFilters.search")} onClear={page.clear}
+        status={page.filters.status} onStatus={value=>page.set("status",value)} statusLabel={common("listFilters.status")}
+        statuses={["active","inactive","under_maintenance"].map(value=>({value,label:formatWorkCenterStatus(value as WorkCenterListItem["status"],tEnums)}))}/>
+      {isLoading ? (
           <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
             {t("loading")}
           </div>
@@ -463,6 +470,7 @@ export function WorkCentersList() {
             </div>
           </section>
         ) : null}
+      <Pagination {...page.pagination} disabled={isLoading||page.pending}/>
       </PageFrame>
     </>
   );

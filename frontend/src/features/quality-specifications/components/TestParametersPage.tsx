@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 import { ReferenceTextSelect } from "@/features/reference-directory/ReferenceTextSelect";
 
 
@@ -20,6 +22,9 @@ import type { TestParameter } from "../types";
 // "خصائص الفحص": what the factory measures (numeric, in a unit) or checks visually (conforming / not).
 export function TestParametersPage() {
   const t = useTranslations("quality.parameters");
+  const common=useTranslations("common");
+  const page=useListPage<TestParameter>({search:"",status:""});
+  const {params,accept}=page;
   const errors = useTranslations("quality.errors");
   const messages = useTranslations("messages");
   const canCreate = usePermission(Q.SPECS_CREATE);
@@ -31,8 +36,8 @@ export function TestParametersPage() {
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    try { setRows(await getParameters()); } catch (e) { setError(qualityErrorMessage(e, errors)); }
-  }, [errors]);
+    try { accept(await getParameters(false,params),setRows); } catch (e) { setError(qualityErrorMessage(e, errors)); }
+  }, [params,accept,errors]);
   useEffect(() => { void load(); }, [load]);
 
   async function run(action: () => Promise<unknown>) {
@@ -42,7 +47,7 @@ export function TestParametersPage() {
   async function add(event: FormEvent) {
     event.preventDefault();
     const ok = await run(() => createParameter({ ...draft, unit: draft.kind === "numeric" ? draft.unit || null : null, method: draft.method || null,
-      sort_order: (rows?.length ?? 0) * 10 + 10 }));
+      sort_order: (page.meta?.total ?? 0) * 10 + 10 }));
     if (ok) setDraft(EMPTY_PARAMETER);
   }
   async function save(event: FormEvent) {
@@ -56,6 +61,8 @@ export function TestParametersPage() {
 
   return <PageFrame title={t("title")} subtitle={t("subtitle")}
     action={<Link href="/quality-specifications" className={s.button}>{t("toSpecifications")}</Link>}>
+    <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={common("listFilters.search")} onClear={page.clear}
+      status={page.filters.status} onStatus={value=>page.set("status",value)} statusLabel={common("listFilters.status")} statuses={["active","inactive"].map(value=>({value,label:common(`listFilters.${value}`)}))}/>
     {error && <p role="alert" className={s.error}>{error}</p>}
     {rows === null && !error && <p className={s.muted}>{messages("loading.default")}</p>}
     {rows !== null && rows.length === 0 && <section className={s.panel}>
@@ -98,5 +105,6 @@ export function TestParametersPage() {
       <ParameterFormFields draft={draft} set={set}/>
       <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy}>{t("add")}</button>
     </form>}
+    <Pagination {...page.pagination} disabled={rows===null||page.pending}/>
   </PageFrame>;
 }

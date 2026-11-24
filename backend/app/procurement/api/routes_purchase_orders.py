@@ -1,3 +1,4 @@
+from app.core.pagination import Page, PageParams, optional_page_params, page_of
 """Purchase orders (PROC-003): one permission per step; the stages are explicit endpoints."""
 from datetime import date
 from uuid import UUID
@@ -27,14 +28,16 @@ def _order(db, tenant, can, action):
     return _attempt(db, run)
 
 
-@router.get(PATH, response_model=list[OrderListItem], dependencies=[Depends(require_permission(P.PO_READ))])
+@router.get(PATH, response_model=Page[OrderListItem] | list[OrderListItem], dependencies=[Depends(require_permission(P.PO_READ))])
 def list_orders(status_filter: str | None = Query(default=None, alias="status", pattern=STATUSES), supplier_id: UUID | None = None,
                 open_only: bool = False, date_from: date | None = None, date_to: date | None = None,
-                search: str | None = Query(default=None, max_length=60), tenant: TenantContext = Depends(get_current_tenant),
+                search: str | None = Query(default=None, max_length=60), page: PageParams | None = Depends(optional_page_params), tenant: TenantContext = Depends(get_current_tenant),
                 db: Session = Depends(get_db), can=Depends(permission_check)):
     service = PurchaseOrderService(db, tenant)
-    rows = service.list(status_filter, supplier_id, date_from, date_to, search, open_only)
-    return [OrderListItem.model_validate({**OrderListItem.model_validate(o).model_dump(), **v}) for o, v in zip(rows, service.views(rows, can))]
+    result = service.list(status_filter, supplier_id, date_from, date_to, search, open_only, page=page)
+    rows, total = result if page is not None else (result, 0)
+    items = [OrderListItem.model_validate({**OrderListItem.model_validate(o).model_dump(), **v}) for o, v in zip(rows, service.views(rows, can))]
+    return page_of(items, total, page) if page is not None else items
 
 
 @router.get(f"{PATH}/open-for-receipt", response_model=list[OpenOrder],

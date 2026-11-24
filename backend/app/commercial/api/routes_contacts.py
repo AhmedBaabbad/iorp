@@ -32,7 +32,7 @@ def model(kind):
 
 
 @router.get('/directory/{kind}')
-def listing(customer_id:UUID,kind:str,search:str=Query('',max_length=120),page:int|None=Query(None,ge=1),db=Depends(get_db),tenant=Depends(get_current_tenant)):
+def listing(customer_id:UUID,kind:str,search:str=Query('',max_length=120),page:int|None=Query(None,ge=1),page_size:int=Query(50,ge=1,le=100),db=Depends(get_db),tenant=Depends(get_current_tenant)):
     parent(db,tenant,customer_id)
     m=model(kind)
     query=select(m).where(m.organization_id==tenant.organization_id,m.customer_id==customer_id,
@@ -47,7 +47,7 @@ def listing(customer_id:UUID,kind:str,search:str=Query('',max_length=120),page:i
             for row in result:row['contact_name']=names.get(row['contact_id'])
         return result
     if page is None:return views(db.scalars(query.limit(100)))
-    params=PageParams(page=page)
+    params=PageParams(page=page,page_size=page_size)
     rows,total=paginate(db,query,params)
     return page_of(views(rows),total,params)
 

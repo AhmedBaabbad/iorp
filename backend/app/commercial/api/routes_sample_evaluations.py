@@ -1,8 +1,9 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, optional_page_params, page_of
 from app.commercial.application.visibility import SAMPLES_READ, visible_owner
 from app.commercial.api.schemas import SampleEvaluationCreate, SampleEvaluationRead, SampleEvaluationUpdate
 from app.commercial.application.sample_service import SampleService
@@ -35,17 +36,18 @@ def create_sample_evaluation(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sample not found.")
     return evaluation
 
-@router.get("/samples/{sample_id}/evaluations", response_model=list[SampleEvaluationRead], dependencies=[Depends(require_permission("commercial:evaluations:read"))])
+@router.get("/samples/{sample_id}/evaluations", response_model=Page[SampleEvaluationRead] | list[SampleEvaluationRead], dependencies=[Depends(require_permission("commercial:evaluations:read"))])
 def list_sample_evaluations(
-    sample_id: UUID,
+    sample_id: UUID, page: PageParams | None = Depends(optional_page_params),
+    search: str = Query(default="", max_length=80), status_filter: str | None = Query(default=None, alias="status", pattern="^(accepted|rejected|needs_modification)$"),
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ) -> list[SampleEvaluationRead]:
     service = SampleService(db, visible_owner(db, tenant, SAMPLES_READ))
-    evaluations = service.list_sample_evaluations(tenant, sample_id)
+    evaluations = service.list_sample_evaluations(tenant, sample_id, page=page, search=search, status=status_filter)
     if evaluations is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sample not found.")
-    return evaluations
+    return page_of(*evaluations, page) if page is not None else evaluations
 
 
 @router.get("/sample-evaluations/{evaluation_id}", response_model=SampleEvaluationRead, dependencies=[Depends(require_permission("commercial:evaluations:read"))])

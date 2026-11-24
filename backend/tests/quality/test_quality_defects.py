@@ -7,6 +7,14 @@ CHECKS_BASE = "/api/v1/quality/quality-checks"
 DEFECTS_BASE = "/api/v1/quality/quality-defects"
 
 
+def test_paged_defects_in_check_keep_legacy_contract(client, auth_headers):
+    from tests.pagination_assertions import assert_paged_contract
+    check = _create_quality_check(client, auth_headers).json()
+    for number, category in enumerate(("thickness", "width", "color")):
+        _create_defect(client, auth_headers, check["id"], defect_category=category, description=f"Paging defect {number}")
+    assert_paged_contract(client, f"{CHECKS_BASE}/{check['id']}/defects", headers=auth_headers, search="Paging")
+
+
 def _create_org(db, code="quality-defect-other-org") -> Organization:
     org = Organization(
         name="Other Quality Org",

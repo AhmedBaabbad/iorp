@@ -1,17 +1,17 @@
+import type {Page} from "@/lib/pagination";
+import {queryString,type PageQuery} from "@/lib/page-response";
 import { apiClient } from "@/lib/api-client";
 import type { Material, MaterialInput, OpenOrder, Order, OrderInput, OrderListItem, OrderStatus, ProcurementSettings, Receipt, ReceiptInput, ReceiptListItem,
   ReceiptStatus, Supplier, SupplierInput, SupplierOption, SupplierStatus } from "./types";
 
 const ROOT = "/procurement";
 
-const query = (filters: Record<string, string | boolean | undefined>) => {
-  const q = new URLSearchParams(Object.entries(filters).filter(([, v]) => Boolean(v)).map(([k, v]) => [k, String(v)]));
-  return q.size ? `?${q}` : "";
-};
 
 // Suppliers and their standing on the approved list.
 export type SupplierFilters = { status?: SupplierStatus | ""; category?: string; search?: string };
-export const getSuppliers = (filters: SupplierFilters = {}) => apiClient<Supplier[]>(`${ROOT}/suppliers${query(filters)}`);
+export function getSuppliers(filters:SupplierFilters&PageQuery):Promise<Page<Supplier>>;
+export function getSuppliers(filters?:SupplierFilters):Promise<Supplier[]>;
+export function getSuppliers(filters:SupplierFilters={}):Promise<Page<Supplier>|Supplier[]>{return apiClient(`${ROOT}/suppliers${queryString(filters)}`);}
 export const getSupplier = (id: string) => apiClient<Supplier>(`${ROOT}/suppliers/${id}`);
 export const getSupplierOptions = (search = "") => apiClient<SupplierOption[]>(`${ROOT}/suppliers/lookup?q=${encodeURIComponent(search)}`);
 export const createSupplier = (body: SupplierInput) => apiClient<Supplier>(`${ROOT}/suppliers`, { method: "POST", body });
@@ -19,14 +19,17 @@ export const updateSupplier = (id: string, body: Partial<SupplierInput>) => apiC
 export const setSupplierStatus = (id: string, status: Exclude<SupplierStatus, "pending">, reason: string | null) =>
   apiClient<Supplier>(`${ROOT}/suppliers/${id}/status`, { method: "POST", body: { status, reason } });
 
-export const getMaterials = (filters: { category?: string; search?: string; active_only?: boolean } = {}) =>
-  apiClient<Material[]>(`${ROOT}/materials${query(filters)}`);
+export function getMaterials(filters:{category?:string;search?:string;active_only?:boolean}&PageQuery):Promise<Page<Material>>;
+export function getMaterials(filters?:{category?:string;search?:string;active_only?:boolean}):Promise<Material[]>;
+export function getMaterials(filters:{category?:string;search?:string;active_only?:boolean}={}):Promise<Page<Material>|Material[]>{return apiClient(`${ROOT}/materials${queryString(filters)}`);}
 export const createMaterial = (body: MaterialInput) => apiClient<Material>(`${ROOT}/materials`, { method: "POST", body });
 export const updateMaterial = (id: string, body: Partial<MaterialInput>) => apiClient<Material>(`${ROOT}/materials/${id}`, { method: "PATCH", body });
 
 // Goods receipts: draft, received (final), cancelled.
 export type ReceiptFilters = { status?: ReceiptStatus | ""; supplier_id?: string; date_from?: string; date_to?: string; search?: string };
-export const getReceipts = (filters: ReceiptFilters = {}) => apiClient<ReceiptListItem[]>(`${ROOT}/receipts${query(filters)}`);
+export function getReceipts(filters:ReceiptFilters&PageQuery):Promise<Page<ReceiptListItem>>;
+export function getReceipts(filters?:ReceiptFilters):Promise<ReceiptListItem[]>;
+export function getReceipts(filters:ReceiptFilters={}):Promise<Page<ReceiptListItem>|ReceiptListItem[]>{return apiClient(`${ROOT}/receipts${queryString(filters)}`);}
 export const getReceipt = (id: string) => apiClient<Receipt>(`${ROOT}/receipts/${id}`);
 export const createReceipt = (body: ReceiptInput) => apiClient<Receipt>(`${ROOT}/receipts`, { method: "POST", body });
 export const updateReceipt = (id: string, body: Partial<ReceiptInput>) => apiClient<Receipt>(`${ROOT}/receipts/${id}`, { method: "PATCH", body });
@@ -52,7 +55,9 @@ export const downloadReceiptNote = (id: string, lang: "ar" | "en") => download(`
 
 // Purchase orders (PROC-003): draft, approved, sent, partially received, received; closed or cancelled with a reason.
 export type OrderFilters = { status?: OrderStatus | ""; supplier_id?: string; date_from?: string; date_to?: string; search?: string };
-export const getOrders = (filters: OrderFilters = {}) => apiClient<OrderListItem[]>(`${ROOT}/purchase-orders${query(filters)}`);
+export function getOrders(filters:OrderFilters&PageQuery):Promise<Page<OrderListItem>>;
+export function getOrders(filters?:OrderFilters):Promise<OrderListItem[]>;
+export function getOrders(filters:OrderFilters={}):Promise<Page<OrderListItem>|OrderListItem[]>{return apiClient(`${ROOT}/purchase-orders${queryString(filters)}`);}
 export const getOrder = (id: string) => apiClient<Order>(`${ROOT}/purchase-orders/${id}`);
 export const createOrder = (body: OrderInput) => apiClient<Order>(`${ROOT}/purchase-orders`, { method: "POST", body });
 export const updateOrder = (id: string, body: Partial<OrderInput>) => apiClient<Order>(`${ROOT}/purchase-orders/${id}`, { method: "PATCH", body });

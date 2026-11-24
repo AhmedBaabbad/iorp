@@ -1,3 +1,4 @@
+vi.mock("next/navigation",async()=> (await import("./list-navigation")).listNavigation);
 import {changeControl,findRecordOption} from "./record-test-helpers";
 import { cleanup,fireEvent,render,screen,waitFor } from '@testing-library/react';
 import { useState } from 'react';

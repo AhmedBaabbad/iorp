@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.pagination import Page, PageParams, page_of, page_params
+from app.core.pagination import Page, PageParams, page_of, page_params, optional_page_params
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, require_permission
 from app.quality.domain import permissions as Q
@@ -58,16 +58,18 @@ def create_quality_defects(check_id: UUID, payload: QualityDefectBatchCreate, te
 
 @router.get(
     "/quality-checks/{check_id}/defects",
-    response_model=list[QualityDefectListItem], dependencies=[Depends(require_permission(Q.DEFECTS_READ))]
+    response_model=Page[QualityDefectListItem] | list[QualityDefectListItem], dependencies=[Depends(require_permission(Q.DEFECTS_READ))]
 )
 def list_quality_defects_by_check(
-    check_id: UUID,
+    check_id: UUID, page: PageParams | None = Depends(optional_page_params),
+    search: str = Query(default="", max_length=80), severity: DefectSeverity | None = None,
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ) -> list[QualityDefectListItem]:
     service = QualityDefectService(db)
     try:
-        return service.list_defects_by_quality_check(tenant, check_id)
+        result = service.list_defects_by_quality_check(tenant, check_id, page=page, search=search, severity=severity)
+        return page_of(*result, page) if page is not None else result
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 

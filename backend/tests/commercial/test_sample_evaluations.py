@@ -23,6 +23,15 @@ _BASE_EVALUATION = {
 }
 
 
+def test_paged_sample_evaluations_keep_actor_names_and_filters(client, auth_headers, sample_id):
+    from tests.pagination_assertions import assert_paged_contract
+    path = f"/api/v1/commercial/samples/{sample_id}/evaluations"
+    for number in range(3):
+        response = client.post(path, json={**_BASE_EVALUATION, "comments": f"Paging evaluation {number}"}, headers=auth_headers)
+        assert response.status_code == 201, response.text
+    assert_paged_contract(client, path, headers=auth_headers, search="Paging")
+
+
 def test_evaluator_name_comes_from_authenticated_user(client, auth_headers, sample_id, test_user):
     response = client.post(f'/api/v1/commercial/samples/{sample_id}/evaluations', headers=auth_headers,
         json={**_BASE_EVALUATION, 'evaluated_by_user_id': str(uuid4()), 'evaluated_by_name': 'Forged name'})

@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -93,7 +95,9 @@ export function AdminUsersList() {
   const canActivate = usePermission("foundation:users:activate");
   const canDeactivate = usePermission("foundation:users:deactivate");
   const canLock = usePermission("foundation:users:lock");
-  const [showArchived, setShowArchived] = useState(false);
+  const page=useListPage<AdminUserListItem,{search:string;status:string;include_archived:boolean}>({search:"",status:"",include_archived:false});
+  const {params,accept}=page;
+  const showArchived=page.filters.include_archived;
   const [users, setUsers] = useState<AdminUserListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,14 +107,14 @@ export function AdminUsersList() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await listAdminUsers();
-      if (isMountedRef.current) setUsers(response);
+      const response = await listAdminUsers(params);
+      if (isMountedRef.current) accept(Array.isArray(response)&&!showArchived?response.filter(user=>!user.archived_at):response,setUsers);
     } catch (caughtError) {
       if (isMountedRef.current) setError(getApiErrorMessage(caughtError, messages));
     } finally {
       if (isMountedRef.current) setIsLoading(false);
     }
-  }, [messages]);
+  }, [params,accept,showArchived,messages]);
 
   async function runAction(action: () => Promise<unknown>) {
     setError(null);
@@ -137,7 +141,9 @@ export function AdminUsersList() {
       subtitle={t("subtitle")}
       action={canWrite ? <Link href="/admin/users/new" style={sharedStyles.button}>{t("newButton")}</Link> : null}
     >
-      <label><input type="checkbox" checked={showArchived} onChange={event => setShowArchived(event.target.checked)} />{t("accountPolicy.showArchived")}</label>
+      <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={common("listFilters.search")} onClear={page.clear} hasFilters={page.hasFilters}
+        status={page.filters.status} onStatus={value=>page.set("status",value)} statusLabel={t("fields.status")} statuses={["active","inactive","locked"].map(value=>({value,label:enumLabel("user","status",value)}))}/>
+      <label><input type="checkbox" checked={showArchived} onChange={event => page.set("include_archived",event.target.checked)} />{t("accountPolicy.showArchived")}</label>
       {isLoading ? <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>{t("loading")}</div> : null}
       {!isLoading && error ? <div style={sharedStyles.error} role="alert">{error}</div> : null}
       {!isLoading && !error && users.length === 0 ? (
@@ -184,6 +190,7 @@ export function AdminUsersList() {
           </div>
         </section>
       ) : null}
-    </PageFrame>
+    <Pagination {...page.pagination} disabled={isLoading||page.pending}/>
+      </PageFrame>
   );
 }

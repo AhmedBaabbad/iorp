@@ -13,6 +13,14 @@ from tests.procurement.test_procurement import ROOT, code, proc  # noqa: F401 - 
 ORDERS = f"{ROOT}/purchase-orders"
 
 
+def test_paged_purchase_orders_preserve_array_contract(proc):
+    from tests.pagination_assertions import assert_paged_contract
+    supplier, material = proc.supplier(), proc.material()
+    for number in range(3):
+        order(proc, supplier, material, subject=f"Paging order {number}")
+    assert_paged_contract(proc.client, ORDERS, search="Paging", ctx=proc.ctx)
+
+
 def order(proc, sup, mat, **over):
     data = dict(supplier_id=sup["id"], order_date="2026-10-05", required_date="2026-10-20", currency="SAR", tax_rate=15,
                 supplier_quote_ref="Q-GP-118", subject="PP resin for October", payment_terms="net_30", delivery_place="Factory — Riyadh 2nd Industrial City",

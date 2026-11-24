@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import Link from "next/link";
@@ -15,7 +17,7 @@ import s from "@/features/production-demands/demands.module.css";
 import { useFormatter } from "@/hooks/useFormatter";
 import { PR } from "@/lib/procurement-permissions";
 import { Q } from "@/lib/quality-permissions";
-import { createSupplier, getSupplier, getSuppliers, setSupplierStatus, updateSupplier, type SupplierFilters } from "../api";
+import { createSupplier, getSupplier, getSuppliers, setSupplierStatus, updateSupplier } from "../api";
 import { procurementErrorMessage } from "../procurement-errors";
 import { SUPPLIER_CATEGORIES, SUPPLIER_STATUSES, type Evaluation, type Supplier, type SupplierInput, type SupplierStatus } from "../types";
 import { ListSelect, useListChoices, useListName } from "@/features/masterdata";
@@ -49,22 +51,23 @@ export function SuppliersList() {
   const messages = useTranslations("messages");
   const fmt = useFormatter();
   const canCreate = usePermission(PR.SUPPLIERS_CREATE);
-  const [filters, setFilters] = useState<Required<SupplierFilters>>({ status: "", category: "", search: "" });
+  const page=useListPage<Supplier>({ status: "", category: "", search: "" });
+  const {params,accept}=page;
+  const filters=page.filters;
   const categoryChoices = useListChoices("supplier_category", SUPPLIER_CATEGORIES, supplierCategory, filters.category);
   const [rows, setRows] = useState<Supplier[] | null>(null);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     setError("");
-    try { setRows(await getSuppliers(filters)); } catch (e) { setError(procurementErrorMessage(e, errors)); }
-  }, [filters, errors]);
+    try { accept(await getSuppliers(params),setRows); } catch (e) { setError(procurementErrorMessage(e, errors)); }
+  }, [params,accept,errors]);
   useEffect(() => { const timer = setTimeout(() => void load(), 200); return () => clearTimeout(timer); }, [load]);
-  const set = (field: keyof SupplierFilters, value: string) => setFilters(old => ({ ...old, [field]: value }));
+  const set = (field:keyof typeof filters,value:string)=>page.set(field,value);
 
   return <PageFrame title={t("suppliers.title")} subtitle={t("suppliers.subtitle")}
     action={canCreate ? <Link href="/suppliers/new" className={`${s.button} ${s.primary}`}>{t("suppliers.new")}</Link> : undefined}>
+    <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={t("search")} onClear={page.clear} hasFilters={page.hasFilters}/>
     <section className={s.toolbar} aria-label={t("filtersAria")}>
-      <label className={s.field}>{t("search")}<input type="search" value={filters.search} placeholder={t("suppliers.searchPlaceholder")}
-        onChange={e => set("search", e.target.value)} /></label>
       <label className={s.field}>{t("fields.status")}
         <select value={filters.status} onChange={e => set("status", e.target.value)}>
           <option value="">{t("all")}</option>{SUPPLIER_STATUSES.map(v => <option key={v} value={v}>{t(`supplierStatuses.${v}`)}</option>)}</select></label>
@@ -88,6 +91,7 @@ export function SuppliersList() {
         <td><SupplierStatusBadge status={r.status} /></td>
       </tr>)}</tbody>
     </table></div></section>}
+    <Pagination {...page.pagination} disabled={rows===null||page.pending}/>
   </PageFrame>;
 }
 

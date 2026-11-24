@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import { useTranslations } from "next-intl";
@@ -24,21 +26,20 @@ export function MaterialsList() {
   const canCreate = usePermission(PR.MATERIALS_CREATE);
   const canUpdate = usePermission(PR.MATERIALS_UPDATE);
   const productName = useProductName();
-  const [search, setSearch] = useState("");
+  const page=useListPage<Material>({search:""});
+  const {params,accept}=page;
   const [rows, setRows] = useState<Material[] | null>(null);
   const [editing, setEditing] = useState<Material | "new" | null>(null);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     setError("");
-    try { setRows(await getMaterials({ search })); } catch (e) { setError(procurementErrorMessage(e, errors)); }
-  }, [search, errors]);
+    try { accept(await getMaterials(params),setRows); } catch (e) { setError(procurementErrorMessage(e, errors)); }
+  }, [params,accept,errors]);
   useEffect(() => { const timer = setTimeout(() => void load(), 200); return () => clearTimeout(timer); }, [load]);
 
   return <PageFrame title={t("materials.title")} subtitle={t("materials.subtitle")}
     action={canCreate ? <button type="button" className={`${s.button} ${s.primary}`} onClick={() => setEditing("new")}>{t("materials.new")}</button> : undefined}>
-    <section className={s.toolbar} aria-label={t("filtersAria")}>
-      <label className={s.field}>{t("search")}<input type="search" value={search} onChange={e => setSearch(e.target.value)} /></label>
-    </section>
+    <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={t("search")} onClear={page.clear} hasFilters={page.hasFilters}/>
     {error && <p role="alert" className={s.error}>{error}</p>}
     {rows === null && !error && <p className={s.muted}>{messages("loading.default")}</p>}
     {rows?.length === 0 && <section className={s.panel}><h2 style={{ marginTop: 0 }}>{t("materials.empty")}</h2><p className={s.muted} style={{ margin: 0 }}>{t("materials.emptyHint")}</p></section>}
@@ -55,6 +56,7 @@ export function MaterialsList() {
       </tr>)}</tbody>
     </table></div></section>}
     {editing && <MaterialDialog value={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
+    <Pagination {...page.pagination} disabled={rows===null||page.pending}/>
   </PageFrame>;
 }
 

@@ -54,6 +54,13 @@ def code(r):
     return r.json()["detail"]["code"]
 
 
+def test_paged_return_queue_preserves_whole_documents_and_legacy_shape(env):
+    from tests.pagination_assertions import assert_paged_contract
+    for _ in range(3):
+        returned(env)
+    assert_paged_contract(env.client, f"{QUALITY}/returns/awaiting", search_key="q", ctx=env.ctx)
+
+
 def test_goods_not_in_question_go_back_to_stock_unless_the_warehouse_sends_them(env):
     _s, ret = returned(env, reason="excess_quantity")
     assert ret["quality_required"] is False and ret["quality_status"] == "not_required" and ret["quality"]["expected"] is False

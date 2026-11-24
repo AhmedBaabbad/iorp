@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -11,7 +13,7 @@ import { qualityErrorMessage } from "@/features/quality-checks/components/qualit
 import { useFormatter } from "@/hooks/useFormatter";
 import { Q } from "@/lib/quality-permissions";
 import { getSpecifications } from "../api";
-import { SPEC_STATUSES, type SpecificationListItem, type SpecificationStatus } from "../types";
+import { SPEC_STATUSES, type SpecificationListItem } from "../types";
 import { SpecificationStatusBadge } from "./SpecificationStatusBadge";
 import { useProductName } from "@/features/masterdata";
 
@@ -23,15 +25,15 @@ export function SpecificationsList() {
   const productName = useProductName();  // MD-001: the product's name, not its key
   const fmt = useFormatter();
   const canCreate = usePermission(Q.SPECS_CREATE);
-  const [status, setStatus] = useState<SpecificationStatus | "">("");
-  const [search, setSearch] = useState("");
+  const page=useListPage<SpecificationListItem>({status:"",search:""});
+  const {params,accept}=page;
   const [rows, setRows] = useState<SpecificationListItem[] | null>(null);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     setError("");
-    try { setRows(await getSpecifications({ status, search })); } catch (e) { setError(qualityErrorMessage(e, errors)); }
-  }, [status, search, errors]);
+    try { accept(await getSpecifications(params),setRows); } catch (e) { setError(qualityErrorMessage(e, errors)); }
+  }, [params,accept,errors]);
   useEffect(() => { void load(); }, [load]);
 
   return <PageFrame title={t("listTitle")} subtitle={t("subtitle")}
@@ -39,15 +41,8 @@ export function SpecificationsList() {
       <Link href="/quality-test-parameters" className={s.button}>{t("parameters")}</Link>
       {canCreate && <Link href="/quality-specifications/new" className={`${s.button} ${s.primary}`}>{t("newButton")}</Link>}
     </span>}>
-    <section className={s.toolbar} aria-label={t("filtersAria")}>
-      <label className={s.field}>{t("search")}<input type="search" value={search} placeholder={t("searchPlaceholder")} onChange={e => setSearch(e.target.value)} /></label>
-      <label className={s.field}>{t("fields.status")}
-        <select value={status} onChange={e => setStatus(e.target.value as SpecificationStatus | "")}>
-          <option value="">{t("allStatuses")}</option>
-          {SPEC_STATUSES.map(v => <option key={v} value={v}>{t(`statuses.${v}`)}</option>)}
-        </select>
-      </label>
-    </section>
+    <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={t("searchPlaceholder")}
+      status={page.filters.status} onStatus={value=>page.set("status",value)} statuses={SPEC_STATUSES.map(value=>({value,label:t(`statuses.${value}`)}))} statusLabel={t("fields.status")} onClear={page.clear}/>
     {error && <p role="alert" className={s.error}>{error}</p>}
     {!error && rows === null && <p className={s.muted}>{messages("loading.default")}</p>}
     {!error && rows?.length === 0 && <section className={s.panel}><h2 style={{ marginTop: 0 }}>{t("empty")}</h2><p className={s.muted} style={{ margin: 0 }}>{t("emptyHint")}</p></section>}
@@ -62,5 +57,6 @@ export function SpecificationsList() {
         </tr>)}</tbody>
       </table></div>
     </section>}
+    <Pagination {...page.pagination} disabled={rows===null||page.pending}/>
   </PageFrame>;
 }

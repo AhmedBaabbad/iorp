@@ -12,6 +12,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.core.pagination import paginate
 from app.core.units import to_kilograms
 from app.core.utils import utc_now
 from app.core.interfaces.reference_lists import unknown_list_values
@@ -56,7 +57,7 @@ class ShipmentService:
     def get(self, shipment_id) -> Shipment:
         return self._get(shipment_id)
 
-    def list(self, status=None, method=None, customer_id=None, date_from=None, date_to=None, search=None, limit=500):
+    def list(self, status=None, method=None, customer_id=None, date_from=None, date_to=None, search=None, limit=500, *, page=None):
         query = select(Shipment).options(selectinload(Shipment.lines)).where(Shipment.organization_id == self.org)
         for column, value in ((Shipment.status, status), (Shipment.delivery_method, method), (Shipment.customer_id, customer_id)):
             if value:
@@ -68,7 +69,10 @@ class ShipmentService:
         if search:
             query = query.where(Shipment.shipment_no.icontains(search, autoescape=True) | Shipment.customer_name.icontains(search, autoescape=True)
                                 | Shipment.customer_reference.icontains(search, autoescape=True) | Shipment.vehicle_plate.icontains(search, autoescape=True))
-        return list(self.db.scalars(query.order_by(Shipment.shipment_date.desc(), Shipment.created_at.desc()).limit(limit)))
+        query = query.order_by(Shipment.shipment_date.desc(), Shipment.created_at.desc(), Shipment.id.desc())
+        if page is not None:
+            return paginate(self.db, query, page)
+        return list(self.db.scalars(query.limit(limit)))
 
     def _returns_of(self, shipments) -> dict:
         ids = [s.id for s in shipments]

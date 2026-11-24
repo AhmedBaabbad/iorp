@@ -1,3 +1,4 @@
+import {mockLogin} from "./fixtures/auth";
 import { test, expect, type Page } from "@playwright/test";
 
 // Browser-level UI contracts use a deterministic API fixture. Server behavior is verified by backend integration tests.
@@ -13,7 +14,7 @@ async function fixture(page: Page) {
     country:"sa",city:"riyadh",city_other:null,status:"active",relationship_stage:"lead",priority_level:"medium",sector:null,notes:null,
     opportunity_source:null,sales_owner_user_id:null,sales_owner:null,key_influencer_name:null,created_by:null,created_at:"2026-11-22T00:00:00Z",updated_at:"2026-11-22T00:00:00Z"};
   let shipment:Record<string,unknown>={id:"s1",shipment_no:"DN-TEST",customer_name:customer.name,customer_id:"c1",status:"draft",delivery_method:"factory_delivery",shipment_date:"2026-11-22",lines:[],quantities:[],actions:["edit","ready"],history:[],returns:[],line_returns:{},attachments:[],missing_details:[],attempt:1};
-  await page.addInitScript(()=>{localStorage.setItem("iorp.access_token","ui-test-token");localStorage.setItem("iorp.last_activity",String(Date.now()));});
+  await mockLogin(page);
   await page.context().addCookies([{name:"IORP_LOCALE",value:"en",domain:"127.0.0.1",path:"/"}]);
   await page.route("**/api/v1/**",async route=>{
     const request=route.request(),url=new URL(request.url()),path=url.pathname.replace("/api/v1","");
@@ -28,7 +29,7 @@ async function fixture(page: Page) {
       const kind=path.includes("/contacts")?"contacts":path.includes("/sites")?"sites":path.includes("/drivers")?"drivers":path.includes("/vehicles")?"vehicles":"carriers";
       const data=({contacts,sites,drivers,vehicles,carriers} as Record<string,Array<Record<string,unknown>>>)[kind];
       if(body){const row={...body,id:kind+String(data.length+1),version:1};data.push(row);result=row;}
-      else result=url.searchParams.has("page")?{items:data,total:data.length,pages:1,page:1}:data;
+      else result=url.searchParams.has("page")?{items:data,total:data.length,pages:1,page:1,page_size:Number(url.searchParams.get("page_size")||50)}:data;
     }else if(path==="/shipping/shipments"&&body){
       shipment={...shipment,...body,lines:body.lines.map((line:Record<string,unknown>)=>({...line,id:"line1",line_no:1,weight:"100",weight_unit:"kg",production_order_no:null,delivered_quantity:null})),weight_total_kg:"100",gross_weight_kg:body.gross_weight??null,packaging_weight_kg:"0"};result=shipment;
     }else if(path==="/shipping/shipments/s1")result=shipment;

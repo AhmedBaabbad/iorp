@@ -12,6 +12,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
+from app.core.pagination import paginate
 from app.core.db import Base
 from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.production.domain import result_rules as rules
@@ -249,13 +250,16 @@ class OrderResultService:
 
     # ---- read ---------------------------------------------------------------------------
 
-    def overview(self, status=None):
+    def overview(self, status=None, *, page=None, search=""):
         """Completed and closed orders with their result totals, for the results list. Three queries in all."""
         statuses = [S(status)] if status else sorted(rules.AVAILABLE, key=lambda s: s.value)
         if any(s not in rules.AVAILABLE for s in statuses):
-            return []
-        orders = list(self.db.scalars(select(ProductionOrder).where(
-            ProductionOrder.organization_id == self.org_id, ProductionOrder.status.in_(statuses)).order_by(ProductionOrder.updated_at.desc())))
+            return ([], 0) if page is not None else []
+        query = select(ProductionOrder).where(ProductionOrder.organization_id == self.org_id, ProductionOrder.status.in_(statuses))
+        if search:
+            query = query.where(ProductionOrder.production_order_number.icontains(search, autoescape=True) | ProductionOrder.product_type.icontains(search, autoescape=True))
+        query = query.order_by(ProductionOrder.updated_at.desc(), ProductionOrder.id.desc())
+        orders, total = paginate(self.db, query, page) if page is not None else (list(self.db.scalars(query)), 0)
         ids = [o.id for o in orders]
         entries = defaultdict(list)
         if ids:
@@ -287,7 +291,7 @@ class OrderResultService:
                 ready_to_close=ready,
                 totals=[dict(unit=u, **rules.summarize([e for e in as_rule if e.unit == u], planned.get(u, Decimal(0)), allocated[order.id].get(u))) for u in units],
             ))
-        return rows
+        return (rows, total) if page is not None else rows
 
     def unit_totals(self, order_ids) -> dict:
         """Read-only: {(order_id, unit): summary} for completed and closed orders, in two queries.

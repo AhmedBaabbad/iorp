@@ -4,6 +4,7 @@ Every write records the procurement history and the activity log. A supplier's r
 non-conformance reports quality raised about it (read from quality's tables).
 """
 from __future__ import annotations
+from app.core.pagination import paginate
 
 from datetime import timedelta
 
@@ -50,7 +51,7 @@ class SupplierService:
     def get(self, supplier_id) -> Supplier:
         return self._get(supplier_id)
 
-    def list(self, status=None, category=None, search=None, usable=False, limit=500):
+    def list(self, status=None, category=None, search=None, usable=False, limit=500, *, page=None):
         query = select(Supplier).where(Supplier.organization_id == self.org)
         if status:
             query = query.where(Supplier.status == status)
@@ -61,7 +62,8 @@ class SupplierService:
         if search:
             like = lambda column: column.icontains(search, autoescape=True)  # noqa: E731
             query = query.where(or_(like(Supplier.name), like(Supplier.supplier_code), like(Supplier.supplies)))
-        return list(self.db.scalars(query.order_by(Supplier.name).limit(limit)))
+        query = query.order_by(Supplier.name, Supplier.id)
+        return paginate(self.db, query, page) if page is not None else list(self.db.scalars(query.limit(limit)))
 
     def views(self, suppliers, can, detail=False) -> list[dict]:
         ids = [s.id for s in suppliers]
@@ -156,7 +158,7 @@ class MaterialService:
             raise ProcurementError("MATERIAL_NOT_FOUND", 404)
         return found
 
-    def list(self, category=None, search=None, active_only=False, limit=500):
+    def list(self, category=None, search=None, active_only=False, limit=500, *, page=None):
         query = select(Material).where(Material.organization_id == self.org)
         if category:
             query = query.where(Material.category == category)
@@ -164,7 +166,8 @@ class MaterialService:
             query = query.where(Material.active.is_(True))
         if search:
             query = query.where(or_(Material.name.icontains(search, autoescape=True), Material.material_code.icontains(search, autoescape=True)))
-        return list(self.db.scalars(query.order_by(Material.name).limit(limit)))
+        query = query.order_by(Material.name, Material.id)
+        return paginate(self.db, query, page) if page is not None else list(self.db.scalars(query.limit(limit)))
 
     def _apply(self, material, values):
         if values.get("category") and unknown_list_values(self.db, self.org, "material_category", [values["category"]],
@@ -206,7 +209,7 @@ class ReceiptService:
     def get(self, receipt_id) -> GoodsReceipt:
         return self._get(receipt_id)
 
-    def list(self, status=None, supplier_id=None, date_from=None, date_to=None, search=None, limit=500):
+    def list(self, status=None, supplier_id=None, date_from=None, date_to=None, search=None, limit=500, *, page=None):
         query = select(GoodsReceipt).options(selectinload(GoodsReceipt.lines)).where(GoodsReceipt.organization_id == self.org)
         if status:
             query = query.where(GoodsReceipt.status == status)
@@ -221,7 +224,8 @@ class ReceiptService:
             like = lambda column: column.icontains(search, autoescape=True)  # noqa: E731
             query = query.where(or_(like(GoodsReceipt.receipt_no), like(GoodsReceipt.supplier_name), like(GoodsReceipt.supplier_delivery_no),
                                     like(GoodsReceipt.supplier_invoice_no), like(GoodsReceipt.purchase_reference), GoodsReceipt.id.in_(lots)))
-        return list(self.db.scalars(query.order_by(GoodsReceipt.receipt_date.desc(), GoodsReceipt.created_at.desc()).limit(limit)))
+        query = query.order_by(GoodsReceipt.receipt_date.desc(), GoodsReceipt.created_at.desc(), GoodsReceipt.id.desc())
+        return paginate(self.db, query, page) if page is not None else list(self.db.scalars(query.limit(limit)))
 
     def views(self, receipts, can, detail=False) -> list[dict]:
         names = user_names(self.db, self.org, [u for r in receipts for u in (r.created_by_user_id, r.received_by_user_id)])

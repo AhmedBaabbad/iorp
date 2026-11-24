@@ -1,3 +1,4 @@
+import {mockLogin} from "./fixtures/auth";
 import {test,expect,type Page} from '@playwright/test';
 import c from '../src/i18n/locales/ar/commercial.json';
 import p from '../src/i18n/locales/ar/production.json';
@@ -7,7 +8,7 @@ async function fixture(page:Page){
   const customer={id:'customer',customer_code:'C-RANGE',code:'C-RANGE',name:'عميل النطاق',name_ar:'عميل النطاق',name_en:'Range customer',status:'active'};
   const products=[{id:'product',key:'film',name_ar:'منتج النطاق',name_en:'Range product',active:true,default_unit:'roll',properties:[{key:'thickness_mm',name_ar:'السماكة',name_en:'Thickness',kind:'number',allows_range:true,unit:'mm',required:true,options:null}]}];
   let quote:Record<string,unknown>|null=null,demand:Record<string,unknown>|null=null;
-  await page.addInitScript(()=>{localStorage.setItem('iorp.access_token','spec-test-token');localStorage.setItem('iorp.last_activity',String(Date.now()));});
+  await mockLogin(page);
   await page.context().addCookies([{name:'IORP_LOCALE',value:'ar',domain:'127.0.0.1',path:'/'}]);
   await page.route('**/api/v1/**',async route=>{
     const req=route.request(),path=new URL(req.url()).pathname.replace('/api/v1','');let result:unknown=[];

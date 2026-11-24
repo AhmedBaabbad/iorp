@@ -17,13 +17,18 @@ export function useListQuery<K extends string>(filterKeys: readonly K[]) {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const page = Math.max(1, Number(params.get("page")) || 1);
+  const requestedPage = Number(params.get("page"));
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const size = Number(params.get("page_size"));
   const pageSize = (PAGE_SIZES as readonly number[]).includes(size) ? size : DEFAULT_PAGE_SIZE;
   const keys = filterKeys.join("|");
+  const serializedParams = params.toString();
   const filters = useMemo(
-    () => Object.fromEntries(filterKeys.map((k) => [k, params.get(k) ?? ""])) as Record<K, string>,
-    [params, keys], // eslint-disable-line react-hooks/exhaustive-deps
+    () => {
+      const query = new URLSearchParams(serializedParams);
+      return Object.fromEntries(filterKeys.map((k) => [k, query.get(k) ?? ""])) as Record<K, string>;
+    },
+    [serializedParams, keys], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const update = useCallback((patch: Record<string, string | number | null>) => {
@@ -78,10 +83,11 @@ export function usePagedFilters<T extends Record<string, FilterValue>>(defaults:
   return {
     filters, page: list.page, pageSize: list.pageSize, setPage: list.setPage, setPageSize: list.setPageSize,
     set: (name: keyof T & string, value: FilterValue) => list.setFilters({ [name]: encode(name, value) ?? "", ...alias(name) }),
+    setMany: (patch:Partial<T>) => list.setFilters(Object.fromEntries(Object.entries(patch).filter(([,value])=>value!==undefined).flatMap(([name,value])=>[[name,encode(name,value as FilterValue)??""],...Object.entries(alias(name))]))),
     clear: () => list.clearFilters(),
     /** The filters that are set, as query values, with the page: for the API. */
     query: () => Object.fromEntries([...Object.entries(filters).filter(([, v]) => v !== "" && v !== false).map(([k, v]) => [k, String(v)]),
-      ["page", String(list.page)], ["page_size", String(list.pageSize)]]) as Record<string, string>,
+      ["page", String(list.page)], ["page_size", String(list.pageSize)]]) as Record<string, string> & {page:string;page_size:string},
   };
 }
 

@@ -34,9 +34,10 @@ class IncomingInspectionService:
         return {c.receipt_line_id: c for c in rows}
 
     # ── reads ──────────────────────────────────────────────────────────────────────────────────
-    def awaiting(self, search="", include_done=False) -> list[dict]:
+    def awaiting(self, search="", include_done=False, *, page=None) -> list[dict]:
         """Received lots to inspect, grouped by goods receipt, each with its inspection once opened."""
-        lots = [lot for lot in self.procurement.received_for_inspection(search) if lot["awaiting_inspection"]]
+        found, total = self.procurement.received_for_inspection_page(page, search, include_done) if page is not None else (self.procurement.received_for_inspection(search), 0)
+        lots = [lot for lot in found if lot["awaiting_inspection"]]
         checks = self._checks_by_line([lot["line_id"] for lot in lots])
         grouped: dict = {}
         for lot in lots:
@@ -52,7 +53,7 @@ class IncomingInspectionService:
         out = list(grouped.values())
         if not include_done:  # a receipt leaves the list once every lot is decided
             out = [r for r in out if any(line["inspection_status"] != S.CLOSED.value for line in r["lines"])]
-        return out
+        return (out, total) if page is not None else out
 
     # ── writes ─────────────────────────────────────────────────────────────────────────────────
     def open(self, receipt_line_id) -> QualityCheck:

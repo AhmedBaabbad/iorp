@@ -9,6 +9,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, optional_page_params, page_of
 from app.core.reporting.routes import generate_response
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_current_user, get_db, permission_check, require_any_permission, require_permission
@@ -35,15 +36,17 @@ def _run(db, tenant, can, action):
     return attempt(db, lambda: _read(service, action(service), can))
 
 
-@router.get(PATH, response_model=list[ReturnListItem], dependencies=[Depends(require_permission(P.RETURNS_READ))])
+@router.get(PATH, response_model=Page[ReturnListItem] | list[ReturnListItem], dependencies=[Depends(require_permission(P.RETURNS_READ))])
 def list_returns(status_filter: str | None = Query(default=None, alias="status", pattern="^(requested|approved|rejected|received|cancelled)$"),
                  kind: str | None = Query(default=None, pattern="^(delivery|customer)$"), shipment_id: UUID | None = None,
                  customer_id: UUID | None = None, date_from: date | None = None, date_to: date | None = None,
-                 search: str | None = Query(default=None, max_length=60), tenant: TenantContext = Depends(get_current_tenant),
+                 search: str | None = Query(default=None, max_length=60), page: PageParams | None = Depends(optional_page_params), tenant: TenantContext = Depends(get_current_tenant),
                  db: Session = Depends(get_db), can=Depends(permission_check)):
     service = ReturnService(db, tenant)
-    rows = service.list(status_filter, kind, shipment_id, customer_id, date_from, date_to + timedelta(days=1) if date_to else None, search)
-    return [ReturnListItem.model_validate({**ReturnListItem.model_validate(r).model_dump(), **v}) for r, v in zip(rows, service.views(rows, can))]
+    result = service.list(status_filter, kind, shipment_id, customer_id, date_from, date_to + timedelta(days=1) if date_to else None, search, page=page)
+    rows, total = result if page is not None else (result, 0)
+    items = [ReturnListItem.model_validate({**ReturnListItem.model_validate(r).model_dump(), **v}) for r, v in zip(rows, service.views(rows, can))]
+    return page_of(items, total, page) if page is not None else items
 
 
 @router.post(PATH, response_model=ReturnRead, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission(P.RETURNS_CREATE))])

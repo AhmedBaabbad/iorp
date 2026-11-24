@@ -3,9 +3,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, optional_page_params, page_of
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, require_permission
 from app.production.domain import permissions as P
+from app.production.domain.enums import ShiftDefinitionStatus, ShiftType
 from app.production.api.schemas import (
     ShiftDefinitionCreate,
     ShiftDefinitionListItem,
@@ -33,17 +35,17 @@ def create_shift_definition(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
-@router.get("", response_model=list[ShiftDefinitionListItem],
+@router.get("", response_model=Page[ShiftDefinitionListItem] | list[ShiftDefinitionListItem],
     dependencies=[Depends(require_permission(P.SHIFTS_READ))])
 def list_shift_definitions(
+    page: PageParams | None = Depends(optional_page_params),
+    search: str = Query(default="", max_length=80), status_filter: ShiftDefinitionStatus | None = Query(default=None, alias="status"),
+    shift_type: ShiftType | None = Query(default=None),
     tenant: TenantContext = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ) -> list[ShiftDefinitionListItem]:
-    service = ShiftDefinitionService(db)
-    shift_definitions = service.list_shift_definitions(tenant)
-    if shift_definitions is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Work center not found.")
-    return shift_definitions
+    result = ShiftDefinitionService(db).list_shift_definitions(tenant, page=page, search=search, status=status_filter, shift_type=shift_type)
+    return page_of(*result, page) if page is not None else result
 
 
 @router.get("/{shift_definition_id}", response_model=ShiftDefinitionRead,

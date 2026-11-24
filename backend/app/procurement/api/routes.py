@@ -1,3 +1,4 @@
+from app.core.pagination import Page, PageParams, optional_page_params, page_of
 """Procurement (PROC-001): suppliers, materials and goods receipts; one permission per action."""
 from datetime import date
 from uuid import UUID
@@ -45,13 +46,15 @@ def _receipt(db, tenant, can, action):
 
 
 # ── suppliers ────────────────────────────────────────────────────────────────────────────────────
-@router.get("/suppliers", response_model=list[SupplierRead], dependencies=[Depends(require_permission(P.SUPPLIERS_READ))])
+@router.get("/suppliers", response_model=Page[SupplierRead] | list[SupplierRead], dependencies=[Depends(require_permission(P.SUPPLIERS_READ))])
 def list_suppliers(status_filter: str | None = Query(default=None, alias="status", pattern="^(pending|approved|conditional|blocked)$"),
                    category: str | None = Query(default=None, max_length=16), search: str | None = Query(default=None, max_length=60),
-                   tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
+                   page: PageParams | None = Depends(optional_page_params), tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
     service = SupplierService(db, tenant)
-    rows = service.list(status_filter, category, search)
-    return [SupplierRead.model_validate({**SupplierRead.model_validate(s).model_dump(), **v}) for s, v in zip(rows, service.views(rows, can))]
+    result = service.list(status_filter, category, search, page=page)
+    rows, total = result if page is not None else (result, 0)
+    items = [SupplierRead.model_validate({**SupplierRead.model_validate(s).model_dump(), **v}) for s, v in zip(rows, service.views(rows, can))]
+    return page_of(items, total, page) if page is not None else items
 
 
 @router.get("/suppliers/lookup", response_model=list[SupplierOption],
@@ -95,11 +98,12 @@ def set_supplier_status(supplier_id: UUID, payload: SupplierStatusInput, tenant:
 
 
 # ── materials ────────────────────────────────────────────────────────────────────────────────────
-@router.get("/materials", response_model=list[MaterialRead],
+@router.get("/materials", response_model=Page[MaterialRead] | list[MaterialRead],
             dependencies=[Depends(require_any_permission([P.MATERIALS_READ, P.RECEIPTS_CREATE, P.RECEIPTS_UPDATE]))])
 def list_materials(category: str | None = Query(default=None, max_length=16), search: str | None = Query(default=None, max_length=60),
-                   active_only: bool = False, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
-    return MaterialService(db, tenant).list(category, search, active_only)
+                   active_only: bool = False, page: PageParams | None = Depends(optional_page_params), tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
+    result = MaterialService(db, tenant).list(category, search, active_only, page=page)
+    return page_of(*result, page) if page is not None else result
 
 
 @router.post("/materials", response_model=MaterialRead, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission(P.MATERIALS_CREATE))])
@@ -114,13 +118,15 @@ def update_material(material_id: UUID, payload: MaterialUpdate, tenant: TenantCo
 
 
 # ── goods receipts ───────────────────────────────────────────────────────────────────────────────
-@router.get("/receipts", response_model=list[ReceiptListItem], dependencies=[Depends(require_permission(P.RECEIPTS_READ))])
+@router.get("/receipts", response_model=Page[ReceiptListItem] | list[ReceiptListItem], dependencies=[Depends(require_permission(P.RECEIPTS_READ))])
 def list_receipts(status_filter: str | None = Query(default=None, alias="status", pattern="^(draft|received|cancelled)$"), supplier_id: UUID | None = None,
                   date_from: date | None = None, date_to: date | None = None, search: str | None = Query(default=None, max_length=60),
-                  tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
+                  page: PageParams | None = Depends(optional_page_params), tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
     service = ReceiptService(db, tenant)
-    rows = service.list(status_filter, supplier_id, date_from, date_to, search)
-    return [ReceiptListItem.model_validate({**ReceiptListItem.model_validate(r).model_dump(), **v}) for r, v in zip(rows, service.views(rows, can))]
+    result = service.list(status_filter, supplier_id, date_from, date_to, search, page=page)
+    rows, total = result if page is not None else (result, 0)
+    items = [ReceiptListItem.model_validate({**ReceiptListItem.model_validate(r).model_dump(), **v}) for r, v in zip(rows, service.views(rows, can))]
+    return page_of(items, total, page) if page is not None else items
 
 
 @router.post("/receipts", response_model=ReceiptRead, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission(P.RECEIPTS_CREATE))])

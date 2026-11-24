@@ -50,6 +50,31 @@ def code(r):
     return r.json()["detail"]["code"]
 
 
+def test_paged_shipments_preserve_legacy_filters_and_tenant_scope(ship):
+    from tests.pagination_assertions import assert_paged_contract
+    ship.create(customer_reference="Paging alpha")
+    ship.create(customer_reference="Paging beta")
+    ship.create(customer_reference="Other")
+    assert_paged_contract(ship.client, ROOT, search="Paging", ctx=ship.ctx)
+
+
+def test_shipping_pages_have_no_legacy_500_row_cap_and_break_sort_ties(ship):
+    from app.core.db import Base
+    original = ship.create()
+    table = Base.metadata.tables["shipping_shipments"]
+    row = dict(ship.db.execute(select(table).where(table.c.id == UUID(original["id"]))).one()._mapping)
+    ship.db.execute(table.insert(), [{**row, "id": uuid4(), "shipment_no": f"BULK-{number:04d}"} for number in range(601)])
+    ship.db.commit()
+    identifiers = []
+    for number in range(1, 8):
+        response = ship.client.get(ROOT, params={"page": number, "page_size": 100})
+        assert response.status_code == 200, response.text
+        page = response.json()
+        assert page["total"] == 602 and page["pages"] == 7
+        identifiers.extend(item["id"] for item in page["items"])
+    assert len(identifiers) == len(set(identifiers)) == 602
+
+
 def go(env, shipment, step, **payload):
     return env.client.post(f"{ROOT}/{shipment['id']}/{step}", json=payload or None)
 

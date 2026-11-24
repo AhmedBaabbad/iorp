@@ -6,6 +6,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, optional_page_params, page_of
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, require_permission
 from app.production.domain import permissions as P
@@ -82,8 +83,10 @@ def correct_result_entry(production_order_id: UUID, entry_id: UUID, payload: Res
         raise _error(exc) from exc
 
 
-@overview_router.get("", response_model=list[ResultOverviewRow], dependencies=[READ])
+@overview_router.get("", response_model=Page[ResultOverviewRow] | list[ResultOverviewRow], dependencies=[READ])
 def list_order_results(result_status: Literal["completed", "closed"] | None = Query(default=None, alias="status"),
+                       page: PageParams | None = Depends(optional_page_params), search: str = Query(default="", max_length=80),
                        tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
     """Completed and closed orders with their result totals per unit."""
-    return OrderResultService(db, tenant).overview(result_status)
+    result = OrderResultService(db, tenant).overview(result_status, page=page, search=search)
+    return page_of(*result, page) if page is not None else result
