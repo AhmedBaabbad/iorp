@@ -28,6 +28,9 @@ to millions of rows or scroll endlessly (logs), where counting and deep offsets 
 
 ## Applied
 
+The cross-module coverage audit, legacy-array compatibility contract, and explicit configuration/document exceptions
+are recorded in [list pagination coverage](../architecture/list-pagination-coverage.md).
+
 The whole customers (commercial) module:
 
 | List | Endpoint | Search | Filters |

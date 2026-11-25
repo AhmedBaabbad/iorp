@@ -1,3 +1,4 @@
+import {mockLogin} from "./fixtures/auth";
 import {test,expect} from "@playwright/test";
 import ar from "../src/i18n/locales/ar/production.json";
 import directory from "../src/i18n/locales/ar/directory.json";
@@ -6,7 +7,7 @@ test("extends an overdue order in Arabic without leaving its detail page",async(
   const text=ar.productionOrders.reschedule;
   const lifecycle={status_version:1,actual_start_at:"2026-01-01T08:00:00Z",actual_end_at:null,start_overdue:false,finish_overdue:true,terminal:false,actions:[]};
   let order={id:"reschedule-order",organization_id:"org",production_order_number:"PO-RESCHEDULE",work_center_id:"wc",product_type:"roll",planned_quantity:"20",unit:"roll",priority:"normal",status:"in_progress",planned_start_date:"2026-01-01",planned_end_date:"2026-01-02",created_by_user_id:"u1",created_at:"2026-01-01T00:00:00Z",updated_at:"2026-01-01T00:00:00Z",allocations:[],lines:[],target_spec_json:null,notes:null,lifecycle,reschedule_history:[] as unknown[]};
-  await page.addInitScript(()=>{localStorage.setItem("iorp.access_token","ui-test-token");localStorage.setItem("iorp.last_activity",String(Date.now()));});
+  await mockLogin(page);
   await page.context().addCookies([{name:"IORP_LOCALE",value:"ar",domain:"127.0.0.1",path:"/"}]);
   await page.route("**/api/v1/**",async route=>{
     const request=route.request(),path=new URL(request.url()).pathname.replace("/api/v1","");

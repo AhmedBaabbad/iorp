@@ -69,12 +69,22 @@ def proc(client, db, test_org, test_user):
         ctx.tenant = TenantContext(user.id, test_org.id, permissions=ctx.tenant.permissions)
 
     yield SimpleNamespace(client=client, db=db, org=test_org, user=test_user, approver=approver, as_user=as_user, grant=grant,
-                          supplier=supplier, material=material, receipt=receipt)
+                          supplier=supplier, material=material, receipt=receipt, ctx=ctx)
     app.dependency_overrides.pop(get_current_user, None)
 
 
 def code(r):
     return r.json()["detail"]["code"]
+
+
+def test_paged_procurement_directories_and_receipts(proc):
+    from tests.pagination_assertions import assert_paged_contract
+    for number in range(3):
+        supplier = proc.supplier(name=f"Paging supplier {number}")
+        material = proc.material(name=f"Paging material {number}")
+        proc.receipt(supplier, material)
+    for path in ("suppliers", "materials", "receipts"):
+        assert_paged_contract(proc.client, f"{ROOT}/{path}", search="Paging", ctx=proc.ctx)
 
 
 def test_suppliers_are_numbered_and_carry_their_standing(proc):

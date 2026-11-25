@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 
 import { useCustomerNames } from "@/features/customers/use-customer-names";
 import { DriverAffiliation } from "@/features/reference-directory/DirectorySelect";
@@ -29,27 +31,28 @@ export function ShipmentsList() {
   const unit = (code: string) => (units.has(code) ? units(code) : code);
   const canCreate = usePermission(S.SHIPMENTS_CREATE);
   const canSeeReturns = usePermission(S.RETURNS_READ);
-  const [filters, setFilters] = useState(EMPTY);
+  const page=useListPage<ShipmentListItem>(EMPTY);
+  const {params,accept}=page;
+  const filters=page.filters as Required<ShipmentFilters>;
   const [rows, setRows] = useState<ShipmentListItem[] | null>(null);
   const customerName = useCustomerNames((rows ?? []).map(row => row.customer_id));
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     setError("");
-    try { setRows(await getShipments(filters)); } catch (e) { setError(shippingErrorMessage(e, errors)); }
-  }, [filters, errors]);
+    try { accept(await getShipments(params),setRows); } catch (e) { setError(shippingErrorMessage(e, errors)); }
+  }, [params, accept, errors]);
   useEffect(() => { void load(); }, [load]);
-  const set = (field: keyof ShipmentFilters, value: string) => setFilters(old => ({ ...old, [field]: value }));
+  const set = (field: keyof ShipmentFilters, value: string) => page.set(field,value);
 
   return <PageFrame title={t("listTitle")} subtitle={t("subtitle")}
     action={<span className={s.actions}>
       {canSeeReturns && <Link href="/shipment-returns" className={s.button}>{t("actions.returnsList")}</Link>}
       {canCreate && <Link href="/shipments/new" className={`${s.button} ${s.primary}`}>{t("newButton")}</Link>}
     </span>}>
+    <ListToolbar search={filters.search} onSearch={value=>page.set("search",value)} searchHint={t("filters.searchPlaceholder")} onClear={page.clear} hasFilters={page.hasFilters}/>
     <section className={s.toolbar} aria-label={t("filtersAria")}>
-      <label className={s.field}>{t("filters.search")}
-        <input type="search" value={filters.search} placeholder={t("filters.searchPlaceholder")} onChange={e => set("search", e.target.value)} />
-      </label>
+
       <label className={s.field}>{t("fields.status")}
         <select value={filters.status} onChange={e => set("status", e.target.value)}>
           <option value="">{t("filters.allStatuses")}</option>
@@ -64,7 +67,6 @@ export function ShipmentsList() {
       </label>
       <label className={s.field}>{t("filters.dateFrom")}<input type="date" value={filters.date_from} onChange={e => set("date_from", e.target.value)} /></label>
       <label className={s.field}>{t("filters.dateTo")}<input type="date" value={filters.date_to} min={filters.date_from || undefined} onChange={e => set("date_to", e.target.value)} /></label>
-      <button type="button" className={s.button} onClick={() => setFilters(EMPTY)}>{t("filters.clear")}</button>
     </section>
     {error && <div className={s.actions}><p role="alert" className={s.error}>{error}</p>
       <button type="button" className={s.button} onClick={() => void load()}>{common("actions.retry")}</button></div>}
@@ -88,6 +90,7 @@ export function ShipmentsList() {
       </table></div>
     </section>}
     <NumberingSettings />
+    <Pagination {...page.pagination} disabled={rows===null||page.pending}/>
   </PageFrame>;
 }
 

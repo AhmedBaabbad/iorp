@@ -8,7 +8,7 @@ import { loadMessages } from "@/i18n/messages";
 const api = vi.hoisted(() => ({ apiClient: vi.fn() }));
 vi.mock("@/lib/api-client", async importOriginal => ({ ...(await importOriginal<object>()), apiClient: api.apiClient, API_BASE_URL: "http://api" }));
 vi.mock("@/lib/auth", async importOriginal => ({ ...(await importOriginal<object>()), getStoredAccessToken: () => "token-1" }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn() }), usePathname: () => "/production/demands", useSearchParams: () => new URLSearchParams() }));
+vi.mock("next/navigation",async()=> (await import("./list-navigation")).listNavigation);
 vi.mock("@/features/auth/permission-hooks", () => ({ usePermission: () => true }));
 vi.mock("@/components/layout/page-frame", () => ({ PageFrame: ({ title, children }: { title: string; children: ReactNode }) => <main><h1>{title}</h1>{children}</main> }));
 
@@ -25,6 +25,7 @@ beforeAll(async () => {
   HTMLDialogElement.prototype.close = function () { this.open = false; };
 });
 beforeEach(() => {
+  window.history.replaceState(null,"","/production/demands");
   api.apiClient.mockReset(); fetchMock.mockReset(); window.localStorage.clear();
   vi.stubGlobal("fetch", fetchMock);
   api.apiClient.mockImplementation((path: string) => Promise.resolve(path.includes("customers") || path.includes("work-centers") ? [] : { items: [], total: 0, page: 1, page_size: 20, pages: 0 }));
@@ -45,6 +46,7 @@ describe("demands export", () => {
     ui(<DemandList />);
     await waitForListReady();
     fireEvent.change(screen.getByLabelText("بحث"), { target: { value: "PD-7" } });
+    await waitFor(()=>expect(api.apiClient.mock.calls.some(([path])=>String(path).includes("search=PD-7"))).toBe(true));
     const button = screen.getByRole("button", { name: "تصدير Excel" }) as HTMLButtonElement;
     await waitFor(() => expect(button.disabled).toBe(false));  // the list reloads first
     await act(async () => { fireEvent.click(button); });

@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, optional_page_params, page_of
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, permission_check, require_permission
 from app.quality.api.inspection_schemas import AwaitingReturn, BatchShipment, QualityCheckRead, ReturnDecision
@@ -25,11 +26,12 @@ def _read(db, tenant, check, can):
     return QualityCheckRead.model_validate({**QualityCheckRead.model_validate(check).model_dump(), **service.views([check], can, detail=True)[0]})
 
 
-@router.get("/returns/awaiting", response_model=list[AwaitingReturn], dependencies=[Depends(require_permission(Q.CHECKS_READ))])
-def awaiting_returns(q: str = Query(default="", max_length=60), include_done: bool = False, tenant: TenantContext = Depends(get_current_tenant),
+@router.get("/returns/awaiting", response_model=Page[AwaitingReturn] | list[AwaitingReturn], dependencies=[Depends(require_permission(Q.CHECKS_READ))])
+def awaiting_returns(q: str = Query(default="", max_length=60), include_done: bool = False, page: PageParams | None = Depends(optional_page_params), tenant: TenantContext = Depends(get_current_tenant),
                      db: Session = Depends(get_db)):
     """Returned goods received for quality, each line with its inspection once opened."""
-    return ReturnInspectionService(db, tenant).awaiting(q, include_done)
+    result = ReturnInspectionService(db, tenant).awaiting(q, include_done, page=page)
+    return page_of(*result, page) if page is not None else result
 
 
 @router.post("/returns/lines/{line_id}/inspection", response_model=QualityCheckRead, status_code=status.HTTP_201_CREATED,

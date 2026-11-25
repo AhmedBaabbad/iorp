@@ -1,9 +1,11 @@
 "use client";
+import {usePagedFilters} from "@/lib/pagination";
+import {Pagination,ListToolbar} from "@/components/pagination";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 /* eslint-disable @next/next/no-img-element -- authenticated blob URLs and local previews cannot use next/image. */
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import type { FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -30,7 +32,6 @@ import { useFileProblemText } from "@/components/forms/FilePicker";
 import { fileProblem, useFilePolicy } from "@/lib/files";
 
 const ORG_CODE_PATTERN = /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/;
-const PAGE_SIZES = [10, 25, 50] as const;
 type SortKey = "name" | "code" | "status" | "industry_type" | "user_count" | "created_at";
 type SortDirection = "asc" | "desc";
 
@@ -108,28 +109,20 @@ function OrganizationLogo({ organization, token, alt }: { organization: Platform
 function PlatformOrganizationsContent() {
   const t = useTranslations("platform.organizations");
   const locale = useLocale();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { account, token } = usePlatformAuth();
   const isRtl = locale === "ar";
+  const router = useRouter();
+  const { account, token } = usePlatformAuth();
   const permissions = account?.permissions ?? [];
   const canCreate = permissions.includes("platform:organizations:create");
   const canReset = account?.role === "root" && permissions.includes("platform:organizations:update");
 
   const [organizations, setOrganizations] = useState<PlatformOrganizationSummary[] | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<OrganizationLifecycleStatus | "all">(() => {
-    const requested = searchParams.get("status");
-    const known: (OrganizationLifecycleStatus | "all")[] = ["active", "suspended", "inactive", "archived", "provisioning"];
-    return known.includes(requested as OrganizationLifecycleStatus) ? (requested as OrganizationLifecycleStatus) : "all";
-  });
-  const [industryFilter, setIndustryFilter] = useState("all");
-  const [sortKey, setSortKey] = useState<SortKey>("created_at");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<number>(10);
+  const paging=usePagedFilters({search:"",status:"all",industry:"all",sort:"created_at",direction:"desc"});
+  const query=paging.filters.search,debouncedQuery=query.trim().toLocaleLowerCase(locale),statusFilter=paging.filters.status,industryFilter=paging.filters.industry;
+  const sortKey=paging.filters.sort as SortKey,sortDirection=paging.filters.direction as SortDirection;
+  const page=paging.page,pageSize=paging.pageSize;
+  const setQuery=(value:string)=>paging.set("search",value),setStatusFilter=(value:string)=>paging.set("status",value),setIndustryFilter=(value:string)=>paging.set("industry",value);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [createError, setCreateError] = useState("");
@@ -152,8 +145,6 @@ function PlatformOrganizationsContent() {
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { const id = window.setTimeout(() => setDebouncedQuery(query.trim().toLocaleLowerCase(locale)), 300); return () => window.clearTimeout(id); }, [query, locale]);
-  useEffect(() => { setPage(1); }, [debouncedQuery, statusFilter, industryFilter, pageSize]);
 
   const counts = useMemo(() => ({
     total: organizations?.length ?? 0,
@@ -184,8 +175,7 @@ function PlatformOrganizationsContent() {
   const pageItems = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   function toggleSort(key: SortKey) {
-    if (sortKey === key) setSortDirection((value) => value === "asc" ? "desc" : "asc");
-    else { setSortKey(key); setSortDirection("asc"); }
+    paging.setMany({sort:key,direction:sortKey===key&&sortDirection==="asc"?"desc":"asc"});
   }
 
   function setOrgField(key: keyof typeof form.organization, value: string) {
@@ -281,11 +271,11 @@ function PlatformOrganizationsContent() {
       ] as const).map(([key, value, icon, filter]) => <button key={key} type="button" className={`${css.kpi} ${statusFilter === filter ? css.kpiActive : ""}`} onClick={() => setStatusFilter(filter)}><span className={`${css.kpiIcon} ${css[`kpiIcon_${key}`]}`}>{icon}</span><span>{organizations === null ? <strong aria-label={t("loading")}>…</strong> : <strong>{value}</strong>}<small>{t(`console.kpi.${key}`)}</small></span></button>)}
     </section>
 
+    <ListToolbar search={query} onSearch={setQuery} searchHint={t("console.searchPlaceholder")} onClear={paging.clear} hasFilters={Boolean(query||statusFilter!=="all"||industryFilter!=="all")}/>
     <section className={css.toolbar}>
-      <label className={css.search}><span>{icons.search}</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("console.searchPlaceholder")} aria-label={t("console.searchLabel")} />{query && <button type="button" onClick={() => setQuery("")} aria-label={t("console.clearSearch")}>×</button>}</label>
       <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} aria-label={t("console.filters.statusLabel")}><option value="all">{t("console.filters.allStatuses")}</option>{["active", "suspended", "inactive", "archived", "provisioning"].map((status) => <option key={status} value={status}>{t(`status.${status}`)}</option>)}</select>
       {industries.length > 1 && <RecordCombobox value={industryFilter} onChange={(event) => setIndustryFilter(event)} aria-label={t("console.filters.industryLabel")}><option value="all">{t("console.filters.allIndustries")}</option>{industries.map((industry) => <option key={industry} value={industry}>{industry}</option>)}</RecordCombobox>}
-      {(query || statusFilter !== "all" || industryFilter !== "all") && <button type="button" style={styles.secondaryButton} onClick={() => { setQuery(""); setStatusFilter("all"); setIndustryFilter("all"); }}>{t("console.filters.clearAll")}</button>}
+      {(query || statusFilter !== "all" || industryFilter !== "all") && <button type="button" style={styles.secondaryButton} onClick={() => { paging.clear(); }}>{t("console.filters.clearAll")}</button>}
       {canCreate && <button type="button" className={css.primaryButton} onClick={() => setShowCreate(true)}>{icons.plus}<span>{t("console.createButton")}</span></button>}
     </section>
 
@@ -309,7 +299,7 @@ function PlatformOrganizationsContent() {
             <td><div className={css.rowActions}><Link className={css.viewButton} href={`/platform/organizations/${org.id}`}>{t("console.actions.view")}</Link>{(actions.length > 0 || canReset) && <div className={css.menuWrap}><button className={css.iconButton} type="button" onClick={() => setOpenMenu(openMenu === org.id ? null : org.id)} aria-label={t("console.actions.moreActions")}>{icons.more}</button>{openMenu === org.id && <div className={css.menu}>{actions.map((item) => <button key={item} type="button" className={item === "archive" ? css.dangerMenu : ""} onClick={() => { setOpenMenu(null); setActionOrg(org); setAction(item); }}>{t(`console.actions.${item}`)}</button>)}{canReset && <button type="button" onClick={() => { setOpenMenu(null); setResetOrganization(org); }}>{t("console.actions.resetRootPassword")}</button>}</div>}</div>}</div></td>
           </tr>;
         })}</tbody></table></div>
-        <div className={css.pagination}><span>{t("console.pagination.showing", { from: (safePage - 1) * pageSize + 1, to: Math.min(safePage * pageSize, filtered.length), total: filtered.length })}</span><label>{t("console.pagination.perPage")}<select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>{PAGE_SIZES.map((size) => <option key={size}>{size}</option>)}</select></label><div><button onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={safePage === 1}>{isRtl ? "→" : "←"}<span>{t("console.pagination.previous")}</span></button><strong>{safePage} / {totalPages}</strong><button onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={safePage === totalPages}><span>{t("console.pagination.next")}</span>{isRtl ? "←" : "→"}</button></div></div>
+        <Pagination page={safePage} pageSize={pageSize} total={filtered.length} pages={totalPages} onPage={paging.setPage} onPageSize={paging.setPageSize}/>
       </>}
     </section>
 

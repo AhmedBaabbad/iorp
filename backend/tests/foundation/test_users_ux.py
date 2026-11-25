@@ -17,6 +17,16 @@ from app.core.db import Base
 BASE='/api/v1/admin/users'
 
 
+def test_paged_users_filter_archive_before_count_and_preserve_legacy(users):
+    from tests.pagination_assertions import assert_paged_contract
+    assert_paged_contract(users.client, BASE, search="mistake", ctx=users.current)
+    users.target.archived_at = utc_now()
+    users.db.commit()
+    assert len(users.client.get(BASE).json()) == 2
+    assert users.client.get(BASE, params={"page": 1}).json()["total"] == 1
+    assert users.client.get(BASE, params={"page": 1, "include_archived": True}).json()["total"] == 2
+
+
 @pytest.fixture
 def users(client,db,test_user,test_org):
     permissions={'foundation:users:read','foundation:users:write','foundation:users:delete','foundation:users:deactivate'}

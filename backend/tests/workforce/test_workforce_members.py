@@ -19,6 +19,14 @@ _BASE_MEMBER = {
 }
 
 
+def test_paged_workforce_preserves_array_contract(client, auth_headers):
+    from tests.pagination_assertions import assert_paged_contract
+    for number in range(3):
+        response = client.post("/api/v1/workforce-members", json={**_BASE_MEMBER, "full_name": f"Paging worker {number}", "email": f"paging{number}@example.com"}, headers=auth_headers)
+        assert response.status_code == 201, response.text
+    assert_paged_contract(client, "/api/v1/workforce-members", headers=auth_headers, search="Paging")
+
+
 @pytest.fixture(autouse=True)
 def _organization_root_access(db, test_user):
     """These baseline CRUD tests exercise behavior, not RBAC denial paths."""

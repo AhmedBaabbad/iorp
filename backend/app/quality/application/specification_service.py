@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from sqlalchemy import func, select
 
+from app.core.pagination import paginate
 from app.core.utils import utc_now
 from app.core.interfaces.product_catalog import unknown_product_types
 from app.quality.domain import specifications as rules
@@ -23,11 +24,16 @@ class SpecificationService:
         self.db, self.tenant, self.org = db, tenant, tenant.organization_id
 
     # ── test parameters ─────────────────────────────────────────────────────────────────────────
-    def parameters(self, active_only=False):
+    def parameters(self, active_only=False, *, page=None, search="", status=None):
         query = select(QualityTestParameter).where(QualityTestParameter.organization_id == self.org)
         if active_only:
             query = query.where(QualityTestParameter.is_active.is_(True))
-        return list(self.db.scalars(query.order_by(QualityTestParameter.sort_order, QualityTestParameter.code)))
+        if status:
+            query = query.where(QualityTestParameter.is_active.is_(status == 'active'))
+        if search:
+            query = query.where(QualityTestParameter.code.icontains(search, autoescape=True) | QualityTestParameter.name_ar.icontains(search, autoescape=True) | QualityTestParameter.name_en.icontains(search, autoescape=True))
+        query = query.order_by(QualityTestParameter.sort_order, QualityTestParameter.code, QualityTestParameter.id)
+        return paginate(self.db, query, page) if page is not None else list(self.db.scalars(query))
 
     def _parameter(self, parameter_id) -> QualityTestParameter:
         parameter = self.db.scalar(select(QualityTestParameter).where(QualityTestParameter.id == parameter_id,
@@ -84,7 +90,7 @@ class SpecificationService:
     def get(self, spec_id) -> QualitySpecification:
         return self._get(spec_id)
 
-    def list(self, status=None, product_type=None, search=None):
+    def list(self, status=None, product_type=None, search=None, *, page=None):
         query = select(QualitySpecification).where(QualitySpecification.organization_id == self.org)
         if status:
             query = query.where(QualitySpecification.status == status)
@@ -92,7 +98,8 @@ class SpecificationService:
             query = query.where(QualitySpecification.product_type == product_type)
         if search:
             query = query.where(QualitySpecification.code.icontains(search, autoescape=True) | QualitySpecification.title.icontains(search, autoescape=True))
-        return list(self.db.scalars(query.order_by(QualitySpecification.code, QualitySpecification.revision.desc()).limit(500)))
+        query = query.order_by(QualitySpecification.code, QualitySpecification.revision.desc(), QualitySpecification.id)
+        return paginate(self.db, query, page) if page is not None else list(self.db.scalars(query.limit(500)))
 
     def active_for(self, product_type) -> list[QualitySpecification]:
         return list(self.db.scalars(select(QualitySpecification).where(

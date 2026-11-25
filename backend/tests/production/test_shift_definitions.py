@@ -13,6 +13,14 @@ from tests.production.conftest import grant_production_role
 ZERO_UUID = "00000000-0000-0000-0000-000000000000"
 
 
+def test_paged_shifts_preserve_array_contract(client, auth_headers, work_center):
+    from tests.pagination_assertions import assert_paged_contract
+    for number in range(3):
+        response = client.post("/api/v1/production/shift-definitions", json={**_base_shift_definition(work_center["id"], code=f"PAGE-{number}"), "name": f"Paging shift {number}"}, headers=auth_headers)
+        assert response.status_code == 201, response.text
+    assert_paged_contract(client, "/api/v1/production/shift-definitions", headers=auth_headers, search="Paging")
+
+
 @pytest.fixture
 def work_center(client, auth_headers):
     resp = client.post(

@@ -1,10 +1,11 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, optional_page_params, page_of
 from app.core.interfaces.follow_up_queries import FollowUpQueryInterface
 from app.core.interfaces.customer_queries import CustomerQueryInterface
 from app.core.interfaces.workforce_queries import WorkforceQueryInterface
@@ -227,20 +228,22 @@ def _user_to_detail(user, roles: list, current, db) -> UserDetailResponse:
     )
 
 
-@router.get("/users", response_model=list[UserListItem])
+@router.get("/users", response_model=Page[UserListItem] | list[UserListItem])
 def list_users(
-    selection: bool = False,
+    selection: bool = False, page: PageParams | None = Depends(optional_page_params),
+    search: str = Query(default="", max_length=80), status_filter: UserStatus | None = Query(default=None, alias="status"), include_archived: bool = False,
     current: CurrentUserContext = Depends(require_permission("foundation:users:read")),
     db: Session = Depends(get_db),
 ) -> list[UserListItem]:
     service = FoundationService(db)
-    users = service.list_users(current.tenant.organization_id, active_only=selection)
+    found = service.list_users(current.tenant.organization_id, active_only=selection, page=page, search=search, status=status_filter, include_archived=include_archived if page is not None else True)
+    users, total = found if page is not None else (found, 0)
     roles_by_user = service.user_roles.list_roles_for_users([user.id for user in users], current.tenant.organization_id)
     result = []
     for user in users:
         roles = roles_by_user.get(user.id, [])
         result.append(_user_to_list_item(user, roles, current, db))
-    return result
+    return page_of(result, total, page) if page is not None else result
 
 
 @router.get("/users/{user_id}/presence", response_model=UserPresenceResponse)

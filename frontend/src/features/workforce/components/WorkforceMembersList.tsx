@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -191,7 +193,9 @@ export function WorkforceMembersList() {
   const canUpdate = usePermission("workforce:members:update");
   const canDelete = usePermission("workforce:members:delete");
   const [members, setMembers] = useState<WorkforceMemberListItem[]>([]);
-  const [filters, setFilters] = useState<WorkforceMemberFilters>({});
+  const page=useListPage<WorkforceMemberListItem>({search:"",worker_type:"",employment_type:"",status:""});
+  const {params,accept}=page;
+  const filters=page.filters as WorkforceMemberFilters;
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -207,14 +211,14 @@ export function WorkforceMembersList() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await getWorkforceMembers(filters);
-      if (isMountedRef.current) setMembers(response);
+      const response = await getWorkforceMembers(params);
+      if (isMountedRef.current) accept(response,setMembers);
     } catch (caughtError) {
       if (isMountedRef.current) setError(getApiErrorMessage(caughtError, messages));
     } finally {
       if (isMountedRef.current) setIsLoading(false);
     }
-  }, [filters, messages]);
+  }, [params,accept,messages]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -325,12 +329,13 @@ export function WorkforceMembersList() {
           ) : null
         }
       >
+        <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={common("listFilters.search")} onClear={page.clear} hasFilters={page.hasFilters}/>
         <div style={styles.filters}>
           <select
             style={sharedStyles.input}
             value={filters.worker_type ?? ""}
             onChange={(event) =>
-              setFilters((current) => ({ ...current, worker_type: event.target.value as WorkerType | "" }))
+              page.set("worker_type",event.target.value)
             }
             aria-label={t("fields.workerType")}
           >
@@ -345,7 +350,7 @@ export function WorkforceMembersList() {
             style={sharedStyles.input}
             value={filters.employment_type ?? ""}
             onChange={(event) =>
-              setFilters((current) => ({ ...current, employment_type: event.target.value as EmploymentType | "" }))
+              page.set("employment_type",event.target.value)
             }
             aria-label={t("fields.employmentType")}
           >
@@ -360,7 +365,7 @@ export function WorkforceMembersList() {
             style={sharedStyles.input}
             value={filters.status ?? ""}
             onChange={(event) =>
-              setFilters((current) => ({ ...current, status: event.target.value as WorkforceMemberStatus | "" }))
+              page.set("status",event.target.value)
             }
             aria-label={t("fields.status")}
           >
@@ -475,6 +480,7 @@ export function WorkforceMembersList() {
           </div>
         </section>
       ) : null}
+      <Pagination {...page.pagination} disabled={isLoading||page.pending}/>
       </PageFrame>
     </>
   );

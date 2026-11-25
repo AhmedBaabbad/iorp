@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -165,6 +167,8 @@ export function ShiftsList() {
   const tEnums = useTranslations();
   const common = useTranslations("common");
   const messages = useTranslations("messages");
+  const page=useListPage<ShiftListItem>({search:"",status:""});
+  const {params,accept}=page;
   const [shifts, setShifts] = useState<ShiftListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -180,9 +184,9 @@ export function ShiftsList() {
     setIsLoading(true);
     setError(null);
     try {
-      const shiftsResponse = await getShifts();
+      const shiftsResponse = await getShifts(params);
       if (isMountedRef.current) {
-        setShifts(shiftsResponse);
+        accept(shiftsResponse,setShifts);
       }
     } catch (caughtError) {
       if (isMountedRef.current) {
@@ -193,7 +197,7 @@ export function ShiftsList() {
         setIsLoading(false);
       }
     }
-  }, [messages]);
+  }, [params,accept,messages]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -320,6 +324,9 @@ export function ShiftsList() {
       ) : null}
 
       <Link href="/shift-rosters" style={sharedStyles.secondaryButton}>{t("rosters")}</Link>
+      <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={common("listFilters.search")} onClear={page.clear}
+        status={page.filters.status} onStatus={value=>page.set("status",value)} statusLabel={common("listFilters.status")}
+        statuses={["active","inactive"].map(value=>({value,label:formatShiftStatus(value as ShiftListItem["status"],tEnums)}))}/>
       {isLoading ? (
         <div style={{ ...sharedStyles.state, background: "var(--surface)" }}>
           {t("loading")}
@@ -431,7 +438,8 @@ export function ShiftsList() {
           </div>
         </section>
       ) : null}
-    </PageFrame>
+    <Pagination {...page.pagination} disabled={isLoading||page.pending}/>
+      </PageFrame>
   );
 }
 

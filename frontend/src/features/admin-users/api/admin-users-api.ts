@@ -1,3 +1,5 @@
+import type {Page} from "@/lib/pagination";
+import {queryString, type PageQuery} from "@/lib/page-response";
 import { apiClient } from "@/lib/api-client";
 import type {
   AdminUserCreateRequest,
@@ -20,9 +22,9 @@ export function permanentlyDeleteAdminUser(id: string, reason: string) {
   return apiClient<{deleted:boolean}>(`${BASE}/${id}/permanent`, {method:"DELETE",body:{reason},notify:false});
 }
 
-export function listAdminUsers() {
-  return apiClient<AdminUserListItem[]>(BASE);
-}
+export function listAdminUsers(filters:PageQuery):Promise<Page<AdminUserListItem>>;
+export function listAdminUsers():Promise<AdminUserListItem[]>;
+export function listAdminUsers(filters?:PageQuery){return apiClient<AdminUserListItem[]|Page<AdminUserListItem>>(`${BASE}${queryString(filters)}`);}
 
 export function getAdminUserPresence(id: string) {
   return apiClient<UserPresence>(`${BASE}/${id}/presence`, {notify:false});

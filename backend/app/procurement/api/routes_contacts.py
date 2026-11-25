@@ -18,12 +18,12 @@ def parent(db,tenant,supplier_id,lock=False):
 
 
 @router.get('',dependencies=[Depends(require_any_permission(['procurement:suppliers:read','procurement:purchase_orders:create','procurement:purchase_orders:update']))])
-def listing(supplier_id:UUID,search:str=Query('',max_length=120),page:int|None=Query(None,ge=1),db=Depends(get_db),tenant=Depends(get_current_tenant)):
+def listing(supplier_id:UUID,search:str=Query('',max_length=120),page:int|None=Query(None,ge=1),page_size:int=Query(50,ge=1,le=100),db=Depends(get_db),tenant=Depends(get_current_tenant)):
     parent(db,tenant,supplier_id)
     query=select(SupplierContact).where(SupplierContact.organization_id==tenant.organization_id,
         SupplierContact.supplier_id==supplier_id,SupplierContact.name.icontains(search,autoescape=True)).order_by(SupplierContact.is_default.desc(),SupplierContact.name,SupplierContact.id)
     if page is None:return [view(r) for r in db.scalars(query.limit(100))]
-    params=PageParams(page=page)
+    params=PageParams(page=page,page_size=page_size)
     rows,total=paginate(db,query,params)
     return page_of([view(r) for r in rows],total,params)
 

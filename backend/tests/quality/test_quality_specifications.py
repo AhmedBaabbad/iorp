@@ -13,6 +13,14 @@ def code(r):
     return r.json()["detail"]["code"]
 
 
+def test_paged_parameters_and_specifications(sq):
+    from tests.pagination_assertions import assert_paged_contract
+    for number in range(3):
+        sq.spec(code_=f"PAGE-{number}", product="film")
+    assert_paged_contract(sq.client, PARAMS, search="WIDTH", ctx=sq.ctx)
+    assert_paged_contract(sq.client, SPECS, search="PAGE", ctx=sq.ctx)
+
+
 @pytest.fixture
 def sq(q):
     params = {p["code"]: p["id"] for p in q.client.post(f"{PARAMS}/standard").json()}

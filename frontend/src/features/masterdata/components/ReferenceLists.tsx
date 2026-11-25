@@ -1,4 +1,6 @@
 "use client";
+import {useClientListPage} from "@/hooks/useClientListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import { useLocale, useTranslations } from "next-intl";
@@ -27,8 +29,10 @@ export function ReferenceLists({ initialList }: { initialList?: string }) {
   const locale = useLocale();
   const canManage = usePermission(MD.LISTS_UPDATE);
   const canMapLegacy = usePermission(MD.LISTS_MAP_LEGACY);  // RBAC-002: rewriting old texts in every module
-  const [list, setList] = useState<ListName>(LIST_NAMES.includes(initialList as ListName) ? (initialList as ListName) : "sector");
+
   const [rows, setRows] = useState<ListItem[] | null>(null);
+  const page=useClientListPage(rows??[],row=>`${row.key} ${row.name_ar} ${row.name_en}`,rows!==null,{search:"",list:LIST_NAMES.includes(initialList as ListName)?initialList!:"sector"});
+  const list=LIST_NAMES.includes(page.filters.list as ListName)?page.filters.list as ListName:"sector";
   const [parents, setParents] = useState<ListItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -57,9 +61,10 @@ export function ReferenceLists({ initialList }: { initialList?: string }) {
       {LIST_GROUPS.map(({ group, lists }) => <div key={group} className={s.actions} style={{ alignItems: "center" }}>
         <strong style={{ minWidth: 110, color: "var(--text-muted)" }}>{t(`groups.${group}`)}</strong>
         {lists.map(l => <button key={l} type="button" className={`${s.button} ${l === list ? s.primary : ""}`} aria-pressed={l === list}
-          onClick={() => { setList(l); setMessage(""); }}>{t(`names.${l}`)}</button>)}
+          onClick={() => { page.setMany({list:l,search:""}); setMessage(""); }}>{t(`names.${l}`)}</button>)}
       </div>)}
     </nav>
+    <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={t("title")} onClear={()=>page.set("search","")}/>
     <section className={s.panel} aria-label={t(`names.${list}`)}>
       <div className={s.actions} style={{ justifyContent: "space-between" }}>
         <h2 style={{ margin: 0 }}>{t(`names.${list}`)}</h2>
@@ -74,11 +79,12 @@ export function ReferenceLists({ initialList }: { initialList?: string }) {
       {rows && rows.length > 0 && <div className={s.tableWrap}><table className={s.table} aria-label={t(`names.${list}`)}>
         <thead><tr><th>{t("fields.name_ar")}</th><th>{t("fields.name_en")}</th><th>{t("fields.key")}</th>{parentList && <th>{t(`names.${parentList}`)}</th>}
           <th>{t("fields.uses")}</th><th>{t("fields.active")}</th>{canManage && <th />}</tr></thead>
-        <tbody>{rows.map(r => <Row key={r.id} item={r} parents={parents} canManage={canManage} onSaved={changed} onDeleted={(text) => { setMessage(text); changed(); }}
+        <tbody>{page.items.map(r => <Row key={r.id} item={r} parents={parents} canManage={canManage} onSaved={changed} onDeleted={(text) => { setMessage(text); changed(); }}
           parentName={(key) => { const p = parents.find(x => x.key === key); return p ? name(p) : key ?? "—"; }} />)}</tbody>
       </table></div>}
     </section>
     {canMapLegacy && rows && KEY_LISTS.includes(list) && <Legacy list={list} items={rows} onMapped={changed} />}
+    <Pagination {...page.pagination} disabled={rows===null}/>
   </PageFrame>;
 }
 

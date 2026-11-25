@@ -83,8 +83,8 @@ class WorkCenterService:
         self.db.refresh(work_center)
         return work_center
 
-    def list_work_centers(self, tenant: TenantContext) -> list[WorkCenter]:
-        return self.work_centers.list_by_organization(tenant.organization_id)
+    def list_work_centers(self, tenant: TenantContext, **filters):
+        return self.work_centers.list_by_organization(tenant.organization_id, **filters)
 
     def get_work_center(self, tenant: TenantContext, work_center_id: UUID) -> WorkCenter | None:
         return self.work_centers.get_by_id(tenant.organization_id, work_center_id)
@@ -227,8 +227,8 @@ class ShiftDefinitionService:
         self.db.refresh(shift_definition)
         return shift_definition
 
-    def list_shift_definitions(self, tenant: TenantContext) -> list[ShiftDefinition]:
-        return self.shift_definitions.list_by_organization(tenant.organization_id)
+    def list_shift_definitions(self, tenant: TenantContext, **filters):
+        return self.shift_definitions.list_by_organization(tenant.organization_id, **filters)
 
     def get_shift_definition(
         self,

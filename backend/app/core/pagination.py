@@ -9,7 +9,7 @@ never repeats or disappears between two pages.
 from math import ceil
 from typing import Generic, TypeVar
 
-from fastapi import Query
+from fastapi import Depends, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
@@ -32,6 +32,11 @@ class PageParams(BaseModel):
 def page_params(page: int = Query(1, ge=1), page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE)) -> PageParams:
     """FastAPI dependency: `?page=2&page_size=50`."""
     return PageParams(page=page, page_size=page_size)
+
+
+def optional_page_params(request: Request, params: PageParams = Depends(page_params)) -> PageParams | None:
+    """Opt-in envelope for legacy array endpoints; existing picker/export callers keep their contract."""
+    return params if 'page' in request.query_params or 'page_size' in request.query_params else None
 
 
 class Page(BaseModel, Generic[T]):

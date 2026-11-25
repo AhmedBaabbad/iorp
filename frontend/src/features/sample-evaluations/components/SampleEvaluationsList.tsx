@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 
 import { useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
@@ -38,6 +40,8 @@ export function SampleEvaluationsList({ sampleId }: SampleEvaluationsListProps) 
   const common = useTranslations("common");
   const t = useTranslations("commercial.samples.evaluations");
   const fmt = useFormatter();
+  const page=useListPage<SampleEvaluationListItem>({search:""},{},sampleId);
+  const {params,accept}=page;
   const [evaluations, setEvaluations] = useState<SampleEvaluationListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,9 +71,9 @@ export function SampleEvaluationsList({ sampleId }: SampleEvaluationsListProps) 
     setError(null);
 
     try {
-      const response = await listSampleEvaluations(sampleId);
+      const response = await listSampleEvaluations(sampleId,params);
       if (isMountedRef.current) {
-        setEvaluations(response);
+        accept(response,setEvaluations);
       }
     } catch (caughtError) {
       if (isMountedRef.current) {
@@ -80,7 +84,7 @@ export function SampleEvaluationsList({ sampleId }: SampleEvaluationsListProps) 
         setIsLoading(false);
       }
     }
-  }, [sampleId, messages]);
+  }, [sampleId, params, accept, messages]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -115,6 +119,7 @@ export function SampleEvaluationsList({ sampleId }: SampleEvaluationsListProps) 
 
       {isFormOpen ? <SampleEvaluationForm sampleId={sampleId} onCreated={handleCreated} /> : null}
 
+      <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={common("listFilters.search")} onClear={page.clear}/>
       {isLoading ? <div style={sharedStyles.state}>{t("loading")}</div> : null}
 
       {!isLoading && error ? (
@@ -193,6 +198,7 @@ export function SampleEvaluationsList({ sampleId }: SampleEvaluationsListProps) 
           ))}
         </div>
       ) : null}
+      <Pagination {...page.pagination} disabled={isLoading||page.pending}/>
     </SectionShell>
   );
 }

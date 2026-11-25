@@ -1,3 +1,5 @@
+import type {Page} from "@/lib/pagination";
+import {queryString, type PageQuery} from "@/lib/page-response";
 import { apiClient } from "@/lib/api-client";
 import type {
   CreateWorkCenterRequest,
@@ -9,9 +11,9 @@ import type {
 
 const WORK_CENTERS_PATH = "/production/work-centers";
 
-export function getWorkCenters() {
-  return apiClient<WorkCenterListItem[]>(WORK_CENTERS_PATH);
-}
+export function getWorkCenters(filters:PageQuery):Promise<Page<WorkCenterListItem>>;
+export function getWorkCenters():Promise<WorkCenterListItem[]>;
+export function getWorkCenters(filters?:PageQuery){return apiClient<WorkCenterListItem[]|Page<WorkCenterListItem>>(`${WORK_CENTERS_PATH}${queryString(filters)}`);}
 
 export function getWorkCenterById(workCenterId: string) {
   return apiClient<WorkCenterData>(`${WORK_CENTERS_PATH}/${workCenterId}`);

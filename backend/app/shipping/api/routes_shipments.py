@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, optional_page_params, page_of
 from app.core import files
 from app.core.reporting.routes import generate_response
 from app.core.tenancy import TenantContext
@@ -56,14 +57,16 @@ def _run(db, tenant, can, action):
         raise _error(exc) from exc
 
 
-@router.get(PATH, response_model=list[ShipmentListItem], dependencies=[Depends(require_permission(P.SHIPMENTS_READ))])
+@router.get(PATH, response_model=Page[ShipmentListItem] | list[ShipmentListItem], dependencies=[Depends(require_permission(P.SHIPMENTS_READ))])
 def list_shipments(status_filter: str | None = Query(default=None, alias="status", pattern=STATUSES),
                    method: str | None = Query(default=None, pattern="^(pickup|factory_delivery|carrier)$"), customer_id: UUID | None = None,
                    date_from: date | None = None, date_to: date | None = None, search: str | None = Query(default=None, max_length=60),
-                   tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
+                   page: PageParams | None = Depends(optional_page_params), tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
     service = ShipmentService(db, tenant)
-    rows = service.list(status_filter, method, customer_id, date_from, date_to, search)
-    return [ShipmentListItem.model_validate({**ShipmentListItem.model_validate(s).model_dump(), **v}) for s, v in zip(rows, service.views(rows, can))]
+    result = service.list(status_filter, method, customer_id, date_from, date_to, search, page=page)
+    rows, total = result if page is not None else (result, 0)
+    items = [ShipmentListItem.model_validate({**ShipmentListItem.model_validate(s).model_dump(), **v}) for s, v in zip(rows, service.views(rows, can))]
+    return page_of(items, total, page) if page is not None else items
 
 
 @router.get(f"{PATH}/lookups/customers", response_model=list[CustomerOption],

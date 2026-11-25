@@ -95,6 +95,14 @@ def code(r):
     return r.json()["detail"]["code"]
 
 
+def test_paged_results_filter_before_totals_and_keep_legacy_arrays(env):
+    from tests.pagination_assertions import assert_paged_contract
+    for _ in range(3):
+        env.bare("kg")
+    env.bare("kg", status="draft")
+    assert_paged_contract(env.client, f"{ROOT}/production-results", search="film", ctx=env.ctx)
+
+
 def entry_url(po, entry_id, suffix=""):
     return f"{ROOT}/production-orders/{po['id']}/result/entries/{entry_id}{suffix}"
 

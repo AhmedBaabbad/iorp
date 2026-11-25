@@ -1,3 +1,5 @@
+import type {Page} from "@/lib/pagination";
+import {queryString, type PageQuery} from "@/lib/page-response";
 import { apiClient } from "@/lib/api-client";
 import type {
   CreateSampleEvaluationRequest,
@@ -8,9 +10,9 @@ function sampleEvaluationsPath(sampleId: string) {
   return `/commercial/samples/${sampleId}/evaluations`;
 }
 
-export function listSampleEvaluations(sampleId: string) {
-  return apiClient<SampleEvaluationListItem[]>(sampleEvaluationsPath(sampleId));
-}
+export function listSampleEvaluations(sampleId:string,filters:PageQuery):Promise<Page<SampleEvaluationListItem>>;
+export function listSampleEvaluations(sampleId:string):Promise<SampleEvaluationListItem[]>;
+export function listSampleEvaluations(sampleId:string,filters?:PageQuery){return apiClient<SampleEvaluationListItem[]|Page<SampleEvaluationListItem>>(`${sampleEvaluationsPath(sampleId)}${queryString(filters)}`);}
 
 /** Corrects an evaluation (commercial:evaluations:update). */
 export function updateSampleEvaluation(evaluationId: string, payload: Partial<CreateSampleEvaluationRequest>) {

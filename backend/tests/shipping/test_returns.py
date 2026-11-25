@@ -169,6 +169,7 @@ def test_each_return_step_needs_its_permission(ship):
 
 
 def test_returns_list_filters_and_numbering_prefix(ship):
+    from tests.pagination_assertions import assert_paged_contract
     assert ship.client.patch("/api/v1/shipping/settings", json=dict(return_prefix="ROF-RT-")).json()["return_prefix"] == "ROF-RT-"
     s = on_the_road(ship)
     go(ship, s, "fail", reason="no_receiver")
@@ -180,6 +181,7 @@ def test_returns_list_filters_and_numbering_prefix(ship):
     assert [r["shipment_no"] for r in ship.client.get(RETURNS, params=dict(search=s["shipment_no"])).json()] == [s["shipment_no"]]
     assert ship.client.get(RETURNS, params=dict(status="requested")).json()[0]["reason"] == "wrong_item"
     assert ship.client.get(ROOT).json()[0]["open_returns"] == 1
+    assert_paged_contract(ship.client, RETURNS, search=s["shipment_no"], ctx=ship.ctx)
 
 
 # ── weights, batches, proof of delivery ─────────────────────────────────────────────────────────

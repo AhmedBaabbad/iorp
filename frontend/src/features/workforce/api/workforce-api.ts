@@ -1,3 +1,5 @@
+import type {Page} from "@/lib/pagination";
+import {queryString, type PageQuery} from "@/lib/page-response";
 import { apiClient } from "@/lib/api-client";
 import type {
   CreateWorkforceMemberRequest,
@@ -13,21 +15,10 @@ import type { AdminUserListItem } from "@/features/admin-users/types";
 
 const WORKFORCE_MEMBERS_PATH = "/workforce-members";
 
-function toQueryString(filters?: WorkforceMemberFilters) {
-  if (!filters) return "";
-  const params = new URLSearchParams();
-  if (filters.worker_type) params.set("worker_type", filters.worker_type);
-  if (filters.status) params.set("status", filters.status);
-  if (filters.employment_type) params.set("employment_type", filters.employment_type);
-  const query = params.toString();
-  return query ? `?${query}` : "";
-}
-
-export function getWorkforceMembers(filters?: WorkforceMemberFilters, token?: string | null) {
-  return apiClient<WorkforceMemberListItem[]>(
-    `${WORKFORCE_MEMBERS_PATH}${toQueryString(filters)}`,
-    { token },
-  );
+export function getWorkforceMembers(filters:WorkforceMemberFilters & PageQuery,token?:string|null):Promise<Page<WorkforceMemberListItem>>;
+export function getWorkforceMembers(filters?:WorkforceMemberFilters,token?:string|null):Promise<WorkforceMemberListItem[]>;
+export function getWorkforceMembers(filters?:WorkforceMemberFilters|(WorkforceMemberFilters & PageQuery),token?:string|null){
+  return apiClient<WorkforceMemberListItem[]|Page<WorkforceMemberListItem>>(`${WORKFORCE_MEMBERS_PATH}${queryString(filters)}`,{token});
 }
 
 export function getWorkforceMemberById(id: string, token?: string | null) {

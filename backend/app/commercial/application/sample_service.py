@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.db import Base
 from app.core.interfaces import product_catalog
 from app.commercial.api.schemas import SampleCreate, SampleDeletionImpact, SampleEvaluationCreate, SampleUpdate
 from app.commercial.domain.enums import SampleStatus
@@ -253,14 +254,20 @@ class SampleService:
     def list_sample_evaluations(
         self,
         tenant: TenantContext,
-        sample_id: UUID,
+        sample_id: UUID, **filters,
     ) -> list[SampleEvaluation] | None:
         sample = self.samples.get_by_id(tenant.organization_id, sample_id)
         if sample is None:
             return None
 
-        return [self._attach_evaluated_by_name(tenant, row)
-                for row in self.sample_evaluations.list_by_sample(tenant.organization_id, sample_id)]
+        result = self.sample_evaluations.list_by_sample(tenant.organization_id, sample_id, **filters)
+        rows, total = result if filters.get('page') is not None else (result, 0)
+        users = Base.metadata.tables['foundation_users']
+        ids = {row.evaluated_by_user_id for row in rows}
+        names = dict(self.db.execute(select(users.c.id, users.c.full_name).where(users.c.organization_id == tenant.organization_id, users.c.id.in_(ids))).all()) if ids else {}
+        for row in rows:
+            row.evaluated_by_name = names.get(row.evaluated_by_user_id)
+        return (rows, total) if filters.get('page') is not None else rows
 
     def get_sample_evaluation(
         self,

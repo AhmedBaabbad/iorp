@@ -1,4 +1,6 @@
 "use client";
+import {useClientListPage} from "@/hooks/useClientListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -19,6 +21,8 @@ export function AdminRolesList() {
   const messages = useTranslations("messages");
   const canWrite = usePermission("foundation:roles:write");
   const [roles, setRoles] = useState<AdminRoleListItem[]>([]);
+  const [loaded,setLoaded]=useState(false);
+  const page=useClientListPage(roles,row=>[row.code,row.name,row.description,t.has(`systemRoleNames.${row.code}`)?t(`systemRoleNames.${row.code}`):""].filter(Boolean).join(" "),loaded);
   const [error, setError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<AdminRoleListItem | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -27,7 +31,7 @@ export function AdminRolesList() {
   const loadRoles = useCallback(async () => {
     try {
       const data = await listAdminRoles();
-      setRoles(data);
+      setRoles(data);setLoaded(true);
     } catch (caughtError) {
       setError(getApiErrorMessage(caughtError, messages));
     }
@@ -59,11 +63,12 @@ export function AdminRolesList() {
       subtitle={t("subtitle")}
       action={canWrite ? <Link href="/admin/roles/new" style={sharedStyles.button}>{t("newButton")}</Link> : null}
     >
+      <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={common("listFilters.search")} onClear={page.clear}/>
       {error ? <div style={sharedStyles.error}>{error}</div> : null}
-      {roles.length === 0 && !error ? <div style={sharedStyles.state}>{t("empty")}</div> : null}
-      {roles.length > 0 ? (
+      {page.items.length === 0 && !error ? <div style={sharedStyles.state}>{t("empty")}</div> : null}
+      {page.items.length > 0 ? (
         <section className={styles.cards}>
-          {roles.map(role => <article key={role.id} className={styles.roleCard}>
+          {page.items.map(role => <article key={role.id} className={styles.roleCard}>
             <div className={styles.stats}><span className={styles.badge}>{role.is_system ? t("systemBadge") : t("customBadge")}</span>{role.is_protected ? <span className={styles.badge} title={t("protectedHint")}>{t("protectedBadge")}</span> : null}</div>
             <h2><Link href={`/admin/roles/${role.id}`}>{role.is_system && t.has(`systemRoleNames.${role.code}`) ? t(`systemRoleNames.${role.code}`) : role.name}</Link></h2>
             <p>{role.is_system && t.has(`systemRoleDescriptions.${role.code}`) ? t(`systemRoleDescriptions.${role.code}`) : role.description}</p>
@@ -102,6 +107,7 @@ export function AdminRolesList() {
           </div>
         </div>
       ) : null}
+    <Pagination {...page.pagination}/>
     </PageFrame>
   );
 }

@@ -3,6 +3,16 @@ from tests.procurement.test_procurement import proc,ROOT
 from tests.procurement.test_purchase_orders import order,ORDERS
 
 
+def test_supplier_contacts_honor_page_size(proc):
+    from tests.pagination_assertions import assert_paged_contract
+    supplier = proc.supplier()
+    path = f"{ROOT}/suppliers/{supplier['id']}/contacts"
+    for number in range(3):
+        response = proc.client.post(path, json=dict(name=f"Paging {number}"))
+        assert response.status_code == 201, response.text
+    assert_paged_contract(proc.client, path, search="Paging", ctx=proc.ctx, scoped=True)
+
+
 def test_supplier_other_city_is_required_and_cleared_on_country_change(proc):
     supplier=proc.supplier(country='ae',city='ae_other',city_other='  New supplier city  ')
     assert supplier['city_other']=='New supplier city'

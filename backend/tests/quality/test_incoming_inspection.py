@@ -22,6 +22,36 @@ def code(r):
     return r.json()["detail"]["code"]
 
 
+def test_paged_incoming_queue_counts_documents_not_lines(proc):
+    from tests.pagination_assertions import assert_paged_contract
+    for number in range(3):
+        received(proc, name=f"Paging material {number}")
+    assert_paged_contract(proc.client, f"{QUALITY}/incoming/awaiting", search="SUP-7781", search_key="q", ctx=proc.ctx)
+
+
+def test_incoming_page_keeps_all_lines_and_counts_only_pending_documents(proc):
+    from uuid import UUID
+    from app.core.db import Base
+    _supplier, _material, receipt = received(proc)
+    lines = Base.metadata.tables["procurement_receipt_lines"]
+    proc.db.execute(lines.update().where(lines.c.id == UUID(receipt["lines"][1]["id"])).values(inspection_required=True))
+    proc.db.commit()
+    path = f"{QUALITY}/incoming/awaiting"
+    page = proc.client.get(path, params={"page": 1, "page_size": 1}).json()
+    assert page["total"] == 1 and len(page["items"][0]["lines"]) == 2
+    checks = Base.metadata.tables["quality_checks"]
+    for index, line in enumerate(receipt["lines"]):
+        check = proc.client.post(f"{QUALITY}/incoming/lines/{line['id']}/inspection").json()
+        proc.db.execute(checks.update().where(checks.c.id == UUID(check["id"])).values(status="closed"))
+        proc.db.commit()
+        page = proc.client.get(path, params={"page": 1, "page_size": 1}).json()
+        if index == 0:
+            assert page["total"] == 1 and len(page["items"][0]["lines"]) == 2
+        else:
+            assert page["total"] == 0 and page["items"] == []
+    assert proc.client.get(path, params={"page": 1, "include_done": True}).json()["total"] == 1
+
+
 def test_received_lots_wait_for_quality_and_show_their_status_on_the_receipt(proc):
     _s, _m, r = received(proc)
     first, pallets = r["lines"]

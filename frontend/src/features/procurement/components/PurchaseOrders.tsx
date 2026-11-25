@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
@@ -19,7 +21,7 @@ import { useFormatter } from "@/hooks/useFormatter";
 import { PR } from "@/lib/procurement-permissions";
 import {
   approveOrder, cancelOrder, closeOrder, createOrder, downloadOrder, getMaterials, getOrder, getOrders, getProcurementSettings, getSupplierOptions,
-  sendOrder, updateOrder, updateProcurementSettings, type OrderFilters,
+  sendOrder, updateOrder, updateProcurementSettings,
 } from "../api";
 import { DECIMAL, procurementErrorMessage, todayIso } from "../procurement-errors";
 import {
@@ -53,20 +55,22 @@ export function OrdersList() {
   const messages = useTranslations("messages");
   const fmt = useFormatter();
   const canCreate = usePermission(PR.PO_CREATE);
-  const [filters, setFilters] = useState<Required<Omit<OrderFilters, "supplier_id">>>({ status: "", date_from: "", date_to: "", search: "" });
+  const page=useListPage<OrderListItem>({ status: "", date_from: "", date_to: "", search: "" });
+  const {params,accept}=page;
+  const filters=page.filters;
   const [rows, setRows] = useState<OrderListItem[] | null>(null);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     setError("");
-    try { setRows(await getOrders(filters)); } catch (e) { setError(procurementErrorMessage(e, errors)); }
-  }, [filters, errors]);
+    try { accept(await getOrders(params),setRows); } catch (e) { setError(procurementErrorMessage(e, errors)); }
+  }, [params,accept,errors]);
   useEffect(() => { const timer = setTimeout(() => void load(), 200); return () => clearTimeout(timer); }, [load]);
-  const set = (field: keyof typeof filters, value: string) => setFilters(old => ({ ...old, [field]: value }));
+  const set = (field:keyof typeof filters,value:string)=>page.set(field,value);
 
   return <PageFrame title={t("orders.title")} subtitle={t("orders.subtitle")}
     action={canCreate ? <Link href="/purchase-orders/new" className={`${s.button} ${s.primary}`}>{t("orders.new")}</Link> : undefined}>
+    <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={t("search")} onClear={page.clear} hasFilters={page.hasFilters}/>
     <section className={s.toolbar} aria-label={t("filtersAria")}>
-      <label className={s.field}>{t("search")}<input type="search" value={filters.search} placeholder={t("orders.searchPlaceholder")} onChange={e => set("search", e.target.value)} /></label>
       <label className={s.field}>{t("fields.status")}
         <select value={filters.status} onChange={e => set("status", e.target.value)}>
           <option value="">{t("all")}</option>{ORDER_STATUSES.map(v => <option key={v} value={v}>{t(`orderStatuses.${v}`)}</option>)}</select></label>
@@ -90,6 +94,7 @@ export function OrdersList() {
       </tr>)}</tbody>
     </table></div></section>}
     <OrderSettings />
+    <Pagination {...page.pagination} disabled={rows===null||page.pending}/>
   </PageFrame>;
 }
 

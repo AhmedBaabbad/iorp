@@ -1,4 +1,8 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
+import type {Page} from "@/lib/pagination";
+import {queryString} from "@/lib/page-response";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { RecordDialog } from "@/components/ui/RecordDialog";
@@ -24,16 +28,18 @@ const columns:Record<DirectoryKind,string[]>={
 export function DirectoryPanel({path,kind,writePermission,contactPath}:{path:string;kind:DirectoryKind;writePermission:string;contactPath?:string}){
   const t=useTranslations("directory"),messages=useTranslations("messages"),canWrite=usePermission(writePermission);
   const cityName=useListName("city",key=>key),countryName=useListName("country"),vehicleType=useListName("vehicle_type");
-  const [rows,setRows]=useState<Row[]>([]),[page,setPage]=useState(1),[pages,setPages]=useState(1),[query,setQuery]=useState("");
+  const [rows,setRows]=useState<Row[]>([]);
+  const paging=useListPage<Row>({search:""},{},path);
+  const {params,accept}=paging;
   const [draft,setDraft]=useState<Partial<Row>|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false);
   const [errorCode,setErrorCode]=useState(""),[identityRequired,setIdentityRequired]=useState(true);
   const [names,setNames]=useState<Record<string,string>>({});
   const load=useCallback(async()=>{
     try{
-      const result=await apiClient<Row[]|{items:Row[];pages:number}>(`${path}?page=${page}&search=${encodeURIComponent(query)}`);
-      setRows(Array.isArray(result)?result:result.items);setPages(Array.isArray(result)?1:result.pages);setError("");
+      const result=await apiClient<Row[]|Page<Row>>(`${path}${queryString(params)}`);
+      accept(result,setRows);setError("");
     }catch{setError(t("loadFailed"));}
-  },[path,page,query,t]);
+  },[path,params,accept,t]);
   useEffect(()=>{const timer=setTimeout(()=>void load(),200);return()=>clearTimeout(timer);},[load]);
   useEffect(()=>{
     let live=true,request=0;
@@ -74,8 +80,8 @@ export function DirectoryPanel({path,kind,writePermission,contactPath}:{path:str
   }
   async function reload(){
     try{
-      const result=await apiClient<Row[]|{items:Row[]}>(`${path}?page=${page}&search=${encodeURIComponent(query)}`);
-      const found=Array.isArray(result)?result:result.items;setRows(found);
+      const result=await apiClient<Row[]|Page<Row>>(`${path}${queryString(params)}`);
+      const found=Array.isArray(result)?result:result.items;accept(result,setRows);
       const current=found.find(row=>row.id===draft?.id);if(current)edit(current);else{setDraft(null);await load();}
     }catch(e){setError(getApiErrorMessage(e,messages));}
   }
@@ -99,12 +105,12 @@ export function DirectoryPanel({path,kind,writePermission,contactPath}:{path:str
   const invalid=!String(draft?.name??"").trim()||(kind==="sites"&&String(draft?.city??"").endsWith("_other")&&!String(draft?.city_other??"").trim())||(kind==="drivers"&&draft?.affiliation==="external"&&identityRequired&&!String(draft?.identity_no??"").trim());
   return <section className={s.panel} style={{minWidth:0,maxWidth:"100%"}}>
     <div className={s.actions}><h2>{label(kind)}</h2>{canWrite&&<button className={s.button} type="button" onClick={()=>edit()}>{t("add")}</button>}</div>
-    <input aria-label={t("search")} placeholder={t("searchHint")} value={query} onChange={event=>{setQuery(event.target.value);setPage(1);}}/>
+    <ListToolbar search={paging.filters.search} onSearch={value=>paging.set("search",value)} searchHint={t("searchHint")} onClear={paging.clear}/>
     {error&&!draft&&<p role="alert" className={s.error}>{error}</p>}
     <div className={s.tableWrap}><table className={s.table}><thead><tr>{columns[kind].map(key=><th key={key}>{label(key)}</th>)}<th/></tr></thead>
       <tbody>{rows.map(row=><tr key={row.id}>{columns[kind].map(key=><td key={key} style={{overflowWrap:"anywhere"}}>{cell(row,key)}</td>)}
         <td>{canWrite&&<button className={s.button} type="button" onClick={()=>edit(row)}>{t("edit")}</button>}</td></tr>)}</tbody></table></div>
-    {pages>1&&<div className={s.actions}><button className={s.button} type="button" disabled={page<=1} onClick={()=>setPage(p=>p-1)}>{t("previous")}</button><span>{page} / {pages}</span><button className={s.button} type="button" disabled={page>=pages} onClick={()=>setPage(p=>p+1)}>{t("next")}</button></div>}
+    <Pagination {...paging.pagination} disabled={paging.pending||busy}/>
     {draft&&<RecordDialog title={`${t(draft.id?"edit":"add")} — ${label(kind)}`} onClose={()=>setDraft(null)} onSave={save} disabled={invalid}
       error={error} errorAction={errorCode==="DIRECTORY_CHANGED"?<button className={s.button} type="button" disabled={busy} onClick={()=>void reload()}>{t("reload")}</button>:undefined}>
       {kind==="drivers"?<>

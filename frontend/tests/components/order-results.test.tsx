@@ -9,7 +9,7 @@ import type { OrderResult, ResultOriginal, ResultSummary } from "@/features/prod
 const api = vi.hoisted(() => ({ apiClient: vi.fn() }));
 const perms = vi.hoisted(() => ({ granted: new Set<string>() }));
 vi.mock("@/lib/api-client", async importOriginal => ({ ...(await importOriginal<object>()), apiClient: api.apiClient }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/", useSearchParams: () => new URLSearchParams() }));
+vi.mock("next/navigation",async()=>({... (await import("./list-navigation")).listNavigation,useParams:()=>({id:"pending"})}));
 vi.mock("@/features/auth/permission-hooks", () => ({ usePermission: (code: string) => perms.granted.has(code) }));
 vi.mock("@/hooks/useFormatter", () => ({ useFormatter: () => ({ date: (v: string) => v, dateTime: (v: string) => v, number: (v: string) => v, quantity: (v: string, u?: string) => `${v} ${u ?? ""}`.trim() }) }));
 vi.mock("@/components/layout/page-frame", () => ({ PageFrame: ({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) => <main><h1>{title}</h1>{action}{children}</main> }));
@@ -26,6 +26,7 @@ beforeAll(async () => {
   ar = await loadMessages("ar") as Record<string, unknown>;
 });
 beforeEach(() => {
+  window.history.replaceState(null,"","/");
   api.apiClient.mockReset();
   perms.granted = new Set(["production:results:read", "production:results:create", "production:results:update", "production:results:delete", "production:results:correct"]);
 });
@@ -203,7 +204,7 @@ describe("results screen", () => {
     expect(within(table).getByText("90")).toBeTruthy();
     expect(screen.queryByRole("link", { name: "السجلات السابقة" })).toBeNull();  // the legacy design is gone
     fireEvent.change(screen.getByLabelText("حالة الأمر"), { target: { value: "closed" } });
-    await waitFor(() => expect(api.apiClient).toHaveBeenLastCalledWith("/production/production-results?status=closed"));
+    await waitFor(() => expect(api.apiClient).toHaveBeenLastCalledWith("/production/production-results?status=closed&page=1&page_size=50"));
   });
 
   it("explains what to do when nothing is completed yet", async () => {

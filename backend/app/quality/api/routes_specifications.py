@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, optional_page_params, page_of
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, permission_check, require_any_permission, require_permission
 from app.quality.api.specification_schemas import (
@@ -31,10 +32,12 @@ def _read(service, spec, can, detail=True):
 
 # ── test parameters ─────────────────────────────────────────────────────────────────────────────
 
-@router.get("/quality-test-parameters", response_model=list[ParameterRead],
+@router.get("/quality-test-parameters", response_model=Page[ParameterRead] | list[ParameterRead],
             dependencies=[Depends(require_any_permission([Q.SPECS_READ, Q.CHECKS_MEASURE]))])
-def list_parameters(active: bool = False, tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
-    return SpecificationService(db, tenant).parameters(active_only=active)
+def list_parameters(active: bool = False, page: PageParams | None = Depends(optional_page_params), search: str = Query(default="", max_length=80),
+                    status_filter: str | None = Query(default=None, alias="status", pattern="^(active|inactive)$"), tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
+    result = SpecificationService(db, tenant).parameters(active_only=active, page=page, search=search, status=status_filter)
+    return page_of(*result, page) if page is not None else result
 
 
 @router.post("/quality-test-parameters", response_model=ParameterRead, status_code=status.HTTP_201_CREATED,
@@ -62,12 +65,15 @@ def update_parameter(parameter_id: UUID, payload: ParameterUpdate, tenant: Tenan
 
 # ── specifications ──────────────────────────────────────────────────────────────────────────────
 
-@router.get("/quality-specifications", response_model=list[SpecificationListItem], dependencies=[Depends(require_permission(Q.SPECS_READ))])
+@router.get("/quality-specifications", response_model=Page[SpecificationListItem] | list[SpecificationListItem], dependencies=[Depends(require_permission(Q.SPECS_READ))])
 def list_specifications(status_filter: str | None = Query(default=None, alias="status", pattern="^(draft|active|superseded)$"),
                         product_type: str | None = Query(default=None, max_length=120), search: str | None = Query(default=None, max_length=60),
-                        tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
+                        page: PageParams | None = Depends(optional_page_params), tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db), can=Depends(permission_check)):
     service = SpecificationService(db, tenant)
-    return [_read(service, s, can, detail=False) for s in service.list(status_filter, product_type, search)]
+    result = service.list(status_filter, product_type, search, page=page)
+    rows, total = result if page is not None else (result, 0)
+    items = [_read(service, row, can, detail=False) for row in rows]
+    return page_of(items, total, page) if page is not None else items
 
 
 @router.post("/quality-specifications", response_model=SpecificationRead, status_code=status.HTTP_201_CREATED,

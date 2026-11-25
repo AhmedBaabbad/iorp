@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 import { Dialog } from "@/components/ui/Dialog";
 
 import Link from "next/link";
@@ -29,14 +31,15 @@ export function QualityIncomingList() {
   const unit = (code: string) => (units.has(code) ? units(code) : code);
   const router = useRouter();
   const canOpen = usePermission(Q.CHECKS_CREATE);
-  const [search, setSearch] = useState("");
+  const page=useListPage<AwaitingReceipt>({search:""});
+  const {params,accept}=page;
   const [rows, setRows] = useState<AwaitingReceipt[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     setError("");
-    try { setRows(await getAwaitingLots(search)); } catch (e) { setError(qualityErrorMessage(e, errors)); }
-  }, [search, errors]);
+    try { accept(await getAwaitingLots(String(params.search??""),params),setRows); } catch (e) { setError(qualityErrorMessage(e, errors)); }
+  }, [params,accept,errors]);
   useEffect(() => { const timer = setTimeout(() => void load(), 200); return () => clearTimeout(timer); }, [load]);
   async function open(lineId: string) {
     setBusy(lineId); setError("");
@@ -45,9 +48,7 @@ export function QualityIncomingList() {
   }
 
   return <PageFrame title={t("title")} subtitle={t("subtitle")}>
-    <section className={s.toolbar} aria-label={t("title")}>
-      <label className={s.field}>{t("search")}<input type="search" value={search} placeholder={t("searchPlaceholder")} onChange={e => setSearch(e.target.value)} /></label>
-    </section>
+    <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={t("searchPlaceholder")} onClear={page.clear}/>
     {error && <div className={s.actions}><p role="alert" className={s.error}>{error}</p>
       <button type="button" className={s.button} onClick={() => void load()}>{common("actions.retry")}</button></div>}
     {rows === null && !error && <p className={s.muted}>{messages("loading.default")}</p>}
@@ -74,6 +75,7 @@ export function QualityIncomingList() {
         </tr>)}</tbody>
       </table></div>
     </section>)}
+    <Pagination {...page.pagination} disabled={rows===null||page.pending}/>
   </PageFrame>;
 }
 

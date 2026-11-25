@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.pagination import Page, PageParams, optional_page_params, page_of
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, permission_check, require_permission
 from app.quality.api.inspection_schemas import AwaitingReceipt, LotDecision, QualityCheckRead
@@ -29,11 +30,12 @@ def _run(db, tenant, can, action):
         raise HTTPException(status_code=exc.status, detail={"code": exc.code, **exc.detail}) from exc
 
 
-@router.get("/incoming/awaiting", response_model=list[AwaitingReceipt], dependencies=[Depends(require_permission(Q.CHECKS_READ))])
-def awaiting_lots(q: str = Query(default="", max_length=60), include_done: bool = False, tenant: TenantContext = Depends(get_current_tenant),
+@router.get("/incoming/awaiting", response_model=Page[AwaitingReceipt] | list[AwaitingReceipt], dependencies=[Depends(require_permission(Q.CHECKS_READ))])
+def awaiting_lots(q: str = Query(default="", max_length=60), include_done: bool = False, page: PageParams | None = Depends(optional_page_params), tenant: TenantContext = Depends(get_current_tenant),
                   db: Session = Depends(get_db)):
     """Received lots of materials inspected on arrival, each with its inspection once opened."""
-    return IncomingInspectionService(db, tenant).awaiting(q, include_done)
+    result = IncomingInspectionService(db, tenant).awaiting(q, include_done, page=page)
+    return page_of(*result, page) if page is not None else result
 
 
 @router.post("/incoming/lines/{line_id}/inspection", response_model=QualityCheckRead, status_code=status.HTTP_201_CREATED,

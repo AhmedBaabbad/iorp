@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 
 import { localName } from "@/lib/local-name";
@@ -28,20 +30,20 @@ export function ProductsList() {
   const locale = useLocale();
   const canCreate = usePermission(MD.PRODUCTS_CREATE);
   const canLegacy = useHasAnyPermission([MD.PRODUCTS_CREATE, MD.PRODUCTS_MAP_LEGACY]);
-  const [search, setSearch] = useState("");
+  const page=useListPage<Product>({search:"",kind:""});
+  const {params,accept}=page;
   const [rows, setRows] = useState<Product[] | null>(null);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     setError("");
-    try { setRows(await getProducts({ search })); } catch (e) { setError(masterdataErrorMessage(e, errors)); }
-  }, [search, errors]);
+    try { accept(await getProducts(params),setRows); } catch (e) { setError(masterdataErrorMessage(e, errors)); }
+  }, [params,accept,errors]);
   useEffect(() => { const timer = setTimeout(() => void load(), 200); return () => clearTimeout(timer); }, [load]);
 
   return <PageFrame title={t("products.title")} subtitle={t("products.subtitle")}
     action={canCreate ? <Link href="/master-data/products/new" className={`${s.button} ${s.primary}`}>{t("products.new")}</Link> : undefined}>
-    <section className={s.toolbar} aria-label={t("products.title")}>
-      <label className={s.field}>{t("search")}<input type="search" value={search} placeholder={t("products.searchPlaceholder")} onChange={e => setSearch(e.target.value)} /></label>
-    </section>
+    <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={t("products.searchPlaceholder")} onClear={page.clear}
+      status={page.filters.kind} onStatus={value=>page.set("kind",value)} statusLabel={t("fields.kind")} statuses={["finished","material"].map(value=>({value,label:t(`kinds.${value}`)}))}/>
     {error && <p role="alert" className={s.error}>{error}</p>}
     {rows === null && !error && <p className={s.muted}>{messages("loading.default")}</p>}
     {rows?.length === 0 && <section className={s.panel}><h2 style={{ marginTop: 0 }}>{t("products.empty")}</h2><p className={s.muted} style={{ margin: 0 }}>{t("products.emptyHint")}</p></section>}
@@ -58,6 +60,7 @@ export function ProductsList() {
       </tr>)}</tbody>
     </table></div></section>}
     {canLegacy && rows && <LegacyValues products={rows} onMapped={() => { refreshCatalog(); void load(); }} />}
+    <Pagination {...page.pagination} disabled={rows===null||page.pending}/>
   </PageFrame>;
 }
 
@@ -69,6 +72,9 @@ function LegacyValues({ products, onMapped }: { products: Product[]; onMapped: (
   const canMap = usePermission(MD.PRODUCTS_MAP_LEGACY);
   const canCreate = usePermission(MD.PRODUCTS_CREATE);
   const [rows, setRows] = useState<LegacyValue[] | null>(null);
+  const [options,setOptions]=useState(products),[mappingSearch,setMappingSearch]=useState<string|null>(null);
+  useEffect(()=>{if(mappingSearch===null)setOptions(products);},[products,mappingSearch]);
+  useEffect(()=>{if(mappingSearch===null)return;let active=true;const timer=setTimeout(()=>{getProducts({search:mappingSearch,active_only:true,page:1,page_size:50}).then(found=>{if(active)setOptions(found.items);}).catch(()=>{if(active)setOptions([]);});},250);return()=>{active=false;clearTimeout(timer);};},[mappingSearch]);
   const [chosen, setChosen] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -94,8 +100,8 @@ function LegacyValues({ products, onMapped }: { products: Product[]; onMapped: (
       <tbody>{rows.map(r => <tr key={r.value}>
         <td><bdi>«{r.value}»</bdi></td>
         <td>{Object.entries(r.uses).map(([module, count]) => t("use", { module: t(`modules.${module}`), count: String(count) })).join(" · ")}</td>
-        <td>{canMap ? <RecordCombobox aria-label={t("mapTo")} value={chosen[r.value] ?? ""} onChange={e => setChosen(old => ({ ...old, [r.value]: e }))}>
-          <option value="">—</option>{products.filter(p => p.active).map(p => <option key={p.id} value={p.id}>{localName(p, locale)}</option>)}
+        <td>{canMap ? <RecordCombobox aria-label={t("mapTo")} onSearch={setMappingSearch} value={chosen[r.value] ?? ""} onChange={e => setChosen(old => ({ ...old, [r.value]: e }))}>
+          <option value="">—</option>{options.filter(p => p.active).map(p => <option key={p.id} value={p.id}>{localName(p, locale)}</option>)}
         </RecordCombobox> : "—"}</td>
         <td><span className={s.actions}>
           {canMap && <button type="button" className={`${s.button} ${s.primary}`} disabled={!chosen[r.value] || busy !== null} onClick={() => void map(r.value)}>{t("map")}</button>}

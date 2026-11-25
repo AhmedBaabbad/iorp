@@ -12,6 +12,7 @@ from uuid import UUID
 from sqlalchemy import select
 
 from app.core.db import Base
+from app.core.pagination import paginate
 from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.core import numbering
 from app.quality.domain.rules import ORDER_STATUSES, QualityError
@@ -172,6 +173,22 @@ class CommercialReads:
         return dict(complaint_id=row.id, complaint_number=row.number) if row else {}
 
 
+def _page_received_groups(db, organization_id, query, parents, lines, group_key, check_key, params, include_done):
+    """Page whole source documents after eligibility; never cut a document's lines in half."""
+    eligible = query
+    if not include_done:
+        checks = _t('quality_checks')
+        closed = select(checks.c[check_key]).where(checks.c.organization_id == organization_id,
+            checks.c.status == 'closed', checks.c[check_key].is_not(None))
+        eligible = eligible.where(lines.c.id.not_in(closed))
+    source = eligible.subquery()
+    statement = select(parents.c.id).where(parents.c.organization_id == organization_id,
+        parents.c.id.in_(select(source.c[group_key]).distinct())).order_by(parents.c.received_at.desc(), parents.c.id.desc())
+    ids, total = paginate(db, statement, params)
+    rows = db.execute(query.where(parents.c.id.in_(ids)).order_by(parents.c.received_at.desc(), parents.c.id.desc(), lines.c.line_no)).all() if ids else []
+    return rows, total
+
+
 class ShippingReads:
     """Returned goods as quality needs them (QUAL-RET-001), read through the shared tables: the shipping returns received
     for quality, their lines, and the shipments that carried the same production order (read only, ADR-004)."""
@@ -224,6 +241,14 @@ class ShippingReads:
             query = query.where(returns.c.return_no.icontains(search, autoescape=True) | returns.c.customer_name.icontains(search, autoescape=True))
         rows = self.db.execute(query.order_by(returns.c.received_at.desc(), returns.c.return_no, _lines.c.line_no).limit(limit)).all()
         return [self._row(r) for r in rows]
+
+    def received_for_quality_page(self, params, search="", include_done=False):
+        returns, lines, query = self._lines()
+        query = query.where(returns.c.status == 'received', returns.c.quality_required.is_(True), lines.c.received_quantity > 0)
+        if search:
+            query = query.where(returns.c.return_no.icontains(search, autoescape=True) | returns.c.customer_name.icontains(search, autoescape=True))
+        rows, total = _page_received_groups(self.db, self.org, query, returns, lines, 'return_id', 'return_line_id', params, include_done)
+        return [self._row(row) for row in rows], total
 
     def batch(self, production_order_id) -> list[dict]:
         """Every note line that carried this production order, newest first, with where the goods are now."""
@@ -288,6 +313,15 @@ class ProcurementReads:
                                 | lines.c.supplier_lot.icontains(search, autoescape=True) | lines.c.description.icontains(search, autoescape=True))
         rows = self.db.execute(query.order_by(receipts.c.received_at.desc(), receipts.c.receipt_no, lines.c.line_no).limit(limit)).all()
         return [self._lot(r) for r in rows]
+
+    def received_for_inspection_page(self, params, search="", include_done=False):
+        receipts, lines, query = self._lots()
+        query = query.where(receipts.c.status == 'received', lines.c.inspection_required.is_(True))
+        if search:
+            query = query.where(receipts.c.receipt_no.icontains(search, autoescape=True) | receipts.c.supplier_name.icontains(search, autoescape=True)
+                | lines.c.supplier_lot.icontains(search, autoescape=True) | lines.c.description.icontains(search, autoescape=True))
+        rows, total = _page_received_groups(self.db, self.org, query, receipts, lines, 'receipt_id', 'receipt_line_id', params, include_done)
+        return [self._lot(row) for row in rows], total
 
     def search(self, text: str = "", limit: int = 30) -> list[dict]:
         suppliers = _t("procurement_suppliers")

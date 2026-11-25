@@ -9,10 +9,10 @@ import { sharedStyles } from "@/styles/shared-styles";
  * Search and a status filter above a paged list (ARCH-PAGE-001). Typing searches the server after a short pause; a new
  * search or filter goes back to page 1 (the caller's useListQuery does that).
  */
-export function ListToolbar({ search, onSearch, searchHint, status, onStatus, statuses, statusLabel, onClear }: {
+export function ListToolbar({ search, onSearch, searchHint, status, onStatus, statuses, statusLabel, onClear, hasFilters }: {
   search: string; onSearch: (value: string) => void; searchHint: string;
   status?: string; onStatus?: (value: string) => void; statuses?: { value: string; label: string }[]; statusLabel?: string;
-  onClear: () => void;
+  onClear: () => void; hasFilters?:boolean;
 }) {
   const t = useTranslations("common.listFilters");
   const [text, setText] = useState(search);
@@ -22,7 +22,7 @@ export function ListToolbar({ search, onSearch, searchHint, status, onStatus, st
     const timer = setTimeout(() => onSearch(text.trim()), 350);
     return () => clearTimeout(timer);
   }, [text]); // eslint-disable-line react-hooks/exhaustive-deps
-  const filtered = Boolean(search || status);
+  const filtered = hasFilters ?? Boolean(search || status);
   return (
     <section aria-label={t("label")} style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end", marginBottom: 16, padding: "14px 16px",
       background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: 8 }}>

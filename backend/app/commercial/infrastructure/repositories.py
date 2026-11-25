@@ -740,7 +740,7 @@ class SampleEvaluationRepository:
     def list_by_sample(
         self,
         organization_id: UUID,
-        sample_id: UUID,
+        sample_id: UUID, *, page=None, search="", status=None,
     ) -> list[SampleEvaluation]:
         statement = (
             select(SampleEvaluation)
@@ -750,10 +750,14 @@ class SampleEvaluationRepository:
                 Customer.organization_id == organization_id,
                 SampleEvaluation.sample_id == sample_id,
             )
-            .order_by(SampleEvaluation.evaluation_date.desc(), SampleEvaluation.created_at.desc())
+            .order_by(SampleEvaluation.evaluation_date.desc(), SampleEvaluation.created_at.desc(), SampleEvaluation.id.desc())
         )
         statement = self._mine(statement, Sample.customer_id)
-        return list(self.db.scalars(statement))
+        if search:
+            statement = statement.where(SampleEvaluation.comments.icontains(search, autoescape=True))
+        if status:
+            statement = statement.where(SampleEvaluation.result_status == status)
+        return paginate(self.db, statement, page) if page is not None else list(self.db.scalars(statement))
 
     def count_by_sample(self, sample_id: UUID) -> int:
         statement = (

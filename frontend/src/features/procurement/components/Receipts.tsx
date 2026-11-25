@@ -1,4 +1,6 @@
 "use client";
+import {useListPage} from "@/hooks/useListPage";
+import {Pagination,ListToolbar} from "@/components/pagination";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 
@@ -18,7 +20,7 @@ import { PR } from "@/lib/procurement-permissions";
 import { Q } from "@/lib/quality-permissions";
 import {
   cancelReceipt, createReceipt, downloadReceiptNote, getMaterials, getOpenOrders, getProcurementSettings, getReceipt, getReceipts, getSupplierOptions,
-  receiveReceipt, updateProcurementSettings, updateReceipt, type ReceiptFilters,
+  receiveReceipt, updateProcurementSettings, updateReceipt,
 } from "../api";
 import { DECIMAL, procurementErrorMessage, todayIso } from "../procurement-errors";
 import { RECEIPT_STATUSES, type LotStatus, type Material, type OpenOrder, type Receipt, type ReceiptInput, type ReceiptListItem, type ReceiptStatus,
@@ -53,20 +55,22 @@ export function ReceiptsList() {
   const units = useTranslations("common.units.units");
   const unit = (code: string) => (units.has(code) ? units(code) : code);
   const canCreate = usePermission(PR.RECEIPTS_CREATE);
-  const [filters, setFilters] = useState<Required<Omit<ReceiptFilters, "supplier_id">>>({ status: "", date_from: "", date_to: "", search: "" });
+  const page=useListPage<ReceiptListItem>({ status: "", date_from: "", date_to: "", search: "" });
+  const {params,accept}=page;
+  const filters=page.filters;
   const [rows, setRows] = useState<ReceiptListItem[] | null>(null);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     setError("");
-    try { setRows(await getReceipts(filters)); } catch (e) { setError(procurementErrorMessage(e, errors)); }
-  }, [filters, errors]);
+    try { accept(await getReceipts(params),setRows); } catch (e) { setError(procurementErrorMessage(e, errors)); }
+  }, [params,accept,errors]);
   useEffect(() => { const timer = setTimeout(() => void load(), 200); return () => clearTimeout(timer); }, [load]);
-  const set = (field: keyof typeof filters, value: string) => setFilters(old => ({ ...old, [field]: value }));
+  const set = (field:keyof typeof filters,value:string)=>page.set(field,value);
 
   return <PageFrame title={t("receipts.title")} subtitle={t("receipts.subtitle")}
     action={canCreate ? <Link href="/goods-receipts/new" className={`${s.button} ${s.primary}`}>{t("receipts.new")}</Link> : undefined}>
+    <ListToolbar search={page.filters.search} onSearch={value=>page.set("search",value)} searchHint={t("search")} onClear={page.clear} hasFilters={page.hasFilters}/>
     <section className={s.toolbar} aria-label={t("filtersAria")}>
-      <label className={s.field}>{t("search")}<input type="search" value={filters.search} placeholder={t("receipts.searchPlaceholder")} onChange={e => set("search", e.target.value)} /></label>
       <label className={s.field}>{t("fields.status")}
         <select value={filters.status} onChange={e => set("status", e.target.value)}>
           <option value="">{t("all")}</option>{RECEIPT_STATUSES.map(v => <option key={v} value={v}>{t(`receiptStatuses.${v}`)}</option>)}</select></label>
@@ -89,6 +93,7 @@ export function ReceiptsList() {
       </tr>)}</tbody>
     </table></div></section>}
     <PrefixSettings />
+    <Pagination {...page.pagination} disabled={rows===null||page.pending}/>
   </PageFrame>;
 }
 

@@ -9,6 +9,17 @@ def setup(e):
     e.ctx.auth_user.permissions.update({'commercial:customers:update','shipping:shipments:create','shipping:shipments:update'})
     return f'/api/v1/commercial/customers/{e.customer.id}/directory'
 
+
+def test_contact_and_site_directories_honor_page_size(env):
+    from tests.pagination_assertions import assert_paged_contract
+    base = setup(env)
+    for number in range(3):
+        for kind in ("contacts", "sites"):
+            response = env.client.post(f"{base}/{kind}", json=dict(name=f"Paging {number}", address="Street" ) if kind == "sites" else dict(name=f"Paging {number}"))
+            assert response.status_code == 201, response.text
+    for kind in ("contacts", "sites"):
+        assert_paged_contract(env.client, f"{base}/{kind}", search="Paging", ctx=env.ctx, scoped=True)
+
 def test_customer_contacts_defaults_and_scoping(env):
     e=env;base=setup(e)
     first=e.client.post(base+'/contacts',json=dict(name='First',is_default=True))
