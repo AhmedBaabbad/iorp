@@ -313,7 +313,7 @@ describe("specification form", () => {
     expect((input as HTMLInputElement).value).toBe("Product mass");
     expect(screen.getByLabelText("Tolerance below (−)")).toBeTruthy();
     expect(screen.getByText(/only when the order specification contains a single/)).toBeTruthy();
-    expect(screen.getByLabelText("Test method (Arabic)")).toBeTruthy();
+    expect(await screen.findByLabelText("Test method (Arabic)")).toBeTruthy();
     expect(screen.getByLabelText("Test method (English)")).toBeTruthy();
   });
   it("builds lines per parameter kind and sends a draft", async () => {
@@ -321,8 +321,9 @@ describe("specification form", () => {
       { id: "p1", code: "WIDTH", name_ar: "العرض", name_en: "Width", kind: "numeric", unit: "mm", method_ar:null,method_en: "Caliper", is_active: true, sort_order: 10 },
       { id: "p2", code: "COLOR", name_ar: "اللون", name_en: "Color", kind: "attribute", unit: null, method_ar:null,method_en: "Visual", is_active: true, sort_order: 20 },
     ];
+    const methods=[{id:"method",key:"micrometer",list:"test_method",name_ar:"ميكرومتر",name_en:"Micrometer",active:true,parent_key:null,sort_order:1}];
     api.apiClient.mockImplementation((path: string, o?: { method?: string }) => Promise.resolve(o?.method === "POST" ? { id: "s1" }
-      : path.endsWith("/numeric-properties") ? [{key:"width_mm",name_ar:"?????",name_en:"Width"}] : path.startsWith("/masterdata/") ? [] : parameters));  // no products defined yet: the product type is typed
+      : path.endsWith("/numeric-properties") ? [{key:"width_mm",name_ar:"العرض",name_en:"Width"}] : path==="/masterdata/lists?list=test_method"?methods:path.startsWith("/masterdata/") ? [] : parameters));  // no products defined yet: the product type is typed
     ui(<SpecificationForm />);
     changeControl(await screen.findByLabelText("Specification no."), { target: { value: "ROF-TDS-PP-001" } });
     changeControl(screen.getByLabelText("Title"), { target: { value: "PP strap" } });
@@ -334,10 +335,13 @@ describe("specification form", () => {
     changeControl(screen.getByLabelText("Tolerance below (−)"), { target: { value: "0.2" } });
     changeControl(screen.getByLabelText("Tolerance above (+)"), { target: { value: "0.2" } });
     changeControl(screen.getByLabelText("Requirement (English)"), { target: { value: "As approved sample" } });
+    const method=screen.getAllByRole("combobox",{name:"Method / equipment"})[0];
+    await waitFor(()=>expect((method as HTMLInputElement).disabled).toBe(false));
+    fireEvent.focus(method);fireEvent.click(screen.getByRole("option",{name:"Micrometer"}));
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save draft" })); });
     const body = api.apiClient.mock.calls.find(([p, o]) => p === "/quality/quality-specifications" && o?.method === "POST")?.[1]?.body;
     expect(body).toMatchObject({ code: "ROF-TDS-PP-001", product_type: "PP strap", lines: [
-      { parameter_id: "p1", target_source: "order_line", order_spec_key: "width_mm", tolerance_minus: "0.2", tolerance_plus: "0.2", requirement_ar:null,requirement_en: null },
+      { parameter_id: "p1", target_source: "order_line", order_spec_key: "width_mm", tolerance_minus: "0.2", tolerance_plus: "0.2", requirement_ar:null,requirement_en: null,method_ar:"ميكرومتر",method_en:"Micrometer" },
       { parameter_id: "p2", target_source: "none", requirement_ar:null,requirement_en: "As approved sample", tolerance_minus: null } ] });
     expect(nav.push).toHaveBeenCalledWith("/quality-specifications/s1");
   });

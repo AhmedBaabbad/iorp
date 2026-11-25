@@ -30,6 +30,7 @@ class ListItemInfo:
 
 
 class ReferenceLists(Protocol):
+    def text_item(self, db: Session, organization_id: UUID, list_name: str, text: str) -> ListItemInfo | None: ...
     def active_text(self, db: Session, organization_id: UUID, list_name: str, text: str) -> bool: ...
     def defined(self, db: Session, organization_id: UUID, list_name: str) -> bool: ...
     def items(self, db: Session, organization_id: UUID, list_name: str, keys: Iterable[str]) -> dict[str, ListItemInfo]: ...
@@ -66,15 +67,24 @@ def unknown_list_values(db: Session, organization_id: UUID, list_name: str, valu
 
 
 def assert_reference_text(db, organization_id, list_name, value, previous=None):
-    """Operational text is a snapshot: selecting a catalog value never renames historical records.
+    """Validate canonical operational text, allowing unchanged legacy values.
 
     Existing/unconfigured text remains valid. Once configured, new text must match an active value.
-    No legacy mass rewrite is registered for these operational lists.
+    A consumer may explicitly register a bilingual rename notification through ReferenceHolder.
     """
     if not value or value==previous or _provider is None or not _provider.defined(db,organization_id,list_name):return
     if not _provider.active_text(db,organization_id,list_name,value):
         from fastapi import HTTPException
         raise HTTPException(422,'REFERENCE_VALUE_UNAVAILABLE')
+
+
+def reference_text_item(db, organization_id, list_name, text) -> ListItemInfo | None:
+    """Resolve a canonical English snapshot to both official names, including inactive items."""
+    return _provider.text_item(db, organization_id, list_name, text) if _provider and text else None
+
+
+def reference_list_defined(db, organization_id, list_name) -> bool:
+    return bool(_provider and _provider.defined(db, organization_id, list_name))
 
 
 @dataclass(frozen=True)
@@ -84,6 +94,14 @@ class ReferenceHolder:
     list_name: str
     usage: object
     rename: object
+    text_renamed: object = None
+
+
+def reference_text_renamed(db, organization_id, list_name, old_ar, old_en, new_ar, new_en):
+    """The owner notifies consumers inside its transaction; each consumer writes its own tables."""
+    for holder in reference_holders(list_name):
+        if holder.text_renamed is not None:
+            holder.text_renamed(db, organization_id, old_ar, old_en, new_ar, new_en)
 
 
 _holders: list[ReferenceHolder] = []

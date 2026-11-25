@@ -55,6 +55,10 @@ class MasterDataCatalog:
 
 class MasterDataLists:
     """Master data's answer to core/interfaces/reference_lists.py (MD-002)."""
+    def text_item(self, db, organization_id, list_name, text):
+        row = db.scalar(select(ListItem).where(ListItem.organization_id == organization_id, ListItem.list == list_name,
+            ListItem.name_en == text).order_by(ListItem.active.desc(), ListItem.sort_order, ListItem.key).limit(1))
+        return ListItemInfo(row.key, row.name_ar, row.name_en, row.active, row.parent_key) if row else None
     def active_text(self,db,organization_id,list_name,text):
         return db.scalar(select(ListItem.id).where(ListItem.organization_id==organization_id,ListItem.list==list_name,
             ListItem.active.is_(True),ListItem.name_en==text).limit(1)) is not None

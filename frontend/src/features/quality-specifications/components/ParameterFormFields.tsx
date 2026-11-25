@@ -1,4 +1,5 @@
 "use client";
+import {TestMethodSelect} from "./TestMethodSelect";
 import {useState} from "react";
 import {useTranslations} from "next-intl";
 import {RecordDialog} from "@/components/ui/RecordDialog";
@@ -20,7 +21,7 @@ export function ParameterFormFields({draft,set}:{draft:ParameterDraft;set:(field
           </select>
         </label>
         {draft.kind === "numeric" && <label className={s.field}>{t("fields.unit")}<input maxLength={16} dir="ltr" value={draft.unit} onChange={e => set("unit", e.target.value)} /></label>}
-        {(["ar","en"] as const).map(lang=><label className={s.field} key={lang}>{t(`fields.method_${lang}`)}<input maxLength={255} dir={lang==="ar"?"rtl":"ltr"} value={draft[`method_${lang}`]} onChange={e=>set(`method_${lang}`,e.target.value)}/></label>)}
+        <TestMethodSelect method_ar={draft.method_ar} method_en={draft.method_en} label={t("fields.method")} labelAr={t("fields.method_ar")} labelEn={t("fields.method_en")} onChange={method=>{set("method_ar",method.method_ar);set("method_en",method.method_en);}}/>
       </div>
       <p className={s.muted}>{t("kindHint")}</p></>;
 }

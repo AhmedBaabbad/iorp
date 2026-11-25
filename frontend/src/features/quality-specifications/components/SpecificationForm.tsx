@@ -1,4 +1,5 @@
 "use client";
+import {TestMethodSelect} from "./TestMethodSelect";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 import { localName } from "@/lib/local-name";
@@ -159,7 +160,7 @@ export function SpecificationForm({ specId }: { specId?: string }) {
                 {(["ar","en"] as const).map(lang=><label className={s.field} key={"requirement_"+lang}>{t(`fields.requirement_${lang}`)}<input maxLength={255} dir={lang==="ar"?"rtl":"ltr"} value={line[`requirement_${lang}`]??""} onChange={e=>setLine(index,{[`requirement_${lang}`]:e.target.value})} required={lang==="ar"&&!line.requirement_ar?.trim()&&!line.requirement_en?.trim()}/></label>)}
                 {(["ar","en"] as const).map(lang=><label className={s.field} key={"acceptance_"+lang}>{t(`fields.acceptance_${lang}`)}<input maxLength={255} dir={lang==="ar"?"rtl":"ltr"} value={line[`acceptance_${lang}`]??""} onChange={e=>setLine(index,{[`acceptance_${lang}`]:e.target.value})}/></label>)}
               </>}
-              {(["ar","en"] as const).map(lang=><label className={s.field} key={"method_"+lang}>{t(`fields.method_${lang}`)}<input maxLength={255} dir={lang==="ar"?"rtl":"ltr"} value={line[`method_${lang}`]??""} onChange={e=>setLine(index,{[`method_${lang}`]:e.target.value})}/></label>)}
+              <TestMethodSelect method_ar={line.method_ar} method_en={line.method_en} label={t("fields.method")} labelAr={t("fields.method_ar")} labelEn={t("fields.method_en")} disabled={busy||locked} onChange={method=>setLine(index,method)}/>
             </div>
             <div className={s.actions} style={{ marginTop: 10 }}>
               <button type="button" className={s.button} disabled={index === 0} onClick={() => move(index, -1)} aria-label={t("moveUp")}>↑</button>

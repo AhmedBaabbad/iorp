@@ -46,13 +46,18 @@ def create_parameter(payload: ParameterCreate, tenant: TenantContext = Depends(g
     try:
         return SpecificationService(db, tenant).create_parameter(payload)
     except QualityError as exc:
+        db.rollback()
         raise _error(exc) from exc
 
 
 @router.post("/quality-test-parameters/standard", response_model=list[ParameterRead], dependencies=[Depends(require_permission(Q.SPECS_CREATE))])
 def add_standard_parameters(tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
     """Adds the strapping-band parameters (width, thickness, weight, length, strength, elongation, visual checks) once."""
-    return SpecificationService(db, tenant).add_standard_parameters()
+    try:
+        return SpecificationService(db, tenant).add_standard_parameters()
+    except QualityError as exc:
+        db.rollback()
+        raise _error(exc) from exc
 
 
 @router.patch("/quality-test-parameters/{parameter_id}", response_model=ParameterRead, dependencies=[Depends(require_permission(Q.SPECS_UPDATE))])
@@ -60,6 +65,7 @@ def update_parameter(parameter_id: UUID, payload: ParameterUpdate, tenant: Tenan
     try:
         return SpecificationService(db, tenant).update_parameter(parameter_id, payload)
     except QualityError as exc:
+        db.rollback()
         raise _error(exc) from exc
 
 

@@ -9,7 +9,7 @@ from collections import defaultdict
 
 from sqlalchemy import func, select
 
-from app.core.interfaces.reference_lists import reference_holders
+from app.core.interfaces.reference_lists import reference_holders, reference_text_renamed
 from app.masterdata.domain import lists as L
 from app.masterdata.domain import rules
 from app.masterdata.domain.rules import MasterDataError
@@ -111,6 +111,7 @@ class ListService:
     def update(self, item_id, data) -> ListItem:
         """Names, active, order, a city's country; the key never changes (other modules store it)."""
         item = self._get(item_id)
+        old_ar, old_en = item.name_ar, item.name_en
         values = data.model_dump(exclude_unset=True)
         for field in ("name_ar", "name_en", "active", "sort_order"):
             if values.get(field) is not None:
@@ -119,6 +120,9 @@ class ListService:
             parents = self._keys(L.PARENT[item.list]) if item.list in L.PARENT else set()
             L.assert_item(item.list, item.key, values["parent_key"], parents)
             item.parent_key = values["parent_key"]
+        if (old_ar, old_en) != (item.name_ar, item.name_en):
+            self.db.flush()
+            reference_text_renamed(self.db, self.org, item.list, old_ar, old_en, item.name_ar, item.name_en)
         self.db.commit()
         return item
 

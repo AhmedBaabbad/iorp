@@ -1,4 +1,9 @@
 {
+  "methods": {
+    "loadFailed": "Could not load official test methods. Check reference-list read permission and try again.",
+    "retry": "Retry",
+    "legacyValue": "Previously saved method"
+  },
   "qualityChecks": {
     "listTitle": "Quality checks",
     "subtitle": "Inspect production lots and samples: open, start, then close with the result and quantities.",
@@ -258,6 +263,7 @@
   },
   "errors": {
     "request_failed": "The request could not be completed. Please try again.",
+    "REFERENCE_VALUE_UNAVAILABLE": "Choose an active method from the official test methods list.",
     "forbidden": "You do not have permission for this action.",
     "QUALITY_CHECK_NOT_FOUND": "The quality check was not found.",
     "QUALITY_REJECTION_NOT_FOUND": "The rejection was not found.",

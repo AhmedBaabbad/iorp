@@ -25,6 +25,11 @@ logger = logging.getLogger("alembic.runtime.migration")
 
 def upgrade():
     bind = op.get_bind()
+    legacy_lines = sa.table("quality_specification_lines", sa.column("target_source"), sa.column("min_value"), sa.column("max_value"))
+    ignored = bind.scalar(sa.select(sa.func.count()).select_from(legacy_lines).where(
+        legacy_lines.c.target_source == "order_line",
+        sa.or_(legacy_lines.c.min_value.is_not(None), legacy_lines.c.max_value.is_not(None))))
+    logger.info("Quality order_line min/max ignored: rows=%d", ignored)
     for table_name, fields in TABLES.items():
         for field in fields:
             for language in ("ar", "en"):
@@ -47,6 +52,24 @@ def upgrade():
         for field in fields:
             op.drop_column(table_name, field)
         logger.info("Quality bilingual migration: table=%s rows=%d", table_name, count)
+    _fill_official_arabic(bind)
+
+
+def _fill_official_arabic(bind):
+    items = sa.table("masterdata_list_items", *(sa.column(name) for name in
+        ("organization_id", "list", "name_en", "name_ar", "active", "sort_order", "key", "id")))
+    specifications = sa.table("quality_specifications", sa.column("id"), sa.column("organization_id"))
+    for name in TABLES:
+        table = sa.table(name, *(sa.column(column) for column in
+            ("id", "organization_id", "specification_id", "method_en", "method_ar")))
+        organization = (sa.select(specifications.c.organization_id).where(specifications.c.id == table.c.specification_id)
+                        .correlate(table).scalar_subquery()) if name == "quality_specification_lines" else table.c.organization_id
+        arabic = (sa.select(items.c.name_ar).where(items.c.organization_id == organization,
+            items.c.list == "test_method", items.c.name_en == table.c.method_en)
+            .order_by(items.c.active.desc(), items.c.sort_order, items.c.key, items.c.id).limit(1).correlate(table).scalar_subquery())
+        result = bind.execute(table.update().where(sa.or_(table.c.method_ar.is_(None), table.c.method_ar == ""),
+            table.c.method_en.is_not(None), arabic.is_not(None)).values(method_ar=arabic))
+        logger.info("Quality method Arabic backfill: table=%s rows=%d", name, result.rowcount or 0)
 
 
 def downgrade():

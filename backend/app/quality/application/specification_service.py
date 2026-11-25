@@ -5,6 +5,7 @@ same code. Changing a specification in force means revising it: a new draft copy
 """
 from __future__ import annotations
 
+from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
@@ -12,6 +13,7 @@ from app.core.pagination import paginate
 from app.core.utils import utc_now
 from app.core.interfaces.product_catalog import unknown_product_types, numeric_properties
 from app.core.interfaces.activity_log import get_registered_activity_logger
+from app.core.interfaces.reference_lists import assert_reference_text, reference_text_item, reference_list_defined
 from app.quality.domain import specifications as rules
 from app.quality.domain.rules import QualityError
 from app.quality.infrastructure.models import QualitySpecification, QualitySpecificationLine, QualityTestParameter
@@ -26,6 +28,19 @@ class SpecificationService:
         self.db, self.tenant, self.org = db, tenant, tenant.organization_id
 
     # ── test parameters ─────────────────────────────────────────────────────────────────────────
+    def _method_values(self, method_en, method_ar, previous_en=None, previous_ar=None):
+        try:
+            assert_reference_text(self.db, self.org, "test_method", method_en, previous_en)
+        except HTTPException as exc:
+            raise QualityError("REFERENCE_VALUE_UNAVAILABLE", 422) from exc
+        item = reference_text_item(self.db, self.org, "test_method", method_en)
+        if item is not None:
+            return dict(method_en=item.name_en, method_ar=item.name_ar)
+        if (not method_en and method_ar and (method_en or None, method_ar or None) != (previous_en or None, previous_ar or None)
+                and reference_list_defined(self.db, self.org, "test_method")):
+            raise QualityError("REFERENCE_VALUE_UNAVAILABLE", 422)
+        return dict(method_en=method_en, method_ar=method_ar)
+
     def parameters(self, active_only=False, *, page=None, search="", status=None):
         query = select(QualityTestParameter).where(QualityTestParameter.organization_id == self.org)
         if active_only:
@@ -45,11 +60,12 @@ class SpecificationService:
         return parameter
 
     def create_parameter(self, data) -> QualityTestParameter:
+        method = self._method_values(data.method_en, data.method_ar)
         code = data.code.strip().upper()
         if self.db.scalar(select(QualityTestParameter.id).where(QualityTestParameter.organization_id == self.org, QualityTestParameter.code == code)):
             raise QualityError("PARAMETER_CODE_TAKEN", parameter_code=code)
         parameter = QualityTestParameter(organization_id=self.org, code=code, name_ar=data.name_ar, name_en=data.name_en, kind=data.kind,
-                                         unit=data.unit if data.kind == rules.NUMERIC else None, method_ar=data.method_ar, method_en=data.method_en,
+                                         unit=data.unit if data.kind == rules.NUMERIC else None, **method,
                                          sort_order=data.sort_order, is_active=True)
         self.db.add(parameter)
         self.db.commit()
@@ -58,6 +74,7 @@ class SpecificationService:
     def update_parameter(self, parameter_id, data) -> QualityTestParameter:
         parameter = self._parameter(parameter_id)
         values = data.model_dump(exclude_unset=True)
+        values.update(self._method_values(values.get("method_en", parameter.method_en), values.get("method_ar", parameter.method_ar), parameter.method_en, parameter.method_ar))
         # The kind decides how a parameter is measured; specifications and inspections already rely on it.
         for field in ("name_ar", "name_en", "unit", "method_ar", "method_en", "is_active", "sort_order"):
             if field in values:
@@ -70,8 +87,9 @@ class SpecificationService:
         existing = set(self.db.scalars(select(QualityTestParameter.code).where(QualityTestParameter.organization_id == self.org)))
         for order, (code, name_ar, name_en, kind, unit, method) in enumerate(rules.STANDARD_PARAMETERS, 1):
             if code not in existing:
+                wording = self._method_values(method, None)
                 self.db.add(QualityTestParameter(organization_id=self.org, code=code, name_ar=name_ar, name_en=name_en, kind=kind,
-                                                 unit=unit, method_en=method, sort_order=order * 10, is_active=True))
+                                                 unit=unit, **wording, sort_order=order * 10, is_active=True))
         self.db.commit()
         return self.parameters()
 
@@ -123,7 +141,9 @@ class SpecificationService:
         return view
 
     def _write_lines(self, spec, lines):
-        previous = {line.parameter_id: line.order_spec_key for line, _ in self.lines(spec.id)}
+        saved = self.lines(spec.id)
+        previous = {line.parameter_id: line.order_spec_key for line, _ in saved}
+        previous_methods = {line.parameter_id: (line.method_en, line.method_ar) for line, _ in saved}
         available = {prop.key for prop in numeric_properties(self.db, self.org)}
         parameters = {p.id: p for p in self.parameters()}
         seen = set()
@@ -138,6 +158,7 @@ class SpecificationService:
                 raise QualityError("ORDER_SPEC_KEY_UNKNOWN", 400, key=line.order_spec_key)
             seen.add(parameter.id)
             values = {f: getattr(line, f) for f in LINE_FIELDS}
+            values.update(self._method_values(line.method_en, line.method_ar, *previous_methods.get(line.parameter_id, (None, None))))
             if parameter.kind == rules.ATTRIBUTE:
                 values.update(target_source=rules.NO_TARGET, order_spec_key=None, target_value=None, tolerance_minus=None, tolerance_plus=None,
                               min_value=None, max_value=None, readings_required=1)

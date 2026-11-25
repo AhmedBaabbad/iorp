@@ -1,4 +1,5 @@
 "use client";
+import {TestMethodSelect} from "./TestMethodSelect";
 import {bilingualText} from "@/lib/bilingual-text";
 import {useListPage} from "@/hooks/useListPage";
 import {Pagination,ListToolbar} from "@/components/pagination";
@@ -82,7 +83,7 @@ export function TestParametersPage() {
             <td>{t(`kinds.${p.kind}`)}</td>
             <td>{p.kind === "numeric" ? <input aria-label={t("fields.unit")} dir="ltr" style={{ width: 70 }} value={editing.unit ?? ""}
               onChange={e => setEditing({ ...editing, unit: e.target.value })} /> : "—"}</td>
-            <td><div className={s.grid}>{(["ar","en"] as const).map(lang=><label key={lang}>{t(`fields.method_${lang}`)}<input maxLength={255} dir={lang==="ar"?"rtl":"ltr"} value={editing[`method_${lang}`]??""} onChange={e=>setEditing({...editing,[`method_${lang}`]:e.target.value})}/></label>)}</div></td>
+            <td><TestMethodSelect method_ar={editing.method_ar} method_en={editing.method_en} label={t("fields.method")} labelAr={t("fields.method_ar")} labelEn={t("fields.method_en")} disabled={busy} onChange={method=>setEditing({...editing,...method})}/></td>
             <td><label><input type="checkbox" checked={editing.is_active} onChange={e => setEditing({ ...editing, is_active: e.target.checked })} /> {t("active")}</label></td>
             <td><form onSubmit={save} className={s.actions}>
               <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy}>{t("save")}</button>
