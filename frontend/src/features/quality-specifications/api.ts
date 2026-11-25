@@ -24,3 +24,6 @@ export const updateSpecification = (id: string, body: Omit<SpecificationInput, "
 export const activateSpecification = (id: string) => apiClient<Specification>(`${SPECS}/${id}/activate`, { method: "POST" });
 // A new draft revision copying the lines.
 export const reviseSpecification = (id: string) => apiClient<Specification>(`${SPECS}/${id}/revise`, { method: "POST" });
+
+export const getNumericProperties=()=>apiClient<import("./types").NumericProperty[]>(`${SPECS}/numeric-properties`);
+export const copySpecification=(id:string,body:import("./types").SpecificationCopyInput)=>apiClient<Specification>(`${SPECS}/${id}/copy`,{method:"POST",body});

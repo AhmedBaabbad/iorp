@@ -28,6 +28,9 @@ import type { ProductionOrderData } from "@/features/production-orders/types";
 import { Q, QUALITY_REPORT } from "@/lib/quality-permissions";
 import { ReportForm } from "@/features/reports/ReportForm";
 import { SpecificationForm } from "@/features/quality-specifications";
+import { CopySpecificationDialog } from "@/features/quality-specifications/components/CopySpecificationDialog";
+import { bilingualText } from "@/lib/bilingual-text";
+import { emptyLine, targetText } from "@/features/quality-specifications/spec-lines";
 import { normalizeReading, splitReadings } from "@/features/quality-checks/components/MeasurementsSection";
 import type { Definition } from "@/features/reports/api";
 
@@ -214,7 +217,7 @@ describe("quality reports", () => {
 
 function measurement(over: Partial<Measurement> = {}): Measurement {
   return { id: "m1", position: 1, parameter_code: "WIDTH", name_ar: "العرض", name_en: "Width", kind: "numeric", unit: "mm",
-    method: "Calibrated vernier caliper", requirement: null, acceptance: null, target: "5.0000", lower_limit: "4.8000", upper_limit: "5.2000",
+    method_ar:null,method_en: "Calibrated vernier caliper", requirement_ar:null,requirement_en: null, acceptance_ar:null,acceptance_en: null, target: "5.0000", lower_limit: "4.8000", upper_limit: "5.2000",
     readings_required: 3, readings: null, attribute_result: null, observation: null, reading_count: 0, minimum: null, maximum: null, mean: null,
     status: "pending", measured_at: null, ...over };
 }
@@ -229,7 +232,7 @@ describe("measurements", () => {
   it("records readings and shows the server's verdict with the limits", async () => {
     const planned = check({ specification_code: "ROF-TDS-PP-001", specification_revision: 1, actions: ["edit", "measure", "close", "cancel"],
       measurements: [measurement(), measurement({ id: "m2", parameter_code: "COLOR", name_ar: "اللون", name_en: "Color", kind: "attribute", unit: null,
-        requirement: "As approved sample", acceptance: "Visual match required", target: null, lower_limit: null, upper_limit: null, readings_required: 1 })] });
+        requirement_ar:null,requirement_en: "As approved sample", acceptance_ar:null,acceptance_en: "Visual match required", target: null, lower_limit: null, upper_limit: null, readings_required: 1 })] });
     const measured = { ...planned, measurements: [measurement({ readings: ["5.02", "4.98", "5.01"], reading_count: 3, minimum: "4.98", maximum: "5.02",
       mean: "5.0033", status: "pass" }), planned.measurements[1]] };
     api.apiClient.mockImplementation((_path: string, o?: { method?: string }) => Promise.resolve(o?.method === "PUT" ? measured : planned));
@@ -277,13 +280,50 @@ describe("measurements", () => {
 });
 
 describe("specification form", () => {
+  it("keeps a retired saved property visible with a warning and sends it unchanged",async()=>{
+    const parameter={id:"p",code:"WIDTH",name_ar:"العرض",name_en:"Width",kind:"numeric",unit:"mm",method_ar:null,method_en:null,is_active:true,sort_order:1};
+    const line={...emptyLine("p"),...parameter,id:"line",parameter_id:"p",position:1,target_source:"order_line",order_spec_key:"retired_key",parameter_method_ar:null,parameter_method_en:null};
+    const spec={id:"legacy",code:"LEGACY",title:"Old specification",revision:1,status:"draft",product_type:"film",grade:null,notes:null,actions:["edit"],lines:[line]};
+    api.apiClient.mockImplementation((path:string,o?:{method?:string})=>Promise.resolve(o?.method==="PATCH"?spec
+      :path.endsWith("/numeric-properties")||path.startsWith("/masterdata/")?[]:path.endsWith("/legacy")?spec:[parameter]));
+    ui(<SpecificationForm specId="legacy"/>);
+    const input=await screen.findByRole("combobox",{name:"Order line key"});
+    expect((input as HTMLInputElement).value).toBe("retired_key");
+    expect(screen.getByRole("status").textContent).toMatch(/not found in product templates/);
+    await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"Save"}));});
+    const payload=api.apiClient.mock.calls.find(([,options])=>options?.method==="PATCH")?.[1]?.body;
+    expect(payload.lines[0].order_spec_key).toBe("retired_key");
+  });
+  it("uses catalog properties for every numeric parameter and keeps tolerance only for scalar orders", async () => {
+    const parameter = {id:"weight",code:"WEIGHT",name_ar:"الوزن",name_en:"Weight",kind:"numeric",unit:"kg",method_ar:null,method_en:null,is_active:true,sort_order:1};
+    api.apiClient.mockImplementation((path:string)=>Promise.resolve(path.endsWith("/numeric-properties")
+      ? [{key:"custom_mass",name_ar:"كتلة المنتج",name_en:"Product mass"}]
+      :path.startsWith("/masterdata/")?[]:[parameter]));
+    ui(<SpecificationForm/>);
+    await screen.findByLabelText("Specification no.");
+    fireEvent.click(screen.getByRole("button",{name:"Add all parameters"}));
+    expect(screen.getByLabelText("Minimum")).toBeTruthy();
+    changeControl(screen.getByLabelText("Target from"),{target:{value:"order_line"}});
+    expect(screen.queryByLabelText("Minimum")).toBeNull();
+    expect(screen.queryByLabelText("Maximum")).toBeNull();
+    const input=screen.getByRole("combobox",{name:"Order line key"});
+    fireEvent.focus(input);
+    fireEvent.change(input,{target:{value:"Product mass"}});
+    fireEvent.click(screen.getByRole("option",{name:/Product mass/}));
+    expect((input as HTMLInputElement).value).toBe("Product mass");
+    expect(screen.getByLabelText("Tolerance below (−)")).toBeTruthy();
+    expect(screen.getByText(/only when the order specification contains a single/)).toBeTruthy();
+    expect(await screen.findByLabelText("Test method (Arabic)")).toBeTruthy();
+    expect(screen.getByLabelText("Test method (English)")).toBeTruthy();
+  });
   it("builds lines per parameter kind and sends a draft", async () => {
     const parameters = [
-      { id: "p1", code: "WIDTH", name_ar: "العرض", name_en: "Width", kind: "numeric", unit: "mm", method: "Caliper", is_active: true, sort_order: 10 },
-      { id: "p2", code: "COLOR", name_ar: "اللون", name_en: "Color", kind: "attribute", unit: null, method: "Visual", is_active: true, sort_order: 20 },
+      { id: "p1", code: "WIDTH", name_ar: "العرض", name_en: "Width", kind: "numeric", unit: "mm", method_ar:null,method_en: "Caliper", is_active: true, sort_order: 10 },
+      { id: "p2", code: "COLOR", name_ar: "اللون", name_en: "Color", kind: "attribute", unit: null, method_ar:null,method_en: "Visual", is_active: true, sort_order: 20 },
     ];
+    const methods=[{id:"method",key:"micrometer",list:"test_method",name_ar:"ميكرومتر",name_en:"Micrometer",active:true,parent_key:null,sort_order:1}];
     api.apiClient.mockImplementation((path: string, o?: { method?: string }) => Promise.resolve(o?.method === "POST" ? { id: "s1" }
-      : path.startsWith("/masterdata/") ? [] : parameters));  // no products defined yet: the product type is typed
+      : path.endsWith("/numeric-properties") ? [{key:"width_mm",name_ar:"العرض",name_en:"Width"}] : path==="/masterdata/lists?list=test_method"?methods:path.startsWith("/masterdata/") ? [] : parameters));  // no products defined yet: the product type is typed
     ui(<SpecificationForm />);
     changeControl(await screen.findByLabelText("Specification no."), { target: { value: "ROF-TDS-PP-001" } });
     changeControl(screen.getByLabelText("Title"), { target: { value: "PP strap" } });
@@ -294,13 +334,45 @@ describe("specification form", () => {
     changeControl(screen.getByLabelText("Order line key"), { target: { value: "width_mm" } });
     changeControl(screen.getByLabelText("Tolerance below (−)"), { target: { value: "0.2" } });
     changeControl(screen.getByLabelText("Tolerance above (+)"), { target: { value: "0.2" } });
-    changeControl(screen.getByLabelText("Requirement"), { target: { value: "As approved sample" } });
+    changeControl(screen.getByLabelText("Requirement (English)"), { target: { value: "As approved sample" } });
+    const method=screen.getAllByRole("combobox",{name:"Method / equipment"})[0];
+    await waitFor(()=>expect((method as HTMLInputElement).disabled).toBe(false));
+    fireEvent.focus(method);fireEvent.click(screen.getByRole("option",{name:"Micrometer"}));
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save draft" })); });
     const body = api.apiClient.mock.calls.find(([p, o]) => p === "/quality/quality-specifications" && o?.method === "POST")?.[1]?.body;
     expect(body).toMatchObject({ code: "ROF-TDS-PP-001", product_type: "PP strap", lines: [
-      { parameter_id: "p1", target_source: "order_line", order_spec_key: "width_mm", tolerance_minus: "0.2", tolerance_plus: "0.2", requirement: null },
-      { parameter_id: "p2", target_source: "none", requirement: "As approved sample", tolerance_minus: null } ] });
+      { parameter_id: "p1", target_source: "order_line", order_spec_key: "width_mm", tolerance_minus: "0.2", tolerance_plus: "0.2", requirement_ar:null,requirement_en: null,method_ar:"ميكرومتر",method_en:"Micrometer" },
+      { parameter_id: "p2", target_source: "none", requirement_ar:null,requirement_en: "As approved sample", tolerance_minus: null } ] });
     expect(nav.push).toHaveBeenCalledWith("/quality-specifications/s1");
+  });
+});
+
+describe("copy specification",()=>{
+  it("keeps the dialog and entered title on failure, then opens the independent draft after saving",async()=>{
+    nav.push.mockReset();
+    const close=vi.fn();let fail=true;
+    api.apiClient.mockImplementation((path:string,o?:{method?:string})=>{
+      if(o?.method==="POST")return fail?Promise.reject(new ApiClientError("Duplicate",409,{code:"SPECIFICATION_CODE_TAKEN"})):Promise.resolve({id:"copy-id"});
+      return Promise.resolve([]);
+    });
+    ui(<CopySpecificationDialog source={{id:"source",code:"SPEC-1",title:"Film",revision:3,status:"superseded",product_type:"film",grade:"A",activated_at:null,activated_by_name:null,created_by_name:null,actions:["copy"],updated_at:"2026-11-25T00:00:00Z"}} onClose={close}/>);
+    const dialog=screen.getByRole("dialog");
+    const title=within(dialog).getByLabelText("Title");
+    expect((title as HTMLInputElement).value).toBe("Film - Copy");
+    fireEvent.change(title,{target:{value:"Independent film"}});
+    await act(async()=>{fireEvent.submit(dialog.querySelector("form")??dialog);});
+    await waitFor(()=>expect(screen.getByRole("alert")).toBeTruthy());
+    expect(close).not.toHaveBeenCalled();expect(nav.push).not.toHaveBeenCalled();
+    expect((title as HTMLInputElement).value).toBe("Independent film");
+    fail=false;
+    await act(async()=>{fireEvent.submit(dialog.querySelector("form")??dialog);});
+    await waitFor(()=>expect(nav.push).toHaveBeenCalledWith("/quality-specifications/copy-id/edit"));
+    expect(posted("/quality/quality-specifications/source/copy")).toMatchObject({code:"SPEC-1-COPY",title:"Independent film",product_type:"film",grade:"A"});
+  });
+  it("displays translated wording with fallback and uses the property name for an order target",()=>{
+    expect(bilingualText({method_ar:"طريقة",method_en:"Method"},"method","ar")).toBe("طريقة");
+    expect(bilingualText({method_ar:null,method_en:"Method"},"method","ar")).toBe("Method");
+    expect(targetText({parameter_id:"p",target_source:"order_line",order_spec_key:"raw_key",order_spec_name_en:"Product mass"} as Parameters<typeof targetText>[0],(_key,values)=>`From order: ${values?.key}`,"en")).toBe("From order: Product mass");
   });
 });
 

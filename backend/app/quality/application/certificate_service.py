@@ -231,7 +231,7 @@ def _day(value):
 
 
 def _frozen(m) -> dict:
-    return dict(code=m.parameter_code, name_ar=m.name_ar, name_en=m.name_en, kind=m.kind, unit=m.unit, method=m.method,
-                requirement=m.requirement, acceptance=m.acceptance, target=text(m.target), lower=text(m.lower_limit), upper=text(m.upper_limit),
+    return dict(code=m.parameter_code, name_ar=m.name_ar, name_en=m.name_en, kind=m.kind, unit=m.unit, method_ar=m.method_ar, method_en=m.method_en,
+                requirement_ar=m.requirement_ar, requirement_en=m.requirement_en, acceptance_ar=m.acceptance_ar, acceptance_en=m.acceptance_en, target=text(m.target), lower=text(m.lower_limit), upper=text(m.upper_limit),
                 count=m.reading_count, minimum=text(m.minimum), maximum=text(m.maximum), mean=text(m.mean),
                 attribute_result=m.attribute_result, observation=m.observation, status=m.status)

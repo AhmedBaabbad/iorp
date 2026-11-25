@@ -1,4 +1,5 @@
 "use client";
+import {bilingualText} from "@/lib/bilingual-text";
 import { useCustomerNames } from "@/features/customers/use-customer-names";
 import { Dialog } from "@/components/ui/Dialog";
 
@@ -23,8 +24,8 @@ function Item({ label, children }: { label: string; children: ReactNode }) {
 }
 
 const plain = (v: string | null) => (v === null ? null : String(Number(v)));
-function limits(m: FrozenMeasurement) {
-  if (m.kind === "attribute") return m.acceptance ?? "—";
+function limits(m: FrozenMeasurement,locale:string) {
+  if (m.kind === "attribute") return bilingualText(m,"acceptance",locale)||"—";
   if (m.lower !== null && m.upper !== null) return `${plain(m.lower)} – ${plain(m.upper)}`;
   if (m.lower !== null) return `≥ ${plain(m.lower)}`;
   if (m.upper !== null) return `≤ ${plain(m.upper)}`;
@@ -109,10 +110,10 @@ export function CertificateDetail({ certificateId }: { certificateId: string }) 
       <div className={s.tableWrap}><table className={s.table}>
         <thead><tr>{["parameter", "unit", "target", "acceptance", "result", "verdict"].map(k => <th key={k}>{t(`columns.${k}`)}</th>)}</tr></thead>
         <tbody>{c.measurements.map(m => <tr key={m.code}>
-          <td><strong>{ar ? m.name_ar : m.name_en}</strong>{m.method && <div className={s.muted}>{m.method}</div>}</td>
+          <td><strong>{ar ? m.name_ar : m.name_en}</strong>{bilingualText(m,"method",ar?"ar":"en")&&<div className={s.muted}>{bilingualText(m,"method",ar?"ar":"en")}</div>}</td>
           <td>{m.unit ?? "—"}</td>
-          <td><bdi>{m.kind === "numeric" ? (plain(m.target) ?? "—") : (m.requirement ?? "—")}</bdi></td>
-          <td><bdi>{limits(m)}</bdi></td>
+          <td><bdi>{m.kind === "numeric" ? (plain(m.target) ?? "—") : (bilingualText(m,"requirement",ar?"ar":"en")||"—")}</bdi></td>
+          <td><bdi>{limits(m,ar?"ar":"en")}</bdi></td>
           <td><bdi>{m.kind === "numeric"
             ? (m.count > 1 ? `${plain(m.mean)} (${plain(m.minimum)} – ${plain(m.maximum)}, n=${m.count})` : (plain(m.mean) ?? "—"))
             : `${m.attribute_result ? measurements(m.attribute_result) : "—"}${m.observation ? ` — ${m.observation}` : ""}`}</bdi></td>

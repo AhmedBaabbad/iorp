@@ -1,5 +1,6 @@
 """A ranged production lot stays an object through inspection and a frozen COA."""
 from uuid import UUID
+from sqlalchemy import select
 import pytest
 
 from tests.quality.test_quality_certificates import cq, COA  # noqa: F401
@@ -12,7 +13,9 @@ from app.production.infrastructure.models import ProductionOrderItem
 
 @pytest.mark.parametrize('inspector_fallback', [False, True])
 def test_range_acceptance_and_certificate_columns_are_frozen(cq, inspector_fallback):
-    product = Product(organization_id=cq.org.id, created_by_user_id=cq.user.id, code='PRD-RANGE', key='film', name_ar='منتج اختباري', name_en='Synthetic product', kind='finished')
+    product = cq.db.scalar(select(Product).where(Product.organization_id == cq.org.id, Product.key == 'film'))
+    product.properties.clear()
+    cq.db.flush()
     product.properties = [
         ProductProperty(line_no=1, key='width_mm', name_ar='العرض', name_en='Width', kind='number', unit='mm'),
         ProductProperty(line_no=2, key='thickness_mm', name_ar='السماكة', name_en='Thickness', kind='number', unit='mm', allows_range=True),

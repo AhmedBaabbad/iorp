@@ -105,7 +105,7 @@ export type CheckRejectionSummary = { id: string; rejection_code: string; dispos
 export type MeasurementStatus = "pending" | "pass" | "fail" | "recorded";
 export type Measurement = {
   id: string; position: number; parameter_code: string; name_ar: string; name_en: string; kind: "numeric" | "attribute";
-  unit: string | null; method: string | null; requirement: string | null; acceptance: string | null;
+  unit: string | null; method_ar: string | null; method_en: string | null; requirement_ar: string | null; requirement_en: string | null; acceptance_ar: string | null; acceptance_en: string | null;
   target: string | null; lower_limit: string | null; upper_limit: string | null; readings_required: number;
   readings: string[] | null; attribute_result: "conforming" | "nonconforming" | null; observation: string | null;
   reading_count: number; minimum: string | null; maximum: string | null; mean: string | null; status: MeasurementStatus; measured_at: string | null;

@@ -1,12 +1,13 @@
 "use client";
+import {TestMethodSelect} from "./TestMethodSelect";
+import {bilingualText} from "@/lib/bilingual-text";
 import {useListPage} from "@/hooks/useListPage";
 import {Pagination,ListToolbar} from "@/components/pagination";
-import { ReferenceTextSelect } from "@/features/reference-directory/ReferenceTextSelect";
 
 
 import Link from "next/link";
 import {ParameterFormFields,EMPTY_PARAMETER,type ParameterDraft} from "./ParameterFormFields";
-import { useTranslations } from "next-intl";
+import { useTranslations,useLocale } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
@@ -21,6 +22,7 @@ import type { TestParameter } from "../types";
 
 // "خصائص الفحص": what the factory measures (numeric, in a unit) or checks visually (conforming / not).
 export function TestParametersPage() {
+  const locale=useLocale();
   const t = useTranslations("quality.parameters");
   const common=useTranslations("common");
   const page=useListPage<TestParameter>({search:"",status:""});
@@ -46,7 +48,7 @@ export function TestParametersPage() {
   }
   async function add(event: FormEvent) {
     event.preventDefault();
-    const ok = await run(() => createParameter({ ...draft, unit: draft.kind === "numeric" ? draft.unit || null : null, method: draft.method || null,
+    const ok = await run(() => createParameter({ ...draft, unit: draft.kind === "numeric" ? draft.unit || null : null, method_ar: draft.method_ar || null,method_en:draft.method_en||null,
       sort_order: (page.meta?.total ?? 0) * 10 + 10 }));
     if (ok) setDraft(EMPTY_PARAMETER);
   }
@@ -54,7 +56,7 @@ export function TestParametersPage() {
     event.preventDefault();
     if (!editing) return;
     const ok = await run(() => updateParameter(editing.id, { name_ar: editing.name_ar, name_en: editing.name_en, unit: editing.unit || null,
-      method: editing.method || null, is_active: editing.is_active }));
+      method_ar: editing.method_ar || null,method_en:editing.method_en||null, is_active: editing.is_active }));
     if (ok) setEditing(null);
   }
   const set = (field: keyof ParameterDraft, value: string) => setDraft(old => ({ ...old, [field]: value }));
@@ -81,7 +83,7 @@ export function TestParametersPage() {
             <td>{t(`kinds.${p.kind}`)}</td>
             <td>{p.kind === "numeric" ? <input aria-label={t("fields.unit")} dir="ltr" style={{ width: 70 }} value={editing.unit ?? ""}
               onChange={e => setEditing({ ...editing, unit: e.target.value })} /> : "—"}</td>
-            <td><ReferenceTextSelect list="test_method" ariaLabel={t("fields.method")} value={editing.method??""} onChange={v=>setEditing({...editing,method:v})}/></td>
+            <td><TestMethodSelect method_ar={editing.method_ar} method_en={editing.method_en} label={t("fields.method")} labelAr={t("fields.method_ar")} labelEn={t("fields.method_en")} disabled={busy} onChange={method=>setEditing({...editing,...method})}/></td>
             <td><label><input type="checkbox" checked={editing.is_active} onChange={e => setEditing({ ...editing, is_active: e.target.checked })} /> {t("active")}</label></td>
             <td><form onSubmit={save} className={s.actions}>
               <button type="submit" className={`${s.button} ${s.primary}`} disabled={busy}>{t("save")}</button>
@@ -90,7 +92,7 @@ export function TestParametersPage() {
           </tr>
           : <tr key={p.id} style={p.is_active ? undefined : { opacity: 0.6 }}>
             <td><bdi>{p.code}</bdi></td><td>{p.name_ar}</td><td dir="ltr">{p.name_en}</td><td>{t(`kinds.${p.kind}`)}</td>
-            <td>{p.unit ?? "—"}</td><td dir="ltr">{p.method ?? "—"}</td>
+            <td>{p.unit ?? "—"}</td><td dir="ltr">{bilingualText(p,"method",locale)||"—"}</td>
             <td><span className={`${s.badge} ${p.is_active ? s.green : ""}`}>{p.is_active ? t("active") : t("inactive")}</span></td>
             <td>{canUpdate && <button type="button" className={s.button} disabled={busy} onClick={() => setEditing(p)}>{t("edit")}</button>}</td>
           </tr>)}</tbody>

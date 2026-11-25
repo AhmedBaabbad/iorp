@@ -6,8 +6,9 @@ type Translate = { (key: string, values?: Record<string, string>): string; has: 
 export function qualityErrorMessage(error: unknown, t: Translate) {
   const code = lifecycleErrorCode(error);
   const detail = (error as { details?: { detail?: Record<string, unknown> } } | null)?.details?.detail ?? {};
+  const property = detail[`parameter_${t("wordingLanguage")}`] ?? detail.parameter;
   const values = Object.fromEntries(Object.entries(detail).filter(([, v]) => ["string", "number"].includes(typeof v)).map(([k, v]) => [k, String(v)]));
-  return t.has(code) ? t(code, values) : t("request_failed");
+  return t.has(code) ? t(code, {...values,parameter:String(property??"")}) : t("request_failed");
 }
 
 // "2026-10-03T08:30" for a datetime-local input, in the user's own clock.

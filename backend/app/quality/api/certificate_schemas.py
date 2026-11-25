@@ -72,9 +72,15 @@ class FrozenMeasurement(BaseModel):
     name_en: str
     kind: str
     unit: str | None
-    method: str | None
-    requirement: str | None
-    acceptance: str | None
+    method: str | None = None  # Historical certificate JSON
+    method_ar: str | None = None
+    method_en: str | None = None
+    requirement: str | None = None  # Historical certificate JSON
+    requirement_ar: str | None = None
+    requirement_en: str | None = None
+    acceptance: str | None = None  # Historical certificate JSON
+    acceptance_ar: str | None = None
+    acceptance_en: str | None = None
     target: str | None
     lower: str | None
     upper: str | None

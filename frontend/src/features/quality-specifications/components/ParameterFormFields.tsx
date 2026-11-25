@@ -1,14 +1,14 @@
 "use client";
+import {TestMethodSelect} from "./TestMethodSelect";
 import {useState} from "react";
 import {useTranslations} from "next-intl";
 import {RecordDialog} from "@/components/ui/RecordDialog";
-import {ReferenceTextSelect} from "@/features/reference-directory/ReferenceTextSelect";
 import {qualityErrorMessage} from "@/features/quality-checks/components/quality-errors";
 import {createParameter} from "../api";
 import type {ParameterKind,TestParameter} from "../types";
 import s from "@/features/production-demands/demands.module.css";
-export type ParameterDraft={code:string;name_ar:string;name_en:string;kind:ParameterKind;unit:string;method:string};
-export const EMPTY_PARAMETER:ParameterDraft={code:"",name_ar:"",name_en:"",kind:"numeric",unit:"",method:""};
+export type ParameterDraft={code:string;name_ar:string;name_en:string;kind:ParameterKind;unit:string;method_ar:string;method_en:string};
+export const EMPTY_PARAMETER:ParameterDraft={code:"",name_ar:"",name_en:"",kind:"numeric",unit:"",method_ar:"",method_en:""};
 export function ParameterFormFields({draft,set}:{draft:ParameterDraft;set:(field:keyof ParameterDraft,value:string)=>void}) {
   const t=useTranslations("quality.parameters");
   return <>      <div className={s.grid}>
@@ -21,7 +21,7 @@ export function ParameterFormFields({draft,set}:{draft:ParameterDraft;set:(field
           </select>
         </label>
         {draft.kind === "numeric" && <label className={s.field}>{t("fields.unit")}<input maxLength={16} dir="ltr" value={draft.unit} onChange={e => set("unit", e.target.value)} /></label>}
-        <label className={s.field}>{t("fields.method")}<ReferenceTextSelect list="test_method" value={draft.method} onChange={v=>set("method",v)}/></label>
+        <TestMethodSelect method_ar={draft.method_ar} method_en={draft.method_en} label={t("fields.method")} labelAr={t("fields.method_ar")} labelEn={t("fields.method_en")} onChange={method=>{set("method_ar",method.method_ar);set("method_en",method.method_en);}}/>
       </div>
       <p className={s.muted}>{t("kindHint")}</p></>;
 }
@@ -29,7 +29,7 @@ export function ParameterCreateDialog({onCreated,onClose}:{onCreated:(parameter:
   const t=useTranslations("quality.parameters"),errors=useTranslations("quality.errors");
   const [draft,setDraft]=useState(EMPTY_PARAMETER),[error,setError]=useState("");
   return <RecordDialog title={t("newTitle")} error={error} onClose={onClose} disabled={!draft.code.trim()||!draft.name_ar.trim()||!draft.name_en.trim()} onSave={async()=>{
-    setError("");try{const parameter=await createParameter({...draft,unit:draft.kind==="numeric"?draft.unit||null:null,method:draft.method||null});onCreated(parameter);return true;}
+    setError("");try{const parameter=await createParameter({...draft,unit:draft.kind==="numeric"?draft.unit||null:null,method_ar:draft.method_ar||null,method_en:draft.method_en||null});onCreated(parameter);return true;}
     catch(e){setError(qualityErrorMessage(e,errors));return false;}
   }}><div style={{gridColumn:"1 / -1"}}><ParameterFormFields draft={draft} set={(field,value)=>setDraft(old=>({...old,[field]:value}))}/></div></RecordDialog>;
 }

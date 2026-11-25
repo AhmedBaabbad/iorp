@@ -10,6 +10,16 @@ from app.masterdata.infrastructure.models import ListItem, MasterDataSettings, P
 
 
 class MasterDataCatalog:
+    def numeric_properties(self, db, organization_id):
+        keys = db.scalars(select(Product.key).where(Product.organization_id == organization_id).order_by(Product.code, Product.id)).all()
+        found = self.products(db, organization_id, keys)
+        result = {}
+        for key in keys:
+            for prop in found[key].properties:
+                if prop.kind == "number":
+                    result.setdefault(prop.key, prop)
+        return [result[key] for key in sorted(result)]
+
     def defined(self, db, organization_id) -> bool:
         return db.scalar(select(Product.id).where(Product.organization_id == organization_id).limit(1)) is not None
 
@@ -45,6 +55,10 @@ class MasterDataCatalog:
 
 class MasterDataLists:
     """Master data's answer to core/interfaces/reference_lists.py (MD-002)."""
+    def text_item(self, db, organization_id, list_name, text):
+        row = db.scalar(select(ListItem).where(ListItem.organization_id == organization_id, ListItem.list == list_name,
+            ListItem.name_en == text).order_by(ListItem.active.desc(), ListItem.sort_order, ListItem.key).limit(1))
+        return ListItemInfo(row.key, row.name_ar, row.name_en, row.active, row.parent_key) if row else None
     def active_text(self,db,organization_id,list_name,text):
         return db.scalar(select(ListItem.id).where(ListItem.organization_id==organization_id,ListItem.list==list_name,
             ListItem.active.is_(True),ListItem.name_en==text).limit(1)) is not None

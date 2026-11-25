@@ -6,8 +6,8 @@ export type CertificateAction = "edit" | "issue" | "revoke" | "replace";
 export const CERTIFICATE_STATUSES: CertificateStatus[] = ["draft", "issued", "revoked"];
 
 export type FrozenMeasurement = {
-  code: string; name_ar: string; name_en: string; kind: "numeric" | "attribute"; unit: string | null; method: string | null;
-  requirement: string | null; acceptance: string | null; target: string | null; lower: string | null; upper: string | null;
+  code: string; name_ar: string; name_en: string; kind: "numeric" | "attribute"; unit: string | null; method?:string|null;method_ar?:string|null;method_en?:string|null;
+  requirement?:string|null;requirement_ar?:string|null;requirement_en?:string|null; acceptance?:string|null;acceptance_ar?:string|null;acceptance_en?:string|null; target: string | null; lower: string | null; upper: string | null;
   count: number; minimum: string | null; maximum: string | null; mean: string | null;
   attribute_result: "conforming" | "nonconforming" | null; observation: string | null; status: "pass" | "fail" | "recorded" | "pending";
 };

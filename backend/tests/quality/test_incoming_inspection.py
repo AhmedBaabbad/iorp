@@ -100,7 +100,7 @@ def test_the_material_specification_becomes_the_plan(proc):
     params = {p["code"]: p["id"] for p in proc.client.post(f"{QUALITY}/quality-test-parameters/standard").json()}
     _s, _m, r = received(proc, spec_product_type="pp_resin")
     spec = proc.client.post(f"{QUALITY}/quality-specifications", json=dict(code="ROF-RM-PP-001", title="PP resin H030", product_type="pp_resin",
-                                                                          lines=[dict(parameter_id=params["COLOR"], requirement="Natural, no black specks")]))
+                                                                          lines=[dict(parameter_id=params["COLOR"], requirement_en="Natural, no black specks")]))
     assert spec.status_code == 201, spec.text
     assert proc.client.post(f"{QUALITY}/quality-specifications/{spec.json()['id']}/activate").status_code == 200
     check = proc.client.post(f"{QUALITY}/incoming/lines/{r['lines'][0]['id']}/inspection").json()
