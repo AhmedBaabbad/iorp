@@ -23,6 +23,12 @@ def test_paged_parameters_and_specifications(sq):
 
 @pytest.fixture
 def sq(q):
+    from app.masterdata.infrastructure.models import Product, ProductProperty
+    product = Product(organization_id=q.org.id, code="PRD-QA", key="film", name_ar="فيلم", name_en="Film", kind="finished", created_by_user_id=q.user.id)
+    product.properties = [ProductProperty(line_no=i, key=key, name_ar=key, name_en=key, kind="number", allows_range=True) for i, key in enumerate(("width_mm", "thickness_mm", "roll_weight_kg", "length_m"), 1)]
+    q.db.add(product)
+    q.db.add(Product(organization_id=q.org.id, code="PRD-OTHER", key="another product", name_ar="???", name_en="Other", kind="finished", created_by_user_id=q.user.id))
+    q.db.commit()
     params = {p["code"]: p["id"] for p in q.client.post(f"{PARAMS}/standard").json()}
 
     def spec(code_="ROF-TDS-PP-001", product="film", lines=None, activate=True, **extra):
@@ -52,7 +58,7 @@ def standard_lines(params):
              readings_required=3),
         dict(parameter_id=params["THICKNESS"], target_source="order_line", order_spec_key="thickness_mm", tolerance_minus="0.01", tolerance_plus="0.02"),
         dict(parameter_id=params["ROLL_LENGTH"], min_value="6900"),
-        dict(parameter_id=params["COLOR"], requirement="As approved sample", acceptance="Visual match required"),
+        dict(parameter_id=params["COLOR"], requirement_en="As approved sample", acceptance_en="Visual match required"),
     ]
 
 
@@ -90,10 +96,10 @@ def test_specification_lines_are_validated(sq, line, expected):
 
 def test_draft_activate_revise_supersede(sq):
     draft = sq.spec(activate=False)
-    assert draft["status"] == "draft" and draft["revision"] == 1 and set(draft["actions"]) == {"edit", "activate"}
+    assert draft["status"] == "draft" and draft["revision"] == 1 and set(draft["actions"]) == {"edit", "activate", "copy"}
     assert sq.client.post(f"{SPECS}/{sq.spec(code_='EMPTY', lines=[], activate=False)['id']}/activate").json()["detail"]["code"] == "SPECIFICATION_EMPTY"
     active = sq.client.post(f"{SPECS}/{draft['id']}/activate").json()
-    assert active["status"] == "active" and active["actions"] == ["revise"]
+    assert active["status"] == "active" and active["actions"] == ["revise", "copy"]
     r = sq.client.patch(f"{SPECS}/{active['id']}", json=dict(title="changed"))
     assert r.status_code == 409 and code(r) == "SPECIFICATION_NOT_DRAFT"
     revision = sq.client.post(f"{SPECS}/{active['id']}/revise").json()
@@ -116,7 +122,7 @@ def test_new_inspection_takes_the_specification_with_limits_for_its_lot(sq):
     assert (float(width["target"]), float(width["lower_limit"]), float(width["upper_limit"])) == (5, 4.8, 5.2)
     assert (float(thickness["lower_limit"]), float(thickness["upper_limit"])) == (0.34, 0.37)
     assert length["target"] is None and float(length["lower_limit"]) == 6900 and length["upper_limit"] is None
-    assert by_code["COLOR"]["requirement"] == "As approved sample" and all(m["status"] == "pending" for m in check["measurements"])
+    assert by_code["COLOR"]["requirement_en"] == "As approved sample" and all(m["status"] == "pending" for m in check["measurements"])
     assert "measure" in check["actions"]
 
 
@@ -168,7 +174,7 @@ def test_a_new_revision_never_changes_an_inspection_already_planned(sq):
     check = sq.opened(strap_order(sq), check_type="finished_product_inspection")
     revision = sq.client.post(f"{SPECS}/{spec['id']}/revise").json()
     lines = [dict({k: v for k, v in line.items() if k in ("parameter_id", "target_source", "order_spec_key", "target_value", "tolerance_minus",
-                                                            "tolerance_plus", "min_value", "max_value", "requirement", "acceptance", "method",
+                                                            "tolerance_plus", "min_value", "max_value", "requirement_en", "acceptance_en", "method_en",
                                                             "readings_required")}) for line in revision["lines"]]
     lines[0]["tolerance_plus"] = "0.5"
     assert sq.client.patch(f"{SPECS}/{revision['id']}", json=dict(lines=lines)).status_code == 200
@@ -222,8 +228,8 @@ def test_write_measured_inspection_sample(sq):
         dict(parameter_id=p["ROLL_WEIGHT"], target_source="fixed", target_value="10", tolerance_minus="0.1", tolerance_plus="0.2"),
         dict(parameter_id=p["ROLL_LENGTH"], min_value="6900"),
         dict(parameter_id=p["BREAK_STRENGTH"], min_value="1200"),
-        dict(parameter_id=p["COLOR"], requirement="As approved sample (Black)", acceptance="Visual match required"),
-        dict(parameter_id=p["WINDING"], requirement="Firm, even and aligned", acceptance="No loose, telescoped or damaged roll"),
+        dict(parameter_id=p["COLOR"], requirement_en="As approved sample (Black)", acceptance_en="Visual match required"),
+        dict(parameter_id=p["WINDING"], requirement_en="Firm, even and aligned", acceptance_en="No loose, telescoped or damaged roll"),
     ])
     check = sq.opened(strap_order(sq), check_type="finished_product_inspection")
     for code_, values in (("WIDTH", ["5.02", "4.97", "5.01"]), ("THICKNESS", ["0.35", "0.36", "0.37"]), ("ROLL_WEIGHT", ["10.05"]),

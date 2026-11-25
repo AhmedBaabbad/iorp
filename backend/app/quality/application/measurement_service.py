@@ -87,13 +87,14 @@ class MeasurementService:
             if parameter.kind == rules.NUMERIC:
                 target, lower, upper = rules.resolve_limits({**{f: getattr(line, f) for f in ("target_source", "order_spec_key", "target_value",
                                                              "tolerance_minus", "tolerance_plus", "min_value", "max_value")},
-                                                             "parameter_code": parameter.code}, effective)
+                                                             "parameter_code": parameter.code, "parameter_ar": parameter.name_ar, "parameter_en": parameter.name_en}, effective)
             else:
                 target = lower = upper = None
             planned.append(QualityCheckMeasurement(
                 organization_id=self.org, quality_check_id=check.id, parameter_id=parameter.id, position=line.position,
                 parameter_code=parameter.code, name_ar=parameter.name_ar, name_en=parameter.name_en, kind=parameter.kind, unit=parameter.unit,
-                method=line.method or parameter.method, requirement=line.requirement, acceptance=line.acceptance,
+                method_ar=line.method_ar or parameter.method_ar, method_en=line.method_en or parameter.method_en,
+                requirement_ar=line.requirement_ar, requirement_en=line.requirement_en, acceptance_ar=line.acceptance_ar, acceptance_en=line.acceptance_en,
                 target=target, lower_limit=lower, upper_limit=upper, readings_required=line.readings_required or 1, status=rules.PENDING))
         for m in existing:
             self.db.delete(m)

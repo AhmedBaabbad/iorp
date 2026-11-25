@@ -1,4 +1,5 @@
 "use client";
+import {CopySpecificationDialog} from "./CopySpecificationDialog";
 import {useListPage} from "@/hooks/useListPage";
 import {Pagination,ListToolbar} from "@/components/pagination";
 
@@ -27,6 +28,7 @@ export function SpecificationsList() {
   const canCreate = usePermission(Q.SPECS_CREATE);
   const page=useListPage<SpecificationListItem>({status:"",search:""});
   const {params,accept}=page;
+  const [copying,setCopying]=useState<SpecificationListItem|null>(null);
   const [rows, setRows] = useState<SpecificationListItem[] | null>(null);
   const [error, setError] = useState("");
 
@@ -48,15 +50,17 @@ export function SpecificationsList() {
     {!error && rows?.length === 0 && <section className={s.panel}><h2 style={{ marginTop: 0 }}>{t("empty")}</h2><p className={s.muted} style={{ margin: 0 }}>{t("emptyHint")}</p></section>}
     {!error && rows && rows.length > 0 && <section className={s.panel}>
       <div className={s.tableWrap}><table className={s.table} aria-label={t("listTitle")}>
-        <thead><tr>{["code", "revision", "title", "productType", "grade", "status", "activatedAt"].map(c => <th key={c}>{t(`fields.${c}`)}</th>)}</tr></thead>
+        <thead><tr>{["code", "revision", "title", "productType", "grade", "status", "activatedAt"].map(c => <th key={c}>{t(`fields.${c}`)}</th>)}<th>{t("actions")}</th></tr></thead>
         <tbody>{rows.map(r => <tr key={r.id}>
           <td><Link href={`/quality-specifications/${r.id}`}><bdi>{r.code}</bdi></Link></td>
           <td>{r.revision}</td><td>{r.title}</td><td>{productName(r.product_type)}</td><td>{r.grade ?? "—"}</td>
           <td><SpecificationStatusBadge status={r.status} /></td>
           <td>{r.activated_at ? `${fmt.date(r.activated_at)} — ${r.activated_by_name ?? ""}` : "—"}</td>
+          <td>{canCreate&&<button type="button" className={s.button} onClick={()=>setCopying(r)}>{t("copy")}</button>}</td>
         </tr>)}</tbody>
       </table></div>
     </section>}
+    {copying&&<CopySpecificationDialog source={copying} onClose={()=>setCopying(null)}/>}
     <Pagination {...page.pagination} disabled={rows===null||page.pending}/>
   </PageFrame>;
 }

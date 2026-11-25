@@ -10,6 +10,16 @@ from app.masterdata.infrastructure.models import ListItem, MasterDataSettings, P
 
 
 class MasterDataCatalog:
+    def numeric_properties(self, db, organization_id):
+        keys = db.scalars(select(Product.key).where(Product.organization_id == organization_id).order_by(Product.code, Product.id)).all()
+        found = self.products(db, organization_id, keys)
+        result = {}
+        for key in keys:
+            for prop in found[key].properties:
+                if prop.kind == "number":
+                    result.setdefault(prop.key, prop)
+        return [result[key] for key in sorted(result)]
+
     def defined(self, db, organization_id) -> bool:
         return db.scalar(select(Product.id).where(Product.organization_id == organization_id).limit(1)) is not None
 

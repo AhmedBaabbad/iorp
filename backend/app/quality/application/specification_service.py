@@ -6,17 +6,19 @@ same code. Changing a specification in force means revising it: a new draft copy
 from __future__ import annotations
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from app.core.pagination import paginate
 from app.core.utils import utc_now
-from app.core.interfaces.product_catalog import unknown_product_types
+from app.core.interfaces.product_catalog import unknown_product_types, numeric_properties
+from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.quality.domain import specifications as rules
 from app.quality.domain.rules import QualityError
 from app.quality.infrastructure.models import QualitySpecification, QualitySpecificationLine, QualityTestParameter
 from .support import log_activity, user_names
 
 LINE_FIELDS = ("target_source", "order_spec_key", "target_value", "tolerance_minus", "tolerance_plus", "min_value", "max_value",
-               "requirement", "acceptance", "method", "readings_required")
+               "requirement_ar", "requirement_en", "acceptance_ar", "acceptance_en", "method_ar", "method_en", "readings_required")
 
 
 class SpecificationService:
@@ -43,13 +45,11 @@ class SpecificationService:
         return parameter
 
     def create_parameter(self, data) -> QualityTestParameter:
-        from app.core.interfaces.reference_lists import assert_reference_text
-        assert_reference_text(self.db,self.org,'test_method',data.method)
         code = data.code.strip().upper()
         if self.db.scalar(select(QualityTestParameter.id).where(QualityTestParameter.organization_id == self.org, QualityTestParameter.code == code)):
             raise QualityError("PARAMETER_CODE_TAKEN", parameter_code=code)
         parameter = QualityTestParameter(organization_id=self.org, code=code, name_ar=data.name_ar, name_en=data.name_en, kind=data.kind,
-                                         unit=data.unit if data.kind == rules.NUMERIC else None, method=data.method,
+                                         unit=data.unit if data.kind == rules.NUMERIC else None, method_ar=data.method_ar, method_en=data.method_en,
                                          sort_order=data.sort_order, is_active=True)
         self.db.add(parameter)
         self.db.commit()
@@ -58,10 +58,8 @@ class SpecificationService:
     def update_parameter(self, parameter_id, data) -> QualityTestParameter:
         parameter = self._parameter(parameter_id)
         values = data.model_dump(exclude_unset=True)
-        from app.core.interfaces.reference_lists import assert_reference_text
-        assert_reference_text(self.db,self.org,'test_method',values.get('method'),parameter.method)
         # The kind decides how a parameter is measured; specifications and inspections already rely on it.
-        for field in ("name_ar", "name_en", "unit", "method", "is_active", "sort_order"):
+        for field in ("name_ar", "name_en", "unit", "method_ar", "method_en", "is_active", "sort_order"):
             if field in values:
                 setattr(parameter, field, values[field] if not (field == "unit" and parameter.kind != rules.NUMERIC) else None)
         self.db.commit()
@@ -72,10 +70,8 @@ class SpecificationService:
         existing = set(self.db.scalars(select(QualityTestParameter.code).where(QualityTestParameter.organization_id == self.org)))
         for order, (code, name_ar, name_en, kind, unit, method) in enumerate(rules.STANDARD_PARAMETERS, 1):
             if code not in existing:
-                from app.core.interfaces.reference_lists import assert_reference_text
-                assert_reference_text(self.db,self.org,'test_method',method)
                 self.db.add(QualityTestParameter(organization_id=self.org, code=code, name_ar=name_ar, name_en=name_en, kind=kind,
-                                                 unit=unit, method=method, sort_order=order * 10, is_active=True))
+                                                 unit=unit, method_en=method, sort_order=order * 10, is_active=True))
         self.db.commit()
         return self.parameters()
 
@@ -115,19 +111,20 @@ class SpecificationService:
     def view(self, spec, detail=False, can=lambda _code: False) -> dict:
         names = user_names(self.db, self.org, [spec.created_by_user_id, spec.activated_by_user_id])
         actions = [a for a, ok in (("edit", spec.status == rules.DRAFT and can("update")), ("activate", spec.status == rules.DRAFT and can("activate")),
-                                   ("revise", spec.status != rules.DRAFT and can("create"))) if ok]
+                                   ("revise", spec.status != rules.DRAFT and can("create")), ("copy", can("create"))) if ok]
         view = dict(created_by_name=names.get(spec.created_by_user_id), activated_by_name=names.get(spec.activated_by_user_id), actions=actions)
         if detail:
+            properties = {p.key: p for p in numeric_properties(self.db, self.org)}
             view["lines"] = [dict({f: getattr(line, f) for f in LINE_FIELDS}, id=line.id, position=line.position, parameter_id=p.id,
                                   parameter_code=p.code, name_ar=p.name_ar, name_en=p.name_en, kind=p.kind, unit=p.unit,
-                                  parameter_method=p.method) for line, p in self.lines(spec.id)]
+                                  parameter_method_ar=p.method_ar, parameter_method_en=p.method_en,
+                                  order_spec_name_ar=properties[line.order_spec_key].name_ar if line.order_spec_key in properties else p.name_ar,
+                                  order_spec_name_en=properties[line.order_spec_key].name_en if line.order_spec_key in properties else p.name_en) for line, p in self.lines(spec.id)]
         return view
 
     def _write_lines(self, spec, lines):
-        from app.core.interfaces.reference_lists import assert_reference_text
-        previous={line.parameter_id:line.method for line,_ in self.lines(spec.id)}
-        for line in lines:
-            assert_reference_text(self.db,self.org,'test_method',line.method,previous.get(line.parameter_id))
+        previous = {line.parameter_id: line.order_spec_key for line, _ in self.lines(spec.id)}
+        available = {prop.key for prop in numeric_properties(self.db, self.org)}
         parameters = {p.id: p for p in self.parameters()}
         seen = set()
         self.db.query(QualitySpecificationLine).filter(QualitySpecificationLine.specification_id == spec.id).delete()
@@ -137,6 +134,8 @@ class SpecificationService:
                 raise QualityError("PARAMETER_NOT_FOUND", 404)
             if parameter.id in seen:
                 raise QualityError("PARAMETER_REPEATED", 400, parameter=parameter.code)
+            if parameter.kind == rules.NUMERIC and line.target_source == rules.ORDER_LINE and line.order_spec_key and line.order_spec_key not in available and previous.get(line.parameter_id) != line.order_spec_key:
+                raise QualityError("ORDER_SPEC_KEY_UNKNOWN", 400, key=line.order_spec_key)
             seen.add(parameter.id)
             values = {f: getattr(line, f) for f in LINE_FIELDS}
             if parameter.kind == rules.ATTRIBUTE:
@@ -209,4 +208,35 @@ class SpecificationService:
             self.db.add(QualitySpecificationLine(specification_id=draft.id, parameter_id=line.parameter_id, position=line.position,
                                                  **{f: getattr(line, f) for f in LINE_FIELDS}))
         self.db.commit()
+        return draft
+
+    def copy(self, spec_id, data):
+        source = self._get(spec_id, lock=True)
+        code = data.code.strip().upper()
+        if self.db.scalar(select(QualitySpecification.id).where(QualitySpecification.organization_id == self.org, QualitySpecification.code == code)):
+            raise QualityError("SPECIFICATION_CODE_TAKEN", 409, spec_code=code)
+        product_type = data.product_type if data.product_type is not None else source.product_type
+        self._assert_product(product_type, keep=source.product_type)
+        draft = QualitySpecification(organization_id=self.org, code=code, revision=1, title=data.title,
+            product_type=product_type, grade=data.grade if "grade" in data.model_fields_set else source.grade,
+            notes=source.notes, status=rules.DRAFT, created_by_user_id=self.tenant.user_id)
+        self.db.add(draft)
+        try:
+            self.db.flush()
+            for line, _ in self.lines(source.id):
+                self.db.add(QualitySpecificationLine(specification_id=draft.id, parameter_id=line.parameter_id,
+                    position=line.position, **{field: getattr(line, field) for field in LINE_FIELDS}))
+            self.db.flush()
+            get_registered_activity_logger().log_activity_strict(self.db, self.org, "quality_specification.copied",
+                "quality_specification", entity_id=draft.id, entity_name=draft.code, actor_id=self.tenant.user_id,
+                details={"source_id": str(source.id)})
+            self.db.commit()
+        except IntegrityError as exc:
+            self.db.rollback()
+            if self.db.scalar(select(QualitySpecification.id).where(QualitySpecification.organization_id == self.org, QualitySpecification.code == code)):
+                raise QualityError("SPECIFICATION_CODE_TAKEN", 409, spec_code=code) from exc
+            raise
+        except Exception:
+            self.db.rollback()
+            raise
         return draft

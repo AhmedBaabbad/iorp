@@ -3,7 +3,7 @@ import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
 import { localName } from "@/lib/local-name";
 import {useUnitLabel} from "@/components/UnitLabel";
-import { ReferenceTextSelect } from "@/features/reference-directory/ReferenceTextSelect";
+import {Combobox} from "@/components/ui/Combobox";
 
 
 import Link from "next/link";
@@ -18,9 +18,9 @@ import { PageFrame } from "@/components/layout/page-frame";
 import { ProductSelect } from "@/features/masterdata";
 import s from "@/features/production-demands/demands.module.css";
 import { qualityErrorMessage } from "@/features/quality-checks/components/quality-errors";
-import { createSpecification, getParameters, getSpecification, updateSpecification } from "../api";
+import { createSpecification, getNumericProperties, getParameters, getSpecification, updateSpecification } from "../api";
 import { emptyLine } from "../spec-lines";
-import { ORDER_SPEC_KEYS, TARGET_SOURCES, type Specification, type SpecificationLineInput, type TargetSource, type TestParameter } from "../types";
+import { TARGET_SOURCES, type NumericProperty, type Specification, type SpecificationLineInput, type TargetSource, type TestParameter } from "../types";
 
 type Header = { code: string; title: string; product_type: string; grade: string; notes: string };
 const DECIMAL = /^-?\d+(\.\d{1,4})?$/;
@@ -38,6 +38,7 @@ export function SpecificationForm({ specId }: { specId?: string }) {
   const [lines, setLines] = useState<SpecificationLineInput[]>([]);
   const [existing, setExisting] = useState<Specification | null>(null);
   const [parameters, setParameters] = useState<TestParameter[]>([]);
+  const [properties,setProperties]=useState<NumericProperty[]>([]);
   const [adding, setAdding] = useState("");
   const [creatingParameter,setCreatingParameter]=useState(false);
   const canCreateParameter=usePermission(Q.SPECS_CREATE);
@@ -47,15 +48,15 @@ export function SpecificationForm({ specId }: { specId?: string }) {
 
   useEffect(() => {
     let active = true;
-    Promise.all([getParameters(), specId ? getSpecification(specId) : Promise.resolve(null)]).then(([params, spec]) => {
+    Promise.all([getNumericProperties(), getParameters(), specId ? getSpecification(specId) : Promise.resolve(null)]).then(([numericProperties, params, spec]) => {
       if (!active) return;
-      setParameters(params);
+      setParameters(params);setProperties(numericProperties);
       if (spec) {
         setExisting(spec);
         setHeader({ code: spec.code, title: spec.title, product_type: spec.product_type, grade: spec.grade ?? "", notes: spec.notes ?? "" });
         setLines(spec.lines.map(({ parameter_id, target_source, order_spec_key, target_value, tolerance_minus, tolerance_plus, min_value, max_value,
-          requirement, acceptance, method, readings_required }) => ({ parameter_id, target_source, order_spec_key, target_value, tolerance_minus,
-          tolerance_plus, min_value, max_value, requirement, acceptance, method, readings_required })));
+          requirement_ar, requirement_en, acceptance_ar, acceptance_en, method_ar, method_en, readings_required }) => ({ parameter_id, target_source, order_spec_key, target_value, tolerance_minus,
+          tolerance_plus, min_value, max_value, requirement_ar, requirement_en, acceptance_ar, acceptance_en, method_ar, method_en, readings_required })));
       }
     }).catch(e => { if (active) setError(qualityErrorMessage(e, errors)); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -83,8 +84,10 @@ export function SpecificationForm({ specId }: { specId?: string }) {
       lines: lines.map(l => ({ ...l, order_spec_key: l.target_source === "order_line" ? l.order_spec_key : null,
         target_value: l.target_source === "fixed" ? l.target_value || null : null,
         tolerance_minus: l.target_source === "none" ? null : l.tolerance_minus || null, tolerance_plus: l.target_source === "none" ? null : l.tolerance_plus || null,
-        min_value: l.min_value || null, max_value: l.max_value || null, requirement: l.requirement?.trim() || null, acceptance: l.acceptance?.trim() || null,
-        method: l.method?.trim() || null })) };
+        min_value: l.target_source==="order_line"?null:l.min_value || null, max_value: l.target_source==="order_line"?null:l.max_value || null,
+        requirement_ar:l.requirement_ar?.trim()||null,requirement_en:l.requirement_en?.trim()||null,
+        acceptance_ar:l.acceptance_ar?.trim()||null,acceptance_en:l.acceptance_en?.trim()||null,
+        method_ar:l.method_ar?.trim()||null,method_en:l.method_en?.trim()||null })) };
     try {
       const saved = specId ? await updateSpecification(specId, body) : await createSpecification({ ...body, code: header.code.trim() });
       unsaved.markSaved(); router.push(`/quality-specifications/${saved.id}`);
@@ -136,24 +139,27 @@ export function SpecificationForm({ specId }: { specId?: string }) {
                     {TARGET_SOURCES.map(v => <option key={v} value={v}>{t(`targetSources.${v}`)}</option>)}
                   </select>
                 </label>
-                {line.target_source === "order_line" && <label className={s.field}>{t("fields.orderSpecKey")}
-                  <input required dir="ltr" list="order-spec-keys" value={line.order_spec_key ?? ""} onChange={e => setLine(index, { order_spec_key: e.target.value })} />
-                </label>}
+                {line.target_source === "order_line" && <>
+                  <Combobox label={t("fields.orderSpecKey")} required value={line.order_spec_key} disabled={busy||locked}
+                    options={[...properties.map(prop=>({id:prop.key,name:localName(prop,locale),detail:prop.key})),
+                      ...(line.order_spec_key&&!properties.some(prop=>prop.key===line.order_spec_key)?[{id:line.order_spec_key,name:line.order_spec_key,detail:t("unknownTemplateKey")}]:[])]}
+                    onChange={key=>setLine(index,{order_spec_key:key})}/>
+                  <p className={s.muted}>{t("orderLineHint")}</p>
+                  {line.order_spec_key&&!properties.some(prop=>prop.key===line.order_spec_key)&&<p role="status" className={s.error}>{t("unknownTemplateKey")}</p>}
+                </>}
                 {line.target_source === "fixed" && field("target_value", t("fields.target"), { required: true })}
                 {line.target_source !== "none" && field("tolerance_minus", t("fields.toleranceMinus"))}
                 {line.target_source !== "none" && field("tolerance_plus", t("fields.tolerancePlus"))}
-                {field("min_value", t("fields.min"))}
-                {field("max_value", t("fields.max"))}
+                {line.target_source!=="order_line"&&<>{field("min_value",t("fields.min"))}{field("max_value",t("fields.max"))}</>}
+                {line.target_source==="order_line"&&<p className={s.muted}>{t("scalarToleranceHint")}</p>}
                 <label className={s.field}>{t("fields.readingsRequired")}
                   <input type="number" min={1} max={50} value={line.readings_required} onChange={e => setLine(index, { readings_required: Number(e.target.value) || 1 })} />
                 </label>
               </> : <>
-                <label className={s.field}>{t("fields.requirement")}<input required maxLength={255} dir="auto" placeholder={t("requirementPlaceholder")}
-                  value={line.requirement ?? ""} onChange={e => setLine(index, { requirement: e.target.value })} /></label>
-                <label className={s.field}>{t("fields.acceptance")}<input maxLength={255} dir="auto" placeholder={t("acceptancePlaceholder")}
-                  value={line.acceptance ?? ""} onChange={e => setLine(index, { acceptance: e.target.value })} /></label>
+                {(["ar","en"] as const).map(lang=><label className={s.field} key={"requirement_"+lang}>{t(`fields.requirement_${lang}`)}<input maxLength={255} dir={lang==="ar"?"rtl":"ltr"} value={line[`requirement_${lang}`]??""} onChange={e=>setLine(index,{[`requirement_${lang}`]:e.target.value})} required={lang==="ar"&&!line.requirement_ar?.trim()&&!line.requirement_en?.trim()}/></label>)}
+                {(["ar","en"] as const).map(lang=><label className={s.field} key={"acceptance_"+lang}>{t(`fields.acceptance_${lang}`)}<input maxLength={255} dir={lang==="ar"?"rtl":"ltr"} value={line[`acceptance_${lang}`]??""} onChange={e=>setLine(index,{[`acceptance_${lang}`]:e.target.value})}/></label>)}
               </>}
-              <label className={s.field}>{t("fields.method")}<ReferenceTextSelect list="test_method" value={line.method??""} onChange={v=>setLine(index,{method:v})}/></label>
+              {(["ar","en"] as const).map(lang=><label className={s.field} key={"method_"+lang}>{t(`fields.method_${lang}`)}<input maxLength={255} dir={lang==="ar"?"rtl":"ltr"} value={line[`method_${lang}`]??""} onChange={e=>setLine(index,{[`method_${lang}`]:e.target.value})}/></label>)}
             </div>
             <div className={s.actions} style={{ marginTop: 10 }}>
               <button type="button" className={s.button} disabled={index === 0} onClick={() => move(index, -1)} aria-label={t("moveUp")}>↑</button>
@@ -162,7 +168,6 @@ export function SpecificationForm({ specId }: { specId?: string }) {
             </div>
           </fieldset>;
         })}
-        <datalist id="order-spec-keys">{ORDER_SPEC_KEYS.map(k => <option key={k} value={k} />)}</datalist>
         {!locked && unused.length > 0 && <div className={s.actions}>
           <label className={s.field}>{t("addLine")}
             <RecordCombobox aria-label={t("addLine")} value={adding} disabled={busy} onChange={e => setAdding(e)}>

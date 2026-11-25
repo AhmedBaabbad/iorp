@@ -1,3 +1,4 @@
+from app.quality.domain.wording import wording as localized_wording
 from app.core.specifications import format_spec_value
 """The Certificate of Analysis document (QUAL-COA-001), rendered by the reporting core with the external identity.
 
@@ -79,14 +80,16 @@ def build(db, tenant, params, selected) -> ReportData:
     ]
     if supersedes:
         identification.append((tr("تحل محل", "Supersedes"), supersedes))
+    def wording(m, key):
+        return localized_wording(m, key, "ar" if ar else "en") or "—"
     rows = []
     for m in c.measurements:
         numeric = m["kind"] == "numeric"
         rows.append(dict(
             name=m["name_ar"] if ar else m["name_en"], unit=m.get("unit") or "—",
-            target=(_num(m.get("target")) or "—") if numeric else (m.get("requirement") or "—"),
-            acceptance=_limits(m, ar) if numeric else (m.get("acceptance") or "—"),
-            result=_result(m, ar), method=m.get("method") or "—",
+            target=(_num(m.get("target")) or "—") if numeric else wording(m, "requirement"),
+            acceptance=_limits(m, ar) if numeric else wording(m, "acceptance"),
+            result=_result(m, ar), method=wording(m, "method"),
             status={"pass": "PASS", "recorded": tr("مسجَّل", "RECORDED"), "fail": "FAIL"}.get(m["status"], "—"), passed=m["status"] in ("pass", "recorded")))
     conditional = c.inspection_result == "conditional_accept"
     sampling = [

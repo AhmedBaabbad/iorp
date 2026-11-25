@@ -49,6 +49,7 @@ class BusinessSettings:
 
 
 class ProductCatalog(Protocol):
+    def numeric_properties(self, db: Session, organization_id: UUID) -> list[PropertyInfo]: ...
     def defined(self, db: Session, organization_id: UUID) -> bool: ...
     def products(self, db: Session, organization_id: UUID, keys: Iterable[str]) -> dict[str, ProductInfo]: ...
     def settings(self, db: Session, organization_id: UUID) -> BusinessSettings: ...
@@ -125,3 +126,8 @@ def unknown_product_types(db: Session, organization_id: UUID, values: Iterable[s
     wanted = {v for v in values if v and v not in kept}
     found = products(db, organization_id, wanted)
     return sorted(v for v in wanted if not (v in found and found[v].active))
+
+
+def numeric_properties(db: Session, organization_id: UUID) -> list[PropertyInfo]:
+    """Organization-owned numeric template keys, including inactive products for stored specifications."""
+    return _provider.numeric_properties(db, organization_id) if _provider else []

@@ -64,7 +64,7 @@ def assert_draft(status) -> None:
 def assert_line(kind, line) -> None:
     """One specification line, given its parameter's kind. `line` is a mapping of the line's fields."""
     if kind == ATTRIBUTE:
-        if not (line.get("requirement") or "").strip():
+        if not (line.get("requirement_ar") or line.get("requirement_en") or "").strip():
             raise QualityError("REQUIREMENT_REQUIRED", 400, parameter=line.get("parameter_code"))
         return
     source = line.get("target_source") or NO_TARGET
@@ -81,7 +81,7 @@ def assert_line(kind, line) -> None:
     if low is not None and high is not None and low > high:
         raise QualityError("LIMITS_INVALID", 400, parameter=line.get("parameter_code"))
     has_tolerance = source != NO_TARGET and (minus is not None or plus is not None)
-    if low is None and high is None and not has_tolerance:
+    if source != ORDER_LINE and low is None and high is None and not has_tolerance:
         raise QualityError("LIMITS_REQUIRED", 400, parameter=line.get("parameter_code"))
     if int(line.get("readings_required") or 1) < 1:
         raise QualityError("READINGS_REQUIRED_INVALID", 400, parameter=line.get("parameter_code"))
@@ -110,9 +110,9 @@ def resolve_limits(line, lot_spec: dict | None):
             return None, bounds[0], bounds[1]
         target = decimal((lot_spec or {}).get(line.get("order_spec_key")))
         if target is None:
-            raise QualityError("LOT_SPEC_VALUE_MISSING", 409, parameter=line.get("parameter_code"), key=line.get("order_spec_key"))
+            raise QualityError("LOT_SPEC_VALUE_MISSING", 409, parameter=line.get("parameter_code"), parameter_ar=line.get("parameter_ar") or line.get("parameter_code"), parameter_en=line.get("parameter_en") or line.get("parameter_code"), key=line.get("order_spec_key"))
     minus, plus = decimal(line.get("tolerance_minus")), decimal(line.get("tolerance_plus"))
-    lower, upper = decimal(line.get("min_value")), decimal(line.get("max_value"))
+    lower, upper = (None, None) if source == ORDER_LINE else (decimal(line.get("min_value")), decimal(line.get("max_value")))
     if lower is None and target is not None and minus is not None:
         lower = target - minus
     if upper is None and target is not None and plus is not None:

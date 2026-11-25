@@ -20,7 +20,8 @@ class ParameterCreate(_Input):
     name_en: str = Field(min_length=1, max_length=120)
     kind: Literal["numeric", "attribute"]
     unit: str | None = Field(default=None, max_length=16)
-    method: str | None = Field(default=None, max_length=255)
+    method_ar: str | None = Field(default=None, max_length=255)
+    method_en: str | None = Field(default=None, max_length=255)
     sort_order: int = Field(default=0, ge=0, le=10000)
 
 
@@ -28,7 +29,8 @@ class ParameterUpdate(_Input):
     name_ar: str | None = Field(default=None, min_length=1, max_length=120)
     name_en: str | None = Field(default=None, min_length=1, max_length=120)
     unit: str | None = Field(default=None, max_length=16)
-    method: str | None = Field(default=None, max_length=255)
+    method_ar: str | None = Field(default=None, max_length=255)
+    method_en: str | None = Field(default=None, max_length=255)
     is_active: bool | None = None
     sort_order: int | None = Field(default=None, ge=0, le=10000)
 
@@ -41,9 +43,16 @@ class ParameterRead(BaseModel):
     name_en: str
     kind: str
     unit: str | None
-    method: str | None
+    method_ar: str | None
+    method_en: str | None
     is_active: bool
     sort_order: int
+
+
+class NumericPropertyRead(BaseModel):
+    key: str
+    name_ar: str
+    name_en: str
 
 
 class SpecificationLineInput(_Input):
@@ -55,9 +64,12 @@ class SpecificationLineInput(_Input):
     tolerance_plus: Limit | None = Field(default=None, ge=0, max_digits=14, decimal_places=4)
     min_value: Limit | None = Field(default=None, max_digits=14, decimal_places=4)
     max_value: Limit | None = Field(default=None, max_digits=14, decimal_places=4)
-    requirement: str | None = Field(default=None, max_length=255)
-    acceptance: str | None = Field(default=None, max_length=255)
-    method: str | None = Field(default=None, max_length=255)
+    requirement_ar: str | None = Field(default=None, max_length=255)
+    requirement_en: str | None = Field(default=None, max_length=255)
+    acceptance_ar: str | None = Field(default=None, max_length=255)
+    acceptance_en: str | None = Field(default=None, max_length=255)
+    method_ar: str | None = Field(default=None, max_length=255)
+    method_en: str | None = Field(default=None, max_length=255)
     readings_required: int = Field(default=1, ge=1, le=50)
 
 
@@ -87,7 +99,10 @@ class SpecificationLineRead(BaseModel):
     name_en: str
     kind: str
     unit: str | None
-    parameter_method: str | None
+    order_spec_name_ar: str | None = None
+    order_spec_name_en: str | None = None
+    parameter_method_ar: str | None
+    parameter_method_en: str | None
     target_source: str
     order_spec_key: str | None
     target_value: Decimal | None
@@ -95,9 +110,12 @@ class SpecificationLineRead(BaseModel):
     tolerance_plus: Decimal | None
     min_value: Decimal | None
     max_value: Decimal | None
-    requirement: str | None
-    acceptance: str | None
-    method: str | None
+    requirement_ar: str | None
+    requirement_en: str | None
+    acceptance_ar: str | None
+    acceptance_en: str | None
+    method_ar: str | None
+    method_en: str | None
     readings_required: int
 
 
@@ -120,3 +138,10 @@ class SpecificationListItem(BaseModel):
 class SpecificationRead(SpecificationListItem):
     notes: str | None
     lines: list[SpecificationLineRead] = []
+
+
+class SpecificationCopy(_Input):
+    code: str = Field(min_length=1, max_length=40, pattern=r"^[A-Za-z0-9_\-]+$")
+    title: str = Field(min_length=1, max_length=200)
+    product_type: str | None = Field(default=None, min_length=1, max_length=120)
+    grade: str | None = Field(default=None, max_length=80)

@@ -1,3 +1,4 @@
+from app.quality.domain.wording import wording
 from app.core.specifications import format_spec_value
 """Quality report data (QUAL-REPORT-001): read-only, from quality's own tables.
 
@@ -279,10 +280,10 @@ def measurements_section(db, tenant, check, lang):
         verdict = label('pending_measurement' if m.status == 'pending' else m.status, lang)
         if m.kind == 'attribute':
             result = label(m.attribute_result, lang) if m.attribute_result else None
-            rows.append((name, None, m.requirement, m.acceptance, ' — '.join(p for p in (result, m.observation) if p) or None, None, verdict, m.method))
+            rows.append((name, None, wording(m, 'requirement', lang), wording(m, 'acceptance', lang), ' — '.join(p for p in (result, m.observation) if p) or None, None, verdict, wording(m, 'method', lang)))
         else:
             spread = f'{text(m.minimum)} – {text(m.maximum)} (n={m.reading_count})' if m.reading_count else None
-            rows.append((name, m.unit, m.target, limits_text(m), m.mean, spread, verdict, m.method))
+            rows.append((name, m.unit, m.target, limits_text(m), m.mean, spread, verdict, wording(m, 'method', lang)))
     return table('measurements', 'نتائج القياس', 'Measurement results',
                  ['الخاصية / Parameter', 'الوحدة / Unit', 'المستهدف / Target', 'حدود القبول / Acceptance', 'المتوسط أو النتيجة / Mean or result',
                   'المدى (العدد) / Range (n)', 'الحكم / Verdict', 'الطريقة / Method'], rows, lang,

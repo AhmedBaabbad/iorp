@@ -1,4 +1,5 @@
 "use client";
+import {bilingualText} from "@/lib/bilingual-text";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import { NumericSpecInput } from "@/components/forms/NumericSpecInput";
 import { parseNumericSpec, formatSpecValue, formatSpecification, numericSpecOrText } from "@/lib/spec-value";
@@ -188,10 +189,10 @@ function MeasurementRow({ m, draft, ar, editable, busy, onDraft }: { m: Measurem
   };
 
   return <tr>
-    <td><strong>{name}</strong>{m.method && <div className={s.muted}>{m.method}</div>}</td>
+    <td><strong>{name}</strong>{bilingualText(m,"method",ar?"ar":"en")&&<div className={s.muted}>{bilingualText(m,"method",ar?"ar":"en")}</div>}</td>
     <td>{m.unit ? <UnitLabel value={m.unit}/> : "—"}</td>
-    <td>{numeric ? number(m.target) : (m.requirement ?? "—")}</td>
-    <td><bdi>{numeric ? limitsText(m) : (m.acceptance ?? "—")}</bdi></td>
+    <td>{numeric ? number(m.target) : (bilingualText(m,"requirement",ar?"ar":"en") || "—")}</td>
+    <td><bdi>{numeric ? limitsText(m) : (bilingualText(m,"acceptance",ar?"ar":"en") || "—")}</bdi></td>
     <td>{editable ? (numeric
       ? <div>
         <span className={s.actions} style={{ gap: 4 }}>

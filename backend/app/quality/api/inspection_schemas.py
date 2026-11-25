@@ -157,9 +157,12 @@ class MeasurementRead(BaseModel):
     name_en: str
     kind: str
     unit: str | None
-    method: str | None
-    requirement: str | None
-    acceptance: str | None
+    method_ar: str | None
+    method_en: str | None
+    requirement_ar: str | None
+    requirement_en: str | None
+    acceptance_ar: str | None
+    acceptance_en: str | None
     target: Decimal | None
     lower_limit: Decimal | None
     upper_limit: Decimal | None

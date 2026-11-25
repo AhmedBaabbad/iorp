@@ -8,7 +8,7 @@ from app.core.pagination import Page, PageParams, optional_page_params, page_of
 from app.core.tenancy import TenantContext
 from app.dependencies import get_current_tenant, get_db, permission_check, require_any_permission, require_permission
 from app.quality.api.specification_schemas import (
-    ParameterCreate, ParameterRead, ParameterUpdate, SpecificationCreate, SpecificationListItem, SpecificationRead, SpecificationUpdate,
+    NumericPropertyRead, ParameterCreate, ParameterRead, ParameterUpdate, SpecificationCopy, SpecificationCreate, SpecificationListItem, SpecificationRead, SpecificationUpdate,
 )
 from app.quality.application.specification_service import SpecificationService
 from app.quality.domain import permissions as Q
@@ -84,6 +84,24 @@ def create_specification(payload: SpecificationCreate, tenant: TenantContext = D
     service = SpecificationService(db, tenant)
     try:
         return _read(service, service.create(payload), can)
+    except QualityError as exc:
+        db.rollback()
+        raise _error(exc) from exc
+
+
+@router.get("/quality-specifications/numeric-properties", response_model=list[NumericPropertyRead], dependencies=[Depends(require_any_permission([Q.SPECS_READ, Q.SPECS_CREATE, Q.SPECS_UPDATE]))])
+def numeric_template_properties(tenant: TenantContext = Depends(get_current_tenant), db: Session = Depends(get_db)):
+    from app.core.interfaces.product_catalog import numeric_properties
+    return [dict(key=p.key, name_ar=p.name_ar, name_en=p.name_en) for p in numeric_properties(db, tenant.organization_id)]
+
+
+@router.post("/quality-specifications/{spec_id}/copy", response_model=SpecificationRead, status_code=201,
+             dependencies=[Depends(require_permission(Q.SPECS_CREATE))])
+def copy_specification(spec_id: UUID, payload: SpecificationCopy, tenant: TenantContext = Depends(get_current_tenant),
+                       db: Session = Depends(get_db), can=Depends(permission_check)):
+    service = SpecificationService(db, tenant)
+    try:
+        return _read(service, service.copy(spec_id, payload), can)
     except QualityError as exc:
         db.rollback()
         raise _error(exc) from exc

@@ -1,4 +1,6 @@
 "use client";
+import {CopySpecificationDialog} from "./CopySpecificationDialog";
+import {bilingualText} from "@/lib/bilingual-text";
 import { Dialog } from "@/components/ui/Dialog";
 
 import Link from "next/link";
@@ -31,6 +33,7 @@ export function SpecificationDetail({ specId }: { specId: string }) {
   const [spec, setSpec] = useState<Specification | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
+  const [copying,setCopying]=useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -62,6 +65,7 @@ export function SpecificationDetail({ specId }: { specId: string }) {
         <span className={s.actions}>
           {spec.actions.includes("edit") && <Link href={`/quality-specifications/${spec.id}/edit`} className={s.button}>{t("edit")}</Link>}
           {spec.actions.includes("activate") && <button type="button" className={`${s.button} ${s.primary}`} disabled={busy} onClick={() => setConfirming(true)}>{t("activate")}</button>}
+          {spec.actions.includes("copy")&&<button type="button" className={s.button} disabled={busy} onClick={()=>setCopying(true)}>{t("copy")}</button>}
           {spec.actions.includes("revise") && <button type="button" className={s.button} disabled={busy} onClick={() => void revise()}>{t("revise")}</button>}
         </span>
       </div>
@@ -80,13 +84,14 @@ export function SpecificationDetail({ specId }: { specId: string }) {
         <tbody>{spec.lines.map(line => <tr key={line.id}>
           <td><strong>{ar ? line.name_ar : line.name_en}</strong></td>
           <td>{line.unit ?? "—"}</td>
-          <td><bdi>{line.kind === "numeric" ? targetText(line, t) : line.requirement}</bdi></td>
-          <td><bdi>{line.kind === "numeric" ? limitsText(line, t) : (line.acceptance ?? "—")}</bdi></td>
+          <td><bdi>{line.kind === "numeric" ? targetText(line,t,ar?"ar":"en") : bilingualText(line,"requirement",ar?"ar":"en")||"—"}</bdi></td>
+          <td><bdi>{line.kind === "numeric" ? limitsText(line, t) : (bilingualText(line,"acceptance",ar?"ar":"en") || "—")}</bdi></td>
           <td>{line.kind === "numeric" ? line.readings_required : "—"}</td>
-          <td dir="auto">{line.method || line.parameter_method || "—"}</td>
+          <td dir="auto">{bilingualText(line,"method",ar?"ar":"en")||bilingualText(line,"parameter_method",ar?"ar":"en")||"—"}</td>
         </tr>)}</tbody>
       </table></div>}
     </section>
+    {copying&&<CopySpecificationDialog source={spec} onClose={()=>setCopying(false)}/>}
     {confirming && <Dialog title={t("activateTitle")} onClose={() => setConfirming(false)} busy={busy} role="alertdialog"
       footer={<><button type="button" className={s.button} disabled={busy} onClick={() => setConfirming(false)} autoFocus>{t("cancel")}</button>
         <button type="button" className={`${s.button} ${s.primary}`} disabled={busy} onClick={() => void activate()}>{t("activate")}</button></>}>
