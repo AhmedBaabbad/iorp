@@ -1,21 +1,18 @@
 from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
-from app.core.security import has_usable_password
 from app.foundation.infrastructure.models import User, TenantSecurityEvent
-from app.foundation.infrastructure.permanent_deletion import reference_tables,delete_owned_rows,detach_personal_security
+from app.foundation.infrastructure.permanent_deletion import reference_tables,delete_owned_rows,detach_personal_history,TABLE_KEYS
 
 
 class UserDeletionConflict(ValueError):
-    def __init__(self,code,tables=None):
-        self.code=code;self.tables=tables or []
+    def __init__(self,code,tables=None,table_names=None):
+        self.code=code;self.tables=tables or [];self.table_names=table_names or []
         super().__init__(code)
 
 
 def eligibility_code(user,actor_id):
     if user.is_organization_root:return 'USER_DELETE_ROOT'
     if user.id==actor_id:return 'USER_DELETE_SELF'
-    if has_usable_password(user.password_hash) or user.last_login_at or user.last_seen_at:
-        return 'USER_DELETE_ACTIVATED'
     return None
 
 
@@ -26,7 +23,7 @@ def can_delete_permanently(db,user,actor_id):
 def deletion_block(db,user,actor_id):
     code=eligibility_code(user,actor_id)
     if code:return {'code':code,'tables':[]}
-    tables=reference_tables(db,user.id,user.organization_id)
+    tables=reference_tables(db,user.id,user.organization_id,limit=None)
     return {'code':'USER_DELETE_HAS_HISTORY','tables':tables} if tables else None
 
 
@@ -37,10 +34,11 @@ def delete_permanently(db,organization_id,user_id,actor,reason):
         if user is None:raise LookupError('User not found.')
         code=eligibility_code(user,actor.id)
         if code:raise UserDeletionConflict(code)
-        tables=reference_tables(db,user.id,user.organization_id)
-        if tables:raise UserDeletionConflict('USER_DELETE_HAS_HISTORY',tables)
-        details={'email':user.email,'full_name':user.full_name,'reason':reason}
-        detached=detach_personal_security(db,user)
+        tables=reference_tables(db,user.id,user.organization_id,limit=None,raw=True)
+        if tables:raise UserDeletionConflict('USER_DELETE_HAS_HISTORY',list(dict.fromkeys(TABLE_KEYS.get(t,t) for t in tables)),tables)
+        details={'user_id':str(user.id),'email':user.email,'full_name':user.full_name,'reason':reason,
+                 'deleted_by':str(actor.id),'deleted_by_name':actor.full_name}
+        detached=detach_personal_history(db,user)
         deleted=delete_owned_rows(db,user.id,organization_id)
         db.execute(delete(User.__table__).where(User.id==user.id,User.organization_id==organization_id))
         deleted['foundation_users']=1

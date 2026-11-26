@@ -379,7 +379,8 @@ class TenantPasswordResetToken(Base):
 class TenantAuditEntry(Base):
     """The organization's audit trail (ORG-AUDIT-002): who changed what in its administration and governance — users,
     roles, permissions, the organization's settings, delegations, announcements — when, and the values before and after.
-    Written in the transaction of the change; never updated nor deleted."""
+    Written in the transaction of the change. Payloads are append-only; the explicit
+    personal-account deletion policy may detach actor_id while retaining actor_name."""
     __tablename__ = "foundation_audit_log"
     __table_args__ = (
         Index("ix_foundation_audit_org_created", "organization_id", "created_at"),

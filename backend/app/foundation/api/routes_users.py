@@ -622,5 +622,5 @@ def permanently_delete_user(user_id: UUID, payload: AccountActionRequest,
     except LookupError as exc:
         raise HTTPException(404,'User not found.') from exc
     except UserDeletionConflict as exc:
-        return JSONResponse(status_code=409,content={'code':exc.code,'details':{'tables':exc.tables}})
+        return JSONResponse(status_code=409,content={'code':exc.code,'details':{'tables':exc.tables,'table_names':exc.table_names}})
     return {'deleted':True}

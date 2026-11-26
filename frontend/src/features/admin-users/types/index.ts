@@ -27,7 +27,7 @@ export type AdminUserListItem = {
 
 export type UserPresence = {last_seen_at:string|null;is_online:boolean};
 
-export type UserDeleteBlock = {code:"USER_DELETE_ROOT"|"USER_DELETE_SELF"|"USER_DELETE_ACTIVATED"|"USER_DELETE_HAS_HISTORY";tables:string[]};
+export type UserDeleteBlock = {code:"USER_DELETE_ROOT"|"USER_DELETE_SELF"|"USER_DELETE_HAS_HISTORY";tables:string[]};
 
 export type AdminUserDetail = AdminUserListItem & {
   can_delete_permanently?: boolean;

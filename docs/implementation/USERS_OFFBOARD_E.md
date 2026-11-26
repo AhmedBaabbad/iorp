@@ -1,5 +1,9 @@
 # USERS-OFFBOARD-E
 
+Permanent-deletion eligibility below is historical and superseded by
+[USER_PERMANENT_DELETE_RULES](USER_PERMANENT_DELETE_RULES.md). The offboarding
+workflow remains current.
+
 Base: origin/main 0c2ce902dbac5a37f280c10718fcb2f7885ec0c3.
 Branch: fix/users-offboarding. This supersedes the activated-account deletion
 policy in USERS_UX_D.md and its performance correction; those documents are
