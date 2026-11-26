@@ -13,7 +13,7 @@ vi.mock("@/features/followups/followup-api",()=>({getEligibleAssignees:mocks.ass
 import {UserOffboarding} from "@/features/admin-users/components/UserOffboarding";
 let messages:Record<string,unknown>;
 beforeAll(async()=>{messages=await loadMessages("en") as Record<string,unknown>;});
-const user:AdminUserDetail={id:"target",organization_id:"org",email:"person@example.com",full_name:"Person",phone:null,preferred_locale:null,status:"active",is_organization_root:false,roles:[],created_at:"2026-11-14T12:00:00Z",updated_at:"2026-11-14T12:00:00Z",last_login_at:null,failed_login_attempts:0,last_failed_login_at:null,auto_locked_until:null,permissions:[],delete_block:{code:"USER_DELETE_ACTIVATED",tables:[]}};
+const user:AdminUserDetail={id:"target",organization_id:"org",email:"person@example.com",full_name:"Person",phone:null,preferred_locale:null,status:"active",is_organization_root:false,roles:[],created_at:"2026-11-14T12:00:00Z",updated_at:"2026-11-14T12:00:00Z",last_login_at:null,failed_login_attempts:0,last_failed_login_at:null,auto_locked_until:null,permissions:[],delete_block:null};
 const clear={user_id:user.id,user_full_name:user.full_name,dependencies:{assigned_customers:0,open_follow_ups:0,active_workforce_link:false},can_deactivate:true,total_blocking_items:0,message:""};
 const blocked={...clear,dependencies:{...clear.dependencies,assigned_customers:1},can_deactivate:false,total_blocking_items:1};
 const candidate={id:"replacement",full_name:"Replacement",email:"next@example.com"};

@@ -299,7 +299,7 @@ class UserPresenceResponse(BaseModel):
 
 
 class UserDeleteBlock(BaseModel):
-    code: Literal['USER_DELETE_ROOT','USER_DELETE_SELF','USER_DELETE_ACTIVATED','USER_DELETE_HAS_HISTORY']
+    code: Literal['USER_DELETE_ROOT','USER_DELETE_SELF','USER_DELETE_HAS_HISTORY']
     tables: list[str] = Field(default_factory=list)
 
 

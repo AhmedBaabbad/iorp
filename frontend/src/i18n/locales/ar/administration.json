@@ -246,11 +246,12 @@
       "lastSeenAt": "آخر ظهور"
     },
     "permanentDelete": {
-      "button": "حذف نهائي (إلغاء الدعوة)",
+      "button": "حذف نهائي",
       "title": "حذف الحساب نهائيًا",
       "warning": "لا يمكن التراجع عن هذا الحذف.",
       "reason": "السبب",
-      "confirmEmail": "اكتب إيميل المستخدم للتأكيد: {email}",
+      "confirmName": "اكتب اسم المستخدم للتأكيد: {name}",
+      "blockers": "السجلات التي تمنع الحذف",
       "cancel": "إلغاء",
       "success": "حُذف الحساب نهائيًا.",
       "useDeactivation": "عطّل الحساب بدلًا من ذلك.",
@@ -276,6 +277,7 @@
         "announcements": "إعلانات",
         "accountTokens": "رموز حساب",
         "emailChanges": "تغييرات البريد",
+        "accountSessions": "جلسات الحساب",
         "organizationSettings": "إعدادات المنظمة",
         "commercialHistory": "تاريخ العمليات التجارية",
         "products": "منتجات",
@@ -287,7 +289,7 @@
         "qualityHistory": "تاريخ الجودة",
         "carriers": "ناقلون",
         "shipments": "شحنات",
-        "workforce": "موظفون",
+        "workforce": "مرتبط بموظف في العمالة",
         "complaints": "شكاوى",
         "customerContacts": "جهات اتصال العملاء",
         "interactions": "تواصل العملاء",
@@ -316,9 +318,8 @@
         "productionDemands": "طلبات إنتاج",
         "productionAllocations": "تخصيصات إنتاج"
       },
-      "USER_DELETE_ACTIVATED": "الحسابات المفعّلة لا تُحذف للحفاظ على سجل التدقيق؛ استخدم إنهاء الخدمة والأرشفة.",
       "transferFirst": "انقل الملكية أولًا.",
-      "offboarding": "إنهاء الخدمة"
+      "offboarding": "إنهاء الخدمة والأرشفة"
     },
     "offboarding": {
       "title": "إنهاء الخدمة",

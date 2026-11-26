@@ -246,11 +246,12 @@
       "lastSeenAt": "Last seen"
     },
     "permanentDelete": {
-      "button": "Delete permanently (cancel invitation)",
+      "button": "Delete permanently",
       "title": "Permanently delete account",
       "warning": "This deletion cannot be undone.",
       "reason": "Reason",
-      "confirmEmail": "Type the user’s email to confirm: {email}",
+      "confirmName": "Type the user’s name to confirm: {name}",
+      "blockers": "Records preventing deletion",
       "cancel": "Cancel",
       "success": "Account permanently deleted.",
       "useDeactivation": "Deactivate the account instead.",
@@ -276,6 +277,7 @@
         "announcements": "Announcements",
         "accountTokens": "Account tokens",
         "emailChanges": "Email changes",
+        "accountSessions": "Account sessions",
         "organizationSettings": "Organization settings",
         "commercialHistory": "Commercial history",
         "products": "Products",
@@ -287,7 +289,7 @@
         "qualityHistory": "Quality history",
         "carriers": "Carriers",
         "shipments": "Shipments",
-        "workforce": "Workforce members",
+        "workforce": "Linked to a workforce employee",
         "complaints": "Complaints",
         "customerContacts": "Customer contacts",
         "interactions": "Customer interactions",
@@ -316,9 +318,8 @@
         "productionDemands": "Production demands",
         "productionAllocations": "Production allocations"
       },
-      "USER_DELETE_ACTIVATED": "Activated accounts cannot be deleted, preserving the audit trail. Use offboarding and archiving.",
       "transferFirst": "Transfer ownership first.",
-      "offboarding": "Offboarding"
+      "offboarding": "End employment and archive"
     },
     "offboarding": {
       "title": "Offboarding",

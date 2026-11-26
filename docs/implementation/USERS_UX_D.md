@@ -1,7 +1,7 @@
 # USERS-UX-D: presence on details, deletion based on business impact
 
-Deletion policy is superseded by [USERS-OFFBOARD-E](USERS_OFFBOARD_E.md): activated
-accounts are preserved and offboarded. The SQL/presence performance work remains.
+Current deletion policy is [USER_PERMANENT_DELETE_RULES](USER_PERMANENT_DELETE_RULES.md).
+[USERS-OFFBOARD-E](USERS_OFFBOARD_E.md) still describes offboarding. The SQL/presence performance work remains.
 
 Base `2d565eedd5070511de83c9122182605af53ce807`, branch `fix/users-delete`.
 This policy supersedes the activation restriction in USERS-UX-C. Authentication,

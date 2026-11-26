@@ -33,15 +33,18 @@ def signed_in_and_browsed(e,activate):
     e.db.commit()
 
 
-def test_activated_browsing_logged_out_user_is_preserved(users,activate):
+def test_activated_browsing_logged_out_user_is_deleted_and_security_is_preserved(users,activate):
     e=users;signed_in_and_browsed(e,activate)
     identifier=e.target.id
-    response=e.client.get(f'{BASE}/{identifier}')
-    assert response.json()['delete_block']=={'code':'USER_DELETE_ACTIVATED','tables':[]}
-    result=remove(e)
-    assert result.status_code==409 and result.json()['code']=='USER_DELETE_ACTIVATED'
-    assert e.db.get(User,identifier) is not None
-    assert e.db.scalar(select(TenantSecurityEvent.id).where(TenantSecurityEvent.actor_id==identifier)) is not None
+    events=list(e.db.scalars(select(TenantSecurityEvent).where(TenantSecurityEvent.actor_id==identifier)))
+    ids=[row.id for row in events]
+    assert len(ids)>=3
+    assert e.client.get(f'{BASE}/{identifier}').json()['delete_block'] is None
+    assert remove(e).status_code==200
+    assert e.db.get(User,identifier) is None
+    e.db.expire_all()
+    preserved=list(e.db.scalars(select(TenantSecurityEvent).where(TenantSecurityEvent.id.in_(ids))))
+    assert len(preserved)==len(ids) and all(row.actor_id is None and row.actor_email for row in preserved)
 
 
 def test_same_activity_with_customer_creation_is_business_history(users,activate):
@@ -56,11 +59,11 @@ def test_same_activity_with_customer_creation_is_business_history(users,activate
 
 
 @pytest.mark.parametrize('status',['active','inactive','locked'])
-def test_activated_accounts_are_blocked_in_every_status(users,status):
+def test_unused_activated_accounts_can_be_deleted_in_every_status(users,status):
     e=users;e.target.status=status;e.target.password_hash=hash_password('AlreadyUsed123!')
     e.target.last_login_at=utc_now()-timedelta(days=10);e.target.last_seen_at=utc_now();e.db.commit()
     result=remove(e)
-    assert result.status_code==409 and result.json()['code']=='USER_DELETE_ACTIVATED'
+    assert result.status_code==200
 
 
 def test_administrative_lock_of_other_user_stays_blocking(users):

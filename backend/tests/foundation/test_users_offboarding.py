@@ -9,18 +9,22 @@ from tests.commercial.test_customer_sales_owner import _make_role
 
 
 @pytest.mark.parametrize('activated_by',['password','login','seen'])
-def test_activation_guard_precedes_every_history_query(users,monkeypatch,activated_by):
+def test_activation_is_not_a_guard_and_history_is_still_checked(users,monkeypatch,activated_by):
     from app.foundation.application import permanent_deletion
     e=users
     if activated_by=='password':e.target.password_hash=hash_password('Activated123!')
     elif activated_by=='login':e.target.last_login_at=utc_now()
     else:e.target.last_seen_at=utc_now()
     e.db.commit()
-    def forbidden(*args):raise AssertionError('Activated accounts must not scan references')
-    monkeypatch.setattr(permanent_deletion,'reference_tables',forbidden)
-    response=remove(e)
-    assert response.status_code==409 and response.json()['code']=='USER_DELETE_ACTIVATED'
-    assert e.client.get(f'{BASE}/{e.target.id}').json()['delete_block']=={'code':'USER_DELETE_ACTIVATED','tables':[]}
+    calls=[]
+    original=permanent_deletion.reference_tables
+    def checked(*args,**kwargs):
+        calls.append(True)
+        return original(*args,**kwargs)
+    monkeypatch.setattr(permanent_deletion,'reference_tables',checked)
+    assert e.client.get(f'{BASE}/{e.target.id}').json()['delete_block'] is None
+    assert remove(e).status_code==200
+    assert len(calls)>=2
 
 
 def test_invited_account_without_links_can_be_cancelled(users):
@@ -87,7 +91,7 @@ def test_transfer_deactivate_archive_and_restore_preserve_records(users):
     replacement=User(organization_id=e.org.id,email='replacement@example.com',full_name='Replacement',password_hash='!',status='active')
     e.db.add(replacement);e.db.flush();e.db.add(UserRole(user_id=replacement.id,role_id=role.id))
     e.target.password_hash=hash_password('Activated123!')
-    customer=Customer(organization_id=e.org.id,customer_code='MOVE',name='Keep customer',sales_owner_user_id=e.target.id,created_by_user_id=e.actor.id)
+    customer=Customer(organization_id=e.org.id,customer_code='MOVE',name='Keep customer',sales_owner_user_id=e.target.id,created_by_user_id=e.target.id)
     e.db.add(customer);e.db.flush()
     follow=FollowUp(customer_id=customer.id,assigned_user_id=e.target.id,created_by_user_id=e.actor.id,due_date=utc_now()+timedelta(days=1),priority=FollowUpPriority.MEDIUM,status=FollowUpStatus.PENDING,reason='Keep follow-up')
     e.db.add(follow);e.db.commit()
@@ -104,6 +108,6 @@ def test_transfer_deactivate_archive_and_restore_preserve_records(users):
     assert archived.json()['archived_at'] and archived.json()['archived_by_name']==e.actor.full_name and archived.json()['archived_reason']=='Employment ended'
     e.db.refresh(customer);e.db.refresh(follow)
     assert customer.sales_owner_user_id==other and follow.assigned_user_id==other
-    assert remove(e).json()['code']=='USER_DELETE_ACTIVATED'
+    assert remove(e).json()['code']=='USER_DELETE_HAS_HISTORY'
     restored=e.client.post(f'{BASE}/{target}/restore',json={'reason':'Archive correction'})
     assert restored.status_code==200 and restored.json()['archived_at'] is None and restored.json()['status']=='inactive'

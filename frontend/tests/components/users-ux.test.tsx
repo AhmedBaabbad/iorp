@@ -40,23 +40,23 @@ it.each(["ar","en"])("renders online, relative and never presence in %s",locale=
 it("shows permanent deletion only with permission and server eligibility",()=>{
   mocks.allowed=false;const denied=ui(<PermanentUserDelete user={user}/>);expect(screen.queryByRole("button")).toBeNull();denied.unmount();
   mocks.allowed=true;const ineligible=ui(<PermanentUserDelete user={{...user,can_delete_permanently:false}}/>);expect(screen.queryByRole("button")).toBeNull();ineligible.unmount();
-  ui(<PermanentUserDelete user={user}/>);expect(screen.getByRole("button",{name:"Delete permanently (cancel invitation)"})).toBeTruthy();
+  ui(<PermanentUserDelete user={user}/>);expect(screen.getByRole("button",{name:"Delete permanently"})).toBeTruthy();
 });
 
 function confirm(){
-  fireEvent.click(screen.getByRole("button",{name:"Delete permanently (cancel invitation)"}));
+  fireEvent.click(screen.getByRole("button",{name:"Delete permanently"}));
   expect(screen.getByText("This deletion cannot be undone.")).toBeTruthy();
-  expect((screen.getAllByRole("button",{name:"Delete permanently (cancel invitation)"})[1] as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getAllByRole("button",{name:"Delete permanently"})[1] as HTMLButtonElement).disabled).toBe(true);
   fireEvent.change(screen.getByRole("textbox",{name:"Reason"}),{target:{value:"Created by mistake"}});
-  fireEvent.change(screen.getByRole("textbox",{name:/Type the user/}),{target:{value:user.email}});
+  fireEvent.change(screen.getByRole("textbox",{name:/Type the user/}),{target:{value:user.full_name}});
 }
-it("requires reason, accepts uppercase confirmation email and closes before returning to the list",async()=>{
+it("requires reason and the exact trimmed full name and closes before returning to the list",async()=>{
   ui(<PermanentUserDelete user={user}/>);confirm();
   fireEvent.change(screen.getByRole("textbox",{name:/Type the user/}),{target:{value:"wrong@example.com"}});
-  expect((screen.getAllByRole("button",{name:"Delete permanently (cancel invitation)"})[1] as HTMLButtonElement).disabled).toBe(true);
-  fireEvent.change(screen.getByRole("textbox",{name:/Type the user/}),{target:{value:` ${user.email.toUpperCase()} `}});
-  expect((screen.getAllByRole("button",{name:"Delete permanently (cancel invitation)"})[1] as HTMLButtonElement).disabled).toBe(false);
-  fireEvent.click(screen.getAllByRole("button",{name:"Delete permanently (cancel invitation)"})[1]);
+  expect((screen.getAllByRole("button",{name:"Delete permanently"})[1] as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.change(screen.getByRole("textbox",{name:/Type the user/}),{target:{value:` ${user.full_name} `}});
+  expect((screen.getAllByRole("button",{name:"Delete permanently"})[1] as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(screen.getAllByRole("button",{name:"Delete permanently"})[1]);
   await waitFor(()=>expect(mocks.remove).toHaveBeenCalledWith(user.id,"Created by mistake"));
   expect(mocks.push).toHaveBeenCalledWith("/admin/users");expect(mocks.success).toHaveBeenCalled();
   await waitFor(()=>expect(screen.queryByRole("dialog")).toBeNull());
@@ -65,7 +65,7 @@ it("requires reason, accepts uppercase confirmation email and closes before retu
 it("never offers permanent deletion in the list",async()=>{
   mocks.list.mockResolvedValue([user]);ui(<AdminUsersList/>);
   await screen.findByRole("link",{name:"Pending"});
-  expect(screen.queryByRole("button",{name:"Delete permanently (cancel invitation)"})).toBeNull();
+  expect(screen.queryByRole("button",{name:"Delete permanently"})).toBeNull();
 });
 
 it("hides archived users until the show archived switch is selected",async()=>{
@@ -75,9 +75,9 @@ it("hides archived users until the show archived switch is selected",async()=>{
   fireEvent.click(screen.getByRole("checkbox"));expect(await screen.findByRole("link",{name:"Archived colleague"})).toBeTruthy();
 });
 
-it.each(["USER_DELETE_ROOT","USER_DELETE_SELF","USER_DELETE_ACTIVATED"] as const)("disables protected deletion with a reason: %s",code=>{
+it.each(["USER_DELETE_ROOT","USER_DELETE_SELF"] as const)("disables protected deletion with a reason: %s",code=>{
   ui(<PermanentUserDelete showBlock user={{...user,delete_block:{code,tables:[]}}}/>);
-  expect((screen.getByRole("button",{name:"Delete permanently (cancel invitation)"}) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByRole("button",{name:"Delete permanently"}) as HTMLButtonElement).disabled).toBe(true);
   const dictionary=(en.administration as {users:{permanentDelete:Record<string,string>}}).users.permanentDelete;
   expect(screen.getByText(dictionary[code])).toBeTruthy();
 });
@@ -89,22 +89,22 @@ it.each(["ar","en"])("reports missing user in %s and returns from details to the
   fireEvent.click(screen.getByRole("button",{name:dictionary.button}));
   const dialog=screen.getByRole("dialog");
   fireEvent.change(dialog.querySelector("textarea")!,{target:{value:"Created by mistake"}});
-  fireEvent.change(dialog.querySelector("input")!,{target:{value:user.email}});
+  fireEvent.change(dialog.querySelector("input")!,{target:{value:user.full_name}});
   fireEvent.submit(dialog);
   await waitFor(()=>expect(mocks.error).toHaveBeenCalledWith(dictionary.notFound));
   expect(screen.queryByRole("dialog")).toBeNull();expect(mocks.push).toHaveBeenCalledWith("/admin/users");
   expect(mocks.success).not.toHaveBeenCalled();
 });
-it.each(["USER_DELETE_ROOT","USER_DELETE_SELF","USER_DELETE_ACTIVATED","USER_DELETE_HAS_HISTORY"])("explains 409 %s",async code=>{
-  mocks.remove.mockRejectedValueOnce(new ApiClientError("Conflict",409,{code,details:{tables:["commercial_customers"]}}));
+it.each(["USER_DELETE_ROOT","USER_DELETE_SELF","USER_DELETE_HAS_HISTORY"])("explains 409 %s",async code=>{
+  mocks.remove.mockRejectedValueOnce(new ApiClientError("Conflict",409,{code,details:{tables:["customers"]}}));
   const deactivate=vi.fn();ui(<PermanentUserDelete user={user} onDeactivate={deactivate}/>);confirm();
-  fireEvent.click(screen.getAllByRole("button",{name:"Delete permanently (cancel invitation)"})[1]);
+  fireEvent.click(screen.getAllByRole("button",{name:"Delete permanently"})[1]);
   expect(await screen.findByRole("alert")).toBeTruthy();
   const dictionary=(en.administration as {users:{permanentDelete:Record<string,string>}}).users.permanentDelete;
   expect(screen.getByText(dictionary[code])).toBeTruthy();
   if(code==="USER_DELETE_HAS_HISTORY"){
     expect(screen.getByText("Deactivate the account instead.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button",{name:"Open deactivation"}));expect(deactivate).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button",{name:"End employment and archive"}));expect(deactivate).toHaveBeenCalled();
   }
 });
 
@@ -142,15 +142,39 @@ it("polls presence in the hero only while details are visible, retaining an open
 it("shows a disabled detail deletion button with translated business types and deactivation",()=>{
   const onDeactivate=vi.fn();ui(<PermanentUserDelete showBlock user={{...user,can_delete_permanently:false,
     delete_block:{code:"USER_DELETE_HAS_HISTORY",tables:["customers","quotes"]}}} onDeactivate={onDeactivate}/>);
-  expect((screen.getByRole("button",{name:"Delete permanently (cancel invitation)"}) as HTMLButtonElement).disabled).toBe(true);
-  expect(screen.getByText(/Customers.*Quotations/)).toBeTruthy();
+  expect((screen.getByRole("button",{name:"Delete permanently"}) as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByRole("list",{name:"Records preventing deletion"})).toBeTruthy();
   expect(screen.getByText("Transfer ownership first.")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button",{name:"Offboarding"}));expect(onDeactivate).toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button",{name:"End employment and archive"}));expect(onDeactivate).toHaveBeenCalled();
 });
 
 it("enables detail deletion from the server block and hides protected accounts",()=>{
   const view=ui(<PermanentUserDelete showBlock user={{...user,activation_pending:false,delete_block:null}}/>);
-  expect((screen.getByRole("button",{name:"Delete permanently (cancel invitation)"}) as HTMLButtonElement).disabled).toBe(false);view.unmount();
+  expect((screen.getByRole("button",{name:"Delete permanently"}) as HTMLButtonElement).disabled).toBe(false);view.unmount();
   ui(<PermanentUserDelete showBlock user={{...user,delete_block:{code:"USER_DELETE_SELF",tables:[]}}}/>);
-  expect((screen.getByRole("button",{name:"Delete permanently (cancel invitation)"}) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByRole("button",{name:"Delete permanently"}) as HTMLButtonElement).disabled).toBe(true);
+});
+
+it("offers deletion for an activated signed-in account and confirms its name rather than email",async()=>{
+  ui(<PermanentUserDelete showBlock user={{...user,activation_pending:false,last_seen_at:"2026-11-25T10:00:00Z",delete_block:null}}/>);
+  confirm();
+  const dialog=screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByRole("textbox",{name:/Type the user/}),{target:{value:user.email}});
+  expect((within(dialog).getByRole("button",{name:"Delete permanently"}) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.change(within(dialog).getByRole("textbox",{name:/Type the user/}),{target:{value:user.full_name}});
+  fireEvent.click(within(dialog).getByRole("button",{name:"Delete permanently"}));
+  await waitFor(()=>expect(mocks.success).toHaveBeenCalled());
+  expect(mocks.push).toHaveBeenCalledWith("/admin/users");
+});
+
+it("lists late quote and workforce blockers and offers offboarding without losing confirmation",async()=>{
+  mocks.remove.mockRejectedValueOnce(new ApiClientError("Conflict",409,{code:"USER_DELETE_HAS_HISTORY",details:{tables:["quotes","workforce"]}}));
+  const onDeactivate=vi.fn();ui(<PermanentUserDelete user={user} onDeactivate={onDeactivate}/>);confirm();
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button",{name:"Delete permanently"}));
+  const alert=await screen.findByRole("alert");
+  expect(within(alert).getByText("Quotations")).toBeTruthy();
+  expect(within(alert).getByText("Linked to a workforce employee")).toBeTruthy();
+  expect((screen.getByRole("textbox",{name:/Type the user/}) as HTMLInputElement).value).toBe(user.full_name);
+  fireEvent.click(within(alert).getByRole("button",{name:"End employment and archive"}));
+  expect(onDeactivate).toHaveBeenCalled();expect(mocks.push).not.toHaveBeenCalled();
 });

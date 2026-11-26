@@ -39,7 +39,8 @@ class SessionService:
         end_sessions(self.db, "tenant", user.id, ids, reason="ended_by_admin")
         if ids:
             log_tenant_security(self.db, self.org, TENANT_SESSIONS_ENDED, user.id, user.email,
-                                details={"reason": "ended_by_admin", "sessions": len(ids), "by": actor.full_name})
+                                details={"reason": "ended_by_admin", "sessions": len(ids), "by": actor.full_name,
+                                         "performed_by": str(actor.id)})
             notices.sessions_ended_by_admin(self.db, self.org, user.id, actor.id)
         self.db.commit()
         return len(ids)
