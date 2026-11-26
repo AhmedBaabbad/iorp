@@ -13,6 +13,9 @@ test("deletes an activated user without work after Arabic name confirmation",asy
     else if(path==="/admin/users/unused-user/permanent"&&request.method()==="DELETE"){
       expect(request.postDataJSON()).toEqual({reason:"لا توجد سجلات عمل"});deleted=true;result={deleted:true};
     }else if(path==="/admin/users/unused-user")result=user;
+    else if(path==="/admin/users/unused-user/roles")result={user_id:user.id,roles:[]};
+    else if(path==="/admin/users/unused-user/assignable-roles")result={roles:[],restricted_count:0};
+    else if(path==="/admin/users/unused-user/effective-access")result={user_id:user.id,user_full_name:user.full_name,is_organization_root:false,generated_at:user.updated_at,total_roles:0,total_permissions:0,missing_permissions_count:0,roles:[],permissions_by_module:{},missing_permissions:[]};
     else if(path==="/admin/users/unused-user/presence")result={last_seen_at:user.last_seen_at,is_online:true};
     else if(path==="/admin/users/unused-user/deactivation-impact")result={user_id:user.id,user_full_name:user.full_name,dependencies:{assigned_customers:0,open_follow_ups:0,active_workforce_link:false},can_deactivate:true,total_blocking_items:0};
     else if(path==="/admin/users")result={items:deleted?[]:[user],total:deleted?0:1,page:1,page_size:50,pages:deleted?0:1};
