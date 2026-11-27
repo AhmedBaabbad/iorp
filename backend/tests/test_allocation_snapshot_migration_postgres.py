@@ -22,7 +22,7 @@ def test_active_and_released_snapshot_upgrade_downgrade_and_rerun(pg):
         orders=[]
         for n in range(3):
             o=ProductionOrder(organization_id=ids['org'],production_order_number=f'PO-SNAPSHOT-{n}',work_center_id=ids['center'],
-                product_type='film',planned_quantity=10,unit='kg',planned_start_date=date.today(),planned_end_date=date.today())
+                product_type='film',planned_quantity=10,unit='kg',planned_start_date=date.today(),planned_end_date=date.today(),created_by_user_id=ids['user'])
             o.items=[ProductionOrderItem(line_no=1,target_spec_json={'color':'old','thickness':{'min':.7,'max':.75}},planned_quantity=10,unit='kg')]
             db.add(o);orders.append(o)
         db.flush()
