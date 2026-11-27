@@ -123,7 +123,8 @@ def test_diff_and_strict_failure_roll_back_item_and_history(env,monkeypatch):
     d,_,_=released(env)
     before=env.db.scalar(select(func.count()).select_from(TenantActivityLog))
     def broken(*args,**kwargs):raise RuntimeError('history unavailable')
-    monkeypatch.setattr('app.foundation.application.activity_log.TenantActivityLogger.log_activity_strict',broken)
+    from app.core.interfaces.activity_log import get_registered_activity_logger
+    monkeypatch.setattr(get_registered_activity_logger(), 'log_activity_strict', broken)
     with pytest.raises(RuntimeError,match='history unavailable'):
         env.client.patch(f"{ROOT}/demands/{d['id']}/items/{item_id(d)}",json={'notes':'not committed'})
     env.db.expire_all()
@@ -156,7 +157,8 @@ def test_every_mutation_rolls_back_when_required_history_fails(env,monkeypatch,o
             env.db.scalar(select(func.count()).select_from(TenantActivityLog)))
     before=state()
     def broken(*args,**kwargs):raise RuntimeError('required history unavailable')
-    monkeypatch.setattr('app.foundation.application.activity_log.TenantActivityLogger.log_activity_strict',broken)
+    from app.core.interfaces.activity_log import get_registered_activity_logger
+    monkeypatch.setattr(get_registered_activity_logger(), 'log_activity_strict', broken)
     item_url=f"{ROOT}/demands/{d['id']}/items"
     calls={
         'demand_create':lambda:env.client.post(f'{ROOT}/demands',json={'customer_id':str(env.customer.id),'items':[{'product_type':'film','required_quantity':'10','unit':'kg'}]}),
