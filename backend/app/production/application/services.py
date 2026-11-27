@@ -1,4 +1,6 @@
 from app.core.interfaces.product_catalog import validate_specification_values
+from copy import deepcopy
+from app.core.interfaces.record_history import record_event, diff_fields
 import logging
 from datetime import time
 from decimal import Decimal
@@ -374,6 +376,9 @@ class ProductionOrderService:
 
         try:
             self.production_orders.add(production_order)
+            self.db.flush()
+            record_event(self.db, tenant.organization_id, 'production_order', production_order.id, production_order_number,
+                         'production_order.created', tenant, diff_fields({}, payload, payload))
             notices.order_awaits_release(self.db, tenant, production_order)
             self.db.commit()
         except IntegrityError as exc:
@@ -428,6 +433,7 @@ class ProductionOrderService:
         data.validate_unit_change(production_order.unit)
         payload = data.model_dump(exclude_unset=True)
         old_start, old_end = production_order.planned_start_date, production_order.planned_end_date
+        before = {key: deepcopy(getattr(production_order, key)) for key in payload}
         new_start, new_end = payload.get("planned_start_date", old_start), payload.get("planned_end_date", old_end)
         schedule_changed = (new_start, new_end) != (old_start, old_end)
         if schedule_changed:
@@ -464,6 +470,8 @@ class ProductionOrderService:
             setattr(production_order, field, value)
 
         try:
+            record_event(self.db, tenant.organization_id, 'production_order', production_order.id, production_order.production_order_number,
+                         'production_order.updated', tenant, diff_fields(before, payload, payload))
             if schedule_changed:
                 from app.production.application.order_reschedule_service import audit_reschedule
                 audit_reschedule(self.db, tenant, production_order, old_start, old_end)
@@ -618,5 +626,4 @@ from app.core.interfaces.activity_log import instrument_activity_methods
 
 instrument_activity_methods(WorkCenterService, {"create_work_center": ("work_center.created", "work_center"), "update_work_center": ("work_center.updated", "work_center"), "delete_work_center": ("work_center.deleted", "work_center")})
 instrument_activity_methods(ShiftDefinitionService, {"create_shift_definition": ("shift.created", "shift"), "update_shift_definition": ("shift.updated", "shift"), "delete_shift_definition": ("shift.deleted", "shift")})
-instrument_activity_methods(ProductionOrderService, {"create_production_order": ("production_order.created", "production_order"), "update_production_order": ("production_order.updated", "production_order")})
 instrument_activity_methods(ProductionOrderItemService, {"create_item": ("production_order_item.created", "production_order_item"), "update_item": ("production_order_item.updated", "production_order_item"), "delete_item": ("production_order_item.deleted", "production_order_item")})

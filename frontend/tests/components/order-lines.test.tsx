@@ -176,7 +176,7 @@ describe("order lines on a production order", () => {
     ui(<OrderLines order={order({ status: "completed", editable: false, allocation_open: false })} />);
     expect(screen.queryByRole("spinbutton")).toBeNull();
     expect(screen.queryByRole("form", { name: "Add a demand" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Remove" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Return to planning" })).toBeNull();
     expect(screen.getByRole("table", { name: "Order lines" })).toBeTruthy();
   });
 
@@ -188,14 +188,14 @@ describe("order lines on a production order", () => {
     ui(<OrderLines order={started} />);
     expect(screen.getByText(/Order on the floor/)).toBeTruthy();
     expect(screen.getAllByText("Added after start")).toHaveLength(1);
-    expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Return to planning" })).toHaveLength(2);
     expect(screen.getByRole("form", { name: "Add a demand" })).toBeTruthy();
   });
 
   it("offers release with the release permission alone", () => {
     perms.granted = new Set(["production:planning:release_allocation"]);
     ui(<OrderLines order={order({ status: "on_hold", editable: false, allocation_open: true })} />);
-    expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Return to planning" })).toHaveLength(2);
     expect(screen.queryByRole("spinbutton")).toBeNull();
   });
 });

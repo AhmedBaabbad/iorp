@@ -346,6 +346,7 @@ class TenantActivityLog(Base):
         Index("ix_foundation_activity_org_created", "organization_id", "created_at"),
         Index("ix_foundation_activity_actor_id", "actor_id"),
         Index("ix_foundation_activity_action", "action"),
+        Index("ix_foundation_activity_record_history", "organization_id", "entity_type", "entity_id", "created_at", "id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

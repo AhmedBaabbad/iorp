@@ -11,7 +11,7 @@ from sqlalchemy import select
 from app.production.application import notices
 from app.core.interfaces import approvals
 from app.core.db import Base
-from app.core.interfaces.activity_log import get_registered_activity_logger
+from app.core.interfaces.record_history import record_event
 from app.core.utils import utc_now
 from app.production.application.allocation_service import AllocationLifecycleService
 from app.production.domain import order_lifecycle as lifecycle
@@ -36,7 +36,7 @@ def organization_today(db, organization_id):
         return utc_now().date()
 
 
-def _record(db, order, action, *, trigger, actor_user_id, reason, now):
+def _record(db, order, action, *, trigger, actor_user_id, reason, now, related=None):
     """The single write of an order's status: target, actual dates, version and history."""
     previous = S(order.status)
     order.status = action.target
@@ -49,6 +49,11 @@ def _record(db, order, action, *, trigger, actor_user_id, reason, now):
     db.add(ProductionOrderStatusHistory(organization_id=order.organization_id, production_order_id=order.id, from_status=previous.value,
                                         to_status=action.target.value, action=action.name, trigger=trigger.value,
                                         actor_user_id=actor_user_id, reason=(reason or "").strip() or None, created_at=now))
+    from types import SimpleNamespace
+    record_event(db, order.organization_id, 'production_order', order.id, order.production_order_number,
+                 'production_order.status_changed', SimpleNamespace(user_id=actor_user_id),
+                 [dict(field='status', old=previous.value, new=action.target.value)], reason,
+                 related={'action': action.name, 'trigger': trigger.value, **(related or {})})
     return previous
 
 
@@ -123,14 +128,9 @@ class OrderStatusService:
             actor = self.tenant.user_id if trigger == Trigger.MANUAL else None
             if trigger == Trigger.MANUAL and action.name in ("release", "close"):
                 approvals.sign(db, self.tenant, "production_order", order.id, action.name, action.permission, reason)
-            previous = _record(db, order, action, trigger=trigger, actor_user_id=actor, reason=reason, now=utc_now())
-            details = dict(action=action.name, from_status=previous.value, to_status=action.target.value, trigger=trigger.value, reason=reason or "")
-            if released is not None:
-                details["released_allocations"] = len(released)
-            if zero_output:
-                details["zero_output"] = True
-            get_registered_activity_logger().log_activity(db, self.org_id, "production_order.status_changed", "production_order", order.id,
-                                                          order.production_order_number, actor_id=actor, details={k: str(v) for k, v in details.items()})
+            related = {'released_allocations': len(released)} if released is not None else {}
+            if zero_output: related['zero_output'] = True
+            _record(db, order, action, trigger=trigger, actor_user_id=actor, reason=reason, now=utc_now(), related=related)
             notices.order_status_changed(db, self.tenant, order, action.name, actor)
             db.commit()
             db.expire_all()

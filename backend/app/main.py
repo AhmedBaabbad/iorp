@@ -141,6 +141,11 @@ reporting_providers.branding_provider = lambda db, organization_id: BrandingServ
 from app.core.interfaces.activity_log import register_activity_logger
 from app.foundation.application.activity_log import TenantActivityLogger
 register_activity_logger(TenantActivityLogger())
+from app.production.application.record_history import register as register_production_history
+register_production_history()
+from app.core.interfaces.order_line_evidence import register_order_line_evidence
+from app.quality.application.order_line_evidence import evidence as quality_line_evidence
+register_order_line_evidence(quality_line_evidence)
 from app.core.interfaces.approvals import register_approvals  # noqa: E402
 from app.foundation.application.delegation_service import FoundationApprovals  # noqa: E402
 from app.foundation.infrastructure import delegation_models  # noqa: E402,F401  (tables in the metadata)
@@ -331,6 +336,8 @@ app.include_router(organizations_router, prefix=settings.api_prefix)
 app.include_router(tenant_audit_router, prefix=f"{settings.api_prefix}/admin")
 app.include_router(tenant_security_router, prefix=f"{settings.api_prefix}/admin")
 app.include_router(tenant_activity_router, prefix=f"{settings.api_prefix}/admin")
+from app.foundation.api.routes_record_history import router as record_history_router
+app.include_router(record_history_router, prefix=settings.api_prefix)
 
 
 @app.get("/health", tags=["system"])

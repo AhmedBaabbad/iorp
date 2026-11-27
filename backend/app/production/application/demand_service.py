@@ -10,6 +10,7 @@ from app.core.utils import utc_now
 from app.core.interfaces import sales_order_source
 from app.core.interfaces.product_catalog import unknown_product_types
 from app.core import numbering
+from app.core.interfaces.record_history import record_event, diff_fields
 from app.production.api.demand_schemas import DemandItemFields
 from app.production.infrastructure.models import ProductionDemand, ProductionDemandItem
 from app.production.infrastructure.demand_repository import ProductionDemandRepository, PLANNABLE
@@ -60,6 +61,25 @@ class ProductionDemandService:
     def editable(row):
         if row.allocations or row.status not in ("draft", "ready_for_planning"):
             raise DemandError("demand_not_editable", 409)
+
+    @staticmethod
+    def item_editable(row, item=None):
+        if row.status not in ('draft', 'ready_for_planning', 'partially_planned', 'planned'):
+            raise DemandError('demand_not_editable', 409)
+        if item is not None and any(a.status == 'active' for a in item.allocations):
+            raise DemandError('DEMAND_ITEM_ALLOCATED', 409)
+        if row.status == 'planned' and not any(not any(a.status == 'active' for a in i.allocations) for i in row.items):
+            raise DemandError('demand_not_editable', 409)
+
+    def _event(self, row, action, before=None, after=None, reason=None, related=None):
+        before, after = before or {}, after or {}
+        record_event(self.db, self.org_id, 'production_demand', row.id, row.demand_number,
+                     'production_demand.' + action, self.tenant,
+                     diff_fields(before, after, sorted(set(before) | set(after))), reason, related)
+
+    @staticmethod
+    def _item_values(item):
+        return {k: deepcopy(getattr(item, k)) for k in ('line_no', 'product_type', 'target_spec_json', 'required_quantity', 'unit', 'notes')}
 
     # --- From a confirmed sales order (SALES-001) -------------------------------------------------------------------
     # A demand takes part (or all) of a confirmed sales order's lines. Its lines keep the order's product, specification
@@ -136,6 +156,10 @@ class ProductionDemandService:
             row.items.append(ProductionDemandItem(line_no=number, product_type=line.product_type, target_spec_json=deepcopy(line.properties),
                                                   required_quantity=wanted.quantity, unit=line.unit, notes=wanted.notes,
                                                   source_order_item_id=line.id))
+        self.db.flush()
+        self._event(row, 'created', after={'status': row.status, 'source_order_number': row.source_order_number})
+        for item in row.items:
+            self._event(row, 'item_added', after=self._item_values(item), related={'item_id': item.id})
         self.db.commit()
         return row
 
@@ -178,6 +202,8 @@ class ProductionDemandService:
         item = ProductionDemandItem(**deepcopy(data.model_dump(exclude={"line_no", "id"})), line_no=line)
         row.items.append(item)
         row.updated_at = utc_now()
+        self.db.flush()
+        self._event(row, 'item_added', after=self._item_values(item), related={'item_id': item.id})
         return item
 
     def create(self, data):
@@ -191,6 +217,7 @@ class ProductionDemandService:
         keep = self._quote_types(row)
         for item in data.items:
             self._add_item(row, item, keep)
+        self._event(row, 'created', after={k: getattr(row, k) for k in ('customer_id', 'quote_id', 'priority', 'notes', 'status', 'request_date', 'requested_delivery_date')})
         self.db.commit()
         return row
 
@@ -198,6 +225,7 @@ class ProductionDemandService:
         row = self.get(demand_id, write=True)
         self.editable(row)
         values = data.model_dump(exclude_unset=True, exclude={"items"})
+        before = {key: deepcopy(getattr(row, key)) for key in values}
         if row.source_order_id and (data.items is not None or values.get("customer_id", row.customer_id) != row.customer_id
                                     or values.get("quote_id", row.quote_id) != row.quote_id):
             raise DemandError("sales_order_lines_locked", 409)
@@ -226,6 +254,8 @@ class ProductionDemandService:
                 except ValueError as exc:
                     raise DemandError("UNIT_UNKNOWN", 422) from exc
                 previous_units.append(unit)
+            for old_item in row.items:
+                self._event(row, 'item_deleted', self._item_values(old_item), related={'item_id': old_item.id})
             row.items.clear()
             self.db.flush()
             for item, previous_unit in zip(data.items, previous_units):
@@ -233,6 +263,7 @@ class ProductionDemandService:
         for key, value in values.items():
             setattr(row, key, value)
         row.updated_at = utc_now()
+        self._event(row, 'updated', before, {key: getattr(row, key) for key in values})
         self.db.commit()
         return row
 
@@ -243,25 +274,33 @@ class ProductionDemandService:
         if row.allocations:
             # Released allocations are planning history and keep the demand alive.
             raise DemandError("demand_has_allocation_history", 409)
+        self._event(row, 'deleted', before={'status': row.status, 'demand_number': row.demand_number})
         self.db.delete(row)
         self.db.commit()
 
     def add_item(self, demand_id, data):
         row = self.get(demand_id, write=True)
-        self.editable(row)
+        if row.status not in ('draft', 'ready_for_planning', 'partially_planned'):
+            raise DemandError('demand_not_editable', 409)
         if row.source_order_id:
             raise DemandError("sales_order_lines_locked", 409)
         item = self._add_item(row, data)
+        self.db.flush()
+        from app.production.application.allocation_service import AllocationService
+        AllocationService().sync_demand_status(self.db, self.org_id, row, self.tenant)
         self.db.commit()
         return item
 
     def change_item(self, demand_id, item_id, data=None):
         row = self.get(demand_id, write=True)
-        self.editable(row)
         item = next((item for item in row.items if item.id == item_id), None)
         if item is None:
             raise DemandError("item_not_found", 404)
+        self.item_editable(row, item)
+        before = self._item_values(item)
         if data is None:
+            if item.allocations:
+                raise DemandError('demand_has_allocation_history', 409)
             if row.status == "ready_for_planning" and len(row.items) == 1:
                 raise DemandError("items_required")
             row.items.remove(item)
@@ -292,6 +331,11 @@ class ProductionDemandService:
             for key, value in values.items():
                 setattr(item, key, deepcopy(value))
         row.updated_at = utc_now()
+        self.db.flush()
+        self._event(row, 'item_deleted' if data is None else 'item_updated', before,
+                    {} if data is None else self._item_values(item), related={'item_id': item_id})
+        from app.production.application.allocation_service import AllocationService
+        AllocationService().sync_demand_status(self.db, self.org_id, row, self.tenant)
         self.db.commit()
         return item
 
@@ -314,7 +358,7 @@ class ProductionDemandService:
         self.db.commit()
         return imported
 
-    def update_status(self, demand_id, new_status):
+    def update_status(self, demand_id, new_status, reason=None):
         row = self.get(demand_id, write=True)
         if new_status in ("partially_planned", "planned"):
             # Planning progress is derived from ACTIVE allocations and cannot be forced.
@@ -330,12 +374,14 @@ class ProductionDemandService:
             if self._sales_order(row.source_order_id, lock=True).status != "confirmed":
                 raise DemandError("sales_order_not_confirmed", 409)
             self._assert_within_order(row)
+        old_status = row.status
         row.status = new_status
         row.planning_sequence = None
         self.db.flush()
         # Compact only manually ordered rows, leaving automatic priority ordering intact.
         for position, demand in enumerate((d for d in self.repo.queue(self.org_id) if d.planning_sequence is not None), 1):
             demand.planning_sequence = position
+        self._event(row, 'status_changed', {'status': old_status}, {'status': new_status}, reason)
         self.db.commit()
         return row
 
@@ -367,8 +413,13 @@ class ProductionDemandService:
         result.update(total_quantity=sum(totals.values(), Decimal(0)), quantities_by_unit=totals)
         allocated = sum((i.active_allocated_quantity for i in row.items), Decimal(0))
         released = sum((i.released_allocated_quantity for i in row.items), Decimal(0))
+        released_units = {}
+        for item in row.items:
+            for unit, amount in item.released_quantities_by_unit.items():
+                released_units[unit] = released_units.get(unit, Decimal(0)) + amount
         required = sum((i.required_quantity for i in row.items), Decimal(0))
         result.update(total_required=required, total_allocated=allocated, total_active_allocated=allocated, total_released_allocated=released,
+                      released_quantities_by_unit=released_units,
                       total_remaining=required-allocated, allocation_percentage=(allocated / required * 100 if required else Decimal(0)))
         if detail or planning:
             result["items"] = row.items

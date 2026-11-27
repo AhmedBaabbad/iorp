@@ -122,6 +122,9 @@ class DemandItemAllocationResponse(BaseModel):
     created_at: ISODatetime
     released_at: ISODatetime | None
     release_reason: str | None
+    target_spec_json_snapshot: dict | None = None
+    product_type_snapshot: str | None = None
+    unit: str
 
 
 class DemandItemResponse(DemandItemFields):
@@ -130,6 +133,7 @@ class DemandItemResponse(DemandItemFields):
     allocated_quantity: Decimal
     active_allocated_quantity: Decimal
     released_allocated_quantity: Decimal
+    released_quantities_by_unit: dict[str, Decimal] = Field(default_factory=dict)
     remaining_quantity: Decimal
     planning_state: Literal["ready_for_planning", "partially_planned", "planned"]
     allocations: list[DemandItemAllocationResponse] = Field(default_factory=list)
@@ -161,6 +165,7 @@ class DemandResponse(BaseModel):
     total_allocated: Decimal
     total_active_allocated: Decimal
     total_released_allocated: Decimal
+    released_quantities_by_unit: dict[str, Decimal] = Field(default_factory=dict)
     total_remaining: Decimal
     allocation_percentage: Decimal
     id: UUID
@@ -205,6 +210,7 @@ class PaginatedPlanningList(PaginatedDemandList):
 
 class DemandStatusRequest(DemandInput):
     status: ProductionDemandStatus
+    reason: str | None = Field(default=None, min_length=1, max_length=500)
 
 
 class ReorderRequest(DemandInput):

@@ -529,6 +529,14 @@ class ProductionDemandItem(Base):
         return sum((a.allocated_quantity for a in self.allocations if a.status == "released"), Decimal(0))
 
     @property
+    def released_quantities_by_unit(self) -> dict:
+        totals = {}
+        for allocation in self.allocations:
+            if allocation.status == 'released':
+                totals[allocation.unit] = totals.get(allocation.unit, Decimal(0)) + allocation.allocated_quantity
+        return totals
+
+    @property
     def allocated_quantity(self) -> Decimal:
         # Backward-compatible name for the active allocated quantity.
         return self.active_allocated_quantity
@@ -569,6 +577,9 @@ class ProductionAllocation(Base):
     allocated_quantity: Mapped[Decimal] = mapped_column(Numeric(15, 3), nullable=False)
     unit: Mapped[str] = mapped_column(String(20), nullable=False)
     # ACTIVE reserves demand quantity; RELEASED is kept as history and never counts.
+    target_spec_json_snapshot: Mapped[dict | None] = mapped_column(JSON)
+    product_type_snapshot: Mapped[str | None] = mapped_column(String(100))
+    # unit already is the immutable allocation-time unit; never follow demand edits.
     status: Mapped[str] = mapped_column(String(10), nullable=False, default="active", server_default="active")
     released_at: Mapped[datetime | None] = mapped_column(TZDateTime)
     released_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("foundation_users.id", ondelete="SET NULL", name="fk_allocation_released_by"))

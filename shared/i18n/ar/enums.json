@@ -954,7 +954,7 @@
     },
     "AllocationStatuses": {
       "active": "نشط",
-      "released": "محرَّر"
+      "released": "أُعيد للتخطيط"
     },
     "ResultsDispositions": {
       "customer_good": "جيد للعملاء",

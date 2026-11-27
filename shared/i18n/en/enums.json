@@ -954,7 +954,7 @@
     },
     "AllocationStatuses": {
       "active": "Active",
-      "released": "Released"
+      "released": "Returned to planning"
     },
     "ResultsDispositions": {
       "customer_good": "Good for customers",

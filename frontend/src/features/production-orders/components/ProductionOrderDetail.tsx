@@ -6,6 +6,8 @@ import { OrderAllocations } from "./OrderAllocations";
 import { OrderLines } from "./OrderLines";
 import { OrderReportButton } from '@/features/reports/OrderReportButton';
 import { OrderStatusPanel } from "./OrderStatusPanel";
+import {Tabs} from "@/components/ui/Tabs";
+import {RecordHistory} from "@/components/RecordHistory";
 import { OrderStatusTimeline } from "./OrderStatusTimeline";
 import {RescheduleOrderButton} from "./OrderReschedule";
 import { OrderResultSection } from "@/features/production-results";
@@ -85,6 +87,7 @@ const styles: Record<string, CSSProperties> = {
 };
 
 export function ProductionOrderDetail() {
+  const history=useTranslations("production.recordHistory");
   const t = useTranslations("production.productionOrders");
   const messages = useTranslations("messages");
   const fmt = useFormatter();
@@ -194,7 +197,7 @@ export function ProductionOrderDetail() {
       ) : null}
 
       {!isLoading && !error && !isNotFound && order ? (
-        <>
+        <Tabs label={t("detailTitle")} items={[{id:"data",label:history("data"),content:<>
           <section style={styles.detailGrid} aria-label={t("detailTitle")}>
             <DetailItem label={t("fields.orderNumber")} value={order.production_order_number} />
             <DetailItem
@@ -248,8 +251,7 @@ export function ProductionOrderDetail() {
               productionOrderStatus={order.status}
             />
           )}
-          <OrderStatusTimeline orderId={order.id} revision={revision} reschedules={order.reschedule_history} />
-        </>
+        </>},{id:"history",label:history("title"),content:<><RecordHistory entityType="production_order" entityId={order.id} revision={revision}/><details><summary>{history("legacyTimeline")}</summary><OrderStatusTimeline orderId={order.id} revision={revision} reschedules={order.reschedule_history}/></details></>}]} />
       ) : null}
           {order && <Signatures resourceType="production_order" id={order.id} version={order.status} />}
 </PageFrame>

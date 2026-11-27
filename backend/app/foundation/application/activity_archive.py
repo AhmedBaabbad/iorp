@@ -90,7 +90,7 @@ class ActivityArchiveService:
         return [dict(month=m, rows=n, due_on=due_on(m), delete_on=delete_on(m),
                      downloaded_at=records[m].downloaded_at if m in records else None,
                      downloaded_by_name=records[m].downloaded_by_name if m in records else None)
-                for m, n in sorted(months.items())]
+                for m, n in sorted(months.items()) if m not in records or records[m].deleted_at is None]
 
     def _due_month(self, month):
         start, end = _bounds(month)
@@ -139,7 +139,17 @@ class ActivityArchiveService:
 
 
 def _purge(db, organization_id, start, end) -> int:
-    return db.execute(delete(Activity).where(Activity.organization_id == organization_id, Activity.created_at >= start, Activity.created_at < end)
+    # Versioned record-history events remain queryable after monthly archive/export.
+    # ActivityArchive stores download metadata, not the exported rows or CSV bytes.
+    # Preserve the canonical events here rather than inventing a second history table.
+    from app.core.interfaces.record_history import registered_record_types
+    from sqlalchemy import or_, and_, cast, String
+    # Text cast tolerates arbitrary legacy JSON versions; never cast unknown text
+    # to an integer in PostgreSQL. SQLite returns JSON numbers as numeric values.
+    durable = or_(cast(Activity.details['schema_version'].as_string(), String) == '1',
+                  and_(Activity.entity_type.in_(registered_record_types()), Activity.entity_id.is_not(None)))
+    return db.execute(delete(Activity).where(Activity.organization_id == organization_id, Activity.created_at >= start, Activity.created_at < end,
+                                            or_(durable.is_(None), ~durable))
                       .execution_options(synchronize_session=False)).rowcount or 0
 
 
@@ -153,6 +163,10 @@ def run_daily(db, now: datetime | None = None) -> dict:
     for org in organizations:
         for month, rows in _months(db, org, now).items():
             record = _record(db, org, month)
+            if record.deleted_at is not None:
+                # Durable record history remains after cleanup; do not re-purge or
+                # re-notify the same completed archive every day.
+                continue
             record.rows = rows
             params = dict(month=month, rows=rows, delete_on=delete_on(month))
             resource = uuid5(NAMESPACE_URL, f"activity-archive/{org}/{month}")

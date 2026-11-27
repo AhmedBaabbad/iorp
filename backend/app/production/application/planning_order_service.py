@@ -1,10 +1,12 @@
 from decimal import Decimal
+from copy import deepcopy
+from app.core.interfaces.record_history import record_event, diff_fields
+from app.production.application.record_history import allocation_event, order_lines
 from app.production.domain.units import checked_unit
 from types import SimpleNamespace
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from app.production.application import notices
-from app.core.interfaces.activity_log import get_registered_activity_logger
 from app.core.utils import utc_now
 from app.production.application.order_numbers import next_order_number
 from app.production.application.allocation_service import AllocationService, assert_allocation_open, follow_allocations
@@ -85,11 +87,17 @@ class PlanningOrderService:
                 order.allocations.append(ProductionAllocation(organization_id=org_id, production_order_id=order.id,
                     production_demand_id=item.production_demand_id, production_demand_item_id=item.id,
                     allocated_quantity=qty, unit=item.unit, order_status_at_allocation=ProductionOrderStatus.DRAFT.value,
+                    target_spec_json_snapshot=deepcopy(item.target_spec_json), product_type_snapshot=item.product_type,
                     created_by_user_id=self.tenant.user_id))
             db.flush()
             rebuild_lines(db, order)
+            record_event(db, org_id, 'production_order', order.id, number, 'production_order.created', self.tenant,
+                         diff_fields({}, {**order_lines(order), 'status': 'draft', 'planned_quantity': order.planned_quantity}, ['lines', 'status', 'planned_quantity']))
+            for allocation in order.allocations:
+                allocation_event(db, self.tenant, allocation, 'production_allocation.created', {},
+                                 {'allocated_quantity': allocation.allocated_quantity, 'unit': allocation.unit, 'target_spec_json': allocation.target_spec_json_snapshot})
             for demand_id in sorted({item.production_demand_id for item, _, _ in rows}, key=str):
-                self.allocations.sync_demand_status(db, org_id, db.get(ProductionDemand, demand_id))
+                self.allocations.sync_demand_status(db, org_id, db.get(ProductionDemand, demand_id), self.tenant)
             notices.order_awaits_release(db, self.tenant, order)
             db.commit()
             db.expire_all()
@@ -143,10 +151,6 @@ class PlanningOrderService:
                      planned_start_date=o.planned_start_date, planned_end_date=o.planned_end_date,
                      finish_overdue=finish_overdue(o.status, o.planned_end_date, today)) for o in eligible]
 
-    def _audit(self, action, order, **details):
-        get_registered_activity_logger().log_activity(self.db, self.org_id, action, "production_order", order.id, order.production_order_number,
-                                                      actor_id=self.tenant.user_id, details={k: str(v) for k, v in details.items()})
-
     def eligible_demand_items(self, order_id, customers, search="", limit=20):
         """Demand items that may join an open order, searched on the server (demand number or customer), at most `limit`.
 
@@ -193,11 +197,14 @@ class PlanningOrderService:
                      requested_delivery_date=d.requested_delivery_date) for i, d, remaining in found]
 
     def _finish(self, order, demand_ids):
+        before = order_lines(order)
         follow_allocations(self.db, self.org_id, order)
+        record_event(self.db, self.org_id, 'production_order', order.id, order.production_order_number,
+                     'production_order.lines_changed', self.tenant, diff_fields(before, order_lines(order), ['lines']))
         for demand_id in sorted(demand_ids, key=str):
             demand = self.db.scalar(select(ProductionDemand).where(ProductionDemand.organization_id == self.org_id, ProductionDemand.id == demand_id)
                                     .with_for_update().execution_options(populate_existing=True))
-            self.allocations.sync_demand_status(self.db, self.org_id, demand)
+            self.allocations.sync_demand_status(self.db, self.org_id, demand, self.tenant)
         self.db.commit()
         self.db.expire_all()
         return self.db.get(ProductionOrder, order.id)
@@ -218,9 +225,11 @@ class PlanningOrderService:
             order.allocations.append(ProductionAllocation(organization_id=self.org_id, production_order_id=order.id,
                 production_demand_id=item.production_demand_id, production_demand_item_id=item.id,
                 allocated_quantity=qty, unit=item.unit, order_status_at_allocation=status, created_by_user_id=self.tenant.user_id))
+            order.allocations[-1].target_spec_json_snapshot = deepcopy(item.target_spec_json)
+            order.allocations[-1].product_type_snapshot = item.product_type
             db.flush()
-            self._audit("production_order.allocation_added", order, production_demand_item_id=item.id, allocated_quantity=qty,
-                        order_status=status, planned_quantity_before=before)
+            allocation_event(db, self.tenant, order.allocations[-1], 'production_allocation.created', {},
+                             {'allocated_quantity': qty, 'unit': item.unit, 'target_spec_json': item.target_spec_json})
             return self._finish(order, {item.production_demand_id})
         except (IntegrityError, OperationalError) as exc:
             db.rollback()
@@ -246,8 +255,8 @@ class PlanningOrderService:
             allocation.allocated_quantity = quantity
             allocation.updated_at = utc_now()
             db.flush()
-            self._audit("production_order.allocation_changed", order, allocation_id=allocation.id, from_quantity=previous, to_quantity=quantity,
-                        order_status=ProductionOrderStatus(order.status).value)
+            allocation_event(db, self.tenant, allocation, 'production_allocation.quantity_changed',
+                             {'allocated_quantity': previous}, {'allocated_quantity': quantity})
             return self._finish(order, {allocation.production_demand_id})
         except (IntegrityError, OperationalError) as exc:
             db.rollback()
@@ -273,8 +282,8 @@ def order_response(order, db, tenant, customer_lookup):
         result["allocations"].append(dict(id=a.id, production_demand_id=a.production_demand_id,
             production_demand_item_id=a.production_demand_item_id, demand_number=a.demand.demand_number,
             customer_id=a.demand.customer_id, customer_name=customer.customer_name if customer else None, demand_item_line_no=a.demand_item.line_no,
-            product_type=order.product_type, allocated_quantity=a.allocated_quantity, unit=a.unit,
-            target_spec_json=a.demand_item.target_spec_json, production_order_item_id=a.production_order_item_id,
+            product_type=a.product_type_snapshot, allocated_quantity=a.allocated_quantity, unit=a.unit,
+            target_spec_json=a.target_spec_json_snapshot, production_order_item_id=a.production_order_item_id,
             order_line_no=line.line_no if line else None,
             status=a.status, allocated_at=a.created_at, released_at=a.released_at, release_reason=a.release_reason,
             order_status_at_allocation=a.order_status_at_allocation,

@@ -18,7 +18,8 @@ test("extends an overdue order in Arabic without leaving its detail page",async(
       expect(body.planned_start_date).toBeUndefined();
       order={...order,planned_end_date:body.planned_end_date,lifecycle:{...lifecycle,finish_overdue:false},reschedule_history:[{id:"event1",created_at:"2026-11-24T12:00:00Z",actor_user_id:"u1",actor_name:"Browser tester",old_start:order.planned_start_date,new_start:order.planned_start_date,old_end:order.planned_end_date,new_end:body.planned_end_date,reason:body.reason}]};
       result=order;
-    }else if(path==="/production/production-orders/reschedule-order")result=order;
+    }else if(path==="/record-history/production_order/reschedule-order")result={items:order.reschedule_history.map((event)=>({...(event as object),action:"production_order.rescheduled",details:{...(event as object)}})),total:order.reschedule_history.length,pages:1};
+    else if(path==="/production/production-orders/reschedule-order")result=order;
     else if(path.includes("/notifications"))result={items:[],total:0,pages:1,unread_count:0,ack_required_count:0,unread:0,latest:[],pending_ack:[]};
     else if(path.includes("/signatures"))result={items:[],signatures:[],requirements:[]};
     await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(result)});
@@ -37,7 +38,8 @@ test("extends an overdue order in Arabic without leaving its detail page",async(
   await dialog.getByRole("button",{name:directory.save,exact:true}).click();
   await expect(dialog).toBeHidden();
   await expect(extend).toHaveCount(0);
-  await expect(page.getByText("تأخر التشغيل بسبب الصيانة")).toBeVisible();
-  await expect(page).toHaveURL(/\/production-orders\/reschedule-order$/);
+  await page.getByRole("tab",{name:ar.recordHistory.title,exact:true}).click();
+  await expect(page.getByRole("region",{name:ar.recordHistory.title,exact:true}).getByText("تأخر التشغيل بسبب الصيانة")).toBeVisible();
+  await expect(page).toHaveURL(/\/production-orders\/reschedule-order\?tab=history$/);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
 });
