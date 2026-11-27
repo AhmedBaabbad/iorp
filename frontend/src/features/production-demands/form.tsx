@@ -41,6 +41,7 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
   const [priority, setPriority] = useState<DemandPriority>("normal");
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<DemandStatus>("draft");
+  const [hasAllocationHistory,setHasAllocationHistory]=useState(false);
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(!!id);
@@ -56,6 +57,7 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
     let active = true;
     demandsApi.get(id).then(d => {
       if (!active) return;
+      setHasAllocationHistory(d.items.some(item=>Boolean(item.allocations?.length)));
       setCustomer(d.customer.id); setSelectedCustomer(d.customer); setSalesOrder(d.sales_order ?? null); setRequestDate(d.request_date); setDelivery(d.requested_delivery_date ?? ""); setPriority(d.priority); setNotes(d.notes ?? ""); setStatus(d.status); setRows(d.items.map(newRow));
     }).catch(e => { if (active) setError(errorKey(e)); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -110,7 +112,7 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
     } catch (e) { setError(errorKey(e)); } finally { setBusy(false); }
   }
   const customerOptions = selectedCustomer && !customers.some(c => c.id === selectedCustomer.id) ? [selectedCustomer, ...customers] : customers;
-  const editable = ["draft", "ready_for_planning"].includes(status);
+  const editable = !hasAllocationHistory && ["draft", "ready_for_planning"].includes(status);
   return <PageFrame title={id ? t("editTitle") : t("createTitle")} subtitle={t("listSubtitle")}>
     <div className={s.toolbar}><Link href="/production/demands" className={s.button}>{t("backToList")}</Link>
       {onBack && <button type="button" className={s.linkButton} onClick={()=>unsaved.requestNavigation(onBack)}>{t("fromSalesOrder.fromOrderInstead")}</button>}</div>

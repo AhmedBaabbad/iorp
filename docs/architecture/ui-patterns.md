@@ -28,4 +28,10 @@ Transport option responses omit driver personal fields and vehicle type. The UI 
 
 ## Verification
 
+Record details expose the shared `RecordHistory` in a History tab. Production
+demands edit free items in `RecordDialog`; ACTIVE allocations lock an item,
+returned allocations preserve their original specification snapshot. See
+[record-history.md](record-history.md) for strict event writes, visibility,
+permanent history retention through monthly archival, and the event schema.
+
 Run `npm test`, `npx tsc --noEmit`, `npm run lint`, and `npm run build` from `frontend`. For browser checks, install Chromium with `npx playwright install chromium`, then run `npm run test:e2e`. `E2E_CHROME_PATH` can select an existing Chrome executable. Browser tests use deterministic API fixtures to verify UI flows on desktop and phone viewports, including Arabic RTL; backend integration tests verify the server independently.

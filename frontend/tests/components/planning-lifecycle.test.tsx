@@ -133,6 +133,11 @@ describe("planning queue", () => {
 });
 
 describe("demand planning / allocations", () => {
+  it("keeps returned quantities in their original unit after an item unit changes",()=>{
+    ui(<DemandAllocations demand={demand({released_quantities_by_unit:{kg:"400.000"},total_released_allocated:"400.000"},
+      {unit:"roll",released_quantities_by_unit:{kg:"400.000"},allocations:[allocation({status:"released",unit:"kg",allocated_quantity:"400.000"})]})}/>);
+    expect(within(screen.getByLabelText("Planning summary")).getByText("400.000 kg")).toBeTruthy();
+  });
   it("keeps released allocation history visible with its reason", () => {
     const released = allocation({ id: "a2", production_order_id: "po2", production_order_number: "PO-2026-000002", production_order_status: "cancelled",
                                   allocated_quantity: "400.000", status: "released", released_at: "2026-09-26T12:00:00Z", release_reason: "Customer withdrew" });
@@ -140,12 +145,12 @@ describe("demand planning / allocations", () => {
     const history = screen.getByRole("table", { name: "Allocation history" });
     const rows = within(history).getAllByRole("row");
     expect(within(rows[1]).getByText("Active")).toBeTruthy();
-    expect(within(rows[2]).getByText("Released")).toBeTruthy();
+    expect(within(rows[2]).getByText("Returned to planning")).toBeTruthy();
     expect(within(rows[2]).getByText("Customer withdrew")).toBeTruthy();
-    expect(within(rows[1]).getByRole("button", { name: "Release" })).toBeTruthy();
-    expect(within(rows[2]).queryByRole("button", { name: "Release" })).toBeNull();
+    expect(within(rows[1]).getByRole("button", { name: "Return to planning" })).toBeTruthy();
+    expect(within(rows[2]).queryByRole("button", { name: "Return to planning" })).toBeNull();
     const summary = screen.getByLabelText("Planning summary");
-    const releasedCell = within(summary).getByText("Released allocated").nextElementSibling;
+    const releasedCell = within(summary).getByText("Returned to planning").nextElementSibling;
     expect(releasedCell?.textContent).toBe("400.000 kg");
   });
 
@@ -153,40 +158,40 @@ describe("demand planning / allocations", () => {
     api.apiClient.mockResolvedValue({});
     const onChanged = vi.fn();
     const view = ui(<DemandAllocations demand={demand()} onChanged={onChanged} />);
-    fireEvent.click(screen.getByRole("button", { name: "Release" }));
-    const dialog = screen.getByRole("dialog", { name: "Release allocation from PO-2026-000001" });
-    const confirm = within(dialog).getByRole("button", { name: "Release" });
+    fireEvent.click(screen.getByRole("button", { name: "Return to planning" }));
+    const dialog = screen.getByRole("dialog", { name: "Return allocation from PO-2026-000001 to planning" });
+    const confirm = within(dialog).getByRole("button", { name: "Return to planning" });
     expect((confirm as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(within(dialog).getByLabelText("Reason"), { target: { value: "  Wrong line  " } });
     await act(async () => { fireEvent.click(confirm); });
     expect(api.apiClient).toHaveBeenCalledWith("/production/allocations/a1/release", { method: "POST", body: { reason: "Wrong line" } });
     expect(onChanged).toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByRole("status").textContent).toContain("Allocation released");
+    expect(screen.getByRole("status").textContent).toContain("Quantity returned to planning");
 
     const after = demand({ status: "ready_for_planning", total_active_allocated: "0", total_released_allocated: "600.000", total_remaining: "1000.000", allocation_percentage: "0" },
       { active_allocated_quantity: "0", released_allocated_quantity: "600.000", remaining_quantity: "1000.000", allocations: [allocation({ status: "released", released_at: "2026-09-26T12:00:00Z", release_reason: "Wrong line" })] });
     view.rerender(<NextIntlClientProvider locale="en" messages={messages} timeZone="UTC"><DemandAllocations demand={after} onChanged={onChanged} /></NextIntlClientProvider>);
     expect(screen.getByText(/Remaining quantity: 1000 kg/)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Release" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Return to planning" })).toBeNull();
   });
 
   it("offers release while the order is in progress, not once it is completed", () => {
     // PROD-QUALITY-FIX-001: allocations follow the order's open/locked state, not whether execution started.
     ui(<DemandAllocations demand={demand({}, { allocations: [allocation({ production_order_status: "in_progress" })] })} />);
-    expect(screen.getByRole("button", { name: "Release" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Return to planning" })).toBeTruthy();
     cleanup();
     ui(<DemandAllocations demand={demand({}, { allocations: [allocation({ production_order_status: "completed" })] })} />);
-    expect(screen.queryByRole("button", { name: "Release" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Return to planning" })).toBeNull();
   });
 
   it("shows the server reason when a release is refused", async () => {
     const { ApiClientError } = await import("@/lib/api-client");
     api.apiClient.mockRejectedValue(new ApiClientError("conflict", 409, { detail: { code: "LAST_ACTIVE_ALLOCATION" } }));
     ui(<DemandAllocations demand={demand()} />);
-    fireEvent.click(screen.getByRole("button", { name: "Release" }));
+    fireEvent.click(screen.getByRole("button", { name: "Return to planning" }));
     fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "x" } });
-    await act(async () => { fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Release" })); });
+    await act(async () => { fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Return to planning" })); });
     expect(screen.getByRole("alert").textContent).toContain("last active allocation");
   });
 });
@@ -208,7 +213,7 @@ describe("production order allocation sources", () => {
     const cancelled = order({ status: "cancelled", active_allocated_quantity: "0",
       allocations: [{ ...order().allocations[0], status: "released", released_at: "2026-09-26T12:00:00Z", release_reason: "Customer withdrew" }] });
     ui(<OrderAllocations order={cancelled} />);
-    expect(screen.getByText("Released")).toBeTruthy();
+    expect(screen.getByText("Returned to planning")).toBeTruthy();
     expect(screen.getByText("Customer withdrew")).toBeTruthy();
     expect(screen.getByRole("link", { name: "PD-2026-000001" })).toBeTruthy();
     // Cancelling is a status action now (OrderStatusPanel), not part of this section.

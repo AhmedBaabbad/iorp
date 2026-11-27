@@ -1,6 +1,8 @@
 from decimal import Decimal
 from sqlalchemy import func, or_, select
-from app.core.interfaces.activity_log import get_registered_activity_logger
+from app.core.interfaces.record_history import record_event, diff_fields
+from app.core.interfaces.order_line_evidence import order_line_evidence
+from app.production.application.record_history import allocation_event, order_lines
 from app.core.utils import utc_now
 from app.production.application.order_lines import adjust_lines, rebuild_lines
 from app.production.domain.compatibility import AllocationError
@@ -10,7 +12,7 @@ from app.production.infrastructure.demand_repository import ProductionDemandRepo
 from app.production.infrastructure.execution_models import ProductionRun
 from app.production.infrastructure.models import (
     DowntimeEvent, ProductionAllocation, ProductionDemand, ProductionDemandItem, ProductionOrder,
-    WasteRecord,
+    WasteRecord, ProductionResultEntry,
 )
 
 ACTIVE = ProductionAllocationStatus.ACTIVE.value
@@ -55,7 +57,7 @@ class AllocationService:
 
     validate_allocation_with_lock = validate_allocation
 
-    def sync_demand_status(self, db, org_id, demand):
+    def sync_demand_status(self, db, org_id, demand, actor=None):
         """Derive the header status from ACTIVE allocations of every item."""
         if demand.status not in ALLOCATION_DERIVED:
             return demand.status
@@ -70,6 +72,9 @@ class AllocationService:
         else:
             status = "partially_planned"
         if status != demand.status:
+            record_event(db, org_id, 'production_demand', demand.id, demand.demand_number,
+                         'production_demand.status_changed', actor,
+                         [dict(field='status', old=demand.status, new=status)], related={'derived': True})
             demand.status = status
             if status == "planned":
                 demand.planning_sequence = None
@@ -83,9 +88,13 @@ def execution_evidence(db, org_id, order_id):
         ProductionRun.organization_id == org_id, ProductionRun.production_order_id == order_id,
         or_(ProductionRun.started_at.is_not(None), ProductionRun.status.not_in(("planned", "cancelled"))))
     checks = {"production_runs": started_run}
-    for name, model in (("downtime_events", DowntimeEvent), ("waste_records", WasteRecord)):
+    for name, model in (("downtime_events", DowntimeEvent), ("waste_records", WasteRecord), ('production_result_entries', ProductionResultEntry)):
         checks[name] = select(model.id).where(model.organization_id == org_id, model.production_order_id == order_id)
-    return [name for name, query in checks.items() if db.scalar(query.limit(1)) is not None]
+    found = [name for name, query in checks.items() if db.scalar(query.limit(1)) is not None]
+    from app.production.infrastructure.models import ProductionOrderItem
+    for line_id in db.scalars(select(ProductionOrderItem.id).where(ProductionOrderItem.production_order_id == order_id)):
+        found.extend(order_line_evidence(db, org_id, line_id))
+    return sorted(set(found))
 
 
 def assert_allocation_open(order):
@@ -144,16 +153,13 @@ class AllocationLifecycleService:
         allocation.released_by_user_id = self.tenant.user_id
         allocation.release_reason = reason
         allocation.updated_at = now
+        allocation_event(self.db, self.tenant, allocation, 'production_allocation.released',
+                         {'allocation_status': ACTIVE}, {'allocation_status': RELEASED}, reason)
 
     def _sync_demands(self, demand_ids):
         for demand_id in sorted(demand_ids, key=str):
             demand = self.db.scalar(select(ProductionDemand).where(ProductionDemand.organization_id == self.org_id, ProductionDemand.id == demand_id).with_for_update().execution_options(populate_existing=True))
-            self.allocations.sync_demand_status(self.db, self.org_id, demand)
-
-    def _audit(self, action, entity_type, entity_id, name, **details):
-        get_registered_activity_logger().log_activity(
-            self.db, self.org_id, action, entity_type, entity_id, name, actor_id=self.tenant.user_id,
-            details={key: str(value) for key, value in details.items()})
+            self.allocations.sync_demand_status(self.db, self.org_id, demand, self.tenant)
 
     def release_allocation(self, allocation_id, reason):
         db = self.db
@@ -167,21 +173,28 @@ class AllocationLifecycleService:
                 raise AllocationError("ALLOCATION_ALREADY_RELEASED", 409)
             order = self._lock_order(allocation.production_order_id)
             assert_allocation_open(order)
+            if allocation.production_order_item_id:
+                line_id = allocation.production_order_item_id
+                evidence = order_line_evidence(db, self.org_id, line_id)
+                for model in (ProductionResultEntry, WasteRecord):
+                    if db.scalar(select(model.id).where(model.organization_id == self.org_id, model.production_order_item_id == line_id).limit(1)) is not None:
+                        evidence.append(model.__tablename__)
+                if evidence:
+                    raise AllocationError('ORDER_LINE_HAS_PRODUCTION', 409, tables=sorted(evidence))
             remaining = [a for a in self._active_allocations(order.id) if a.id != allocation.id]
             if not remaining:
                 # An open order must keep at least one demand source; cancel the order instead.
                 raise AllocationError("LAST_ACTIVE_ALLOCATION", 409)
             now = utc_now()
+            before_lines = order_lines(order)
             self._release(allocation, reason, now)
             db.flush()
             # Lines and planned quantity of an open order always follow its ACTIVE allocations.
             db.refresh(order, ["allocations"])
             follow_allocations(db, self.org_id, order)
+            record_event(db, self.org_id, 'production_order', order.id, order.production_order_number,
+                         'production_order.lines_changed', self.tenant, diff_fields(before_lines, order_lines(order), ['lines']), reason)
             self._sync_demands({allocation.production_demand_id})
-            self._audit("production_allocation.released", "production_allocation", allocation.id, order.production_order_number,
-                        production_order_id=order.id, production_demand_item_id=allocation.production_demand_item_id,
-                        allocated_quantity=allocation.allocated_quantity, reason=reason, order_status=ProductionOrderStatus(order.status).value,
-                        planned_quantity=order.planned_quantity)
             db.commit()
             db.expire_all()
             return db.get(ProductionAllocation, allocation.id)

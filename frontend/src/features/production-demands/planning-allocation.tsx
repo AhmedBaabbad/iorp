@@ -119,7 +119,7 @@ export function PlanningAllocation({ demands, busy, onRefresh }: { demands: Dema
       {!valid && <p role="alert">{t("invalid")}</p>}
       <ArrangementTable lines={arranged}
         quantityCell={a => <input aria-label={`${t("quantity")} ${a.demand_number} ${a.demand_item_line_no}`} type="number" min="0.001" step="0.001" value={selected[a.key]?.quantity ?? a.allocated_quantity} disabled={sending} onChange={e => setQuantity(a.key, e.target.value)} />}
-        actionsCell={a => <button type="button" className={s.button} disabled={sending} onClick={() => remove(a.key)}>{t("removeFromOrder")}</button>} />
+        actionsCell={a => <button type="button" className={s.button} disabled={sending} onClick={() => remove(a.key)}>{t("removeFromSelection")}</button>} />
       <form onSubmit={submit}><fieldset disabled={sending} className={s.grid}>
         <label className={s.field}>{p("fields.workCenter")}<RecordCombobox aria-label={p("fields.workCenter")} name="work_center_id" required defaultValue=""><option value="">{t("selectCenter")}</option>{centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</RecordCombobox></label>
         <label className={s.field}>{d("priority")}<select name="priority" defaultValue="normal">{priorities.map(v => <option key={v} value={v}>{d(`priorities.${v}`)}</option>)}</select></label>

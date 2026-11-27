@@ -31,7 +31,8 @@ def test_reschedule_updates_flags_and_audits_actor_old_new_dates_and_reason(env)
     assert data['lifecycle']['actual_start_at'] is None
     entry, = events(env, order)
     assert entry['actor_id'] == env.user.id and entry['actor_name'] == env.user.full_name
-    assert entry['details'] == dict(old_start=order['planned_start_date'], new_start=str(today), old_end=order['planned_end_date'], new_end=str(today+timedelta(days=5)), reason="Material delayed")
+    assert entry['details']['schema_version'] == 1 and entry['details']['reason'] == 'Material delayed'
+    assert entry['details']['related'] == dict(old_start=order['planned_start_date'], new_start=str(today), old_end=order['planned_end_date'], new_end=str(today+timedelta(days=5)))
     assert data['reschedule_history'][0]['reason'] == 'Material delayed'
 
 
@@ -86,8 +87,8 @@ def test_patch_date_change_has_same_audit_and_noop_has_none(env):
     response = env.client.patch(f"{ROOT}/production-orders/{order['id']}",json={'planned_end_date':str(date.today()+timedelta(days=12))})
     assert response.status_code == 200, response.text
     entry, = events(env, order)
-    assert entry['details']['reason'] is None and entry['details']['old_end'] == order['planned_end_date']
-    assert entry['details']['new_end'] == response.json()['planned_end_date']
+    assert entry['details']['reason'] is None and entry['details']['related']['old_end'] == order['planned_end_date']
+    assert entry['details']['related']['new_end'] == response.json()['planned_end_date']
     env.client.patch(f"{ROOT}/production-orders/{order['id']}",json={'planned_end_date':response.json()['planned_end_date'], 'notes':'No further schedule change'})
     assert len(events(env, order)) == 1
 
@@ -111,7 +112,7 @@ def test_required_audit_failure_rolls_back_date_change(env, monkeypatch, path):
     order = env.order()
     class BrokenLogger:
         def log_activity_strict(self,*args,**kwargs): raise RuntimeError('audit unavailable')
-    monkeypatch.setattr('app.production.application.order_reschedule_service.get_registered_activity_logger',lambda:BrokenLogger())
+    monkeypatch.setattr('app.core.interfaces.record_history.get_registered_activity_logger',lambda:BrokenLogger())
     with pytest.raises(RuntimeError,match='audit unavailable'):
         if path=='post':
             OrderRescheduleService(env.db,env.ctx.tenant).reschedule(UUID(order['id']),RescheduleRequest(planned_end_date=date.today()+timedelta(days=20),reason='New material arrival'))

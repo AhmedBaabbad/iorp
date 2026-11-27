@@ -1990,5 +1990,9 @@
   "PUT /api/v1/shipping/directory/{kind}/{record_id}": {
     "category": "tenant_resource_operation",
     "isolation_coverage": "requires_route_specific_evidence"
+  },
+  "GET /api/v1/record-history/{entity_type}/{entity_id}": {
+    "category": "tenant_resource_operation",
+    "isolation_coverage": "tests/test_record_history_and_demand_rework.py::test_history_pagination_scope_permission_and_archive"
   }
 }

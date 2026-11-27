@@ -378,6 +378,8 @@ def test_release_and_cancel_are_audited(env):
     rows = {r.action: r for r in env.db.scalars(select(TenantActivityLog).where(TenantActivityLog.organization_id == env.org.id))}
     cancelled, released = rows["production_order.status_changed"], rows["production_allocation.released"]
     assert cancelled.actor_id == env.user.id and cancelled.details["reason"] == "Machine unavailable"
-    assert cancelled.details["action"] == "cancel" and cancelled.details["released_allocations"] == "1"
+    assert cancelled.details['schema_version'] == 1
+    assert cancelled.details['related']['action'] == 'cancel'
+    assert cancelled.details['changes'] == [dict(field='status', old='draft', new='cancelled')]
     assert released.actor_id == env.user.id and released.details["reason"] == "Wrong line"
     assert keep["id"] not in str(cancelled.details)

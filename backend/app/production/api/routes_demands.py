@@ -138,7 +138,7 @@ def import_items(demand_id: UUID, svc=Depends(service)):
 def change_status(demand_id: UUID, payload: DemandStatusRequest, svc=Depends(service), can=Depends(permission_check)):
     required=P.DEMANDS_CANCEL if payload.status == 'cancelled' else P.DEMANDS_RELEASE
     if not can(required): raise HTTPException(403, 'Missing demand transition permission.')
-    return svc.response(svc.update_status(demand_id, payload.status))
+    return svc.response(svc.update_status(demand_id, payload.status, payload.reason))
 
 
 @router.get("/planning/demands/export.xlsx", dependencies=[Depends(require_permission(P.PLANNING_READ))])

@@ -172,14 +172,8 @@ def test_eligible_orders_lists_open_compatible_orders_only(env):
     assert containing["id"] not in {o["id"] for o in mine}
 
 
-def test_every_allocation_change_is_audited_with_the_order_status(env, monkeypatch):
-    from app.production.application import planning_order_service, allocation_service
-    logged = []
-    class Logger:
-        def log_activity(self, db, org, action, entity_type, entity_id, name, actor_id=None, details=None):
-            logged.append((action, details or {}))
-    for module in (planning_order_service, allocation_service):
-        monkeypatch.setattr(module, "get_registered_activity_logger", lambda: Logger())
+def test_every_allocation_change_is_audited_with_the_order_status(env):
+    from app.foundation.infrastructure.models import TenantActivityLog
     first, second = env.demand(spec(10)), env.demand(spec(10))
     po = env.order((items(first)[0], "100"))
     set_status(env, po["id"], "on_hold")
@@ -187,9 +181,11 @@ def test_every_allocation_change_is_audited_with_the_order_status(env, monkeypat
     new = next(a for a in active(order) if a["production_demand_item_id"] == items(second)[0])
     env.client.patch(f"{ROOT}/allocations/{new['id']}", json={"allocated_quantity": "30"})
     env.client.post(f"{ROOT}/allocations/{new['id']}/release", json={"reason": "r"})
-    actions = {action: details for action, details in logged}
-    assert set(actions) >= {"production_order.allocation_added", "production_order.allocation_changed", "production_allocation.released"}
-    assert all(details["order_status"] == "on_hold" for details in actions.values())
+    wanted={'production_allocation.created','production_allocation.quantity_changed','production_allocation.released'}
+    rows=env.db.scalars(select(TenantActivityLog).where(TenantActivityLog.action.in_(wanted)).order_by(TenantActivityLog.created_at)).all()
+    actions={row.action:row.details for row in rows}
+    assert set(actions)==wanted
+    assert all(details['schema_version']==1 and details['related']['order_status']=='on_hold' for details in actions.values())
 
 
 def test_the_order_status_is_stored_on_the_allocation(env):
