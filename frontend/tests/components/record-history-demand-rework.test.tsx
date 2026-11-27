@@ -5,17 +5,17 @@ import {loadMessages} from "@/i18n/messages";
 import {RecordHistory} from "@/components/RecordHistory";
 import {DemandItemDialog} from "@/features/production-demands/item-dialog";
 import {DemandDetail} from "@/features/production-demands/detail";
-const api=vi.hoisted(()=>({history:vi.fn(),save:vi.fn(),get:vi.fn(),remove:vi.fn(),allowed:true}));
+const api=vi.hoisted(()=>({history:vi.fn(),save:vi.fn(),quantity:vi.fn(),get:vi.fn(),remove:vi.fn(),allowed:true}));
 vi.mock("next/navigation",()=>({useRouter:()=>({push:vi.fn()})}));
 vi.mock("@/components/layout/page-frame",()=>({PageFrame:({children}:{children:React.ReactNode})=><main>{children}</main>}));
 vi.mock("@/hooks/useFormatter",()=>({useFormatter:()=>({dateTime:String})}));
 vi.mock("@/features/auth/permission-hooks",()=>({usePermission:()=>api.allowed}));
 vi.mock("@/lib/api-client",async original=>({...await original<object>(),apiClient:api.history}));
-vi.mock("@/features/production-demands/api",()=>({demandsApi:{get:api.get,saveItem:api.save,removeItem:api.remove}}));
+vi.mock("@/features/production-demands/api",()=>({demandsApi:{get:api.get,saveItem:api.save,setItemQuantity:api.quantity,removeItem:api.remove}}));
 vi.mock("@/features/masterdata",()=>({useProducts:()=>[{key:"film",properties:[{key:"thickness",name_ar:"السماكة",name_en:"Thickness",kind:"number",allows_range:true}]}],ProductSelect:({value,onChange,disabled,ariaLabel}:{value:string;onChange:(s:string)=>void;disabled?:boolean;ariaLabel:string})=><input aria-label={ariaLabel} value={value} disabled={disabled} onChange={e=>onChange(e.target.value)}/>}));
 let messages:Awaited<ReturnType<typeof loadMessages>>;
 beforeAll(async()=>{messages=await loadMessages("en");});
-beforeEach(()=>{vi.clearAllMocks();api.allowed=true;api.save.mockResolvedValue({});api.history.mockResolvedValue({items:[],total:0,pages:0});});
+beforeEach(()=>{vi.clearAllMocks();api.allowed=true;api.save.mockResolvedValue({});api.quantity.mockResolvedValue({});api.history.mockResolvedValue({items:[],total:0,pages:0});});
 afterEach(()=>{cleanup();window.history.replaceState(null,"","/");});
 const ui=(node:React.ReactNode)=>render(<NextIntlClientProvider locale="en" messages={messages} timeZone="UTC">{node}</NextIntlClientProvider>);
 const item={id:"i1",line_no:1,product_type:"film",target_spec_json:{thickness:{min:.7,max:.75}},required_quantity:"50",unit:"kg",notes:null};
@@ -47,6 +47,16 @@ it("keeps sales order product, unit and specifications locked",()=>{
   ui(<DemandItemDialog demandId="d1" item={item} salesOrder onClose={vi.fn()} onSaved={vi.fn()}/>);
   expect((screen.getByLabelText("Thickness") as HTMLInputElement).disabled).toBe(true);
   expect((screen.getByLabelText("Quantity") as HTMLInputElement).disabled).toBe(false);
+});
+
+it("saves a sales-order item quantity without resending locked legacy null fields",async()=>{
+  const close=vi.fn();
+  ui(<DemandItemDialog demandId="d1" item={{...item,product_type:null,target_spec_json:null}} salesOrder onClose={close} onSaved={vi.fn()}/>);
+  fireEvent.change(screen.getByLabelText('Quantity'),{target:{value:'40'}});
+  fireEvent.click(screen.getByRole('button',{name:'Save'}));
+  await waitFor(()=>expect(close).toHaveBeenCalledOnce());
+  expect(api.quantity).toHaveBeenCalledWith('d1','i1','40',null);
+  expect(api.save).not.toHaveBeenCalled();
 });
 
 it("edits historical properties outside the current template without losing a stored range",async()=>{

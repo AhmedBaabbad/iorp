@@ -16,8 +16,10 @@ export function DemandItemDialog({demandId,item,salesOrder,onClose,onSaved}:{dem
   const [specText,setSpecText]=useState(()=>JSON.stringify(item?.target_spec_json??{})),[error,setError]=useState("");
   const properties=products?.find(p=>p.key===product)?.properties??[];
   return <RecordDialog title={t(item?"editItem":"addItem")} onClose={onClose} error={error?t(`errors.${t.has(`errors.${error}`)?error:"request_failed"}`):undefined} onSave={async()=>{
-    setError("");try{const spec=JSON.parse(specText||"{}");const values={product_type:product,target_spec_json:normalizeSpecDraft(spec,properties),required_quantity:quantity,unit,notes:notes||null};
-      await demandsApi.saveItem(demandId,values,item?.id);await onSaved();return true;
+    setError("");try{
+      if(salesOrder&&item?.id)await demandsApi.setItemQuantity(demandId,item.id,quantity,notes||null);
+      else{const spec=JSON.parse(specText||"{}");const values={product_type:product,target_spec_json:normalizeSpecDraft(spec,properties),required_quantity:quantity,unit,notes:notes||null};await demandsApi.saveItem(demandId,values,item?.id);}
+      await onSaved();return true;
     }catch(e){setError(errorKey(e));return false;}
   }}>
     <label className={s.field}>{t("productType")}<ProductSelect ariaLabel={t("productType")} value={product} disabled={salesOrder} onChange={(key,row)=>{setProduct(key);if(row?.default_unit)setUnit(row.default_unit);}}/></label>
