@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.db import Base
+from app.commercial.application import record_history as H
 from app.core.interfaces import product_catalog
 from app.commercial.api.schemas import SampleCreate, SampleDeletionImpact, SampleEvaluationCreate, SampleUpdate
 from app.commercial.domain.enums import SampleStatus
@@ -75,6 +76,9 @@ class SampleService:
 
         try:
             self.samples.add(sample)
+            self.db.flush()
+            H.event(self.db, tenant, H.SAMPLE, sample.id, sample.sample_code, "sample.created",
+                    extra=H.created(H.snapshot(sample, H.SAMPLE_FIELDS), H.SAMPLE_FIELDS))
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
@@ -109,6 +113,10 @@ class SampleService:
                 "Cannot delete a sample that is referenced by quotes. Remove the quotes first.",
             )
 
+        # The sample's own page goes with it: its deletion is kept in its customer's history.
+        H.event(self.db, tenant, H.CUSTOMER, sample.customer_id, H.customer_name(self.db, tenant, sample.customer_id),
+                "sample.deleted", extra=H.changes(H.snapshot(sample, ("product_type", "status")), {}, ("product_type", "status")),
+                related=H.subject("sample", sample.id, sample.sample_code))
         self.sample_evaluations.delete_for_sample(sample_id)
         self.samples.delete(sample)
         self.db.commit()
@@ -179,10 +187,14 @@ class SampleService:
                 "Sample status 'evaluated' can only be set by creating a sample evaluation."
             )
 
+        before = H.snapshot(sample, H.SAMPLE_FIELDS)
         for field, value in payload.items():
             setattr(sample, field, value)
 
         try:
+            self.db.flush()
+            H.event(self.db, tenant, H.SAMPLE, sample.id, sample.sample_code, "sample.updated", before,
+                    H.snapshot(sample, H.SAMPLE_FIELDS), H.SAMPLE_FIELDS)
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
@@ -204,6 +216,7 @@ class SampleService:
         if sample.status == SampleStatus.CANCELLED:
             raise ValueError("Cannot evaluate a cancelled sample.")
 
+        status_before = sample.status
         sample.status = SampleStatus.EVALUATED
 
         evaluation = SampleEvaluation(
@@ -214,6 +227,10 @@ class SampleService:
 
         try:
             self.sample_evaluations.add(evaluation)
+            self.db.flush()
+            self._evaluation_event(tenant, sample, evaluation, "sample.evaluation_added",
+                                   extra=H.created(H.snapshot(evaluation, H.EVALUATION_FIELDS), H.EVALUATION_FIELDS)
+                                   + H.changes({"status": status_before}, {"status": sample.status}, ("status",)))
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
@@ -227,11 +244,17 @@ class SampleService:
         evaluation = self.sample_evaluations.get_by_id(tenant.organization_id, evaluation_id)
         if evaluation is None:
             return None
+        before = H.snapshot(evaluation, H.EVALUATION_FIELDS)
         for field, value in data.model_dump(exclude_unset=True).items():
             if value is None:
                 if field != "comments":
                     raise ValueError(f"{field} cannot be empty.")
             setattr(evaluation, field, value)
+        self.db.flush()
+        found = H.changes(before, H.snapshot(evaluation, H.EVALUATION_FIELDS), H.EVALUATION_FIELDS)
+        if found:
+            self._evaluation_event(tenant, self.samples.get_by_id(tenant.organization_id, evaluation.sample_id), evaluation,
+                                   "sample.evaluation_updated", extra=found)
         self.db.commit()
         self.db.refresh(evaluation)
         return self._attach_evaluated_by_name(tenant, evaluation)
@@ -246,10 +269,20 @@ class SampleService:
         self.db.delete(evaluation)
         self.db.flush()
         remaining = self.db.scalar(select(SampleEvaluation.id).where(SampleEvaluation.sample_id == evaluation.sample_id).limit(1))
+        status_before = sample.status if sample is not None else None
         if sample is not None and remaining is None and sample.status == SampleStatus.EVALUATED:
             sample.status = SampleStatus.DELIVERED
+        if sample is not None:
+            self._evaluation_event(tenant, sample, evaluation, "sample.evaluation_deleted",
+                                   extra=H.changes(H.snapshot(evaluation, H.EVALUATION_FIELDS), {}, H.EVALUATION_FIELDS)
+                                   + H.changes({"status": status_before}, {"status": sample.status}, ("status",)))
         self.db.commit()
         return True
+
+    def _evaluation_event(self, tenant, sample, evaluation, action, extra):
+        """Evaluations are kept under their sample: its history shows each one added, corrected or removed."""
+        H.event(self.db, tenant, H.SAMPLE, sample.id, sample.sample_code, action, extra=extra,
+                related=H.subject("evaluation", evaluation.id, evaluation.evaluation_date))
 
     def list_sample_evaluations(
         self,

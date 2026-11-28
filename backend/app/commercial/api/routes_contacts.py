@@ -89,7 +89,23 @@ def write(db,tenant,customer_id,kind,payload,record_id=None):
             CustomerContact.customer_id==customer_id,CustomerContact.id==data.contact_id,
             True if previous and data.contact_id==previous.contact_id else CustomerContact.active.is_(True))):
             raise HTTPException(422,'CONTACT_NOT_IN_CUSTOMER')
-    return save(db,tenant,m,'customer_id',customer_id,data,record_id)
+    def history(before,row):
+        # Contacts and sites are kept under their customer: its history shows who changed what (PR2 record history).
+        from app.commercial.application import record_history as H
+        fields=H.CONTACT_FIELDS if kind=='contacts' else H.SITE_FIELDS
+        def values(v):
+            v=dict(v)
+            if kind=='sites':
+                cid=v.pop('contact_id',None)
+                v['contact']=db.scalar(select(CustomerContact.name).where(CustomerContact.organization_id==tenant.organization_id,
+                    CustomerContact.id==cid)) if cid else None
+            return v
+        after=values(view(row))
+        action='customer.'+('contact' if kind=='contacts' else 'site')+('_updated' if before else '_added')
+        related=H.subject('contact' if kind=='contacts' else 'site',row.id,row.name)
+        if before:H.event(db,tenant,H.CUSTOMER,customer.id,customer.name,action,values(before),after,fields,related=related)
+        else:H.event(db,tenant,H.CUSTOMER,customer.id,customer.name,action,extra=H.created(after,fields),related=related)
+    return save(db,tenant,m,'customer_id',customer_id,data,record_id,on_saved=history)
 
 
 @router.post('/directory/{kind}',status_code=201,dependencies=[Depends(require_permission('commercial:customers:update'))])

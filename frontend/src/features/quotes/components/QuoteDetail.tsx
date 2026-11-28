@@ -8,6 +8,8 @@ import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
+import { Tabs } from "@/components/ui/Tabs";
+import { RecordHistory } from "@/components/RecordHistory";
 import { getCustomer } from "@/features/customers";
 import { getSampleById } from "@/features/samples";
 import { useFormatter } from "@/hooks/useFormatter";
@@ -58,6 +60,7 @@ const styles: Record<string, CSSProperties> = {
 export function QuoteDetail() {
   const messages = useTranslations("messages");
   const t = useTranslations("commercial.quotes");
+  const h = useTranslations("common.recordHistory");
   const locale = useLocale() as Locale;
   const fmt = useFormatter();
   const params = useParams<{ id: string }>();
@@ -169,7 +172,7 @@ export function QuoteDetail() {
       ) : null}
 
       {!isLoading && !error && !isNotFound && quote ? (
-        <div style={styles.sections}>
+        <Tabs label={quote.quote_number} items={[{ id: "data", label: h("data"), content: <div style={styles.sections}>
           <QuoteLifecycle quote={quote} onChange={setQuote} />
           <section style={styles.detailGrid} aria-label={t("detailsAria")}>
             <DetailItem
@@ -217,7 +220,7 @@ export function QuoteDetail() {
               currency: quote.currency,
             }}
           />
-        </div>
+        </div> }, { id: "history", label: h("title"), lazy: true, content: <RecordHistory entityType="quote" entityId={quote.id} /> }]} />
       ) : null}
           {quote && <Signatures resourceType="quote" id={quote.id} version={quote.status} />}
 </PageFrame>

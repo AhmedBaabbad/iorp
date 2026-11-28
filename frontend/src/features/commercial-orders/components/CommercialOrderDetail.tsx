@@ -7,6 +7,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
+import { Tabs } from "@/components/ui/Tabs";
+import { RecordHistory } from "@/components/RecordHistory";
 import { Money, pricePlaces } from "@/components/money/Money";
 import { getCustomer } from "@/features/customers";
 import { useProductName } from "@/features/masterdata";
@@ -39,6 +41,7 @@ export function CommercialOrderDetail() {
   const errors = useTranslations("commercial.salesErrors");
   const messages = useTranslations("messages");
   const common = useTranslations("common");
+  const h = useTranslations("common.recordHistory");
   const currencies = useTranslations("common.currencies");
   const units = useTranslations("common.units.units");
   const unit = (code: string) => (units.has(code) ? units(code) : code);
@@ -91,6 +94,7 @@ export function CommercialOrderDetail() {
   return (
     <PageFrame title={order.order_number} subtitle={customerName || t("detailSubtitle")} action={back}>
       {error && <p role="alert" className={s.error}>{error}</p>}
+      <Tabs label={order.order_number} items={[{ id: "data", label: h("data"), content: <>
       <section className={s.panel}>
         <div className={s.actions} style={{ justifyContent: "space-between", marginBottom: 12 }}>
           <span className={s.actions}>
@@ -183,6 +187,7 @@ export function CommercialOrderDetail() {
 
       {order.notes && <section className={s.panel}><p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{order.notes}</p></section>}
       <StatusHistory entries={order.history ?? []} />
+      </> }, { id: "history", label: h("title"), lazy: true, content: <RecordHistory entityType="sales_order" entityId={order.id} /> }]} />
 
       {dialog === "revise" && (
         <ReasonDialog title={t("lifecycle.reviseTitle")} description={t("lifecycle.reviseText")} confirmLabel={t("lifecycle.actions.revise")}

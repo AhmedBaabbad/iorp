@@ -87,3 +87,50 @@ the order rather than an item and retain their order-level cancellation rules.
 Actual results/quality also prevent line rebuilding on a released order; existing
 lines are adjusted so returning an untouched sibling cannot erase another line's
 execution history.
+
+## Commercial (PR2)
+
+`commercial/application/record_history.py` registers `customer`, `quote`,
+`sample` and `sales_order`. Visibility is the record page's own RBAC-002 owner
+filter (`visibility.visible_owner`): an "own" reader cannot read the history of
+another sales owner's customer or of its quotations, samples and orders.
+
+| Record | Events |
+|---|---|
+| `customer` | `customer.created/updated/owner_reassigned`, `customer.contact_added/updated`, `customer.site_added/updated`, `interaction.created/updated/deleted`, `followup.created/updated/completed/reopened/cancelled/reassigned/deleted`, and `quote.deleted`, `sample.deleted`, `sales_order.deleted` |
+| `quote` | `quote.created/updated`, `quote.issued/accepted/rejected/expired/revised` (status and revision old→new, with the reason) |
+| `sales_order` | `sales_order.created/updated` (`related.quote_number` when made from a quotation), `sales_order.confirmed/revised/cancelled` |
+| `sample` | `sample.created/updated`, `sample.evaluation_added/updated/deleted` (with the sample status the evaluation changed) |
+
+Child records (contacts, sites, interactions, follow-ups, evaluations) are
+written under their parent with `related.subject_kind/subject_id/subject_name`,
+so one tab shows them and a deleted child stays visible. A deleted quotation,
+sample or draft order is written under its customer for the same reason.
+
+Document lines are compared by line number. Each line change carries `line` and
+`line_change` (`added`, `removed`, `changed`); specification keys are split as
+above. People are stored by name (`sales_owner`, `assigned_user`, `contact`) and
+linked records by number (`quote`, `sample`), never by id. Decimals are
+normalized (`1000.000` and `1000` are one value), so re-reading a stored value
+is not a change, and an edit that changes nothing writes nothing.
+
+`core/contact_records.save` takes an optional `on_saved(before, row)` hook that
+runs inside its transaction, before its commit.
+
+Complaints keep their existing decision history (`commercial_complaint_events`,
+COMPLAINTS-001). It already records every step with its actor, reason and named
+facts, so it is not duplicated here. Quotations and sales orders also keep the
+`commercial_status_history` timeline ("سجل الحالة"), which holds the steps
+taken before this change.
+
+Earlier `interaction.*` and `followup.*` activity rows were written with entity
+types `interaction`/`followup`. They stay in the activity log but are not shown
+in the customer's tab. Earlier `customer.*` rows have no version-1 details: the
+tab shows their event without a change table.
+
+The frontend `RecordHistory` is shared:
+- shared words come from `common.recordHistory`;
+- module words come from `<namespace>.events|fields|subjects`. The default is `production.recordHistory` for `production_*` records and `commercial.recordHistory` for the others.
+
+Enumerations are worded by record (or child record) and field. Tabs marked
+`lazy` build the history only while open, so it is read again on each visit.

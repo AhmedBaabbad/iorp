@@ -22,6 +22,7 @@ import { CustomerReportButtons } from "@/features/reports/CustomerReportButtons"
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { CustomerDirectory } from "@/features/reference-directory/DirectoryPanel";
 import { Tabs } from "@/components/ui/Tabs";
+import { RecordHistory } from "@/components/RecordHistory";
 import { PageFrame } from "@/components/layout/page-frame";
 import { usePermission } from "@/features/auth";
 import { useListName } from "@/features/masterdata";
@@ -137,6 +138,7 @@ export function CustomerDetailPage() {
   const params = useParams<{ id: string }>();
   const locale = useLocale();
   const d = useTranslations("directory");
+  const h = useTranslations("common.recordHistory");
   const t = useTranslations("commercial.customers");
   const tEnums = useTranslations();
   const messages = useTranslations("messages");
@@ -397,7 +399,8 @@ export function CustomerDetailPage() {
           <CustomerFollowUpsSection
             customerId={customer.id}
             customerSalesOwnerId={customer.sales_owner_user_id}
-          /></>}]} />
+          /></>},
+          {id:"history",label:h("title"),lazy:true,content:<RecordHistory entityType="customer" entityId={customer.id}/>}]} />
         </div>
       ) : null}
     </PageFrame>
