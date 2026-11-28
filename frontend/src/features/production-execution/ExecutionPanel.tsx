@@ -11,6 +11,7 @@ import { useListQuery, type Page } from "@/lib/pagination";
 import { hasPermission, useAuth } from "@/features/auth/auth-context";
 import { sharedStyles as styles } from "@/styles/shared-styles";
 import { P } from "@/lib/production-permissions";
+import { OptionalDateInput } from "@/components/forms/OptionalDateInput";
 
 type Member = { id?: string; workforce_member_id: string; workforce_name?: string; employee_code?: string; role_code?: string; role_note?: string | null; is_lead?: boolean; is_shift_lead?: boolean; started_at?: string | null; ended_at?: string | null; notes?: string | null };
 type RecordData = { members_editable?: boolean; period_state?: "upcoming" | "current" | "ended"; id: string; name?: string | null; shift_definition_id: string | null; shift_roster_id?: string | null; shift_name: string | null; work_center_name?: string; run_date?: string; effective_from?: string; effective_to?: string | null; started_at?: string | null; ended_at?: string | null; status: string; team_count: number; members: Member[] };
@@ -163,7 +164,7 @@ export function ExecutionPanel({ orderId }: { orderId?: string }) {
       {!orderId && <label>{t("name")}<input style={styles.input} value={name} onChange={e => setName(e.target.value)} maxLength={255} /></label>}
       <label>{t("shift")}<RecordCombobox aria-label={t("shift")} style={styles.input} required={!orderId} value={shift} disabled={Boolean(replacement)} onChange={e => { setShift(e); setRoster(""); }}><option value="">{t("selectShift")}</option>{shifts.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</RecordCombobox></label>
       <label>{t("dateFrom")}<input style={styles.input} type="date" required value={day} onChange={e => { setDay(e.target.value); setRoster(""); }} /></label>
-      {!orderId && <label>{t("effectiveTo")}<input style={styles.input} type="date" min={day} value={until} onChange={e => setUntil(e.target.value)} /></label>}
+      {!orderId && <div role="group" aria-label={t("effectiveTo")}><span>{t("effectiveTo")}</span><OptionalDateInput style={styles.input} label={t("effectiveTo")} min={day} value={until} onChange={setUntil} /></div>}
       {orderId && <><label>{t("workCenter")}<RecordCombobox aria-label={t("workCenter")} style={styles.input} required value={center} onChange={e => setCenter(e)}><option value="">—</option>{centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</RecordCombobox></label>
         <label>{t("roster")}<RecordCombobox aria-label={t("roster")} style={styles.input} value={roster} onChange={e => { setRoster(e); const r = rosters.find(r => r.id === e); if (r) setShift(r.shift_definition_id || ""); }}><option value="">—</option>{rosters.filter(r => (!shift || r.shift_definition_id === shift) && day && r.effective_from! <= day && (!r.effective_to || r.effective_to >= day)).map(r => <option key={r.id} value={r.id}>{r.shift_name} — {r.name || r.effective_from}</option>)}</RecordCombobox></label>
         <button style={styles.secondaryButton} type="button" disabled={!roster} onClick={() => {

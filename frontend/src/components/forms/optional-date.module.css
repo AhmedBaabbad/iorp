@@ -1,0 +1,5 @@
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-height: 40px; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; white-space: nowrap; cursor: pointer; }
+.toggle input { width: auto; margin: 0; }
+.input { flex: 1 1 180px; min-width: 0; }
+.none { color: var(--text-muted); font-size: 14px; }

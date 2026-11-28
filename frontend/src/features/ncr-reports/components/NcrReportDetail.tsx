@@ -29,6 +29,7 @@ import { NcrSeverityBadge, NcrStatusBadge } from "./NcrBadges";
 import { joinList } from "@/lib/utils";
 import { FilePicker } from "@/components/forms/FilePicker";
 import { Signatures } from "@/components/Signatures";
+import { OptionalDateInput } from "@/components/forms/OptionalDateInput";
 function Item({ label, children }: { label: string; children: ReactNode }) {
   return <div><dt className={s.muted}>{label}</dt><dd style={{ margin: "4px 0 0", overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>{children}</dd></div>;
 }
@@ -426,7 +427,7 @@ function ActionDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: ()
         <RecordCombobox aria-label={t("fields.owner")} value={owner} disabled={busy} onChange={e => setOwner(e)}>
           <option value="">{t("placeholders.outsideOwner")}</option>{users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</RecordCombobox></label>
       {!owner && <label className={s.field}>{t("fields.owner_name")}<input maxLength={200} value={outside} disabled={busy} onChange={e => setOutside(e.target.value)} /></label>}
-      <label className={s.field}>{t("fields.due_date")}<input type="date" value={due} disabled={busy} onChange={e => setDue(e.target.value)} /></label>
+      <div className={s.field} role="group" aria-label={t("fields.due_date")}><span>{t("fields.due_date")}</span><OptionalDateInput label={t("fields.due_date")} value={due} disabled={busy} onChange={setDue} /></div>
     </div>
     <label className={s.field}>{t("fields.action")}<textarea required autoFocus maxLength={4000} value={description} disabled={busy} onChange={e => setDescription(e.target.value)} /></label>
   </Dialog>;

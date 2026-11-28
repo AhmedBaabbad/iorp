@@ -30,6 +30,7 @@ import {
 } from "../types";
 import { SupplierStatusBadge } from "./Suppliers";
 import { Signatures } from "@/components/Signatures";
+import { useRevealNewRow } from "@/hooks/useRevealNewRow";
 
 const STATUS_CLASS: Record<OrderStatus, string> = { draft: "", approved: s.blue, sent: s.blue, partially_received: s.overdue, received: s.green,
   closed: s.green, cancelled: s.cancelled };
@@ -163,6 +164,7 @@ export function OrderForm({ orderId, supplierId }: { orderId?: string; supplierI
   }, [touched, general.loaded, general.currency]);
   const [h, setH] = useState<Header>(EMPTY_HEADER);
   const [lines, setLines] = useState<Line[]>([{ ...EMPTY_LINE }]);
+  const revealLine = useRevealNewRow(lines.length, "purchase-lines");
   const [loading, setLoading] = useState(Boolean(orderId));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -266,7 +268,7 @@ export function OrderForm({ orderId, supplierId }: { orderId?: string; supplierI
 
         <section className={s.panel} aria-label={t("orders.sections.lines")}>
           <h2 style={{ marginTop: 0 }}>{t("orders.sections.lines")}</h2>
-          {lines.map((l, i) => <div key={i} className={s.panel} style={{ margin: "0 0 10px", padding: 14 }}>
+          {lines.map((l, i) => <div key={i} data-row="purchase-lines" className={s.panel} style={{ margin: "0 0 10px", padding: 14 }}>
             <div className={s.actions} style={{ justifyContent: "space-between", marginBottom: 8 }}>
               <strong>{t("receipts.lineNo", { no: String(i + 1) })}</strong>
               <span className={s.actions}>
@@ -287,7 +289,7 @@ export function OrderForm({ orderId, supplierId }: { orderId?: string; supplierI
             <label className={s.field}>{t("orders.fields.line_notes")}<input maxLength={500} value={l.notes} placeholder={t("orders.lineNotesPlaceholder")}
               onChange={e => setLine(i, "notes", e.target.value)} /></label>
           </div>)}
-          <button type="button" className={s.button} onClick={() => setLines(old => [...old, { ...EMPTY_LINE }])}>{t("receipts.addLine")}</button>
+          <button type="button" className={s.button} onClick={() => { revealLine(); setLines(old => [...old, { ...EMPTY_LINE }]); }}>{t("receipts.addLine")}</button>
           {!linesOk && <p className={s.muted}>{t("orders.linesHint")}</p>}
         </section>
 

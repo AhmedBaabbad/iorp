@@ -18,6 +18,8 @@ import { demandsApi, type Customer, type Item, type DemandPriority, type DemandS
 import { ErrorMessage, errorKey, priorities, today } from "./shared";
 import s from "./demands.module.css";
 import { P } from "@/lib/production-permissions";
+import { useRevealNewRow } from "@/hooks/useRevealNewRow";
+import { OptionalDateInput } from "@/components/forms/OptionalDateInput";
 
 type Row = Item & { key: string; specText: string };
 const newRow = (item?: Item): Row => ({ product_type: "", target_spec_json: null, required_quantity: "", unit: "", notes: "", ...item, key: crypto.randomUUID(), specText: JSON.stringify(item?.target_spec_json ?? {}, null, 2) });
@@ -43,6 +45,7 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
   const [status, setStatus] = useState<DemandStatus>("draft");
   const [hasAllocationHistory,setHasAllocationHistory]=useState(false);
   const [rows, setRows] = useState<Row[]>([]);
+  const revealRow = useRevealNewRow(rows.length, "demand-items");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(!!id);
   const [error, setError] = useState("");
@@ -124,7 +127,7 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
         <label className={s.field}>{t("customer")}<RecordCombobox onSearch={setSearch} aria-label={t("customer")} required disabled={status !== "draft" || !!salesOrder} value={customerId} onChange={e => { setCustomer(e); setSelectedCustomer(customers.find(c => c.id === e) ?? null); }}><option value="">{t("selectCustomer")}</option>{customerOptions.map(c => <option key={c.id} value={c.id}>{c.code} · {customerDisplayName(c, locale)}</option>)}</RecordCombobox></label>
         {salesOrder && <div className={s.field}>{t("fromSalesOrder.salesOrder")}<a href={`/commercial-orders/${salesOrder.id}`}><bdi>{salesOrder.number}</bdi></a></div>}
         <label className={s.field}>{t("requestDate")}<input type="date" required value={requestDate} onChange={e => setRequestDate(e.target.value)} /></label>
-        <label className={s.field}>{t("requestedDeliveryDate")}<input type="date" value={delivery} onChange={e => setDelivery(e.target.value)} /></label>
+        <div className={s.field} role="group" aria-label={t("requestedDeliveryDate")}><span>{t("requestedDeliveryDate")}</span><OptionalDateInput label={t("requestedDeliveryDate")} value={delivery} onChange={setDelivery} /></div>
         <label className={s.field}>{t("priority")}<select value={priority} onChange={e => setPriority(e.target.value as DemandPriority)}>{priorities.map(v => <option key={v} value={v}>{t(`priorities.${v}`)}</option>)}</select></label>
         <label className={s.field}>{t("notes")}<textarea value={notes} onChange={e => setNotes(e.target.value)} /></label>
       </div></fieldset>
@@ -136,10 +139,8 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
             <label className={s.field}>{t("quantity")} ({units.has(row.unit) ? units(row.unit) : row.unit})<input required type="number" min="0.001" step="0.001" value={row.required_quantity} onChange={e => update(row.key, { required_quantity: e.target.value })} /></label>
             <label className={s.field}>{t("itemNotes")}<textarea value={row.notes ?? ""} onChange={e => update(row.key, { notes: e.target.value })} /></label>
           </div></section>)}
-      </fieldset> : <fieldset disabled={busy} className={s.panel}><legend>{t("items")}</legend><div className={s.toolbar}>
-        <button type="button" className={s.button} onClick={() => setRows(old => [...old, newRow()])}>{t("addItem")}</button>
-      </div>
-      {rows.map((row, index) => <section className={s.panel} key={row.key}><h3>{t("itemTitle", { number: index + 1 })}</h3><div className={s.grid}>
+      </fieldset> : <fieldset disabled={busy} className={s.panel}><legend>{t("items")}</legend>
+      {rows.map((row, index) => <section className={s.panel} key={row.key} data-row="demand-items"><h3>{t("itemTitle", { number: index + 1 })}</h3><div className={s.grid}>
         <label className={s.field}>{t("productType")}<ProductSelect ariaLabel={t("productType")} value={row.product_type ?? ""}
           onChange={(key, product) => update(row.key, { product_type: key, ...(product?.default_unit && !row.unit ? { unit: product.default_unit } : {}) })} /></label>
         <label className={s.field}>{t("quantity")}<input required type="number" min="0.001" step="0.001" value={row.required_quantity} onChange={e => update(row.key, { required_quantity: e.target.value })} /></label>
@@ -152,6 +153,7 @@ export function DemandForm({ id, onBack }: { id?: string; onBack?: () => void })
         <label className={s.field}>{t("specifications")}<textarea dir="ltr" value={row.specText} onChange={e => update(row.key, { specText: e.target.value })} /></label>
         <label className={s.field}>{t("itemNotes")}<textarea value={row.notes ?? ""} onChange={e => update(row.key, { notes: e.target.value })} /></label>
       </div><button type="button" className={s.button} onClick={() => setRows(old => old.filter(r => r.key !== row.key))}>{t("removeItem")}</button></section>)}
+      <div className={s.toolbar}><button type="button" className={s.button} onClick={() => { revealRow(); setRows(old => [...old, newRow()]); }}>{t("addItem")}</button></div>
       </fieldset>}
       <div className={s.toolbar}><button disabled={busy} className={`${s.button} ${s.primary}`} type="submit" value="draft">{id || savedId ? t("saveChanges") : t("saveDraft")}</button>{canRelease && status === "draft" && <button disabled={busy} className={s.button} type="submit" value="ready">{t("saveAndReady")}</button>}</div>
     </form>}

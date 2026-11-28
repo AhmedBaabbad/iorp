@@ -18,6 +18,7 @@ import { fromLocalInput, isPlanned, LINKABLE_ORDER_STATUSES, LOSS_CATEGORIES, no
 import type { DowntimeCategory, DowntimeEvent } from "../types";
 import { downtimeErrorMessage } from "./downtime-errors";
 import { P } from "@/lib/production-permissions";
+import { OptionalDateInput } from "@/components/forms/OptionalDateInput";
 
 type Values = { center: string; order: string; run: string; start: string; end: string; category: DowntimeCategory; reason: string; notes: string };
 
@@ -123,7 +124,7 @@ export function DowntimeEventFields({editor}:{editor:ReturnType<typeof useDownti
           </RecordCombobox>
         </label>
         <label className={s.field}>{t("fields.startTime")}<input type="datetime-local" required value={values.start} disabled={busy || locked} onChange={e => set("start", e.target.value)} /></label>
-        <label className={s.field}>{t("fields.endTimeOptional")}<input type="datetime-local" value={values.end} min={values.start || undefined} disabled={busy || locked} onChange={e => set("end", e.target.value)} /></label>
+        <div className={s.field} role="group" aria-label={t("fields.endTimeOptional")}><span>{t("fields.endTimeOptional")}</span><OptionalDateInput type="datetime-local" label={t("fields.endTimeOptional")} value={values.end} min={values.start || undefined} disabled={busy || locked} onChange={v => set("end", v)} /></div>
         <label className={s.field}>{t("fields.reasonCode")}<ReferenceTextSelect list="downtime_reason" value={values.reason} disabled={busy || locked} onChange={v => set("reason", v)} /></label>
       </div>
       <p className={s.muted}>{hints(values.category)} {isPlanned(values.category) ? t("hints.plannedType") : t("hints.lossType")}</p>

@@ -66,6 +66,11 @@ export function RecordHistory({entityType,entityId,revision=0,namespace}:{entity
     const line=t("line",{number:change.line}),state=change.line_change==="added"?` (${t("lineAdded")})`:change.line_change==="removed"?` (${t("lineRemoved")})`:"";
     return `${line}${state} · ${label(change.field)}`;
   }
+  /** One line per entry: which fields changed (at most five named), the values stay behind "Details". */
+  function summary(changes:Change[]){
+    const names=[...new Set(changes.map(fieldLabel))],comma=locale==="ar"?"، ":", ";
+    return names.length>5?`${names.slice(0,5).join(comma)} ${t("moreFields",{count:names.length-5})}`:names.join(comma);
+  }
   return <section className={s.panel} aria-label={t("title")}>
     <h2>{t("title")}</h2>{error?<p role="alert" className={s.error}>{t("loadFailed")}</p>:!data?<p role="status">{t("loading")}</p>:<>
       {!data.items.length&&<p>{t("empty")}</p>}
@@ -78,7 +83,8 @@ export function RecordHistory({entityType,entityId,revision=0,namespace}:{entity
           <span className={s.muted}>{entry.actor_name??t("system")} · {fmt.dateTime(entry.created_at)}</span>
           {subject&&<span><bdi>{subject}</bdi></span>}
           {related.production_order_number!=null&&<span>{words.has("order")?words("order"):t("order")}: <bdi>{formatSpecValue(related.production_order_number)}</bdi></span>}
-          {!!changes.length&&<div className={s.tableWrap}><table className={s.table}><thead><tr><th>{t("field")}</th><th>{t("old")}</th><th>{t("new")}</th></tr></thead><tbody>{changes.map((change,index)=><tr key={`${change.field}-${change.line??""}-${index}`}><th>{fieldLabel(change)}</th><td className={s.value}><bdi dir={isSpecRange(change.old)?"ltr":"auto"}>{value(change.field,change.old,kind)}</bdi></td><td className={s.value}><bdi dir={isSpecRange(change.new)?"ltr":"auto"}>{value(change.field,change.new,kind)}</bdi></td></tr>)}</tbody></table></div>}
+          {!!changes.length&&<p className={s.summary}>{t("changedFields",{fields:summary(changes)})}</p>}
+          {!!changes.length&&<details className={s.details}><summary>{t("showDetails")}</summary><div className={s.tableWrap}><table className={s.table}><thead><tr><th>{t("field")}</th><th>{t("old")}</th><th>{t("new")}</th></tr></thead><tbody>{changes.map((change,index)=><tr key={`${change.field}-${change.line??""}-${index}`}><th>{fieldLabel(change)}</th><td className={s.value}><bdi dir={isSpecRange(change.old)?"ltr":"auto"}>{value(change.field,change.old,kind)}</bdi></td><td className={s.value}><bdi dir={isSpecRange(change.new)?"ltr":"auto"}>{value(change.field,change.new,kind)}</bdi></td></tr>)}</tbody></table></div></details>}
           {details.reason&&<p className={s.reason}>{t("reason")}: {details.reason}</p>}
         </li>;
       })}</ol>

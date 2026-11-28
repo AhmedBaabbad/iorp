@@ -2,6 +2,7 @@
 import {normalizeSpecDraft} from "@/lib/spec-rows";
 import {RecordCombobox} from "@/components/ui/RecordCombobox";
 import {useUnsavedFormChanges} from "@/hooks/useUnsavedChangesGuard";
+import { useRevealNewRow } from "@/hooks/useRevealNewRow";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -20,6 +21,7 @@ import { toDatetimeLocalValue } from "@/lib/utils";
 import { createCommercialOrder, updateCommercialOrder } from "../api/commercial-orders-api";
 import type { CommercialOrderData, CreateCommercialOrderItemRequest } from "../types";
 import { salesErrorMessage } from "./sales-lifecycle";
+import { OptionalDateInput } from "@/components/forms/OptionalDateInput";
 
 type Line = { product_type: string; quantity: string; unit: string; unit_price: string; spec: string };
 type Values = {
@@ -74,6 +76,7 @@ export function CommercialOrderForm({ order }: { order?: CommercialOrderData }) 
     customer_id: "", source: "quote", quote_id: "", customer_reference: "", currency: "SAR",
     order_date: toDatetimeLocalValue(new Date()), requested_delivery_date: "", notes: "", lines: [emptyLine()],
   });
+  const revealLine = useRevealNewRow(values.lines.length, "order-lines");
   const [customerName, setCustomerName] = useState("");
   const [quotes, setQuotes] = useState<QuoteOption[]>([]);
   const [busy, setBusy] = useState(false);
@@ -199,10 +202,10 @@ export function CommercialOrderForm({ order }: { order?: CommercialOrderData }) 
             <label className={s.field}>{t("fields.orderDate")} *
               <input type="datetime-local" value={values.order_date} required disabled={busy} onChange={(e) => set("order_date", e.target.value)} />
             </label>
-            <label className={s.field}>{t("fields.requestedDelivery")}
-              <input type="datetime-local" value={values.requested_delivery_date} disabled={busy}
-                onChange={(e) => set("requested_delivery_date", e.target.value)} />
-            </label>
+            <div className={s.field} role="group" aria-label={t("fields.requestedDelivery")}><span>{t("fields.requestedDelivery")}</span>
+              <OptionalDateInput type="datetime-local" label={t("fields.requestedDelivery")} value={values.requested_delivery_date} disabled={busy}
+                onChange={(value) => set("requested_delivery_date", value)} />
+            </div>
             <label className={s.field}>{t("fields.currency")}{priced ? " *" : ""}
               <select value={values.currency} disabled={busy} onChange={(e) => set("currency", e.target.value as Values["currency"])}>
                 {(["SAR", "USD"] as const).map((c) => <option key={c} value={c}>{currencies(c)}</option>)}
@@ -213,15 +216,10 @@ export function CommercialOrderForm({ order }: { order?: CommercialOrderData }) 
         </section>
 
         <section className={s.panel} aria-label={t("items.sectionTitle")}>
-          <div className={s.actions} style={{ justifyContent: "space-between", marginBottom: 12 }}>
-            <h2 style={{ margin: 0 }}>{t("items.sectionTitle")}</h2>
-            <button type="button" className={s.button} disabled={busy} onClick={() => set("lines", [...values.lines, emptyLine()])}>
-              {t("items.addButton")}
-            </button>
-          </div>
+          <h2 style={{ margin: "0 0 12px" }}>{t("items.sectionTitle")}</h2>
           <p className={s.muted} style={{ marginTop: 0 }}>{t("pricesOptionalHint")}</p>
           {values.lines.map((line, index) => (
-            <section key={index} className={s.panel} style={{ marginBottom: 12 }} aria-label={t("items.lineTitle", { number: index + 1 })}>
+            <section key={index} data-row="order-lines" className={s.panel} style={{ marginBottom: 12 }} aria-label={t("items.lineTitle", { number: index + 1 })}>
               <div className={s.actions} style={{ justifyContent: "space-between", marginBottom: 12 }}>
                 <h3 style={{ margin: 0, fontSize: 16 }}>{t("items.lineTitle", { number: index + 1 })}</h3>
                 <button type="button" className={s.button} disabled={busy || values.lines.length === 1}
@@ -254,6 +252,9 @@ export function CommercialOrderForm({ order }: { order?: CommercialOrderData }) 
               </div>
             </section>
           ))}
+          <button type="button" className={s.button} disabled={busy} onClick={() => { revealLine(); set("lines", [...values.lines, emptyLine()]); }}>
+            {t("items.addButton")}
+          </button>
           {priced && <p style={{ marginBottom: 0 }}><strong>{t("fields.total")}:</strong> <Money amount={total} currency={values.currency} /></p>}
         </section>
 

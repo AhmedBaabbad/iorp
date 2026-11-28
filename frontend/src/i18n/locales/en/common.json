@@ -299,6 +299,13 @@
     "yes": "Yes",
     "no": "No",
     "data": "Details",
-    "legacyTimeline": "Previous status timeline"
+    "legacyTimeline": "Previous status timeline",
+    "changedFields": "Changed: {fields}",
+    "moreFields": "and {count} more",
+    "showDetails": "Details (previous and new values)"
+  },
+  "optionalDate": {
+    "set": "Set a date",
+    "none": "No date"
   }
 }
