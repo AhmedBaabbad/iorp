@@ -279,5 +279,26 @@
     "message": "You have unsaved changes. Leave this form and discard them?",
     "stay": "Keep editing",
     "leave": "Discard and leave"
+  },
+  "recordHistory": {
+    "title": "History",
+    "loading": "Loading history…",
+    "empty": "No recorded events.",
+    "loadFailed": "History could not be loaded.",
+    "field": "Field",
+    "old": "Previous value",
+    "new": "New value",
+    "reason": "Reason",
+    "system": "System",
+    "event": "History update",
+    "order": "Production order",
+    "subject": "Record",
+    "line": "Line {number}",
+    "lineAdded": "added",
+    "lineRemoved": "removed",
+    "yes": "Yes",
+    "no": "No",
+    "data": "Details",
+    "legacyTimeline": "Previous status timeline"
   }
 }

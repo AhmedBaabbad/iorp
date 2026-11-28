@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.core.interfaces import approvals
 from app.commercial.application import status_history
+from app.commercial.application import record_history as H
 from app.commercial.application.product_rules import assert_known_products
 from app.commercial.api.schemas import (
     CommercialOrderCreate,
@@ -82,6 +83,19 @@ class OrderService:
             raise ValueError("Order number counter could not be initialized.")
         counter.last_value += 1
         return f"RFS-{year}-{counter.last_value:04d}"
+
+    def _values(self, tenant, order) -> dict:
+        """The order's header as history shows it: its quotation by number, never its id."""
+        values = H.snapshot(order, H.ORDER_FIELDS)
+        values["quote"] = self.db.scalar(select(Quote.quote_number).where(Quote.organization_id == tenant.organization_id,
+                                                                          Quote.id == order.quote_id)) if order.quote_id else None
+        return values
+
+    def _created_event(self, tenant, order, quote_number=None):
+        H.event(self.db, tenant, H.SALES_ORDER, order.id, order.order_number, "sales_order.created",
+                extra=H.created(self._values(tenant, order), H.ORDER_FIELDS)
+                + H.line_changes({}, H.lines(order.items, H.ORDER_LINE_FIELDS), H.ORDER_LINE_FIELDS),
+                related=dict(quote_number=quote_number) if quote_number else None)
 
     def _quote_of(self, tenant, quote_id, customer_id):
         quote = self.quotes.get_by_id(tenant.organization_id, quote_id)
@@ -174,6 +188,7 @@ class OrderService:
         self.db.flush()
         status_history.record(self.db, tenant.organization_id, status_history.SALES_ORDER, order.id, "create", None,
                               order.status, order.revision, tenant.user_id)
+        self._created_event(tenant, order)
         self._save()
         return self.get_order(tenant, order.id)
 
@@ -203,6 +218,7 @@ class OrderService:
         self.db.flush()
         status_history.record(self.db, tenant.organization_id, status_history.SALES_ORDER, order.id, "create", None,
                               order.status, order.revision, tenant.user_id, quote.quote_number)
+        self._created_event(tenant, order, quote.quote_number)
         self._save()
         return self.get_order(tenant, order.id)
 
@@ -280,6 +296,7 @@ class OrderService:
 
         payload = data.model_dump(exclude_unset=True)
         items_payload = payload.pop("items", None)
+        before, before_lines = self._values(tenant, order), H.lines(order.items, H.ORDER_LINE_FIELDS)
         if payload.get("quote_id") is not None:
             self._quote_of(tenant, payload["quote_id"], order.customer_id)
             self._assert_quote_free(tenant, payload["quote_id"], order.id)
@@ -298,6 +315,10 @@ class OrderService:
         if "currency" in payload or items_payload is not None:
             default = product_catalog.business_settings(self.db, tenant.organization_id).default_currency
             order.currency = self._currency(payload.get("currency", order.currency), order.items, default)
+        self.db.flush()
+        H.event(self.db, tenant, H.SALES_ORDER, order.id, order.order_number, "sales_order.updated", before,
+                self._values(tenant, order), H.ORDER_FIELDS,
+                extra=H.line_changes(before_lines, H.lines(order.items, H.ORDER_LINE_FIELDS), H.ORDER_LINE_FIELDS))
         self._save()
         return self.get_order(tenant, order.id)
 
@@ -306,6 +327,10 @@ class OrderService:
         order.status = new_status
         status_history.record(self.db, tenant.organization_id, status_history.SALES_ORDER, order.id, action, before,
                               new_status, order.revision, tenant.user_id, reason)
+        step = {"confirm": "sales_order.confirmed", "revise": "sales_order.revised", "cancel": "sales_order.cancelled"}[action]
+        H.event(self.db, tenant, H.SALES_ORDER, order.id, order.order_number, step,
+                {"status": before, "revision": order.revision - (action == "revise")},
+                {"status": new_status, "revision": order.revision}, ("status", "revision"), reason=reason)
         self._save()
         return self.get_order(tenant, order.id)
 
@@ -363,6 +388,11 @@ class OrderService:
         if order.status != CommercialOrderStatus.DRAFT or order.revision > 1 or self._has_history(tenant, order):
             raise ValueError("ORDER_LOCKED")
         status_history.forget(self.db, tenant.organization_id, status_history.SALES_ORDER, order.id)
+        # The draft's own page goes with it: its deletion is kept in its customer's history.
+        H.event(self.db, tenant, H.CUSTOMER, order.customer_id, H.customer_name(self.db, tenant, order.customer_id),
+                "sales_order.deleted", extra=H.changes({"status": order.status, "customer_reference": order.customer_reference}, {},
+                                                       ("status", "customer_reference")),
+                related=H.subject("sales_order", order.id, order.order_number))
         self.orders.delete(order)
         self.db.commit()
         return True

@@ -8,6 +8,8 @@ import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { PageFrame } from "@/components/layout/page-frame";
+import { Tabs } from "@/components/ui/Tabs";
+import { RecordHistory } from "@/components/RecordHistory";
 import { getCustomer } from "@/features/customers";
 import { SampleEvaluationsList } from "@/features/sample-evaluations";
 import { useFormatter } from "@/hooks/useFormatter";
@@ -56,6 +58,7 @@ type SampleDetailProps = {
 export function SampleDetail({ sampleId }: SampleDetailProps) {
   const messages = useTranslations("messages");
   const t = useTranslations("commercial.samples");
+  const h = useTranslations("common.recordHistory");
   const locale = useLocale();
   const fmt = useFormatter();
   const [sample, setSample] = useState<SampleData | null>(null);
@@ -146,7 +149,7 @@ export function SampleDetail({ sampleId }: SampleDetailProps) {
       ) : null}
 
       {!isLoading && !error && !isNotFound && sample ? (
-        <div style={styles.sections}>
+        <Tabs label={sample.sample_code} items={[{ id: "data", label: h("data"), content: <div style={styles.sections}>
           <section style={styles.detailGrid} aria-label={t("detailsAria")}>
             <DetailItem label={t("fields.sampleCode")} value={sample.sample_code} />
             <DetailItem
@@ -190,7 +193,7 @@ export function SampleDetail({ sampleId }: SampleDetailProps) {
           </section>
 
           <SampleEvaluationsList sampleId={sampleId} />
-        </div>
+        </div> }, { id: "history", label: h("title"), lazy: true, content: <RecordHistory entityType="sample" entityId={sample.id} /> }]} />
       ) : null}
     </PageFrame>
   );

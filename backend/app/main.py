@@ -143,6 +143,8 @@ from app.foundation.application.activity_log import TenantActivityLogger
 register_activity_logger(TenantActivityLogger())
 from app.production.application.record_history import register as register_production_history
 register_production_history()
+from app.commercial.application.record_history import register as register_commercial_history
+register_commercial_history()
 from app.core.interfaces.order_line_evidence import register_order_line_evidence
 from app.quality.application.order_line_evidence import evidence as quality_line_evidence
 register_order_line_evidence(quality_line_evidence)

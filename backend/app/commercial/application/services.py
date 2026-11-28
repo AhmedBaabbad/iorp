@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from app.core.interfaces.authorization_policy import AuthorizationContext, AuthorizationPolicy
 
 from app.commercial.application import notices
+from app.commercial.application import record_history as H
 from app.commercial.application.product_rules import assert_list_values
 from app.commercial.api.schemas import (
     CreatedBySummary,
@@ -109,11 +110,17 @@ class CustomerService:
         try:
             self.customers.add(customer)
             if data.primary_contact is not None:
-                self.db.add(CustomerContact(organization_id=tenant.organization_id, customer_id=customer.id,
+                contact = CustomerContact(organization_id=tenant.organization_id, customer_id=customer.id,
                     **data.primary_contact.model_dump(), is_default=True, active=True,
-                    created_by=tenant.user_id, updated_by=tenant.user_id))
+                    created_by=tenant.user_id, updated_by=tenant.user_id)
+                self.db.add(contact)
                 self.db.flush()
-            get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "customer.created", "customer", customer.id, customer.name, tenant.user_id)
+            H.event(self.db, tenant, H.CUSTOMER, customer.id, customer.name, "customer.created",
+                    extra=H.created(self._customer_values(tenant, customer), H.CUSTOMER_FIELDS))
+            if data.primary_contact is not None:
+                H.event(self.db, tenant, H.CUSTOMER, customer.id, customer.name, "customer.contact_added",
+                        extra=H.created(H.snapshot(contact, H.CONTACT_FIELDS), H.CONTACT_FIELDS),
+                        related=H.subject("contact", contact.id, contact.name))
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
@@ -121,6 +128,26 @@ class CustomerService:
 
         self.db.refresh(customer)
         return self._attach_customer_associations(tenant, customer)
+
+    def _customer_values(self, tenant, customer):
+        return H.people(self.db, tenant.organization_id, H.snapshot(customer, (*H.CUSTOMER_FIELDS, "sales_owner_user_id")),
+                        {"sales_owner_user_id": "sales_owner"})
+
+    def _follow_up_values(self, tenant, follow_up):
+        return H.people(self.db, tenant.organization_id, H.snapshot(follow_up, (*H.FOLLOW_UP_FIELDS, "assigned_user_id")),
+                        {"assigned_user_id": "assigned_user"})
+
+    def _follow_up_event(self, tenant, follow_up, action, before=None, removed=False):
+        """A follow-up is kept under its customer: the customer's history shows it, also after it is deleted."""
+        values = self._follow_up_values(tenant, follow_up)
+        name = self._customer_name(tenant, follow_up.customer_id)
+        related = H.subject("follow_up", follow_up.id, follow_up.reason)
+        if removed or before is None:
+            extra = H.changes(values, {}, H.FOLLOW_UP_FIELDS) if removed else H.created(values, H.FOLLOW_UP_FIELDS)
+            H.event(self.db, tenant, H.CUSTOMER, follow_up.customer_id, name, action, extra=extra, related=related)
+        else:
+            H.event(self.db, tenant, H.CUSTOMER, follow_up.customer_id, name, action, before, values, H.FOLLOW_UP_FIELDS,
+                    related=related)
 
     def _customer_name(self, tenant, customer_id):
         """The customer an entry of the activity log is about, by name (ORG-AUDIT-003)."""
@@ -147,7 +174,9 @@ class CustomerService:
 
         try:
             self.interactions.add(interaction)
-            get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "interaction.created", "interaction", interaction.id, entity_name=self._customer_name(tenant, interaction.customer_id), actor_id=tenant.user_id, details={"customer_id": str(customer.id)})
+            H.event(self.db, tenant, H.CUSTOMER, customer.id, customer.name, "interaction.created",
+                    extra=H.created(H.snapshot(interaction, H.INTERACTION_FIELDS), H.INTERACTION_FIELDS),
+                    related=H.subject("interaction", interaction.id, interaction.subject))
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
@@ -182,12 +211,14 @@ class CustomerService:
         if changes.get("interaction_type") and unknown_list_values(self.db, tenant.organization_id, "interaction_type",
                                                                    [changes["interaction_type"]], [interaction.interaction_type]):
             raise ValueError("The interaction type is not in the organization's list.")  # MD-003
+        before = H.snapshot(interaction, H.INTERACTION_FIELDS)
         for field, value in changes.items():
             if field in ("interaction_type", "interaction_date", "subject") and value is None:
                 raise ValueError(f"{field} cannot be empty.")
             setattr(interaction, field, value)
-        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "interaction.updated", "interaction", interaction.id, entity_name=self._customer_name(tenant, interaction.customer_id),
-                                                      actor_id=tenant.user_id, details={"customer_id": str(customer_id), "fields": sorted(changes)})
+        H.event(self.db, tenant, H.CUSTOMER, interaction.customer_id, self._customer_name(tenant, interaction.customer_id),
+                "interaction.updated", before, H.snapshot(interaction, H.INTERACTION_FIELDS), H.INTERACTION_FIELDS,
+                related=H.subject("interaction", interaction.id, interaction.subject))
         self.db.commit()
         self.db.refresh(interaction)
         return interaction
@@ -202,8 +233,9 @@ class CustomerService:
             return False
         if self.db.scalar(select(FollowUp.id).where(FollowUp.interaction_id == interaction.id).limit(1)) is not None:
             raise ValueError("INTERACTION_HAS_FOLLOW_UPS")
-        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "interaction.deleted", "interaction", interaction.id, entity_name=self._customer_name(tenant, interaction.customer_id),
-                                                      actor_id=tenant.user_id, details={"customer_id": str(customer_id), "subject": interaction.subject})
+        H.event(self.db, tenant, H.CUSTOMER, interaction.customer_id, self._customer_name(tenant, interaction.customer_id),
+                "interaction.deleted", extra=H.changes(H.snapshot(interaction, H.INTERACTION_FIELDS), {}, H.INTERACTION_FIELDS),
+                related=H.subject("interaction", interaction.id, interaction.subject))
         self.interactions.delete(interaction)
         self.db.commit()
         return True
@@ -263,7 +295,7 @@ class CustomerService:
 
         try:
             self.follow_ups.add(follow_up)
-            get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.created", "followup", follow_up.id, entity_name=follow_up.reason, actor_id=tenant.user_id, details={"customer_id": str(customer.id)})
+            self._follow_up_event(tenant, follow_up, "followup.created")
             notices.follow_up_assigned(self.db, tenant, follow_up)
             self.db.commit()
         except IntegrityError as exc:
@@ -337,13 +369,14 @@ class CustomerService:
                         raise ValueError("User is not eligible as a follow-up assignee.")
 
         reassigned = "assigned_user_id" in payload and payload["assigned_user_id"] != follow_up.assigned_user_id
+        before = self._follow_up_values(tenant, follow_up)
         for field, value in payload.items():
             setattr(follow_up, field, value)
 
         try:
             if reassigned:
                 notices.follow_up_assigned(self.db, tenant, follow_up)
-            get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.updated", "followup", follow_up.id, entity_name=follow_up.reason, actor_id=tenant.user_id, details=payload)
+            self._follow_up_event(tenant, follow_up, "followup.updated", before)
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
@@ -356,8 +389,8 @@ class CustomerService:
         follow_up = self._writable_followup(tenant, follow_up_id)
         if follow_up is None:
             return False
+        self._follow_up_event(tenant, follow_up, "followup.deleted", removed=True)
         self.follow_ups.delete(follow_up)
-        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.deleted", "followup", follow_up.id, entity_name=follow_up.reason, actor_id=tenant.user_id)
         self.db.commit()
         return True
 
@@ -373,12 +406,13 @@ class CustomerService:
         if follow_up.status not in (FollowUpStatus.PENDING, FollowUpStatus.IN_PROGRESS):
             raise ValueError("This action cannot be performed on the current status.")
 
+        before = self._follow_up_values(tenant, follow_up)
         follow_up.status = FollowUpStatus.COMPLETED
         follow_up.completed_at = data.completed_at or utc_now()
         if data.notes is not None:
             follow_up.notes = data.notes
 
-        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.completed", "followup", follow_up.id, entity_name=follow_up.reason, actor_id=tenant.user_id)
+        self._follow_up_event(tenant, follow_up, "followup.completed", before)
         self.db.commit()
         self.db.refresh(follow_up)
         return self._attach_follow_up_associations(tenant, follow_up)
@@ -390,10 +424,11 @@ class CustomerService:
         if follow_up.status not in (FollowUpStatus.COMPLETED, FollowUpStatus.CANCELLED):
             raise ValueError("This action cannot be performed on the current status.")
 
+        before = self._follow_up_values(tenant, follow_up)
         follow_up.status = FollowUpStatus.PENDING
         follow_up.completed_at = None
 
-        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.reopened", "followup", follow_up.id, entity_name=follow_up.reason, actor_id=tenant.user_id)
+        self._follow_up_event(tenant, follow_up, "followup.reopened", before)
         self.db.commit()
         self.db.refresh(follow_up)
         return self._attach_follow_up_associations(tenant, follow_up)
@@ -405,10 +440,11 @@ class CustomerService:
         if follow_up.status not in (FollowUpStatus.PENDING, FollowUpStatus.IN_PROGRESS):
             raise ValueError("This action cannot be performed on the current status.")
 
+        before = self._follow_up_values(tenant, follow_up)
         follow_up.status = FollowUpStatus.CANCELLED
         follow_up.completed_at = None
 
-        get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "followup.cancelled", "followup", follow_up.id, entity_name=follow_up.reason, actor_id=tenant.user_id)
+        self._follow_up_event(tenant, follow_up, "followup.cancelled", before)
         self.db.commit()
         self.db.refresh(follow_up)
         return self._attach_follow_up_associations(tenant, follow_up)
@@ -457,11 +493,19 @@ class CustomerService:
             raise ValueError("Replacement user is not eligible as a follow-up assignee.")
 
         try:
+            moved = list(self.db.scalars(select(FollowUp).where(
+                FollowUp.customer_id.in_(select(Customer.id).where(Customer.organization_id == tenant.organization_id)),
+                FollowUp.assigned_user_id == from_user_id,
+                FollowUp.status.in_((FollowUpStatus.PENDING, FollowUpStatus.IN_PROGRESS)))))
+            before = {row.id: self._follow_up_values(tenant, row) for row in moved}
             count = self.follow_ups.reassign_open_by_user(
                 tenant.organization_id,
                 from_user_id,
                 to_user_id,
             )
+            for row in moved:
+                self.db.refresh(row)
+                self._follow_up_event(tenant, row, "followup.reassigned", before[row.id])
             self.db.commit()
         except Exception:
             self.db.rollback()
@@ -586,11 +630,13 @@ class CustomerService:
                         raise ValueError("User is not eligible as Sales Owner.")
 
         assert_list_values(self.db, tenant.organization_id, payload, record=customer)  # MD-002: the stored value may stay
+        before = self._customer_values(tenant, customer)
         for field, value in payload.items():
             setattr(customer, field, value)
 
         try:
-            get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "customer.updated", "customer", customer.id, customer.name, tenant.user_id, details=payload)
+            H.event(self.db, tenant, H.CUSTOMER, customer.id, customer.name, "customer.updated", before,
+                    self._customer_values(tenant, customer), H.CUSTOMER_FIELDS)
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
@@ -623,7 +669,15 @@ class CustomerService:
             raise ValueError("Both users must belong to the current organization.")
         if not eligibility.is_user_eligible(to_user_id, tenant.organization_id):
             raise ValueError("Replacement user is not eligible as Sales Owner.")
+        from app.commercial.domain.enums import CustomerStatus
+        moved = self.db.execute(select(Customer.id, Customer.name).where(
+            Customer.organization_id == tenant.organization_id, Customer.sales_owner_user_id == from_user_id,
+            Customer.status == CustomerStatus.ACTIVE)).all()
         count = self.customers.reassign_active_by_sales_owner(tenant.organization_id, from_user_id, to_user_id)
+        owners = H.people(self.db, tenant.organization_id, {"from": from_user_id, "to": to_user_id}, {"from": "from", "to": "to"})
+        for customer_id, name in moved:
+            H.event(self.db, tenant, H.CUSTOMER, customer_id, name, "customer.owner_reassigned",
+                    {"sales_owner": owners["from"]}, {"sales_owner": owners["to"]}, ("sales_owner",))
         get_registered_activity_logger().log_activity(self.db, tenant.organization_id, "customer.bulk_reassigned", "customer", actor_id=tenant.user_id, details={"count": count, "from_user_id": str(from_user_id), "to_user_id": str(to_user_id)})
         self.db.commit()
         return count

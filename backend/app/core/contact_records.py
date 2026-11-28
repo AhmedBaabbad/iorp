@@ -35,7 +35,8 @@ class SiteInput(BaseModel):
 def view(row):return {c.name:getattr(row,c.name) for c in row.__table__.columns}
 
 
-def save(db,tenant,model,parent_field,parent_id,data,record_id=None):
+def save(db,tenant,model,parent_field,parent_id,data,record_id=None,on_saved=None):
+    """on_saved(before, row): the owner's record history, in the same transaction (before is None for a new record)."""
     # The owner locks/authorizes the parent first, including concurrent default selection.
     query=select(model).where(model.organization_id==tenant.organization_id,getattr(model,parent_field)==parent_id)
     values=data.model_dump(exclude={'version'})
@@ -44,6 +45,7 @@ def save(db,tenant,model,parent_field,parent_id,data,record_id=None):
         row=db.scalar(query.where(model.id==record_id).with_for_update().execution_options(populate_existing=True))
         if row is None:raise HTTPException(404,'DIRECTORY_RECORD_NOT_FOUND')
         if data.version!=row.version:raise HTTPException(409,'DIRECTORY_CHANGED')
+    before=view(row) if row else None
     if values['is_default'] and not values['active']:raise HTTPException(422,'DEFAULT_MUST_BE_ACTIVE')
     if values['is_default']:
         for other in db.scalars(query.where(model.is_default.is_(True))):
@@ -60,6 +62,7 @@ def save(db,tenant,model,parent_field,parent_id,data,record_id=None):
         db.flush()
         record(db,tenant.organization_id,'directory.update' if record_id else 'directory.create',row.__tablename__,row.id,row.name,tenant.user_id,
             {'version':row.version,'active':row.active,'is_default':row.is_default})
+        if on_saved:on_saved(before,row)
         db.commit()
     except IntegrityError:
         db.rollback();raise HTTPException(409,'DIRECTORY_DUPLICATE')

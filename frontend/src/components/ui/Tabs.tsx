@@ -3,7 +3,8 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useLocale } from "next-intl";
 import css from "./records.module.css";
 
-export type TabItem = { id: string; label: string; content: ReactNode };
+/** lazy: the panel is built only while its tab is open, so it reads fresh data each time (e.g. a record's history). */
+export type TabItem = { id: string; label: string; content: ReactNode; lazy?: boolean };
 export function Tabs({ items, label, defaultTab, queryKey = "tab" }: {
   items: TabItem[]; label: string; defaultTab?: string; queryKey?: string;
 }) {
@@ -44,6 +45,6 @@ export function Tabs({ items, label, defaultTab, queryKey = "tab" }: {
         }}>{item.label}</button>)}
     </div>
     {items.map(item => <div key={item.id} role="tabpanel" id={`${id}-${item.id}-panel`}
-      aria-labelledby={`${id}-${item.id}-tab`} hidden={selected !== item.id} tabIndex={0}>{item.content}</div>)}
+      aria-labelledby={`${id}-${item.id}-tab`} hidden={selected !== item.id} tabIndex={0}>{item.lazy && selected !== item.id ? null : item.content}</div>)}
   </div>;
 }

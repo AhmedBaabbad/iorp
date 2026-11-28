@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.core.interfaces import approvals
 from app.commercial.application import status_history
+from app.commercial.application import record_history as H
 from app.commercial.application.product_rules import assert_known_products, assert_vat_rate
 from app.commercial.domain import lifecycle as L
 from app.commercial.domain import pricing
@@ -47,6 +48,10 @@ def _all(_action) -> bool:
     return True
 
 
+QUOTE_STEPS = {"issue": "quote.issued", "accept": "quote.accepted", "reject": "quote.rejected", "expire": "quote.expired",
+               "revise": "quote.revised"}
+
+
 class QuoteService:
     def __init__(self, db: Session, owner_user_id: UUID | None = None) -> None:
         """owner_user_id: see only the records of this sales owner's customers (RBAC-002, visibility.py)."""
@@ -59,6 +64,13 @@ class QuoteService:
         self.quotes.owner_user_id = owner_user_id
         self.customers.owner_user_id = owner_user_id
         self.orders.owner_user_id = owner_user_id
+
+    def _values(self, tenant, quote) -> dict:
+        """The quotation's header as history shows it: the sample by its code, never its id."""
+        values = H.snapshot(quote, H.QUOTE_FIELDS)
+        sample = self.samples.get_by_id(tenant.organization_id, quote.sample_id) if quote.sample_id else None
+        values["sample"] = sample.sample_code if sample else None
+        return values
 
     def _validate_validity(self, tenant, issue, until):
         days = QuoteSettingsService(self.db, tenant.organization_id).validity_days()
@@ -160,6 +172,9 @@ class QuoteService:
             self.db.flush()
             status_history.record(self.db, tenant.organization_id, status_history.QUOTE, quote.id, "create", None,
                                   quote.status, quote.revision, tenant.user_id)
+            H.event(self.db, tenant, H.QUOTE, quote.id, quote.quote_number, "quote.created",
+                    extra=H.created(self._values(tenant, quote), H.QUOTE_FIELDS)
+                    + H.line_changes({}, H.lines(quote.items, H.QUOTE_LINE_FIELDS), H.QUOTE_LINE_FIELDS))
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
@@ -218,6 +233,9 @@ class QuoteService:
                 approvals.sign(self.db, tenant, "quote", quote.id, "issue", "commercial:quotes:issue")
             status_history.record(self.db, tenant.organization_id, status_history.QUOTE, quote.id, action, before, new,
                                   quote.revision, tenant.user_id, reason)
+            H.event(self.db, tenant, H.QUOTE, quote.id, quote.quote_number, QUOTE_STEPS[action],
+                    {"status": before, "revision": quote.revision - (action == "revise")},
+                    {"status": quote.status, "revision": quote.revision}, ("status", "revision"), reason=reason)
             self.db.commit()
         except Exception:
             self.db.rollback()
@@ -263,6 +281,10 @@ class QuoteService:
             raise ValueError("QUOTE_HAS_ISSUED_HISTORY")
 
         status_history.forget(self.db, tenant.organization_id, status_history.QUOTE, quote.id)
+        # The quotation's own page goes with it: its deletion is kept in its customer's history.
+        H.event(self.db, tenant, H.CUSTOMER, quote.customer_id, H.customer_name(self.db, tenant, quote.customer_id),
+                "quote.deleted", extra=H.changes({"status": quote.status, "total_amount": quote.total_amount}, {}, ("status", "total_amount")),
+                related=H.subject("quote", quote.id, quote.quote_number))
         self.quotes.delete(quote)
         self.db.commit()
         return True
@@ -292,6 +314,7 @@ class QuoteService:
 
         if "tax_rate" in payload:
             assert_vat_rate(self.db, tenant.organization_id, payload["tax_rate"], keep=quote.tax_rate)
+        before, before_lines = self._values(tenant, quote), H.lines(quote.items, H.QUOTE_LINE_FIELDS)
         for field, value in payload.items():
             setattr(quote, field, value)
 
@@ -309,6 +332,9 @@ class QuoteService:
         quote.subtotal_amount, quote.discount_amount, quote.total_amount = self._calculate_quote_total(quote.items, quote.tax_amount)
 
         try:
+            self.db.flush()
+            H.event(self.db, tenant, H.QUOTE, quote.id, quote.quote_number, "quote.updated", before, self._values(tenant, quote),
+                    H.QUOTE_FIELDS, extra=H.line_changes(before_lines, H.lines(quote.items, H.QUOTE_LINE_FIELDS), H.QUOTE_LINE_FIELDS))
             self.db.commit()
         except IntegrityError as exc:
             self.db.rollback()
