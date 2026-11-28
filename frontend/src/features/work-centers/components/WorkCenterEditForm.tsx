@@ -14,6 +14,7 @@ import { optionalText } from "@/lib/utils";
 import { sharedStyles } from "@/styles/shared-styles";
 import { updateWorkCenter } from "../api/work-centers-api";
 import type { UpdateWorkCenterRequest, WorkCenterData, WorkCenterStatus, WorkCenterType } from "../types";
+import { OptionalDateInput } from "@/components/forms/OptionalDateInput";
 
 type EditFormValues = {
   name: string;
@@ -205,16 +206,16 @@ export function WorkCenterEditForm({ workCenter }: Props) {
                 />
               </label>
 
-              <label style={sharedStyles.field}>
+              <div style={sharedStyles.field} role="group" aria-label={t("fields.commissionedDate")}>
                 <span style={sharedStyles.label}>{t("fields.commissionedDate")}</span>
-                <input
+                <OptionalDateInput
                   style={sharedStyles.input}
-                  type="date"
+                  label={t("fields.commissionedDate")}
                   value={values.commissioned_date}
-                  onChange={(e) => updateField("commissioned_date", e.target.value)}
+                  onChange={(value) => updateField("commissioned_date", value)}
                   disabled={isSubmitting}
                 />
-              </label>
+              </div>
             </div>
 
             <label style={sharedStyles.field}>

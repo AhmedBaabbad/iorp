@@ -22,6 +22,7 @@ import { qualityErrorMessage } from "@/features/quality-checks/components/qualit
 import { createSpecification, getNumericProperties, getParameters, getSpecification, updateSpecification } from "../api";
 import { emptyLine } from "../spec-lines";
 import { TARGET_SOURCES, type NumericProperty, type Specification, type SpecificationLineInput, type TargetSource, type TestParameter } from "../types";
+import { useRevealNewRow } from "@/hooks/useRevealNewRow";
 
 type Header = { code: string; title: string; product_type: string; grade: string; notes: string };
 const DECIMAL = /^-?\d+(\.\d{1,4})?$/;
@@ -37,6 +38,7 @@ export function SpecificationForm({ specId }: { specId?: string }) {
   const editing = Boolean(specId);
   const [header, setHeader] = useState<Header>({ code: "", title: "", product_type: "", grade: "", notes: "" });
   const [lines, setLines] = useState<SpecificationLineInput[]>([]);
+  const revealLine = useRevealNewRow(lines.length, "spec-lines");
   const [existing, setExisting] = useState<Specification | null>(null);
   const [parameters, setParameters] = useState<TestParameter[]>([]);
   const [properties,setProperties]=useState<NumericProperty[]>([]);
@@ -74,7 +76,7 @@ export function SpecificationForm({ specId }: { specId?: string }) {
   const move = (index: number, step: number) => setLines(old => {
     const next = [...old]; const [line] = next.splice(index, 1); next.splice(Math.max(0, Math.min(next.length, index + step)), 0, line); return next;
   });
-  const addLine = (id: string) => { if (id) { setLines(old => [...old, emptyLine(id)]); setAdding(""); } };
+  const addLine = (id: string) => { if (id) { revealLine(); setLines(old => [...old, emptyLine(id)]); setAdding(""); } };
 
   const unsaved=useUnsavedFormChanges({header,lines},!loading);
   async function submit(event: FormEvent) {
@@ -131,7 +133,7 @@ export function SpecificationForm({ specId }: { specId?: string }) {
           const field = (key: keyof SpecificationLineInput, label: string, extra: Record<string, unknown> = {}) =>
             <label className={s.field}>{label}<input dir="ltr" inputMode="decimal" value={(line[key] as string | null) ?? ""} disabled={busy || locked}
               onChange={e => setLine(index, { [key]: e.target.value })} {...extra} /></label>;
-          return <fieldset key={line.parameter_id} className={s.panel} style={{ margin: "0 0 12px", padding: 16 }} disabled={busy || locked}>
+          return <fieldset key={line.parameter_id} data-row="spec-lines" className={s.panel} style={{ margin: "0 0 12px", padding: 16 }} disabled={busy || locked}>
             <legend style={{ fontWeight: 700 }}>{index + 1}. {name(p)} {p?.unit && <span className={s.muted}>({p.unit})</span>}</legend>
             <div className={s.grid}>
               {numeric ? <>

@@ -35,3 +35,16 @@ returned allocations preserve their original specification snapshot. See
 permanent history retention through monthly archival, and the event schema.
 
 Run `npm test`, `npx tsc --noEmit`, `npm run lint`, and `npm run build` from `frontend`. For browser checks, install Chromium with `npx playwright install chromium`, then run `npm run test:e2e`. `E2E_CHROME_PATH` can select an existing Chrome executable. Browser tests use deterministic API fixtures to verify UI flows on desktop and phone viewports, including Arabic RTL; backend integration tests verify the server independently.
+
+## Document lines and optional dates
+
+- **Lines are added at the end.**
+  - The add button sits under the last line.
+  - Mark each line with `data-row="<group>"`. Call the function returned by `useRevealNewRow(count, group)` before adding a line.
+  - The new line is then scrolled into view and its first field is focused.
+  - Lines loaded from the server never move the screen.
+- **Optional dates use `OptionalDateInput`.** Examples: a requested delivery, a due date, an end time, an expiry.
+  - The date is set only when "تحديد تاريخ" is ticked, and removing the tick clears it.
+  - Wrap it in a `div role="group"` with the field name, not in a `label`: a click on the field name must not untick it.
+  - Required dates stay plain inputs, prefilled where a default exists.
+- **Record history shows one line per event:** what happened, who, when, and the names of the changed fields. The old→new values open under "التفاصيل".

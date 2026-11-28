@@ -23,6 +23,8 @@ import s from './complaints.module.css';
 import { FilePicker } from '@/components/forms/FilePicker';
 import { Signatures } from "@/components/Signatures";
 import { useListChoices, useListName } from '@/features/masterdata';
+import { useRevealNewRow } from '@/hooks/useRevealNewRow';
+import { OptionalDateInput } from "@/components/forms/OptionalDateInput";
 
 const prefix = 'commercial:complaints:';
 const STATUSES = ['new', 'processing', 'pending_closure', 'closed', 'cancelled'];
@@ -67,6 +69,10 @@ function errorText(e: unknown, t: ReturnType<typeof useTranslations>, fallback: 
 
 function Field({ name, children }: { name: string; children: ReactNode }) {
   return <label className={s.field}>{name}{children}</label>;
+}
+
+function OptionalDateField({ name, ...input }: { name: string; value: string; min?: string; onChange: (value: string) => void }) {
+  return <div className={s.field} role="group" aria-label={name}><span>{name}</span><OptionalDateInput label={name} {...input} /></div>;
 }
 
 function Frame({ children }: { children: ReactNode }) {
@@ -174,6 +180,7 @@ export const draftOf = (item: Item): ItemDraft => ({ id: item.id, product_key: i
  */
 function ItemsEditor({ customerId, products: savedProducts, items, onChange }: { customerId: string; products: Product[]; items: ItemDraft[]; onChange: (items: ItemDraft[]) => void }) {
   const { t, ar, unit, named } = useWords();
+  const revealItem = useRevealNewRow(items.length, "complaint-items");
   const [createdProducts,setCreatedProducts]=useState<Product[]>([]);
   const products=[...savedProducts,...createdProducts.filter(product=>!savedProducts.some(saved=>saved.key===product.key))];
   const [sources, setSources] = useState<Source[]>([]);
@@ -200,7 +207,7 @@ function ItemsEditor({ customerId, products: savedProducts, items, onChange }: {
       const product = products.find(p => p.key === item.product_key);
       const matching = sources.filter(x => x.product_key === item.product_key);
       const source = sources.find(x => x.kind === item.source_kind && x.id === item.source_id);
-      return <section className={s.panel} key={item.id ?? `new-${i}`}>
+      return <section className={s.panel} key={item.id ?? `new-${i}`} data-row="complaint-items">
         <div className={s.grid}>
           <Field name={t('items.product')}>
             <ProductSelect catalogOptions={products.map(product=>({...product,active:true}))} allowFreeText={false} required value={item.product_key} ariaLabel={t("items.product")}
@@ -236,7 +243,7 @@ function ItemsEditor({ customerId, products: savedProducts, items, onChange }: {
         <button type="button" className={s.button} onClick={() => onChange(items.filter((_, n) => n !== i))}>{t('items.remove')}</button>
       </section>;
     })}
-    <button type="button" className={s.button} onClick={() => onChange([...items, emptyLine()])}>{t('items.add')}</button>
+    <button type="button" className={s.button} onClick={() => { revealItem(); onChange([...items, emptyLine()]); }}>{t('items.add')}</button>
   </>;
 }
 
@@ -269,12 +276,12 @@ export function ComplaintCreate({ customerId = '' }: { customerId?: string }) {
           {categoryChoices.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</RecordCombobox></Field>
         <Field name={t('fields.priority')}>{select('priority', 'priorities', PRIORITIES)}</Field>
         <Field name={t('fields.channel')}>{select('channel', 'channels', CHANNELS)}</Field>
-        <Field name={t('fields.resolutionDue')}><input type="date" min={values.received_date} value={values.due_date} onChange={e => set('due_date', e.target.value)} /></Field>
+        <OptionalDateField name={t('fields.resolutionDue')} min={values.received_date} value={values.due_date} onChange={v => set('due_date', v)} />
       </div>
       <div style={{ marginTop: 16 }}><Field name={t('fields.statement')}><textarea required maxLength={10000} value={values.statement} onChange={e => set('statement', e.target.value)} /></Field></div>
       <details className={s.more}><summary>{t('moreDetails')}</summary><div className={s.grid}>
         <Field name={t('fields.contact')}><input maxLength={255} value={values.contact} onChange={e => set('contact', e.target.value)} /></Field>
-        <Field name={t('fields.responseDue')}><input type="date" min={values.received_date} value={values.response_due_date} onChange={e => set('response_due_date', e.target.value)} /></Field>
+        <OptionalDateField name={t('fields.responseDue')} min={values.received_date} value={values.response_due_date} onChange={v => set('response_due_date', v)} />
         <Field name={t('fields.externalReference')}><input maxLength={255} value={values.external_reference} onChange={e => set('external_reference', e.target.value)} /></Field>
       </div></details></section>
       <section className={s.panel}><h2>{t('items.title')}</h2><p className={s.muted}>{t('items.hint')}</p>

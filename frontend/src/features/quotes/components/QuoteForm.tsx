@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 
+import { useRevealNewRow } from "@/hooks/useRevealNewRow";
 import { PageFrame } from "@/components/layout/page-frame";
 import { SuccessModal } from "@/components/ui/SuccessModal";
 import { CustomerPicker } from "@/features/customers";
@@ -125,6 +126,7 @@ export function QuoteForm() {
   const { days: validityDays, loaded: validityLoaded, error: validityLoadError, documentLanguage } = useQuoteValidity();
   const [validityManual, setValidityManual] = useState(false);
   const [values, setValues] = useState<QuoteFormValues>(createDefaultValues);
+  const revealLine = useRevealNewRow(values.items.length, "quote-lines");
   useEffect(() => {
     if (settingsLoaded) setValues((current) => ({ ...current, currency: defaultCurrency }));
   }, [settingsLoaded, defaultCurrency]);
@@ -416,18 +418,10 @@ export function QuoteForm() {
           <div style={{ display: "grid", gap: "16px" }}>
             <div style={styles.itemHeader}>
               <h2 style={{ fontSize: "20px", margin: 0 }}>{t("items.sectionTitle")}</h2>
-              <button
-                style={sharedStyles.secondaryButton}
-                type="button"
-                onClick={addItem}
-                disabled={isSubmitting || !validityLoaded}
-              >
-                {t("items.addButton")}
-              </button>
             </div>
 
             {values.items.map((item, index) => (
-              <section key={index} style={styles.itemPanel} aria-label={t("items.lineTitle", { number: index + 1 })}>
+              <section key={index} data-row="quote-lines" style={styles.itemPanel} aria-label={t("items.lineTitle", { number: index + 1 })}>
                 <div style={styles.itemHeader}>
                   <h3 style={{ fontSize: "16px", margin: 0 }}>{t("items.lineTitle", { number: index + 1 })}</h3>
                   <button
@@ -521,6 +515,11 @@ export function QuoteForm() {
                   onChange={(field, value) => updateItemField(index, field, value)} />
               </section>
             ))}
+            <div>
+              <button style={sharedStyles.secondaryButton} type="button" onClick={() => { revealLine(); addItem(); }} disabled={isSubmitting || !validityLoaded}>
+                {t("items.addButton")}
+              </button>
+            </div>
           </div>
 
           <QuoteItemsTable items={previewItems} currency={values.currency} />

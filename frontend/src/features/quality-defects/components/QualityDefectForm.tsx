@@ -12,6 +12,7 @@ import { sharedStyles } from "@/styles/shared-styles";
 import { createDefects } from "../api/quality-defects-api";
 import { useClassificationChoices } from "@/features/masterdata";
 import { DEFECT_CATEGORIES, type CreateQualityDefectRequest, type DefectCategory, type DefectSeverity } from "../types";
+import { useRevealNewRow } from "@/hooks/useRevealNewRow";
 
 
 const SEVERITIES: DefectSeverity[] = ["minor", "major", "critical"];
@@ -46,6 +47,7 @@ export function QualityDefectForm({ qualityCheckId, recordedCategories = [], onC
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
   const [rows, setRows] = useState<Row[]>(() => [newRow(DEFECT_CATEGORIES.find(c => !recordedCategories.includes(c)) ?? "")]);
+  const revealRow = useRevealNewRow(rows.length, "defect-rows");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
@@ -94,7 +96,7 @@ export function QualityDefectForm({ qualityCheckId, recordedCategories = [], onC
       <p style={{ margin: 0, color: "var(--text-muted)" }}>{t("onePerType")}</p>
 
       {rows.map((row, index) => (
-        <fieldset key={row.key} style={styles.row} disabled={isSubmitting} aria-label={t("defectNumber", { number: index + 1 })}>
+        <fieldset key={row.key} data-row="defect-rows" style={styles.row} disabled={isSubmitting} aria-label={t("defectNumber", { number: index + 1 })}>
           <label style={sharedStyles.field}>
             <span style={sharedStyles.label}>{t("fields.defectCategory")}</span>
             <RecordCombobox aria-label={t("fields.defectCategory")} style={sharedStyles.input} value={row.defect_category} required
@@ -125,7 +127,7 @@ export function QualityDefectForm({ qualityCheckId, recordedCategories = [], onC
       ))}
 
       {free.length > 0 && <button type="button" style={{ ...sharedStyles.secondaryButton, width: "fit-content" }} disabled={isSubmitting}
-        onClick={() => setRows(current => [...current, newRow(free[0])])}>{t("addAnother")}</button>}
+        onClick={() => { revealRow(); setRows(current => [...current, newRow(free[0])]); }}>{t("addAnother")}</button>}
 
       <label style={sharedStyles.field}>
         <span style={sharedStyles.label}>{t("fields.notes")}</span>

@@ -19,6 +19,7 @@ import { apiClient } from "@/lib/api-client";
 import type { Severity } from "@/lib/notifications";
 import { useListQuery, type Page } from "@/lib/pagination";
 import { sharedStyles } from "@/styles/shared-styles";
+import { OptionalDateInput } from "@/components/forms/OptionalDateInput";
 
 type Audience = "users" | "role" | "everyone";
 type Announcement = {
@@ -149,9 +150,9 @@ export function AnnouncementForm() {
             <input type="checkbox" checked={form.user_ids.includes(u.id)}
               onChange={(e) => set("user_ids", e.target.checked ? [...form.user_ids, u.id] : form.user_ids.filter((x) => x !== u.id))} />{u.name}</label>)}
         </div></fieldset>}
-      <label style={sharedStyles.field}>{label("expiresAt")}
-        <input style={sharedStyles.input} type="date" value={form.expires_at} min={new Date().toLocaleDateString("en-CA")}
-          onChange={(e) => set("expires_at", e.target.value)} /></label>
+      <div style={sharedStyles.field} role="group" aria-label={t("fields.expiresAt")}>{label("expiresAt")}
+        <OptionalDateInput style={sharedStyles.input} label={t("fields.expiresAt")} value={form.expires_at} min={new Date().toLocaleDateString("en-CA")}
+          onChange={(value) => set("expires_at", value)} /></div>
       <label style={{ display: "flex", gap: 10, alignItems: "center", gridColumn: "1 / -1", fontWeight: 700 }}>
         <input type="checkbox" checked={form.requires_ack} onChange={(e) => set("requires_ack", e.target.checked)} />{t("fields.requiresAck")}</label>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, gridColumn: "1 / -1" }}>

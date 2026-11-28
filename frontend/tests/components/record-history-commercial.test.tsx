@@ -53,3 +53,13 @@ it("builds a lazy tab only while it is open, so its history is read again on eve
   await screen.findByText("No recorded events.");
   expect(api.history).toHaveBeenCalledTimes(2);
 });
+
+it("shows one line per entry: what changed by name, the values only behind Details",async()=>{
+  api.history.mockResolvedValue({total:1,pages:1,items:[{id:"1",action:"quote.updated",actor_name:"Sara",created_at:"2026-11-27T10:00:00Z",
+    details:{schema_version:1,related:{},changes:[{field:"notes",old:"a",new:"b"},{field:"quantity",old:"1",new:"2",line:1,line_change:"changed"}]}}]});
+  const {container}=ui(<RecordHistory entityType="quote" entityId="q1"/>);
+  expect(await screen.findByText("Changed: Notes, Line 1 · Quantity")).toBeTruthy();
+  const details=container.querySelector("details")!;
+  expect(details.open).toBe(false);expect(details.querySelector("summary")!.textContent).toBe("Details (previous and new values)");
+  expect(details.querySelector("table")).toBeTruthy();
+});

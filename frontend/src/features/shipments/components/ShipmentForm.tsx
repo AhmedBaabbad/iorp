@@ -25,6 +25,7 @@ import { DELIVERY_METHODS, type CustomerOption, type DeliveryMethod, type Produc
 import { MapLink } from "@/components/MapLink";
 import { useListName } from "@/features/masterdata";
 import { ListSelect } from "@/features/masterdata";
+import { useRevealNewRow } from "@/hooks/useRevealNewRow";
 
 // A line as edited (numbers as typed): dimensions, quantity and unit, per-unit net and a read-only legacy net, and
 // the production order (batch) it comes from.
@@ -67,6 +68,7 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
   const [h, setH] = useState<Header>(EMPTY_HEADER);
   const [notify, setNotify] = useState(false);
   const [lines, setLines] = useState<Line[]>([{ ...EMPTY_LINE }]);
+  const revealLine = useRevealNewRow(lines.length, "shipment-lines");
   const [gross, setGross] = useState("");
   const [grossUnit, setGrossUnit] = useState("kg");
   const [orderQuery, setOrderQuery] = useState("");
@@ -267,7 +269,7 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
 
         <section className={s.panel} aria-label={t("sections.lines")}>
           <h2 style={{ marginTop: 0 }}>{t("sections.lines")}</h2>
-          {lines.map((l, i) => <div key={i} className={s.panel} style={{ margin: "0 0 10px", padding: 14 }}>
+          {lines.map((l, i) => <div key={i} data-row="shipment-lines" className={s.panel} style={{ margin: "0 0 10px", padding: 14 }}>
             <div className={s.actions} style={{ justifyContent: "space-between", marginBottom: 8 }}>
               <strong>{t("lineNo", { no: String(i + 1) })}</strong>
               {lines.length > 1 && <button type="button" className={`${s.button} ${s.danger}`} onClick={() => setLines(old => old.filter((_, n) => n !== i))}>{t("removeLine")}</button>}
@@ -292,7 +294,7 @@ export function ShipmentForm({ shipmentId }: { shipmentId?: string }) {
             </div>
           </div>)}
           <div className={s.actions}>
-            <button type="button" className={s.button} onClick={() => setLines(old => [...old, { ...EMPTY_LINE }])}>{t("addLine")}</button>
+            <button type="button" className={s.button} onClick={() => { revealLine(); setLines(old => [...old, { ...EMPTY_LINE }]); }}>{t("addLine")}</button>
             <span className={s.muted}>{t("totalsPreview", { weight: String(netTotal) })}</span>
           </div>
           <div className={s.grid}>

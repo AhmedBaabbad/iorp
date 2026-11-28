@@ -299,6 +299,13 @@
     "yes": "نعم",
     "no": "لا",
     "data": "البيانات",
-    "legacyTimeline": "سجل الحالات السابق"
+    "legacyTimeline": "سجل الحالات السابق",
+    "changedFields": "التغييرات: {fields}",
+    "moreFields": "و{count} أخرى",
+    "showDetails": "التفاصيل (القيمة السابقة والجديدة)"
+  },
+  "optionalDate": {
+    "set": "تحديد تاريخ",
+    "none": "بدون تاريخ"
   }
 }

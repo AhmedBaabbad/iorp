@@ -26,6 +26,7 @@ import { DECIMAL, procurementErrorMessage, todayIso } from "../procurement-error
 import { RECEIPT_STATUSES, type LotStatus, type Material, type OpenOrder, type Receipt, type ReceiptInput, type ReceiptListItem, type ReceiptStatus,
   type SupplierOption } from "../types";
 import { SupplierStatusBadge } from "./Suppliers";
+import { useRevealNewRow } from "@/hooks/useRevealNewRow";
 
 const STATUS_CLASS: Record<ReceiptStatus, string> = { draft: "", received: s.green, cancelled: s.cancelled };
 
@@ -146,6 +147,7 @@ export function ReceiptForm({ receiptId, supplierId, orderId }: { receiptId?: st
   const [h, setH] = useState<Header>(EMPTY_HEADER);
   const [transport,setTransport]=useState<TransportValues>({});
   const [lines, setLines] = useState<Line[]>([{ ...EMPTY_LINE }]);
+  const revealLine = useRevealNewRow(lines.length, "receipt-lines");
   const [order, setOrder] = useState(orderId ?? "");
   const [orders, setOrders] = useState<OpenOrder[]>([]);
   const [prefilled, setPrefilled] = useState(!orderId);
@@ -257,7 +259,7 @@ export function ReceiptForm({ receiptId, supplierId, orderId }: { receiptId?: st
         <section className={s.panel} aria-label={t("receipts.lines")}>
           <h2 style={{ marginTop: 0 }}>{t("receipts.lines")}</h2>
           {order && <p className={s.muted} style={{ marginTop: 0 }}>{t("receipts.fromOrderHint")}</p>}
-          {lines.map((l, i) => <div key={i} className={s.panel} style={{ margin: "0 0 10px", padding: 14 }}>
+          {lines.map((l, i) => <div key={i} data-row="receipt-lines" className={s.panel} style={{ margin: "0 0 10px", padding: 14 }}>
             <div className={s.actions} style={{ justifyContent: "space-between", marginBottom: 8 }}>
               <strong>{t("receipts.lineNo", { no: String(i + 1) })}{order && l.po_line_id && <span className={s.muted}> · {t("receipts.orderLine", {
                 no: String(orders.find(o => o.id === order)?.lines.find(x => x.id === l.po_line_id)?.line_no ?? "") })}</span>}</strong>
@@ -279,7 +281,7 @@ export function ReceiptForm({ receiptId, supplierId, orderId }: { receiptId?: st
             </div>
             {l.material_id && byId.get(l.material_id)?.inspection_required && <p className={s.muted} style={{ marginBottom: 0 }}>{t("receipts.willInspect")}</p>}
           </div>)}
-          <button type="button" className={s.button} onClick={() => setLines(old => [...old, { ...EMPTY_LINE }])}>{t("receipts.addLine")}</button>
+          <button type="button" className={s.button} onClick={() => { revealLine(); setLines(old => [...old, { ...EMPTY_LINE }]); }}>{t("receipts.addLine")}</button>
           {!linesOk && <p className={s.muted}>{t("receipts.linesHint")}</p>}
         </section>
         <section className={s.panel}>

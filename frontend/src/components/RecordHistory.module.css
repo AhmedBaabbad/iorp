@@ -12,3 +12,6 @@
 .timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
 .timeline li { position: relative; padding-inline-start: 18px; border-inline-start: 2px solid var(--border-strong); display: grid; gap: 4px; }
 .timeline li::before { content: ""; position: absolute; inset-inline-start: -6px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.summary { margin: 0; font-size: 14px; color: var(--text-muted); overflow-wrap: anywhere; }
+.details summary { cursor: pointer; color: var(--accent-strong); font-size: 14px; width: fit-content; }
+.details[open] summary { margin-bottom: 8px; }
